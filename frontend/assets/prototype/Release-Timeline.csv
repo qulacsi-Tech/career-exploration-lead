@@ -1,0 +1,37 @@
+#,Phase,Track,Task / Screen,Start,End,Duration (working days),Notes
+1,1 - Setup & UI,Setup,Tech Stack Setup,20-Aug-2026,24-Aug-2026,1,"Confirm frameworks, repo structure, dependencies"
+2,1 - Setup & UI,Setup,Environment Setup,24-Aug-2026,25-Aug-2026,1,".env config, Docker Compose (Postgres + Meilisearch), local dev bootstrap"
+3,1 - Setup & UI,UI,Course Detail Page,25-Aug-2026,27-Aug-2026,2,Per client page architecture
+4,1 - Setup & UI,UI,Specialisation Page,27-Aug-2026,01-Sep-2026,2,
+5,1 - Setup & UI,UI,Entrance Exam Pages (listing + detail),01-Sep-2026,07-Sep-2026,3,
+6,1 - Setup & UI,UI,Ranking Page,07-Sep-2026,09-Sep-2026,2,
+7,1 - Setup & UI,UI,Comparison Page,09-Sep-2026,14-Sep-2026,2,Compare 3-4 colleges side by side
+8,1 - Setup & UI,UI,Location Hub Page,14-Sep-2026,16-Sep-2026,2,e.g. /mba/colleges-in-bangalore
+9,1 - Setup & UI,UI,Static Pages,16-Sep-2026,21-Sep-2026,2,"About, Contact, Privacy Policy, Terms"
+10,1 - Setup & UI,UI,Review Page,21-Sep-2026,23-Sep-2026,2,Listing + write-a-review flow
+11,1 - Setup & UI,UI,Article / News Page,23-Sep-2026,28-Sep-2026,2,Listing + detail
+12,1 - Setup & UI,UI,Question & Answer Page,28-Sep-2026,30-Sep-2026,2,
+13,1 - Setup & UI,UI,Event Page,30-Sep-2026,01-Oct-2026,1,
+14,1 - Setup & UI,UI,"Auth Screens (Login, Register, OTP)",25-Aug-2026,27-Aug-2026,2,Runs in parallel with UI screens above
+15,1 - Setup & UI,UI,Enquiry / Callback / Brochure-download Forms,27-Aug-2026,01-Sep-2026,2,Runs in parallel
+16,1 - Setup & UI,UI,Admin Panel Screens,25-Aug-2026,07-Sep-2026,7,"Dashboard, CRUD, SEO tab, moderation, leads inbox - runs in parallel"
+17,1 - Setup & UI,QA,UI / Responsive Testing,01-Oct-2026,07-Oct-2026,3,"All screens - desktop, tablet, mobile, cross-browser"
+18,2 - Backend & APIs,Backend,Database Schema & Models,07-Oct-2026,12-Oct-2026,2,
+19,2 - Backend & APIs,Backend,Auth API,12-Oct-2026,14-Oct-2026,2,JWT + OTP - runs in parallel with Core CRUD APIs
+20,2 - Backend & APIs,Backend,Core CRUD APIs,12-Oct-2026,20-Oct-2026,5,"College, Course, Specialisation, Exam, Ranking, Location"
+21,2 - Backend & APIs,Backend,Admin APIs,20-Oct-2026,26-Oct-2026,3,"Content management, SEO fields, JSON-LD, role-based access"
+22,2 - Backend & APIs,Backend,Lead Capture API,26-Oct-2026,27-Oct-2026,1,Runs in parallel
+23,2 - Backend & APIs,Backend,Search Indexing,26-Oct-2026,28-Oct-2026,2,Autocomplete + filters (Meilisearch sync) - runs in parallel
+24,2 - Backend & APIs,Backend,SEO Infrastructure,26-Oct-2026,29-Oct-2026,3,"Sitemaps, canonical/robots, redirect manager, IndexNow"
+25,2 - Backend & APIs,QA,Backend / API Testing,29-Oct-2026,02-Nov-2026,1,
+26,3 - Integrations,Integration,Frontend <-> Live API Wiring,02-Nov-2026,09-Nov-2026,4,Replace mock data across all screens
+27,3 - Integrations,Integration,Admin Panel - Live Wiring,09-Nov-2026,12-Nov-2026,3,Runs in parallel
+28,3 - Integrations,Integration,Auth / OTP End-to-End,09-Nov-2026,11-Nov-2026,2,"Signup, login, review verification"
+29,3 - Integrations,Integration,Search & Filters Live,11-Nov-2026,16-Nov-2026,2,"Autocomplete, faceted filters, comparison"
+30,3 - Integrations,Integration,"WhatsApp, Email & CRM Integration",16-Nov-2026,19-Nov-2026,3,Fires on every new lead
+31,3 - Integrations,Integration,Search Console / Bing / IndexNow Setup,19-Nov-2026,23-Nov-2026,1,
+32,3 - Integrations,QA,Full Integration Testing,23-Nov-2026,26-Nov-2026,3,End-to-end user flows
+33,4 - Testing & Launch,QA,Full Regression Testing,26-Nov-2026,02-Dec-2026,3,All phases combined
+34,4 - Testing & Launch,QA,SEO & Performance Audit,02-Dec-2026,03-Dec-2026,1,"Lighthouse, sitemap crawl, canonical/robots check"
+35,4 - Testing & Launch,QA,UAT with Client / Sign-off,03-Dec-2026,08-Dec-2026,2,
+36,4 - Testing & Launch,Launch,Bug Fixes + Go-Live,08-Dec-2026,09-Dec-2026,1,
