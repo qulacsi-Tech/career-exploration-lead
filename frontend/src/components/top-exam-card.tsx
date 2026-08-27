@@ -11,7 +11,7 @@ export function TopExamCard({ exam }: { exam: Exam }) {
         <div className="min-w-0">
           <Link
             href={`/exams/${exam.slug}`}
-            className="font-display text-sm font-bold leading-snug text-band-ink hover:text-brand"
+            className="font-display text-sm font-bold leading-snug text-ink hover:text-brand"
           >
             {exam.name}
           </Link>

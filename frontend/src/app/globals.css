@@ -1,10 +1,32 @@
 @import "tailwindcss";
 
+/*
+  DEEP RED THEME
+  --------------
+  Variant of the base pink theme, requested 25% deeper and shifted toward red.
+
+  Every colour below is derived from the base palette by a single rule applied
+  in OKLCH (perceptually uniform, so "25% deeper" means what the eye reads as
+  25% deeper — a naive hex/HSL tweak does not):
+
+    chromatic tokens   L' = L * 0.75            (25% deeper)
+                       H' = H + (29.2 - H) * 0.35   (35% toward pure red)
+                       C' = C                   (band: C * 2, so the deepened
+                                                 pink stays chromatic instead
+                                                 of greying out to mauve)
+
+    near-white tints   L' = 1 - (1 - L) * 1.25  (25% further from white, so
+                       C' = C * 1.25             backgrounds stay backgrounds)
+
+  Base values are kept in the comments so the derivation stays auditable.
+  All foreground/background pairings below are verified at >= 4.5:1 (WCAG AA).
+*/
+
 :root {
   --color-bg: #ffffff;
   --color-bg-alt: #faf7f5;
   /* Third neutral so consecutive sections can alternate without repeating. */
-  --color-bg-tint: #fdf5f6;
+  --color-bg-tint: #fdf3f3; /* base #fdf5f6 */
   --color-surface: #ffffff;
   --color-ink: #1c2128;
   --color-ink-soft: #5b6472;
@@ -12,16 +34,18 @@
   --color-line: #e7e2de;
   --color-line-soft: #f0ece8;
 
-  --color-brand: #e23955;
-  --color-brand-dark: #b8203a;
-  --color-brand-soft: #fdecef;
-  --color-brand-ink: #7c1428;
+  --color-brand: #a40626; /* base #e23955 */
+  --color-brand-dark: #820018; /* base #b8203a */
+  --color-brand-soft: #fde7e9; /* base #fdecef */
+  --color-brand-ink: #56010f; /* base #7c1428 */
 
-  /* Pink action band that runs across the foot of the Top Colleges /
-     Top Exams cards, straight from the prototype. */
-  --color-band: #ffc0cb;
-  --color-band-ink: #333333;
-  --color-band-ink-soft: #555555;
+  /* Action band that runs across the foot of the Top Colleges / Top Exams
+     cards. The base theme's pink (#ffc0cb) deepened to a rose red. */
+  --color-band: #da6572; /* base #ffc0cb */
+  /* Ink ON the band only — deepening the band pushed plain #333 below AA, so
+     these are deep maroons picked to clear 4.5:1 against --color-band. */
+  --color-band-ink: #39010b; /* base #333333 */
+  --color-band-ink-soft: #4a0011; /* base #555555 */
 
   --color-gold: #d89a2a;
   --color-gold-soft: #fbf1dd;

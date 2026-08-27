@@ -17,7 +17,7 @@ export function TopCollegeCard({ college }: { college: College }) {
         <div className="min-w-0">
           <Link
             href={`/college/${college.slug}`}
-            className="font-display text-sm font-bold leading-snug text-band-ink hover:text-brand"
+            className="font-display text-sm font-bold leading-snug text-ink hover:text-brand"
           >
             {college.name}
           </Link>
