@@ -10,7 +10,7 @@ const navLinks = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
-      <div className="relative mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <CapIcon className="h-7 w-7 text-brand" />
           <span className="font-display leading-[0.95] text-brand">
@@ -40,21 +40,22 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        {/* Reserves layout space (badge width + clear gap) for the poster badge below */}
-        <div className="hidden w-[220px] shrink-0 sm:block" aria-hidden="true" />
-
-        <div className="absolute right-4 top-1 z-10 flex w-[184px] flex-col items-center rounded-2xl bg-brand px-4 py-5 text-center text-white shadow-xl sm:right-6 lg:right-8">
-          <p className="text-xs font-bold">Shaping your future!</p>
-          <Link
-            href="/login"
-            className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium text-white/90 hover:text-white"
-          >
+        {/* In flow so the header sizes to it; ml-auto pins it right on the
+            narrower breakpoints where the nav above is hidden. */}
+        <Link
+          href="/login"
+          className="ml-auto flex shrink-0 flex-col items-center rounded-xl bg-brand px-4 py-2 text-center text-white transition hover:bg-brand-dark lg:ml-0"
+        >
+          <span className="hidden text-[11px] font-bold leading-tight sm:block">
+            Shaping your future!
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] font-medium leading-tight text-white/90 sm:mt-0.5">
             Login / Register
             <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/20">
               <ArrowIcon className="h-2.5 w-2.5" />
             </span>
-          </Link>
-        </div>
+          </span>
+        </Link>
       </div>
 
       <form
