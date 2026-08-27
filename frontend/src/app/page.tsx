@@ -1,4 +1,5 @@
 import Link from "next/link";
+import heroBackground from "./hero-background.svg";
 import { TopCollegeCard } from "@/components/top-college-card";
 import { TopExamCard } from "@/components/top-exam-card";
 import { StreamTabs } from "@/components/ui/stream-tabs";
@@ -54,13 +55,19 @@ export default function Home() {
         {/*
           Decorative backdrop. Purely presentational, so it stays a CSS
           background rather than <Image>: no alt text to invent and nothing for
-          the a11y tree. To swap in a client photo, point the url() at it and
-          re-check the overlay below — that overlay is the only thing keeping
-          the headline legible over whatever lands here.
+          the a11y tree. Imported rather than referenced from /public so Next
+          content-hashes the filename: editing the art then invalidates caches
+          on its own, instead of browsers and CDNs serving the previous theme's
+          scene from a stale copy at a stable URL.
+
+          To swap in a client photo, replace the import target and re-check the
+          overlay below — that overlay is the only thing keeping the headline
+          legible over whatever lands here.
         */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-[url(/hero-background.svg)] bg-cover bg-center bg-no-repeat"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroBackground.src})` }}
         />
         {/*
           Overlay. Weighted to the middle band where the copy sits, lighter at
