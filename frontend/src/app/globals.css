@@ -1,22 +1,27 @@
 @import "tailwindcss";
 
 /*
-  DEEP RED THEME
-  --------------
-  Variant of the base pink theme, requested 25% deeper and shifted toward red.
+  GREEN THEME
+  -----------
+  Sibling of the base palette, rotated from pink/red to green.
 
-  Every colour below is derived from the base palette by a single rule applied
-  in OKLCH (perceptually uniform, so "25% deeper" means what the eye reads as
-  25% deeper — a naive hex/HSL tweak does not):
+  Derived in OKLCH so the family keeps its internal structure: one uniform
+  hue rotation (+133.14 deg, putting --color-brand at hue 150) preserves the
+  spread between the tokens, and chroma is carried across untouched.
 
-    chromatic tokens   L' = L * 0.75            (25% deeper)
-                       H' = H + (29.2 - H) * 0.35   (35% toward pure red)
-                       C' = C                   (band: C * 2, so the deepened
-                                                 pink stays chromatic instead
-                                                 of greying out to mauve)
+  Lightness is NOT carried across untouched, and that is the whole trick.
+  WCAG relative luminance weights green at 0.72 against red's 0.21, so a green
+  at the same OKLCH lightness is far brighter to the contrast formula. Rotating
+  #e23955 straight across gives #049d48, which is only 3.55:1 on white and
+  fails AA on every text-brand link. The three accent tokens are therefore
+  anchored 0.088 lower in OKLCH L, which restores 5.19:1.
 
-    near-white tints   L' = 1 - (1 - L) * 1.25  (25% further from white, so
-                       C' = C * 1.25             backgrounds stay backgrounds)
+  Tints and the band keep their base lightness: they are backgrounds, and
+  greener simply means brighter, which only helps the dark text sitting on
+  them.
+
+  Neutrals (bg-alt, line, ink) and the gold secondary are deliberately left
+  alone -- warm neutrals read well against green.
 
   Base values are kept in the comments so the derivation stays auditable.
   All foreground/background pairings below are verified at >= 4.5:1 (WCAG AA).
@@ -26,7 +31,7 @@
   --color-bg: #ffffff;
   --color-bg-alt: #faf7f5;
   /* Third neutral so consecutive sections can alternate without repeating. */
-  --color-bg-tint: #fdf3f3; /* base #fdf5f6 */
+  --color-bg-tint: #f4f9f3; /* base #fdf5f6 */
   --color-surface: #ffffff;
   --color-ink: #1c2128;
   --color-ink-soft: #5b6472;
@@ -34,18 +39,18 @@
   --color-line: #e7e2de;
   --color-line-soft: #f0ece8;
 
-  --color-brand: #a40626; /* base #e23955 */
-  --color-brand-dark: #820018; /* base #b8203a */
-  --color-brand-soft: #fde7e9; /* base #fdecef */
-  --color-brand-ink: #56010f; /* base #7c1428 */
+  --color-brand: #057e39; /* base #e23955 */
+  --color-brand-dark: #005e2c; /* base #b8203a */
+  --color-brand-soft: #ebf4e8; /* base #fdecef */
+  --color-brand-ink: #013715; /* base #7c1428 */
 
   /* Action band that runs across the foot of the Top Colleges / Top Exams
-     cards. The base theme's pink (#ffc0cb) deepened to a rose red. */
-  --color-band: #da6572; /* base #ffc0cb */
-  /* Ink ON the band only — deepening the band pushed plain #333 below AA, so
-     these are deep maroons picked to clear 4.5:1 against --color-band. */
-  --color-band-ink: #39010b; /* base #333333 */
-  --color-band-ink-soft: #4a0011; /* base #555555 */
+     cards. The base theme's pink (#ffc0cb) rotated to a soft sage. */
+  --color-band: #bae0b2; /* base #ffc0cb */
+  /* Ink ON the band only. The sage band is light enough that the base
+     neutrals clear AA unchanged (8.66:1 and 5.11:1). */
+  --color-band-ink: #333333;
+  --color-band-ink-soft: #555555;
 
   --color-gold: #d89a2a;
   --color-gold-soft: #fbf1dd;

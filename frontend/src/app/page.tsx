@@ -66,7 +66,9 @@ export default function Home() {
           Overlay. Weighted to the middle band where the copy sits, lighter at
           the edges so the skyline and caps still read. Tuned against the
           brightest point of the art (the glow behind the search field), where
-          the white headline still measures 12.7:1 and the subtitle 10.5:1.
+          the white headline still measures 10.2:1 and the subtitle 8.6:1.
+          Greens sit higher in WCAG luminance than the reds this scene was
+          first tuned for, so re-measure if the palette moves again.
         */}
         <div
           aria-hidden="true"
