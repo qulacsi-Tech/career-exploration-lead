@@ -1,32 +1,45 @@
 @import "tailwindcss";
 
 /*
-  DEEP RED THEME
-  --------------
-  Variant of the base pink theme, requested 25% deeper and shifted toward red.
+  RED-FAMILY PALETTE VARIANTS
+  ---------------------------
+  Seven sibling palettes for the client to pick from, switchable live on the
+  homepage via the swatch popup (see components/theme-switcher.tsx). The
+  homepage is the demo surface; because the tokens live on :root the rest of
+  the site follows whatever is selected, which keeps a walked-through demo
+  consistent rather than snapping back to the default on the next page.
 
-  Every colour below is derived from the base palette by a single rule applied
-  in OKLCH (perceptually uniform, so "25% deeper" means what the eye reads as
-  25% deeper — a naive hex/HSL tweak does not):
+  Each variant is one OKLCH hue plus a chroma, with every lightness SOLVED
+  against a WCAG contrast target rather than picked by eye:
 
-    chromatic tokens   L' = L * 0.75            (25% deeper)
-                       H' = H + (29.2 - H) * 0.35   (35% toward pure red)
-                       C' = C                   (band: C * 2, so the deepened
-                                                 pink stays chromatic instead
-                                                 of greying out to mauve)
+    --color-brand        >= 4.5:1 on white. That single pair does double duty:
+                         it is the same ratio as white-on-brand, so `text-brand`
+                         links and `text-white` on `bg-brand` buttons are both
+                         AA the moment it is met. This is why even the "light"
+                         variants (blush, coral, tangerine) sit at a medium
+                         depth — the lightness of those palettes is carried by
+                         the band, the soft tint and the hero art instead, which
+                         are backgrounds and free to go as pale as they like.
+    --color-brand-dark   the hover state, ~0.085 OKLCH L below brand.
+    --color-brand-ink    >= 7:1 on --color-brand-soft (chip and callout text).
+    --color-band-ink     >= 7:1, --color-band-ink-soft >= 4.5:1, both on the
+                         --color-band strip under the Top Colleges / Exams
+                         cards. Solved per variant because a band that changes
+                         lightness moves what can legibly sit on it.
+    --hero-*             the hero scene (hero-backdrop.tsx). Same hue as the
+                         palette, so the artwork recolours with the switch.
 
-    near-white tints   L' = 1 - (1 - L) * 1.25  (25% further from white, so
-                       C' = C * 1.25             backgrounds stay backgrounds)
+  Neutrals and the gold secondary are shared by every variant: warm neutrals
+  sit well under the whole red family, and holding them fixed keeps the
+  variants comparable — only the chromatic tokens move.
 
-  Base values are kept in the comments so the derivation stays auditable.
-  All foreground/background pairings below are verified at >= 4.5:1 (WCAG AA).
+  Measured ratios are recorded per variant below. All pairings >= 4.5:1 (AA).
 */
 
 :root {
+  /* Shared neutrals — identical across every variant. */
   --color-bg: #ffffff;
   --color-bg-alt: #faf7f5;
-  /* Third neutral so consecutive sections can alternate without repeating. */
-  --color-bg-tint: #fdf3f3; /* base #fdf5f6 */
   --color-surface: #ffffff;
   --color-ink: #1c2128;
   --color-ink-soft: #5b6472;
@@ -34,21 +47,199 @@
   --color-line: #e7e2de;
   --color-line-soft: #f0ece8;
 
-  --color-brand: #a40626; /* base #e23955 */
-  --color-brand-dark: #820018; /* base #b8203a */
-  --color-brand-soft: #fde7e9; /* base #fdecef */
-  --color-brand-ink: #56010f; /* base #7c1428 */
-
-  /* Action band that runs across the foot of the Top Colleges / Top Exams
-     cards. The base theme's pink (#ffc0cb) deepened to a rose red. */
-  --color-band: #da6572; /* base #ffc0cb */
-  /* Ink ON the band only — deepening the band pushed plain #333 below AA, so
-     these are deep maroons picked to clear 4.5:1 against --color-band. */
-  --color-band-ink: #39010b; /* base #333333 */
-  --color-band-ink-soft: #4a0011; /* base #555555 */
-
   --color-gold: #d89a2a;
   --color-gold-soft: #fbf1dd;
+
+  /* Lit windows in the hero skyline: a warm lamp colour that reads as light
+     rather than as palette, so it is held constant across the variants. */
+  --hero-window: #ffc9a8;
+
+  /* Rose — OKLCH hue 16.9. brand 4.61:1 and brand-dark 6.58:1 on white,
+     brand-ink 9.06:1 on brand-soft, band ink 7.51:1 / 5.00:1 on the band,
+     body ink 15.03:1 on the tint, white 14.40:1 at the hero's brightest point. */
+  --color-bg-tint: #fff4f4;
+
+  --color-brand: #ce4355;
+  --color-brand-dark: #b1243e;
+  --color-brand-soft: #ffebeb;
+  --color-brand-ink: #7b1a2a;
+
+  --color-band: #ffbdbf;
+  --color-band-ink: #632028;
+  --color-band-ink-soft: #813c41;
+
+  --hero-sky-top: #300209;
+  --hero-sky-mid: #540918;
+  --hero-sky-bot: #811b2c;
+  --hero-glow: #d8606b;
+  --hero-haze: #f49096;
+  --hero-star: #ffdfdf;
+  --hero-far: #973a44;
+  --hero-mid: #4a0915;
+  --hero-near: #220004;
+  --hero-cap: #ffe8e8;
+}
+
+[data-theme="crimson"] {
+  /* Deep Crimson — OKLCH hue 21.2. brand 6.61:1 and brand-dark 9.37:1 on white,
+     brand-ink 9.01:1 on brand-soft, band ink 7.52:1 / 5.03:1 on the band,
+     body ink 15.03:1 on the tint, white 14.35:1 at the hero's brightest point. */
+  --color-bg-tint: #fff4f4;
+
+  --color-brand: #b71730;
+  --color-brand-dark: #92001f;
+  --color-brand-soft: #ffebea;
+  --color-brand-ink: #801321;
+
+  --color-band: #f79f9d;
+  --color-band-ink: #510610;
+  --color-band-ink-soft: #72292b;
+
+  --hero-sky-top: #300206;
+  --hero-sky-mid: #540912;
+  --hero-sky-bot: #811c25;
+  --hero-glow: #d86163;
+  --hero-haze: #f49190;
+  --hero-star: #ffdfde;
+  --hero-far: #973b3e;
+  --hero-mid: #4b0910;
+  --hero-near: #220003;
+  --hero-cap: #ffe8e7;
+}
+
+[data-theme="maroon"] {
+  /* Maroon — OKLCH hue 27.0. brand 8.62:1 and brand-dark 12.19:1 on white,
+     brand-ink 9.01:1 on brand-soft, band ink 7.52:1 / 5.03:1 on the band,
+     body ink 15.02:1 on the tint, white 14.29:1 at the hero's brightest point. */
+  --color-bg-tint: #fff4f3;
+
+  --color-brand: #852f29;
+  --color-brand-dark: #6a1413;
+  --color-brand-soft: #ffebe8;
+  --color-brand-ink: #6b2d28;
+
+  --color-band: #e8ada6;
+  --color-band-ink: #471d19;
+  --color-band-ink-soft: #663834;
+
+  --hero-sky-top: #300203;
+  --hero-sky-mid: #540a0a;
+  --hero-sky-bot: #811e1b;
+  --hero-glow: #d86258;
+  --hero-haze: #f49287;
+  --hero-star: #ffe0db;
+  --hero-far: #983c35;
+  --hero-mid: #4b0a09;
+  --hero-near: #230001;
+  --hero-cap: #ffe9e6;
+}
+
+[data-theme="wine"] {
+  /* Wine — OKLCH hue 352.0. brand 7.44:1 and brand-dark 10.61:1 on white,
+     brand-ink 9.04:1 on brand-soft, band ink 7.51:1 / 5.00:1 on the band,
+     body ink 15.07:1 on the tint, white 14.38:1 at the hero's brightest point. */
+  --color-bg-tint: #fff4f8;
+
+  --color-brand: #913163;
+  --color-brand-dark: #76154b;
+  --color-brand-soft: #ffe9f2;
+  --color-brand-ink: #6b2749;
+
+  --color-band: #e3a1bd;
+  --color-band-ink: #40132a;
+  --color-band-ink-soft: #613046;
+
+  --hero-sky-top: #2d0319;
+  --hero-sky-mid: #4f0b31;
+  --hero-sky-bot: #7a1e4f;
+  --hero-glow: #ce6196;
+  --hero-haze: #eb90b9;
+  --hero-star: #fedeeb;
+  --hero-far: #903b65;
+  --hero-mid: #460a2b;
+  --hero-near: #200010;
+  --hero-cap: #ffe7f0;
+}
+
+[data-theme="blush"] {
+  /* Blush Pink — OKLCH hue 5.0. brand 4.60:1 and brand-dark 6.58:1 on white,
+     brand-ink 9.03:1 on brand-soft, band ink 7.51:1 / 5.02:1 on the band,
+     body ink 15.05:1 on the tint, white 14.45:1 at the hero's brightest point. */
+  --color-bg-tint: #fff4f6;
+
+  --color-brand: #c04e6f;
+  --color-brand-dark: #a43357;
+  --color-brand-soft: #ffeaee;
+  --color-brand-ink: #72233c;
+
+  --color-band: #ffcbd5;
+  --color-band-ink: #642c3b;
+  --color-band-ink-soft: #814655;
+
+  --hero-sky-top: #2f0211;
+  --hero-sky-mid: #520924;
+  --hero-sky-bot: #7e1b3e;
+  --hero-glow: #d46080;
+  --hero-haze: #f190a7;
+  --hero-star: #ffdee4;
+  --hero-far: #953954;
+  --hero-mid: #490920;
+  --hero-near: #210009;
+  --hero-cap: #ffe8ec;
+}
+
+[data-theme="coral"] {
+  /* Coral — OKLCH hue 33.0. brand 4.60:1 and brand-dark 6.58:1 on white,
+     brand-ink 9.04:1 on brand-soft, band ink 7.53:1 / 5.00:1 on the band,
+     body ink 15.01:1 on the tint, white 14.42:1 at the hero's brightest point. */
+  --color-bg-tint: #fff4f2;
+
+  --color-brand: #c94c33;
+  --color-brand-dark: #ac3017;
+  --color-brand-soft: #ffebe7;
+  --color-brand-ink: #782111;
+
+  --color-band: #ffc4b7;
+  --color-band-ink: #63271b;
+  --color-band-ink-soft: #814235;
+
+  --hero-sky-top: #300300;
+  --hero-sky-mid: #540c01;
+  --hero-sky-bot: #81200c;
+  --hero-glow: #d7644d;
+  --hero-haze: #f3947f;
+  --hero-star: #ffe0d9;
+  --hero-far: #973d2b;
+  --hero-mid: #4b0c02;
+  --hero-near: #210100;
+  --hero-cap: #ffe9e4;
+}
+
+[data-theme="tangerine"] {
+  /* Tangerine — OKLCH hue 55.0. brand 4.61:1 and brand-dark 6.52:1 on white,
+     brand-ink 9.01:1 on brand-soft, band ink 7.51:1 / 5.02:1 on the band,
+     body ink 15.06:1 on the tint, white 14.11:1 at the hero's brightest point. */
+  --color-bg-tint: #fff5ee;
+
+  --color-brand: #b65d00;
+  --color-brand-dark: #934a00;
+  --color-brand-soft: #ffece0;
+  --color-brand-ink: #673200;
+
+  --color-band: #ffcba9;
+  --color-band-ink: #5f3006;
+  --color-band-ink-soft: #7c4a25;
+
+  --hero-sky-top: #270e00;
+  --hero-sky-mid: #461f00;
+  --hero-sky-bot: #6f3600;
+  --hero-glow: #cf6f19;
+  --hero-haze: #ec9c63;
+  --hero-star: #fee2cf;
+  --hero-far: #8f4700;
+  --hero-mid: #3f1c00;
+  --hero-near: #1a0800;
+  --hero-cap: #ffeadc;
 }
 
 @theme inline {

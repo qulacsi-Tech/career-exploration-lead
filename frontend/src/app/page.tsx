@@ -1,5 +1,6 @@
 import Link from "next/link";
-import heroBackground from "./hero-background.svg";
+import { HeroBackdrop } from "./hero-backdrop";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { TopCollegeCard } from "@/components/top-college-card";
 import { TopExamCard } from "@/components/top-exam-card";
 import { StreamTabs } from "@/components/ui/stream-tabs";
@@ -53,27 +54,18 @@ export default function Home() {
       {/* Hero */}
       <section className="relative overflow-hidden bg-brand-ink">
         {/*
-          Decorative backdrop. Purely presentational, so it stays a CSS
-          background rather than <Image>: no alt text to invent and nothing for
-          the a11y tree. Imported rather than referenced from /public so Next
-          content-hashes the filename: editing the art then invalidates caches
-          on its own, instead of browsers and CDNs serving the previous theme's
-          scene from a stale copy at a stable URL.
-
-          To swap in a client photo, replace the import target and re-check the
-          overlay below — that overlay is the only thing keeping the headline
-          legible over whatever lands here.
+          Decorative backdrop. Inline SVG rather than a background image so it
+          reads the --hero-* custom properties and recolours with the palette
+          switcher; see hero-backdrop.tsx.
         */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${heroBackground.src})` }}
-        />
+        <HeroBackdrop />
         {/*
           Overlay. Weighted to the middle band where the copy sits, lighter at
           the edges so the skyline and caps still read. Tuned against the
-          brightest point of the art (the glow behind the search field), where
-          the white headline still measures 12.7:1 and the subtitle 10.5:1.
+          brightest point of the art (the glow behind the search field). That
+          point moves with the palette, so it is measured per variant — the
+          worst case across all seven is 14.1:1 for the headline (tangerine);
+          the per-variant figures are recorded in globals.css.
         */}
         <div
           aria-hidden="true"
@@ -309,6 +301,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Client-review palette picker. Homepage only; remove once a variant is
+          signed off. See components/theme-switcher.tsx. */}
+      <ThemeSwitcher />
     </>
   );
 }
