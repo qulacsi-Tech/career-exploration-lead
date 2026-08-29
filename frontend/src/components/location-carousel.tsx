@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import Image from "next/image";
 
 export function LocationCarousel({
   locations,
@@ -22,11 +22,19 @@ export function LocationCarousel({
           <Link
             key={loc.slug}
             href={`/location/${loc.slug}`}
-            className="flex min-w-[160px] shrink-0 snap-start flex-col items-center gap-3 rounded-2xl border border-line bg-surface p-5 text-center transition hover:border-brand/40 hover:shadow-sm"
+            className="group flex min-w-[160px] shrink-0 snap-start flex-col items-center gap-3 rounded-2xl border border-line bg-surface p-5 text-center transition hover:border-brand/40 hover:shadow-sm"
           >
-            <ImagePlaceholder label={`${loc.name} photo`} rounded="rounded-full" className="h-16 w-16" />
+            <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-line bg-bg-alt shadow-sm transition-transform duration-300 group-hover:scale-105">
+              <Image
+                src={`/images/locations/${loc.slug}.jpg`}
+                alt={`${loc.name} photo`}
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
+            </div>
             <div>
-              <p className="font-medium text-ink">{loc.name}</p>
+              <p className="font-medium text-ink group-hover:text-brand">{loc.name}</p>
               <p className="text-xs text-ink-faint">{loc.collegeCount} colleges</p>
             </div>
           </Link>

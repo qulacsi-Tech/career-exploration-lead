@@ -1,13 +1,21 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Exam } from "@/lib/mock-data";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { CardBand, BandAction } from "@/components/ui/card-band";
 
 export function TopExamCard({ exam }: { exam: Exam }) {
   return (
-    <article className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm">
+    <article className="group flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm">
       <div className="flex flex-1 items-start gap-4 p-4">
-        <ImagePlaceholder label={`${exam.name} exam`} rounded="rounded-md" className="h-[72px] w-24 shrink-0" />
+        <div className="relative h-[72px] w-24 shrink-0 overflow-hidden rounded-md border border-line bg-bg-alt">
+          <Image
+            src={`/images/exams/${exam.slug}.jpg`}
+            alt={`${exam.name} exam`}
+            fill
+            sizes="96px"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        </div>
         <div className="min-w-0">
           <Link
             href={`/exams/${exam.slug}`}

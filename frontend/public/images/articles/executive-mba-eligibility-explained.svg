@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" fill="none">
+  <defs>
+    <linearGradient id="artBg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="gradExec" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4338ca" />
+    </linearGradient>
+    <linearGradient id="glowArt3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#818cf8" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="240" rx="16" fill="url(#artBg3)" />
+  <circle cx="300" cy="90" r="130" fill="url(#glowArt3)" />
+
+  <!-- Executive Silhouette / Professional Working -->
+  <g transform="translate(60, 40)">
+    <!-- ID Card / Badge -->
+    <rect width="140" height="150" rx="12" fill="#ffffff" />
+    <!-- ID Card Top Hole -->
+    <rect x="55" y="8" width="30" height="6" rx="3" fill="#cbd5e1" />
+    <circle cx="70" cy="52" r="24" fill="#e0e7ff" />
+    
+    <!-- Silhouette Profile with Tie -->
+    <circle cx="70" cy="46" r="12" fill="#4338ca" />
+    <path d="M 50 76 C 50 64 90 64 90 76 Z" fill="#4338ca" />
+    <polygon points="68,66 72,66 73,76 70,80 67,76" fill="#f43f5e" />
+
+    <rect x="25" y="88" width="90" height="8" rx="4" fill="#1e293b" />
+    <rect x="40" y="102" width="60" height="6" rx="3" fill="#6366f1" />
+    
+    <!-- Experience Pill -->
+    <rect x="25" y="118" width="90" height="20" rx="10" fill="#f1f5f9" />
+    <text x="70" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="9" font-weight="bold" fill="#475569" text-anchor="middle">2+ YRS WORK EXP</text>
+  </g>
+
+  <!-- Criteria Checklist on Right -->
+  <g transform="translate(225, 45)">
+    <rect width="135" height="145" rx="12" fill="#ffffff" fill-opacity="0.08" stroke="#334155" stroke-width="1.5" />
+    <text x="20" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="bold" fill="#ffffff">ELIGIBILITY</text>
+    
+    <!-- Check 1 -->
+    <circle cx="26" cy="55" r="7" fill="#10b981" />
+    <path d="M23 55 L25 57 L29 53" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" />
+    <rect x="40" y="52" width="75" height="6" rx="3" fill="#cbd5e1" />
+
+    <!-- Check 2 -->
+    <circle cx="26" cy="80" r="7" fill="#10b981" />
+    <path d="M23 80 L25 82 L29 78" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" />
+    <rect x="40" y="77" width="80" height="6" rx="3" fill="#cbd5e1" />
+
+    <!-- Check 3 -->
+    <circle cx="26" cy="105" r="7" fill="#10b981" />
+    <path d="M23 105 L25 107 L29 103" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" />
+    <rect x="40" y="102" width="65" height="6" rx="3" fill="#cbd5e1" />
+
+    <rect x="20" y="125" width="95" height="4" rx="2" fill="#6366f1" />
+  </g>
+</svg>

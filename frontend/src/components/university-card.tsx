@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
+import Image from "next/image";
 
 export function UniversityCard({
   university,
@@ -7,8 +7,16 @@ export function UniversityCard({
   university: { slug: string; name: string; city: string; state: string };
 }) {
   return (
-    <article className="overflow-hidden rounded-xl border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm">
-      <ImagePlaceholder label={`${university.name} campus`} className="aspect-[16/10] w-full" />
+    <article className="group overflow-hidden rounded-xl border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm">
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-alt">
+        <Image
+          src={`/images/universities/${university.slug}.svg`}
+          alt={`${university.name} campus`}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      </div>
 
       <div className="p-5 text-center">
         <Link

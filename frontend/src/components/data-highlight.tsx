@@ -1,12 +1,20 @@
+import Image from "next/image";
 import { DataHighlight as DataHighlightType } from "@/lib/mock-data";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { TagLink } from "@/components/ui/tag-link";
 
 /** One cell of the Data grid: thumbnail, title, blurb and shortcut chips. */
 export function DataHighlight({ highlight }: { highlight: DataHighlightType }) {
   return (
     <div className="flex flex-col items-center px-2 py-10 text-center sm:px-8">
-      <ImagePlaceholder label={highlight.title} rounded="rounded-lg" className="h-20 w-24" />
+      <div className="relative h-20 w-24 overflow-hidden rounded-lg transition-transform duration-300 hover:scale-105">
+        <Image
+          src={`/images/data/${highlight.slug}.svg`}
+          alt={highlight.title}
+          fill
+          sizes="96px"
+          className="object-contain"
+        />
+      </div>
       <h3 className="mt-4 font-display text-xl font-semibold text-ink">{highlight.title}</h3>
       <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-ink-soft">
         {highlight.description}

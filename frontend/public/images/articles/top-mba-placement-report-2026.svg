@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" fill="none">
+  <defs>
+    <linearGradient id="artBg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+    <linearGradient id="gradTrend" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="glowArt2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="240" rx="16" fill="url(#artBg2)" />
+  <circle cx="280" cy="80" r="130" fill="url(#glowArt2)" />
+
+  <!-- Placement Report Graph / Dashboard -->
+  <g transform="translate(50, 40)">
+    <!-- Dashboard Card -->
+    <rect width="180" height="150" rx="12" fill="#ffffff" fill-opacity="0.08" stroke="#334155" stroke-width="1.5" />
+    
+    <!-- Header -->
+    <circle cx="20" cy="20" r="4" fill="#ef4444" />
+    <circle cx="32" cy="20" r="4" fill="#f59e0b" />
+    <circle cx="44" cy="20" r="4" fill="#10b981" />
+    <rect x="65" y="16" width="70" height="8" rx="4" fill="#64748b" opacity="0.6" />
+
+    <!-- Bar Chart -->
+    <rect x="25" y="95" width="20" height="35" rx="3" fill="#64748b" opacity="0.5" />
+    <rect x="55" y="75" width="20" height="55" rx="3" fill="#3b82f6" opacity="0.8" />
+    <rect x="85" y="55" width="20" height="75" rx="3" fill="#ce4355" opacity="0.8" />
+    <rect x="115" y="38" width="20" height="92" rx="3" fill="url(#gradTrend)" />
+
+    <!-- Upward Trend Line -->
+    <path d="M 35 90 Q 75 70 125 35" stroke="#34d399" stroke-width="3" stroke-linecap="round" fill="none" />
+    <!-- Glowing Arrow Head -->
+    <polygon points="135,28 120,32 128,42" fill="#34d399" />
+  </g>
+
+  <!-- Salary Package Badge -->
+  <g transform="translate(250, 60)">
+    <rect width="110" height="105" rx="14" fill="#ffffff" />
+    
+    <text x="55" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="bold" fill="#64748b" text-anchor="middle">HIGHEST CTC</text>
+    <text x="55" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="900" fill="#047857" text-anchor="middle">₹58 LPA</text>
+    
+    <rect x="15" y="72" width="80" height="1" fill="#e2e8f0" />
+    
+    <text x="55" y="90" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="bold" fill="#1e293b" text-anchor="middle">AVG ₹19.6 LPA</text>
+  </g>
+
+  <!-- Briefcase Icon -->
+  <g transform="translate(260, 25)">
+    <circle cx="16" cy="16" r="16" fill="#f59e0b" />
+    <rect x="8" y="11" width="16" height="11" rx="2" fill="#ffffff" />
+    <path d="M 12 11 L 12 8 Q 16 7 20 8 L 20 11" stroke="#ffffff" stroke-width="1.5" fill="none" />
+  </g>
+</svg>

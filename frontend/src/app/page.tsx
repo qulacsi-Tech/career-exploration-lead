@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { HeroBackdrop } from "./hero-backdrop";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { TopCollegeCard } from "@/components/top-college-card";
@@ -227,16 +228,19 @@ export default function Home() {
                 Discover More
               </Link>
             </div>
-            {/* Decorative stand-in for the campus artwork that sits on the right of this banner. */}
+            {/* Campus artwork illustration on right of banner */}
             <div
               aria-hidden
-              className="absolute inset-y-0 right-0 hidden w-2/5 items-center justify-center text-white/40 lg:flex"
+              className="absolute inset-y-0 right-0 hidden w-1/2 items-center justify-end pr-4 lg:flex"
             >
-              <svg viewBox="0 0 24 24" fill="none" className="h-16 w-16">
-                <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
-                <circle cx="8.5" cy="9.5" r="1.5" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M21 16l-5.5-5.5a1.5 1.5 0 00-2.12 0L4 19" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
+              <div className="relative h-full w-full max-w-sm">
+                <Image
+                  src="/images/banners/promo-banner-campus.svg"
+                  alt="Campus illustration"
+                  fill
+                  className="object-contain"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -291,11 +295,24 @@ export default function Home() {
               <Link
                 key={a.slug}
                 href={`/articles/${a.slug}`}
-                className="rounded-2xl border border-line bg-surface p-6 transition hover:border-brand/40 hover:shadow-sm"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm"
               >
-                <p className="text-xs text-ink-faint">{a.date}</p>
-                <p className="mt-2 font-display font-semibold text-ink">{a.title}</p>
-                <p className="mt-2 text-sm text-ink-soft">{a.excerpt}</p>
+                <div className="relative aspect-[16/9] w-full overflow-hidden bg-bg-alt">
+                  <Image
+                    src={`/images/articles/${a.slug}.svg`}
+                    alt={a.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+                <div className="flex flex-1 flex-col p-6">
+                  <p className="text-xs text-ink-faint">{a.date}</p>
+                  <p className="mt-2 font-display font-semibold text-ink group-hover:text-brand">
+                    {a.title}
+                  </p>
+                  <p className="mt-2 text-sm text-ink-soft">{a.excerpt}</p>
+                </div>
               </Link>
             ))}
           </div>

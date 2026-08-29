@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+  <defs>
+    <linearGradient id="gradExamBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#eff6ff" />
+      <stop offset="100%" stop-color="#dbeafe" />
+    </linearGradient>
+    <linearGradient id="gradSheet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f8fafc" />
+    </linearGradient>
+    <linearGradient id="gradPen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ce4355" />
+      <stop offset="100%" stop-color="#881337" />
+    </linearGradient>
+    <linearGradient id="gradAplus" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <filter id="shadowExam" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0284c7" flood-opacity="0.15" />
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="160" height="160" rx="24" fill="url(#gradExamBg)" />
+  <circle cx="30" cy="130" r="35" fill="#3b82f6" fill-opacity="0.08" />
+
+  <!-- Exam Sheet -->
+  <g filter="url(#shadowExam)">
+    <rect x="36" y="26" width="76" height="106" rx="8" fill="url(#gradSheet)" stroke="#cbd5e1" stroke-width="1.5" />
+    <!-- Sheet Header Line -->
+    <rect x="48" y="40" width="36" height="5" rx="2.5" fill="#3b82f6" />
+    <circle cx="98" cy="42.5" r="4" fill="#ef4444" />
+    
+    <!-- Test Lines & Checkmarks -->
+    <rect x="48" y="56" width="34" height="3" rx="1.5" fill="#94a3b8" />
+    <path d="M92 57 L95 60 L102 53" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+    <rect x="48" y="70" width="38" height="3" rx="1.5" fill="#94a3b8" />
+    <path d="M92 71 L95 74 L102 67" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+    <rect x="48" y="84" width="30" height="3" rx="1.5" fill="#94a3b8" />
+    <path d="M92 85 L95 88 L102 81" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+    <rect x="48" y="98" width="42" height="3" rx="1.5" fill="#94a3b8" />
+    
+    <!-- A+ Stamp Badge -->
+    <g transform="translate(74, 92)">
+      <circle cx="16" cy="16" r="14" fill="url(#gradAplus)" />
+      <text x="16" y="21" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="900" fill="#ffffff" text-anchor="middle">100%</text>
+    </g>
+  </g>
+
+  <!-- Pencil / Pen resting on side -->
+  <g transform="translate(108, 48) rotate(35)">
+    <rect x="0" y="0" width="8" height="60" rx="3" fill="url(#gradPen)" />
+    <polygon points="0,60 8,60 4,70" fill="#fde047" />
+    <polygon points="3,67 5,67 4,70" fill="#1e293b" />
+    <rect x="0" y="0" width="8" height="10" rx="2" fill="#e2e8f0" />
+  </g>
+</svg>

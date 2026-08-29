@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <defs>
+    <linearGradient id="skyEast" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="60%" stop-color="#7dd3fc" />
+      <stop offset="100%" stop-color="#f0f9ff" />
+    </linearGradient>
+    <linearGradient id="brickEast" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#991b1b" />
+      <stop offset="100%" stop-color="#7f1d1d" />
+    </linearGradient>
+    <linearGradient id="domeEast" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <linearGradient id="lawnEast" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#15803d" />
+      <stop offset="100%" stop-color="#14532d" />
+    </linearGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="400" height="300" fill="url(#skyEast)" />
+
+  <!-- Heritage Architecture (Eastwind Institute of Management) -->
+  <!-- Main Heritage Center with Grand Dome -->
+  <g transform="translate(200, 45)">
+    <!-- Golden Central Dome -->
+    <path d="M -40 60 Q 0 10 40 60 Z" fill="url(#domeEast)" />
+    <polygon points="-5,15 0,0 5,15" fill="#f59e0b" />
+    <rect x="-35" y="60" width="70" height="15" fill="#e2e8f0" />
+    <rect x="-30" y="64" width="8" height="8" rx="1" fill="#1e293b" />
+    <rect x="-15" y="64" width="8" height="8" rx="1" fill="#1e293b" />
+    <rect x="0" y="64" width="8" height="8" rx="1" fill="#1e293b" />
+    <rect x="15" y="64" width="8" height="8" rx="1" fill="#1e293b" />
+  </g>
+
+  <!-- Main Red Brick Building -->
+  <rect x="70" y="120" width="260" height="100" rx="4" fill="url(#brickEast)" />
+  
+  <!-- Classical Pillars / Portico Center -->
+  <rect x="150" y="110" width="100" height="110" fill="#f8fafc" />
+  <polygon points="140,110 200,80 260,110" fill="#f8fafc" />
+  <circle cx="200" cy="98" r="8" fill="#ce4355" />
+
+  <!-- White Columns -->
+  <rect x="160" y="115" width="10" height="105" fill="#e2e8f0" />
+  <rect x="185" y="115" width="10" height="105" fill="#e2e8f0" />
+  <rect x="205" y="115" width="10" height="105" fill="#e2e8f0" />
+  <rect x="230" y="115" width="10" height="105" fill="#e2e8f0" />
+
+  <!-- Arched Windows on Left & Right Wings -->
+  <!-- Left Windows -->
+  <g fill="#fef08a" stroke="#450a0a" stroke-width="1.5">
+    <path d="M 85 145 A 8 8 0 0 1 101 145 L 101 165 L 85 165 Z" />
+    <path d="M 115 145 A 8 8 0 0 1 131 145 L 131 165 L 115 165 Z" />
+    <path d="M 85 185 A 8 8 0 0 1 101 185 L 101 205 L 85 205 Z" />
+    <path d="M 115 185 A 8 8 0 0 1 131 185 L 131 205 L 115 205 Z" />
+  </g>
+  <!-- Right Windows -->
+  <g fill="#fef08a" stroke="#450a0a" stroke-width="1.5">
+    <path d="M 270 145 A 8 8 0 0 1 286 145 L 286 165 L 270 165 Z" />
+    <path d="M 300 145 A 8 8 0 0 1 316 145 L 316 165 L 300 165 Z" />
+    <path d="M 270 185 A 8 8 0 0 1 286 185 L 286 205 L 270 205 Z" />
+    <path d="M 300 185 A 8 8 0 0 1 316 185 L 316 205 L 300 205 Z" />
+  </g>
+
+  <!-- Side Towers -->
+  <rect x="50" y="100" width="30" height="120" rx="3" fill="url(#brickEast)" />
+  <polygon points="45,100 65,75 85,100" fill="url(#domeEast)" />
+  
+  <rect x="320" y="100" width="30" height="120" rx="3" fill="url(#brickEast)" />
+  <polygon points="315,100 335,75 355,100" fill="url(#domeEast)" />
+
+  <!-- Lawn & Courtyard -->
+  <polygon points="0,220 400,220 400,300 0,300" fill="url(#lawnEast)" />
+  <ellipse cx="200" cy="275" rx="90" ry="25" fill="#f8fafc" />
+  <ellipse cx="200" cy="275" rx="75" ry="18" fill="#38bdf8" />
+  <!-- Fountain -->
+  <circle cx="200" cy="270" r="10" fill="#ffffff" />
+  <path d="M 200 270 Q 190 250 185 260" stroke="#ffffff" stroke-width="2" fill="none" />
+  <path d="M 200 270 Q 210 250 215 260" stroke="#ffffff" stroke-width="2" fill="none" />
+  
+  <!-- Campus Trees -->
+  <circle cx="25" cy="205" r="26" fill="#16a34a" />
+  <rect x="20" y="225" width="10" height="25" fill="#78350f" />
+  
+  <circle cx="375" cy="205" r="26" fill="#16a34a" />
+  <rect x="370" y="225" width="10" height="25" fill="#78350f" />
+</svg>

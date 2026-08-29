@@ -1,15 +1,19 @@
 import Link from "next/link";
+import Image from "next/image";
 import { RecommendedProgram } from "@/lib/mock-data";
-import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 
 export function RecommendedProgramCard({ program }: { program: RecommendedProgram }) {
   return (
-    <article className="flex flex-col rounded-xl bg-surface p-4">
-      <ImagePlaceholder
-        label={`${program.university} campus`}
-        rounded="rounded-lg"
-        className="aspect-[16/9] w-full"
-      />
+    <article className="group flex flex-col rounded-xl bg-surface p-4 shadow-sm transition hover:shadow-md">
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-line bg-bg-alt">
+        <Image
+          src={`/images/programs/${program.slug}.svg`}
+          alt={`${program.name} program visual`}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      </div>
 
       <div className="mt-5 text-center">
         <Link
