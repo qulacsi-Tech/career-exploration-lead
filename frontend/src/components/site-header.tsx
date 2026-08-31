@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { SiteLogo } from "@/components/site-logo";
 
 const navLinks = [
   { label: "Courses", href: "/courses" },
@@ -12,25 +12,11 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
-        {/* The client's badge, used whole — its wordmark and tagline are part of
-            the artwork, so nothing is set beside it. This is the header-tuned
-            cut (432x256, against the original's 480x300): same design, but the
-            plate is trimmed of dead space and the chart gives up height to the
-            type, since what the type is legible at is purely its share of the
-            canvas multiplied by the rendered height. */}
+        {/* Inline via SiteLogo rather than an <Image>: the badge reads --logo-*
+            custom properties, so it recolours with the palette switcher instead
+            of carrying a fixed plate colour. */}
         <Link href="/" className="flex shrink-0 items-center" aria-label="TopCollegePath — home">
-          <Image
-            src="/images/logo/topcollegepath_logo_header.svg"
-            alt="TopCollegePath — Discover, Choose, Succeed"
-            width={432}
-            height={256}
-            priority
-            // The optimizer cannot resize a vector, so it only passes the file
-            // through and caches the result — which then serves stale artwork
-            // after every edit to the SVG. Nothing to gain, so skip it.
-            unoptimized
-            className="h-16 w-auto sm:h-[72px] lg:h-20"
-          />
+          <SiteLogo className="h-16 w-auto sm:h-[72px] lg:h-20" />
         </Link>
 
         <form

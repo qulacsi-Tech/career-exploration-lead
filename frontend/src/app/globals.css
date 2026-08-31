@@ -277,3 +277,129 @@ body {
 .balance {
   text-wrap: balance;
 }
+
+/* --- Site logo (components/site-logo.tsx) --------------------------------
+  The client's badge shipped on a fixed navy plate. These derive its colours
+  from the palette instead, so the mark recolours with [data-theme] like the
+  hero does — no per-variant hexes to author, and any future variant is
+  covered for free.
+
+  The plate is brand-ink pulled toward black. Measured against the lightest
+  plate any of the seven variants produces: white 12.86:1, gold 5.24:1 — so
+  the wordmark and the gold "Path" both clear AA everywhere. Re-measure if
+  the mix percentages move.
+
+  Gold stays the shared secondary (see the palette notes above): it is the
+  one colour that identifies the mark across every variant.
+*/
+:root {
+  --logo-plate-top: color-mix(in oklab, var(--color-brand-ink) 85%, #000);
+  --logo-plate-bot: color-mix(in oklab, var(--color-brand-ink) 55%, #000);
+  --logo-frame: color-mix(in oklab, var(--color-brand) 55%, transparent);
+  --logo-bar-lo: var(--color-band);
+  --logo-bar-mid: var(--color-brand);
+  --logo-bar-hi: var(--color-gold);
+  --logo-accent: var(--color-gold);
+  --logo-word: #ffffff;
+  --logo-tagline: color-mix(in oklab, #ffffff 82%, var(--color-brand));
+}
+
+/* Entrance animation, kept from the client's artwork. Lives here rather than
+   in a <style> inside the inline SVG, which would apply document-wide. */
+.ctlogo-step {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  transform: scaleY(0);
+  animation: ctlogo-grow 0.6s ease-out forwards;
+}
+.ctlogo-step1 { animation-delay: 0.10s; }
+.ctlogo-step2 { animation-delay: 0.35s; }
+.ctlogo-step3 { animation-delay: 0.60s; }
+.ctlogo-step4 { animation-delay: 0.85s; }
+.ctlogo-step5 { animation-delay: 1.10s; }
+@keyframes ctlogo-grow {
+  to { transform: scaleY(1); }
+}
+
+.ctlogo-pole {
+  stroke-dasharray: 32;
+  stroke-dashoffset: 32;
+  animation: ctlogo-draw 0.4s ease-out forwards;
+  animation-delay: 1.25s;
+}
+@keyframes ctlogo-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.ctlogo-flag {
+  transform-box: fill-box;
+  transform-origin: left center;
+  opacity: 0;
+  animation: ctlogo-wave-in 0.5s ease-out forwards, ctlogo-wave 2.4s ease-in-out infinite;
+  animation-delay: 1.55s, 2.05s;
+}
+@keyframes ctlogo-wave-in {
+  from { opacity: 0; transform: scaleX(0); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+@keyframes ctlogo-wave {
+  0%, 100% { transform: skewY(0deg); }
+  50% { transform: skewY(-4deg); }
+}
+
+.ctlogo-word {
+  opacity: 0;
+  animation: ctlogo-fade-up 0.6s ease-out forwards;
+}
+.ctlogo-word1 { animation-delay: 1.70s; }
+.ctlogo-word2 { animation-delay: 1.85s; }
+.ctlogo-word3 { animation-delay: 2.00s; }
+@keyframes ctlogo-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ctlogo-tagline {
+  opacity: 0;
+  animation: ctlogo-fade-in 0.8s ease-out forwards;
+  animation-delay: 2.3s;
+}
+@keyframes ctlogo-fade-in {
+  to { opacity: 1; }
+}
+
+.ctlogo-dot {
+  opacity: 0.4;
+  animation: ctlogo-pulse 1.8s ease-in-out infinite;
+}
+.ctlogo-dot1 { animation-delay: 2.4s; }
+.ctlogo-dot2 { animation-delay: 2.7s; }
+@keyframes ctlogo-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.ctlogo-frame {
+  stroke-dasharray: 1400;
+  stroke-dashoffset: 1400;
+  animation: ctlogo-draw-frame 1.6s ease-out forwards;
+}
+@keyframes ctlogo-draw-frame {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Respect a reduced-motion preference: show the finished mark, no build-on. */
+@media (prefers-reduced-motion: reduce) {
+  .ctlogo-step,
+  .ctlogo-pole,
+  .ctlogo-flag,
+  .ctlogo-word,
+  .ctlogo-tagline,
+  .ctlogo-dot,
+  .ctlogo-frame {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    stroke-dashoffset: 0;
+  }
+}
