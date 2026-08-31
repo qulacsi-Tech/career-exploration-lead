@@ -1,19 +1,34 @@
 import type { Metadata } from "next";
-import { Sora, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { THEME_STORAGE_KEY, defaultTheme, themes } from "@/lib/themes";
 
-const sora = Sora({
+/*
+  Self-hosted rather than pulled from `next/font/google`. The Google loader
+  downloads at build time, so a network blip or a CI box without egress swaps
+  the whole site's typography for a system fallback — silently, with only a
+  warning in the log. These are the same files Google serves (latin subset,
+  variable axis), committed so builds are reproducible and work offline.
+
+  Both are variable fonts, hence the weight ranges: one file covers every
+  weight, so `font-bold` and friends keep working.
+*/
+const sora = localFont({
+  src: "./fonts/sora-latin-var.woff2",
   variable: "--font-sora",
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: "100 800",
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "Segoe UI", "Arial", "sans-serif"],
 });
 
-const inter = Inter({
+const inter = localFont({
+  src: "./fonts/inter-latin-var.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "Segoe UI", "Arial", "sans-serif"],
 });
 
 export const metadata: Metadata = {

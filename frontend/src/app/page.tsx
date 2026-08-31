@@ -238,6 +238,9 @@ export default function Home() {
                   src="/images/banners/promo-banner-campus.svg"
                   alt="Campus illustration"
                   fill
+                  // Only rendered at lg and up, where max-w-sm caps the box at
+                  // 384px. Below that the wrapper is display:none.
+                  sizes="(min-width: 1024px) 384px, 1px"
                   className="object-contain"
                 />
               </div>
