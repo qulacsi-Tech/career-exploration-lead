@@ -1,0 +1,165 @@
+<svg viewBox="0 0 480 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1b3e"/>
+      <stop offset="100%" stop-color="#050a1c"/>
+    </linearGradient>
+
+    <linearGradient id="stepGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2a63c7"/>
+      <stop offset="55%" stop-color="#5aa0e0"/>
+      <stop offset="100%" stop-color="#f2b23a"/>
+    </linearGradient>
+
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f6c453"/>
+      <stop offset="50%" stop-color="#f0a938"/>
+      <stop offset="100%" stop-color="#e08a1e"/>
+    </linearGradient>
+
+    <linearGradient id="poleGrad" x1="309" y1="90" x2="309" y2="35" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#c97a1a"/>
+      <stop offset="100%" stop-color="#f6c453"/>
+    </linearGradient>
+
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <style>
+      .step {
+        transform-box: fill-box;
+        transform-origin: bottom center;
+        transform: scaleY(0);
+        animation: growUp 0.6s ease-out forwards;
+      }
+      .step1 { animation-delay: 0.1s; }
+      .step2 { animation-delay: 0.35s; }
+      .step3 { animation-delay: 0.6s; }
+      .step4 { animation-delay: 0.85s; }
+      .step5 { animation-delay: 1.1s; }
+
+      @keyframes growUp {
+        to { transform: scaleY(1); }
+      }
+
+      .pole {
+        stroke-dasharray: 60;
+        stroke-dashoffset: 60;
+        animation: drawPole 0.4s ease-out forwards;
+        animation-delay: 1.25s;
+      }
+      @keyframes drawPole {
+        to { stroke-dashoffset: 0; }
+      }
+
+      .flag {
+        transform-box: fill-box;
+        transform-origin: left center;
+        opacity: 0;
+        animation: waveIn 0.5s ease-out forwards, wave 2.4s ease-in-out infinite;
+        animation-delay: 1.55s, 2.05s;
+      }
+      @keyframes waveIn {
+        from { opacity: 0; transform: scaleX(0); }
+        to { opacity: 1; transform: scaleX(1); }
+      }
+      @keyframes wave {
+        0%, 100% { transform: skewY(0deg); }
+        50% { transform: skewY(-4deg); }
+      }
+
+      .word-top {
+        opacity: 0;
+        animation: fadeUp 0.6s ease-out forwards;
+        animation-delay: 1.7s;
+      }
+      .word-college {
+        opacity: 0;
+        animation: fadeUp 0.6s ease-out forwards;
+        animation-delay: 1.85s;
+      }
+      .word-path {
+        opacity: 0;
+        animation: fadeUp 0.6s ease-out forwards;
+        animation-delay: 2.0s;
+      }
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .tagline {
+        opacity: 0;
+        animation: fadeIn 0.8s ease-out forwards;
+        animation-delay: 2.3s;
+      }
+      @keyframes fadeIn {
+        to { opacity: 1; }
+      }
+
+      .dot {
+        opacity: 0.4;
+        animation: pulse 1.8s ease-in-out infinite;
+      }
+      .dot1 { animation-delay: 2.4s; }
+      .dot2 { animation-delay: 2.7s; }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 1; }
+      }
+
+      .frame {
+        stroke-dasharray: 1600;
+        stroke-dashoffset: 1600;
+        animation: drawFrame 1.6s ease-out forwards;
+      }
+      @keyframes drawFrame {
+        to { stroke-dashoffset: 0; }
+      }
+    </style>
+  </defs>
+
+  <!-- background card (transparent outside this shape — nothing else fills the canvas) -->
+  <rect x="0" y="0" width="480" height="300" rx="28" fill="url(#bgGrad)"/>
+  <rect class="frame" x="1" y="1" width="478" height="298" rx="27"
+        fill="none" stroke="#2a4a8a" stroke-width="2" opacity="0.8"/>
+
+  <!-- steps group -->
+  <g filter="url(#glow)">
+    <rect class="step step1" x="140" y="195" width="34" height="24" rx="3" fill="url(#stepGrad)"/>
+    <rect class="step step2" x="178" y="175" width="34" height="44" rx="3" fill="url(#stepGrad)"/>
+    <rect class="step step3" x="216" y="150" width="34" height="69" rx="3" fill="url(#stepGrad)"/>
+    <rect class="step step4" x="254" y="120" width="34" height="99" rx="3" fill="url(#stepGrad)"/>
+    <rect class="step step5" x="292" y="90"  width="34" height="129" rx="3" fill="url(#stepGrad)"/>
+  </g>
+
+  <!-- flagpole -->
+  <line class="pole" x1="309" y1="90" x2="309" y2="35" stroke="url(#poleGrad)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- flag -->
+  <path class="flag" filter="url(#softGlow)"
+        d="M 311 36 L 348 45 L 311 56 Z" fill="url(#goldGrad)" stroke="#0d1b3e" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- wordmark -->
+  <text x="240" y="252" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="40">
+    <tspan class="word-top" fill="#ffffff">Top</tspan><tspan class="word-college" fill="#ffffff">College</tspan><tspan class="word-path" fill="url(#goldGrad)">Path</tspan>
+  </text>
+
+  <!-- tagline -->
+  <text class="tagline" x="240" y="274" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="12" letter-spacing="2.5" fill="#d7dbe6">
+    DISCOVER&#160;&#160;&#160;<tspan class="dot dot1" fill="#f0a938">•</tspan>&#160;&#160;&#160;CHOOSE&#160;&#160;&#160;<tspan class="dot dot2" fill="#f0a938">•</tspan>&#160;&#160;&#160;SUCCEED
+  </text>
+</svg>

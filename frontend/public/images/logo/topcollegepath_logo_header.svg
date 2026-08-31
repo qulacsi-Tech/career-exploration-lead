@@ -1,0 +1,190 @@
+<svg viewBox="0 0 432 256" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Header-tuned cut of topcollegepath_logo_v2.svg. Same format, colours and
+    animation as the client's badge; only the internal balance changes.
+
+    Plate is 432 x 256 — 10% narrower than the 480 it started at, and shorter
+    than the original 300, which only ever held dead space.
+
+    Horizontal (centre 216): the chart is the narrow element at 285 (66%, ~74
+    either side) and the type sits wider at ~350 (~81%, ~41 either side), so the
+    staircase reads as a tight cluster sitting above the name.
+
+    Vertical: 16 padding top and bottom, 18 between chart and wordmark, and 20
+    between the two text lines so they read as two lines, not one block.
+
+        16  padding      138  chart       18  gap       33  wordmark
+        20  gap           13  tagline     16  padding    = 256
+
+                       original -> here     at 80px rendered
+      wordmark            40         46       10.7px -> 14.4px
+      tagline             12         18        3.2px ->  5.6px
+      chart (h x w)    184 x 208  138 x 285
+      bar (w x h)       34 x 129    34 x 111   slimmer and taller: 1:3.3
+      bar gap            4          22         tight cluster, bar:gap 1.5:1
+
+    The client's original file is untouched and still shipped alongside this one.
+  -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1b3e"/>
+      <stop offset="100%" stop-color="#050a1c"/>
+    </linearGradient>
+
+    <linearGradient id="stepGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2a63c7"/>
+      <stop offset="55%" stop-color="#5aa0e0"/>
+      <stop offset="100%" stop-color="#f2b23a"/>
+    </linearGradient>
+
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f6c453"/>
+      <stop offset="50%" stop-color="#f0a938"/>
+      <stop offset="100%" stop-color="#e08a1e"/>
+    </linearGradient>
+
+    <linearGradient id="poleGrad" x1="315" y1="43" x2="315" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#c97a1a"/>
+      <stop offset="100%" stop-color="#f6c453"/>
+    </linearGradient>
+
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <style>
+      .step {
+        transform-box: fill-box;
+        transform-origin: bottom center;
+        transform: scaleY(0);
+        animation: growUp 0.6s ease-out forwards;
+      }
+      .step1 { animation-delay: 0.1s; }
+      .step2 { animation-delay: 0.35s; }
+      .step3 { animation-delay: 0.6s; }
+      .step4 { animation-delay: 0.85s; }
+      .step5 { animation-delay: 1.1s; }
+
+      @keyframes growUp {
+        to { transform: scaleY(1); }
+      }
+
+      .pole {
+        stroke-dasharray: 32;
+        stroke-dashoffset: 32;
+        animation: drawPole 0.4s ease-out forwards;
+        animation-delay: 1.25s;
+      }
+      @keyframes drawPole {
+        to { stroke-dashoffset: 0; }
+      }
+
+      .flag {
+        transform-box: fill-box;
+        transform-origin: left center;
+        opacity: 0;
+        animation: waveIn 0.5s ease-out forwards, wave 2.4s ease-in-out infinite;
+        animation-delay: 1.55s, 2.05s;
+      }
+      @keyframes waveIn {
+        from { opacity: 0; transform: scaleX(0); }
+        to { opacity: 1; transform: scaleX(1); }
+      }
+      @keyframes wave {
+        0%, 100% { transform: skewY(0deg); }
+        50% { transform: skewY(-4deg); }
+      }
+
+      .word-top {
+        opacity: 0;
+        animation: fadeUp 0.6s ease-out forwards;
+        animation-delay: 1.7s;
+      }
+      .word-college {
+        opacity: 0;
+        animation: fadeUp 0.6s ease-out forwards;
+        animation-delay: 1.85s;
+      }
+      .word-path {
+        opacity: 0;
+        animation: fadeUp 0.6s ease-out forwards;
+        animation-delay: 2.0s;
+      }
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .tagline {
+        opacity: 0;
+        animation: fadeIn 0.8s ease-out forwards;
+        animation-delay: 2.3s;
+      }
+      @keyframes fadeIn {
+        to { opacity: 1; }
+      }
+
+      .dot {
+        opacity: 0.4;
+        animation: pulse 1.8s ease-in-out infinite;
+      }
+      .dot1 { animation-delay: 2.4s; }
+      .dot2 { animation-delay: 2.7s; }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 1; }
+      }
+
+      .frame {
+        stroke-dasharray: 1400;
+        stroke-dashoffset: 1400;
+        animation: drawFrame 1.6s ease-out forwards;
+      }
+      @keyframes drawFrame {
+        to { stroke-dashoffset: 0; }
+      }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="432" height="256" rx="24" fill="url(#bgGrad)"/>
+  <rect class="frame" x="1" y="1" width="430" height="254" rx="23"
+        fill="none" stroke="#2a4a8a" stroke-width="2" opacity="0.8"/>
+
+  <!-- steps: 5 bars of 34 on a 56 pitch, x 74 -> 332, baseline y 154 -->
+  <g filter="url(#glow)">
+    <rect class="step step1" x="74"  y="133" width="34" height="21"  rx="4" fill="url(#stepGrad)"/>
+    <rect class="step step2" x="130" y="116" width="34" height="38"  rx="4" fill="url(#stepGrad)"/>
+    <rect class="step step3" x="186" y="95"  width="34" height="59"  rx="4" fill="url(#stepGrad)"/>
+    <rect class="step step4" x="242" y="70"  width="34" height="84"  rx="4" fill="url(#stepGrad)"/>
+    <rect class="step step5" x="298" y="43"  width="34" height="111" rx="4" fill="url(#stepGrad)"/>
+  </g>
+
+  <!-- flagpole, centred on the tallest bar -->
+  <line class="pole" x1="315" y1="43" x2="315" y2="16" stroke="url(#poleGrad)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- flag, running out to the chart's right edge at 359 -->
+  <path class="flag" filter="url(#softGlow)"
+        d="M 317 17 L 359 29 L 317 41 Z" fill="url(#goldGrad)" stroke="#0d1b3e" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- wordmark -->
+  <text x="216" y="206" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="46">
+    <tspan class="word-top" fill="#ffffff">Top</tspan><tspan class="word-college" fill="#ffffff">College</tspan><tspan class="word-path" fill="url(#goldGrad)">Path</tspan>
+  </text>
+
+  <!-- tagline -->
+  <text class="tagline" x="216" y="240" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="18" letter-spacing="1.1" fill="#e4e8f1">
+    DISCOVER&#160;&#160;<tspan class="dot dot1" fill="#f0a938">•</tspan>&#160;&#160;CHOOSE&#160;&#160;<tspan class="dot dot2" fill="#f0a938">•</tspan>&#160;&#160;SUCCEED
+  </text>
+</svg>

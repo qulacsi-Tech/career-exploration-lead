@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const navLinks = [
   { label: "Courses", href: "/courses" },
@@ -11,12 +12,25 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <CapIcon className="h-7 w-7 text-brand" />
-          <span className="font-display leading-[0.95] text-brand">
-            <span className="block text-base font-bold">college</span>
-            <span className="block text-base font-bold">time</span>
-          </span>
+        {/* The client's badge, used whole — its wordmark and tagline are part of
+            the artwork, so nothing is set beside it. This is the header-tuned
+            cut (432x256, against the original's 480x300): same design, but the
+            plate is trimmed of dead space and the chart gives up height to the
+            type, since what the type is legible at is purely its share of the
+            canvas multiplied by the rendered height. */}
+        <Link href="/" className="flex shrink-0 items-center" aria-label="TopCollegePath — home">
+          <Image
+            src="/images/logo/topcollegepath_logo_header.svg"
+            alt="TopCollegePath — Discover, Choose, Succeed"
+            width={432}
+            height={256}
+            priority
+            // The optimizer cannot resize a vector, so it only passes the file
+            // through and caches the result — which then serves stale artwork
+            // after every edit to the SVG. Nothing to gain, so skip it.
+            unoptimized
+            className="h-16 w-auto sm:h-[72px] lg:h-20"
+          />
         </Link>
 
         <form
@@ -87,15 +101,6 @@ function ArrowIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" className={className}>
       <path d="M4 10h12M11 5l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CapIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M12 4L2 9l10 5 8-4v6" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M6 11.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-4.5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
     </svg>
   );
 }
