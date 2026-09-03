@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { defaultTheme } from "@/lib/themes";
 
 /*
@@ -61,11 +59,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-theme={defaultTheme}
       className={`${sora.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
-      </body>
+      {/*
+        Chrome lives in the route groups, not here: (site) wraps the public
+        pages in the header and footer, while /admin and (auth) deliberately
+        get neither. Keeping one top-level root layout — rather than a root
+        layout per group — means moving between them is still a client-side
+        navigation instead of a full page load.
+      */}
+      <body className="min-h-full font-sans">{children}</body>
     </html>
   );
 }
