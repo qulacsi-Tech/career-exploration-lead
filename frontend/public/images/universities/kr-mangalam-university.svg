@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" fill="none">
+  <defs>
+    <linearGradient id="skyKRM" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="60%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#e0f2fe" />
+    </linearGradient>
+    <linearGradient id="glassKRM" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+    <linearGradient id="curveKRM" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ce4355" />
+      <stop offset="100%" stop-color="#881337" />
+    </linearGradient>
+  </defs>
+
+  <rect width="400" height="250" fill="url(#skyKRM)" />
+
+  <!-- Ultra-Modern Campus Building with Curved Glass (KR Mangalam) -->
+  <path d="M 60 170 Q 200 40 340 170 Z" fill="url(#glassKRM)" />
+  
+  <!-- Architectural Curve Ribbon -->
+  <path d="M 40 170 Q 200 20 360 170" stroke="url(#curveKRM)" stroke-width="12" stroke-linecap="round" fill="none" />
+
+  <!-- Glass Grid lines -->
+  <g stroke="#ffffff" stroke-width="1.5" opacity="0.35">
+    <line x1="120" y1="170" x2="150" y2="100" />
+    <line x1="160" y1="170" x2="180" y2="70" />
+    <line x1="200" y1="170" x2="200" y2="60" />
+    <line x1="240" y1="170" x2="220" y2="70" />
+    <line x1="280" y1="170" x2="250" y2="100" />
+    
+    <path d="M 85 140 Q 200 65 315 140" fill="none" />
+    <path d="M 105 115 Q 200 80 295 115" fill="none" />
+  </g>
+
+  <!-- Modern Entrance Canopy -->
+  <rect x="160" y="145" width="80" height="25" rx="3" fill="#1e293b" />
+  <polygon points="145,145 200,130 255,145" fill="#f8fafc" />
+
+  <!-- Campus Plaza & Palms -->
+  <polygon points="0,170 400,170 400,250 0,250" fill="#16a34a" />
+  <polygon points="100,250 170,170 230,170 300,250" fill="#f1f5f9" />
+
+  <!-- Modern Palm Trees -->
+  <g transform="translate(30, 140)">
+    <line x1="15" y1="40" x2="15" y2="10" stroke="#78350f" stroke-width="3" />
+    <path d="M 15 10 Q 0 0 -5 10" stroke="#15803d" stroke-width="3" fill="none" />
+    <path d="M 15 10 Q 30 0 35 10" stroke="#15803d" stroke-width="3" fill="none" />
+    <path d="M 15 10 Q 15 -10 10 -5" stroke="#16a34a" stroke-width="3" fill="none" />
+    <path d="M 15 10 Q 15 -10 20 -5" stroke="#16a34a" stroke-width="3" fill="none" />
+  </g>
+
+  <g transform="translate(340, 140)">
+    <line x1="15" y1="40" x2="15" y2="10" stroke="#78350f" stroke-width="3" />
+    <path d="M 15 10 Q 0 0 -5 10" stroke="#15803d" stroke-width="3" fill="none" />
+    <path d="M 15 10 Q 30 0 35 10" stroke="#15803d" stroke-width="3" fill="none" />
+    <path d="M 15 10 Q 15 -10 10 -5" stroke="#16a34a" stroke-width="3" fill="none" />
+    <path d="M 15 10 Q 15 -10 20 -5" stroke="#16a34a" stroke-width="3" fill="none" />
+  </g>
+</svg>

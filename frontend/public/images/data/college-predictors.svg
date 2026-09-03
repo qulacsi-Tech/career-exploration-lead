@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+  <defs>
+    <linearGradient id="gradPredBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fdf4ff" />
+      <stop offset="100%" stop-color="#fae8ff" />
+    </linearGradient>
+    <linearGradient id="gradCrystal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e879f9" />
+      <stop offset="50%" stop-color="#c026d3" />
+      <stop offset="100%" stop-color="#701a75" />
+    </linearGradient>
+    <linearGradient id="gradTarget" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ce4355" />
+      <stop offset="100%" stop-color="#991b1b" />
+    </linearGradient>
+    <filter id="shadowPred" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#a855f7" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="160" height="160" rx="24" fill="url(#gradPredBg)" />
+  <circle cx="120" cy="120" r="35" fill="#d946ef" fill-opacity="0.08" />
+
+  <!-- Target / Radar Compass -->
+  <g filter="url(#shadowPred)">
+    <!-- Base stand -->
+    <ellipse cx="80" cy="130" rx="36" ry="10" fill="#cbd5e1" opacity="0.6" />
+    <path d="M60 115 L100 115 L92 128 L68 128 Z" fill="#64748b" />
+    <rect x="74" y="108" width="12" height="12" rx="3" fill="#475569" />
+
+    <!-- Crystal Ball / Predictor Orb -->
+    <circle cx="80" cy="68" r="44" fill="url(#gradCrystal)" />
+    
+    <!-- Inner glowing campus silhouette -->
+    <!-- Pillars and dome inside crystal ball -->
+    <path d="M54 86 L54 68 L60 68 L60 86 Z" fill="#ffffff" opacity="0.75" />
+    <path d="M66 86 L66 64 L72 64 L72 86 Z" fill="#ffffff" opacity="0.85" />
+    <path d="M76 86 L76 60 L84 60 L84 86 Z" fill="#ffffff" opacity="0.95" />
+    <path d="M88 86 L88 64 L94 64 L94 86 Z" fill="#ffffff" opacity="0.85" />
+    <path d="M100 86 L100 68 L106 68 L106 86 Z" fill="#ffffff" opacity="0.75" />
+    <!-- Dome -->
+    <path d="M72 60 Q80 48 88 60 Z" fill="#ffffff" opacity="0.95" />
+    <polygon points="50,68 80,48 110,68" fill="#ffffff" opacity="0.6" />
+    
+    <!-- Sparkles / Glass reflections -->
+    <ellipse cx="65" cy="48" rx="14" ry="6" transform="rotate(-30 65 48)" fill="#ffffff" opacity="0.6" />
+    <circle cx="98" cy="85" r="3" fill="#ffffff" opacity="0.5" />
+  </g>
+
+  <!-- Floating prediction spark / stars -->
+  <polygon points="125,35 127,42 134,44 127,46 125,53 123,46 116,44 123,42" fill="#e879f9" />
+  <polygon points="35,45 36.5,50 41,51.5 36.5,53 35,58 33.5,53 29,51.5 33.5,50" fill="#c026d3" opacity="0.8" />
+</svg>

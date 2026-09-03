@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" fill="none">
+  <defs>
+    <linearGradient id="bannerBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04" />
+    </linearGradient>
+    <linearGradient id="glowBrand" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background decorative orbs -->
+  <circle cx="500" cy="120" r="160" fill="url(#glowBrand)" />
+  <circle cx="340" cy="300" r="100" fill="url(#glowBrand)" opacity="0.5" />
+
+  <!-- Modern University Campus Architecture Silhouette -->
+  <!-- Classical Pillars & Modern Glass Hall -->
+  <g transform="translate(180, 70)" opacity="0.95">
+    <!-- Grand Building Centerpiece -->
+    <path d="M 60 160 L 60 60 L 140 20 L 220 60 L 220 160 Z" fill="#ffffff" fill-opacity="0.15" />
+    <path d="M 140 20 L 140 160" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.25" />
+    
+    <!-- Triangular Pediment / Roof -->
+    <polygon points="50,60 140,15 230,60" fill="#ffffff" fill-opacity="0.3" />
+    <circle cx="140" cy="42" r="10" fill="#ffffff" fill-opacity="0.4" />
+
+    <!-- Glass Columns -->
+    <rect x="75" y="65" width="16" height="95" rx="4" fill="#ffffff" fill-opacity="0.35" />
+    <rect x="110" y="65" width="16" height="95" rx="4" fill="#ffffff" fill-opacity="0.35" />
+    <rect x="154" y="65" width="16" height="95" rx="4" fill="#ffffff" fill-opacity="0.35" />
+    <rect x="189" y="65" width="16" height="95" rx="4" fill="#ffffff" fill-opacity="0.35" />
+
+    <!-- Wings (Left & Right) -->
+    <rect x="-20" y="90" width="70" height="70" rx="6" fill="#ffffff" fill-opacity="0.2" />
+    <rect x="-10" y="105" width="12" height="18" rx="2" fill="#ffffff" fill-opacity="0.4" />
+    <rect x="10" y="105" width="12" height="18" rx="2" fill="#ffffff" fill-opacity="0.4" />
+    <rect x="30" y="105" width="12" height="18" rx="2" fill="#ffffff" fill-opacity="0.4" />
+
+    <rect x="230" y="90" width="70" height="70" rx="6" fill="#ffffff" fill-opacity="0.2" />
+    <rect x="240" y="105" width="12" height="18" rx="2" fill="#ffffff" fill-opacity="0.4" />
+    <rect x="260" y="105" width="12" height="18" rx="2" fill="#ffffff" fill-opacity="0.4" />
+    <rect x="280" y="105" width="12" height="18" rx="2" fill="#ffffff" fill-opacity="0.4" />
+
+    <!-- Steps -->
+    <rect x="30" y="160" width="220" height="8" rx="2" fill="#ffffff" fill-opacity="0.4" />
+    <rect x="20" y="168" width="240" height="8" rx="2" fill="#ffffff" fill-opacity="0.3" />
+    <rect x="10" y="176" width="260" height="8" rx="2" fill="#ffffff" fill-opacity="0.25" />
+  </g>
+
+  <!-- Graduating Students Silhouette in Foreground -->
+  <g transform="translate(240, 210)" fill="#ffffff" fill-opacity="0.9">
+    <!-- Student 1 (Graduation cap throwing) -->
+    <circle cx="50" cy="50" r="14" />
+    <polygon points="32,42 50,34 68,42 50,50" />
+    <path d="M 50 34 L 56 30" stroke="#ffffff" stroke-width="2" />
+    <!-- Body -->
+    <path d="M 32 70 C 32 64 68 64 68 70 L 74 130 L 26 130 Z" />
+
+    <!-- Student 2 (Holding books / diploma) -->
+    <circle cx="110" cy="46" r="14" />
+    <!-- Graduation Cap -->
+    <polygon points="92,38 110,30 128,38 110,46" />
+    <path d="M 92 66 C 92 60 128 60 128 66 L 134 130 L 86 130 Z" />
+    <!-- Diploma Scroll in hand -->
+    <rect x="130" y="75" width="22" height="6" rx="3" transform="rotate(-25 130 75)" fill="#fbbf24" />
+
+    <!-- Student 3 (Female graduate with hair & cap) -->
+    <circle cx="170" cy="52" r="13" />
+    <polygon points="154,44 170,36 186,44 170,52" />
+    <path d="M 152 72 C 152 66 188 66 188 72 L 194 130 L 146 130 Z" />
+  </g>
+
+  <!-- Floating Graduation Caps / Confetti -->
+  <g fill="#ffffff" fill-opacity="0.7">
+    <!-- Cap 1 flying -->
+    <g transform="translate(180, 80) rotate(-15)">
+      <polygon points="0,10 20,0 40,10 20,20" />
+      <polygon points="12,14 20,24 28,14" />
+    </g>
+    <!-- Cap 2 flying -->
+    <g transform="translate(450, 60) rotate(20)">
+      <polygon points="0,10 20,0 40,10 20,20" />
+      <polygon points="12,14 20,24 28,14" />
+    </g>
+    <!-- Stars & Sparkles -->
+    <circle cx="140" cy="90" r="3" fill="#fbbf24" />
+    <circle cx="490" cy="180" r="4" fill="#fbbf24" />
+    <circle cx="410" cy="110" r="2.5" fill="#ffffff" />
+    <circle cx="210" cy="180" r="3.5" fill="#fbbf24" />
+  </g>
+</svg>

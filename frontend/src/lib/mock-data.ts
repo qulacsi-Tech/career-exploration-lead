@@ -229,6 +229,14 @@ export type Exam = {
   description: string;
   registrationCloses: string;
   examDate: string;
+  /* Admin-only detail. Optional so the public pages that only read the fields
+     above keep compiling; they are edited on the exam record. */
+  mode?: "Online" | "Offline" | "Hybrid";
+  frequency?: string;
+  applicationFee?: string;
+  officialSite?: string;
+  durationMinutes?: number;
+  sections?: string[];
 };
 
 export const exams: Exam[] = [
@@ -240,6 +248,12 @@ export const exams: Exam[] = [
     description: "A national-level MBA entrance test conducted for admission into IIMs and 1000+ B-schools across India.",
     registrationCloses: "20 Sep 2026",
     examDate: "29 Nov 2026",
+    mode: "Online",
+    frequency: "Once a year",
+    applicationFee: "₹2,400",
+    officialSite: "iimcat.ac.in",
+    durationMinutes: 120,
+    sections: ["VARC", "DILR", "QA"],
   },
   {
     slug: "xat",
@@ -249,6 +263,12 @@ export const exams: Exam[] = [
     description: "Entrance exam for XLRI and 150+ other MBA institutes, known for its decision-making section.",
     registrationCloses: "30 Nov 2026",
     examDate: "4 Jan 2027",
+    mode: "Online",
+    frequency: "Once a year",
+    applicationFee: "₹2,200",
+    officialSite: "xatonline.in",
+    durationMinutes: 210,
+    sections: ["VALR", "DM", "QA & DI", "GK"],
   },
   {
     slug: "karnataka-pgcet",
@@ -258,6 +278,12 @@ export const exams: Exam[] = [
     description: "State-level entrance test for MBA/MCA/M.Tech admissions into Karnataka's private and government colleges.",
     registrationCloses: "15 May 2026",
     examDate: "6 Jun 2026",
+    mode: "Offline",
+    frequency: "Once a year",
+    applicationFee: "₹800",
+    officialSite: "cetonline.karnataka.gov.in",
+    durationMinutes: 150,
+    sections: ["Proficiency", "General Knowledge"],
   },
   {
     slug: "nmat",
@@ -267,6 +293,12 @@ export const exams: Exam[] = [
     description: "Multi-attempt MBA entrance test accepted by NMIMS, SPJIMR and 60+ leading business schools.",
     registrationCloses: "10 Oct 2026",
     examDate: "5 Nov 2026",
+    mode: "Online",
+    frequency: "Multiple attempts",
+    applicationFee: "₹2,800",
+    officialSite: "nmat.org",
+    durationMinutes: 120,
+    sections: ["Language Skills", "Quantitative Skills", "Logical Reasoning"],
   },
   {
     slug: "cmat",
@@ -276,6 +308,12 @@ export const exams: Exam[] = [
     description: "NTA-conducted national test for AICTE-approved MBA and PGDM programmes across India.",
     registrationCloses: "25 Dec 2026",
     examDate: "28 Jan 2027",
+    mode: "Online",
+    frequency: "Once a year",
+    applicationFee: "₹2,000",
+    officialSite: "cmat.nta.nic.in",
+    durationMinutes: 180,
+    sections: ["Quantitative", "Logical Reasoning", "Language", "General Awareness"],
   },
   {
     slug: "mah-cet",
@@ -285,6 +323,201 @@ export const exams: Exam[] = [
     description: "State entrance test for MBA and MMS seats in Maharashtra's government and private institutes.",
     registrationCloses: "20 Feb 2027",
     examDate: "12 Mar 2027",
+    mode: "Online",
+    frequency: "Once a year",
+    applicationFee: "₹1,000",
+    officialSite: "cetcell.mahacet.org",
+    durationMinutes: 150,
+    sections: ["Verbal Ability", "Quantitative Aptitude", "Logical Reasoning", "Abstract Reasoning"],
+  },
+];
+
+export type Course = {
+  slug: string;
+  name: string;
+  fullName: string;
+  level: "UG" | "PG" | "Diploma" | "Doctorate";
+  stream: string;
+  duration: string;
+  modes: string[];
+  eligibility: string;
+  averageFees: string;
+  examsAccepted: string[];
+  collegeCount: number;
+  about: string;
+};
+
+export const courses: Course[] = [
+  {
+    slug: "mba",
+    name: "MBA",
+    fullName: "Master of Business Administration",
+    level: "PG",
+    stream: "Management",
+    duration: "24 Months",
+    modes: ["Full Time", "Part Time", "Online", "Distance"],
+    eligibility: "Bachelor's degree with 50% aggregate (45% for reserved categories).",
+    averageFees: "₹4L - 25L",
+    examsAccepted: ["CAT", "XAT", "CMAT", "NMAT", "MAH MBA CET"],
+    collegeCount: 4172,
+    about:
+      "A two-year postgraduate management degree covering finance, marketing, operations and strategy, with specialisation electives in the second year.",
+  },
+  {
+    slug: "bba",
+    name: "BBA",
+    fullName: "Bachelor of Business Administration",
+    level: "UG",
+    stream: "Management",
+    duration: "36 Months",
+    modes: ["Full Time", "Online"],
+    eligibility: "10+2 in any stream with 50% aggregate.",
+    averageFees: "₹1.5L - 8L",
+    examsAccepted: ["IPMAT", "SET", "NPAT"],
+    collegeCount: 2860,
+    about:
+      "An undergraduate management degree covering business fundamentals, commonly taken before an MBA or a role in operations and sales.",
+  },
+  {
+    slug: "b-tech",
+    name: "B.Tech",
+    fullName: "Bachelor of Technology",
+    level: "UG",
+    stream: "Engineering",
+    duration: "48 Months",
+    modes: ["Full Time"],
+    eligibility: "10+2 with Physics, Chemistry and Mathematics, 60% aggregate.",
+    averageFees: "₹3L - 16L",
+    examsAccepted: ["JEE Main", "JEE Advanced", "BITSAT", "VITEEE"],
+    collegeCount: 3860,
+    about:
+      "A four-year engineering degree with branch specialisation from the first or second year, and a mandatory final-year project.",
+  },
+  {
+    slug: "m-tech",
+    name: "M.Tech",
+    fullName: "Master of Technology",
+    level: "PG",
+    stream: "Engineering",
+    duration: "24 Months",
+    modes: ["Full Time", "Part Time"],
+    eligibility: "B.Tech or B.E. with 60% aggregate and a valid GATE score.",
+    averageFees: "₹2L - 9L",
+    examsAccepted: ["GATE", "Karnataka PGCET"],
+    collegeCount: 1420,
+    about:
+      "A two-year postgraduate engineering degree focused on research and advanced specialisation within a branch.",
+  },
+  {
+    slug: "mbbs",
+    name: "MBBS",
+    fullName: "Bachelor of Medicine, Bachelor of Surgery",
+    level: "UG",
+    stream: "Medical",
+    duration: "66 Months",
+    modes: ["Full Time"],
+    eligibility: "10+2 with Physics, Chemistry and Biology, 50% aggregate.",
+    averageFees: "₹5L - 60L",
+    examsAccepted: ["NEET UG"],
+    collegeCount: 706,
+    about:
+      "India's primary undergraduate medical degree, including a compulsory rotating internship in the final year.",
+  },
+  {
+    slug: "llb",
+    name: "LLB",
+    fullName: "Bachelor of Laws",
+    level: "UG",
+    stream: "Law",
+    duration: "36 Months",
+    modes: ["Full Time"],
+    eligibility: "Bachelor's degree in any discipline with 45% aggregate.",
+    averageFees: "₹1L - 12L",
+    examsAccepted: ["CLAT", "AILET", "LSAT India"],
+    collegeCount: 640,
+    about:
+      "A three-year law degree for graduates, leading to enrolment with a state bar council on completion.",
+  },
+];
+
+export type Specialisation = {
+  slug: string;
+  name: string;
+  courseSlug: string;
+  courseName: string;
+  stream: string;
+  duration: string;
+  averageFees: string;
+  collegeCount: number;
+  about: string;
+};
+
+export const specialisations: Specialisation[] = [
+  {
+    slug: "mba-finance",
+    name: "Finance",
+    courseSlug: "mba",
+    courseName: "MBA",
+    stream: "Management",
+    duration: "24 Months",
+    averageFees: "₹6L - 24L",
+    collegeCount: 1840,
+    about: "Corporate finance, investment banking, valuation and financial modelling.",
+  },
+  {
+    slug: "mba-marketing",
+    name: "Marketing",
+    courseSlug: "mba",
+    courseName: "MBA",
+    stream: "Management",
+    duration: "24 Months",
+    averageFees: "₹5.5L - 22L",
+    collegeCount: 1795,
+    about: "Brand management, consumer behaviour, digital marketing and sales strategy.",
+  },
+  {
+    slug: "mba-business-analytics",
+    name: "Business Analytics",
+    courseSlug: "mba",
+    courseName: "MBA",
+    stream: "Management",
+    duration: "24 Months",
+    averageFees: "₹8L - 26L",
+    collegeCount: 612,
+    about: "Statistics, data visualisation and decision modelling applied to business problems.",
+  },
+  {
+    slug: "b-tech-computer-science",
+    name: "Computer Science",
+    courseSlug: "b-tech",
+    courseName: "B.Tech",
+    stream: "Engineering",
+    duration: "48 Months",
+    averageFees: "₹4L - 18L",
+    collegeCount: 2410,
+    about: "Algorithms, systems, databases and software engineering.",
+  },
+  {
+    slug: "b-tech-mechanical",
+    name: "Mechanical Engineering",
+    courseSlug: "b-tech",
+    courseName: "B.Tech",
+    stream: "Engineering",
+    duration: "48 Months",
+    averageFees: "₹2.5L - 12L",
+    collegeCount: 1980,
+    about: "Thermodynamics, manufacturing, machine design and materials.",
+  },
+  {
+    slug: "llb-corporate-law",
+    name: "Corporate Law",
+    courseSlug: "llb",
+    courseName: "LLB",
+    stream: "Law",
+    duration: "36 Months",
+    averageFees: "₹2L - 14L",
+    collegeCount: 320,
+    about: "Company law, mergers and acquisitions, securities regulation and compliance.",
   },
 ];
 
@@ -445,6 +678,20 @@ export const dataHighlights: DataHighlight[] = [
       { label: "see more", href: "/predictors" },
     ],
   },
+];
+
+/**
+ * Streams in the homepage's "Explore Your Future" band. Lives here rather than
+ * in the page so the admin's Fields tab edits the same list the page renders —
+ * a second copy in the component drifts the moment a count changes.
+ */
+export const homeStreams = [
+  { slug: "management", name: "Management", count: 4172 },
+  { slug: "engineering", name: "Engineering", count: 3860 },
+  { slug: "medical", name: "Medical", count: 2104 },
+  { slug: "arts", name: "Arts", count: 1988 },
+  { slug: "commerce", name: "Commerce", count: 1520 },
+  { slug: "law", name: "Law", count: 640 },
 ];
 
 export const locations = [
