@@ -8,6 +8,7 @@ import {
   SelectField,
   SelectWithOtherField,
   TextAreaField,
+  NameSlugFields,
 } from "@/components/admin/admin-fields";
 import { MediaUploader, ImageUploadField } from "@/components/admin/media-uploader";
 
@@ -122,13 +123,10 @@ function CollegeEditForm({ college, onDone }: { college: College; onDone: () => 
       >
         {tab === "basic" && (
           <FieldGrid>
-            <TextField label="College name" name="name" defaultValue={college.name} required />
-            <TextField
-              label="URL slug"
-              name="slug"
-              defaultValue={college.slug}
-              required
-              hint="Changing this breaks existing links unless a redirect is added."
+            <NameSlugFields
+              nameLabel="College name"
+              defaultName={college.name}
+              defaultSlug={college.slug}
             />
             <TextField label="City" name="city" defaultValue={college.city} required />
             <TextField label="State" name="state" defaultValue={college.state} required />

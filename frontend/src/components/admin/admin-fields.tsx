@@ -210,6 +210,115 @@ export function SelectWithOtherField({
   );
 }
 
+/**
+ * URL-safe slug from a name. Strips accents before dropping non-alphanumerics,
+ * so "Amrita Viśva" gives "amrita-visva" rather than losing the character.
+ */
+export function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Paired name and slug fields: the slug fills in from the name, and stops
+ * following it the moment it is edited by hand.
+ *
+ * On an existing record the slug starts "already set" and never auto-changes.
+ * A slug is a live URL — rewriting it because someone corrected a typo in the
+ * name would silently break every link and every indexed result pointing at it.
+ * Regenerating is available, but has to be chosen.
+ *
+ * Renders two grid cells, so it drops straight into a FieldGrid.
+ */
+export function NameSlugFields({
+  nameLabel = "Name",
+  namePlaceholder,
+  nameFieldName = "name",
+  slugLabel = "URL slug",
+  slugPlaceholder,
+  slugFieldName = "slug",
+  defaultName = "",
+  defaultSlug = "",
+  slugPrefix = "",
+}: {
+  nameLabel?: string;
+  namePlaceholder?: string;
+  nameFieldName?: string;
+  slugLabel?: string;
+  slugPlaceholder?: string;
+  slugFieldName?: string;
+  defaultName?: string;
+  /** Present means an existing record: the slug is left alone. */
+  defaultSlug?: string;
+  /** Prepended to the generated slug, e.g. the parent course. */
+  slugPrefix?: string;
+}) {
+  const [name, setName] = useState(defaultName);
+  const [slug, setSlug] = useState(defaultSlug);
+  const [slugEdited, setSlugEdited] = useState(Boolean(defaultSlug));
+
+  const generate = (from: string) => {
+    const base = slugify(from);
+    if (!base) return "";
+    return slugPrefix ? `${slugPrefix}-${base}` : base;
+  };
+
+  const suggestion = generate(name);
+  const canReset = suggestion.length > 0 && slug !== suggestion;
+
+  return (
+    <>
+      <TextField
+        label={nameLabel}
+        name={nameFieldName}
+        placeholder={namePlaceholder}
+        required
+        value={name}
+        onChange={(value) => {
+          setName(value);
+          if (!slugEdited) setSlug(generate(value));
+        }}
+      />
+      <TextField
+        label={slugLabel}
+        name={slugFieldName}
+        placeholder={slugPlaceholder}
+        required
+        value={slug}
+        onChange={(value) => {
+          setSlug(value);
+          setSlugEdited(true);
+        }}
+        hint={
+          defaultSlug
+            ? "Changing this breaks existing links unless a redirect is added."
+            : slugEdited
+              ? "Edited manually."
+              : "Generated from the name."
+        }
+        labelAction={
+          canReset ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSlug(suggestion);
+                setSlugEdited(false);
+              }}
+              className="text-[11px] font-medium text-brand hover:underline"
+            >
+              Use name
+            </button>
+          ) : undefined
+        }
+      />
+    </>
+  );
+}
+
 /** Read-only label/value pair, for the View dialog. */
 export function Field({ label, value }: { label: string; value: string }) {
   return (

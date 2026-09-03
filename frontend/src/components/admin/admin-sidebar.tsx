@@ -192,6 +192,13 @@ function SectionIcon({ name, className }: { name: AdminNavIcon; className?: stri
         <path d="M2.5 14 10 17.5 17.5 14" strokeLinecap="round" strokeLinejoin="round" />
       </>
     ),
+    sections: (
+      <>
+        <rect x="2.5" y="2.5" width="15" height="4.5" rx="1.5" />
+        <rect x="2.5" y="9.5" width="15" height="8" rx="1.5" />
+        <path d="M6 13h8" strokeLinecap="round" />
+      </>
+    ),
     leads: (
       <>
         <path d="M2.5 10.5h4l1.5 2.5h4l1.5-2.5h4" strokeLinecap="round" strokeLinejoin="round" />

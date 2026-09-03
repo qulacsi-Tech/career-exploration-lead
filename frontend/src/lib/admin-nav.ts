@@ -26,6 +26,7 @@ export type AdminNavItem = {
 export type AdminNavIcon =
   | "overview"
   | "content"
+  | "sections"
   | "leads"
   | "community"
   | "seo"
@@ -59,6 +60,15 @@ export const adminNav: AdminNavSection[] = [
       { label: "Locations", href: "/admin/locations", phase: 1 },
       { label: "Articles", href: "/admin/articles", phase: 2 },
       { label: "Static Pages", href: "/admin/pages", phase: 1 },
+    ],
+  },
+  {
+    id: "sections",
+    label: "Sections",
+    icon: "sections",
+    items: [
+      { label: "Homepage", href: "/admin/sections/homepage", phase: 1 },
+      { label: "Location Page", href: "/admin/sections/location", phase: 1 },
     ],
   },
   {

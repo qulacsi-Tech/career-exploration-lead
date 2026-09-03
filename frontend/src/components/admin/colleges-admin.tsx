@@ -5,7 +5,7 @@ import { College } from "@/lib/mock-data";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { CollegeEditModal } from "@/components/admin/college-edit-modal";
-import { TextField, SelectField, Field } from "@/components/admin/admin-fields";
+import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
 
 /**
  * Colleges module: a scannable table, with everything bulky behind View.
@@ -293,35 +293,7 @@ function AddCollegeModal({ open, onClose }: { open: boolean; onClose: () => void
   );
 }
 
-/**
- * URL-safe slug from a college name. Strips accents before dropping
- * non-alphanumerics, so "Amrita Viśva" gives "amrita-visva" rather than losing
- * the character entirely.
- */
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function AddCollegeForm({ onDone }: { onDone: () => void }) {
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  /*
-    Once the slug has been edited by hand it stops tracking the name. A slug is
-    a permanent URL — silently rewriting a deliberate choice on the next
-    keystroke in the name field would be the wrong call.
-  */
-  const [slugEdited, setSlugEdited] = useState(false);
-
-  const onNameChange = (value: string) => {
-    setName(value);
-    if (!slugEdited) setSlug(slugify(value));
-  };
-
   return (
     <form
       id="add-college-form"
@@ -334,40 +306,10 @@ function AddCollegeForm({ onDone }: { onDone: () => void }) {
       }}
       className="grid grid-cols-1 gap-4 sm:grid-cols-2"
     >
-      <TextField
-        label="College name"
-        name="name"
-        placeholder="Bengaluru Institute of Management"
-        required
-        value={name}
-        onChange={onNameChange}
-      />
-
-      <TextField
-        label="URL slug"
-        name="slug"
-        placeholder="bengaluru-institute-of-management"
-        required
-        value={slug}
-        onChange={(value) => {
-          setSlug(value);
-          setSlugEdited(true);
-        }}
-        hint={slugEdited ? "Edited manually." : "Generated from the name."}
-        labelAction={
-          slugEdited ? (
-            <button
-              type="button"
-              onClick={() => {
-                setSlug(slugify(name));
-                setSlugEdited(false);
-              }}
-              className="text-[11px] font-medium text-brand hover:underline"
-            >
-              Reset to name
-            </button>
-          ) : undefined
-        }
+      <NameSlugFields
+        nameLabel="College name"
+        namePlaceholder="Bengaluru Institute of Management"
+        slugPlaceholder="bengaluru-institute-of-management"
       />
 
       <TextField label="City" name="city" placeholder="Bengaluru" required />

@@ -20,6 +20,7 @@ import {
   careerPanels,
   recommendedUniversities,
   dataHighlights,
+  homeStreams,
 } from "@/lib/mock-data";
 
 const streamTabs = [
@@ -36,15 +37,6 @@ const streamTabs = [
 
 const topColleges = [...colleges, ...colleges].slice(0, 6);
 const topExams = exams.slice(0, 6);
-
-const streams = [
-  { name: "Management", count: 4172 },
-  { name: "Engineering", count: 3860 },
-  { name: "Medical", count: 2104 },
-  { name: "Arts", count: 1988 },
-  { name: "Commerce", count: 1520 },
-  { name: "Law", count: 640 },
-];
 
 /** Explore Careers is three columns; the middle one stacks two panels. */
 const careerColumns = [[careerPanels[0]], [careerPanels[1], careerPanels[2]], [careerPanels[3]]];
@@ -151,10 +143,10 @@ export default function Home() {
           <h2 className="font-display text-3xl font-bold text-white">Explore Your Future</h2>
           <p className="mt-2 text-sm text-white/80">Select a stream to see colleges cherry-picked for you</p>
           <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {streams.map((s) => (
+            {homeStreams.map((s) => (
               <Link
                 key={s.name}
-                href={`/${s.name.toLowerCase()}/colleges`}
+                href={`/${s.slug}/colleges`}
                 className="rounded-xl bg-white/10 px-5 py-5 text-left text-white transition hover:bg-white/20"
               >
                 <p className="font-medium">{s.name}</p>
