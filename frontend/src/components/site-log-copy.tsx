@@ -24,8 +24,8 @@
  * means widening the plate rather than enlarging the type in place.
  *
  * Arial is deliberate — it is the face the client's artwork is set in, and the
- * widths here were fitted to its metrics. The wordmark is held to ~91% of the
- * 284-unit column (259 units) rather than filling it: the SVG asks for weight
+ * widths here were fitted to its metrics. The wordmark is held to ~90% of the
+ * 304-unit column (274 units) rather than filling it: the SVG asks for weight
  * 800, which Arial has no cut for, so a browser is free to synthesise it and
  * set the name wider than Arial Bold measures. At 98% fill it overflowed the
  * viewBox, and an SVG clips to its viewBox — the "Path" simply vanished. Keep
@@ -33,7 +33,7 @@
  *
  * Decorative here: the <Link> that wraps it carries the accessible name.
  */
-export function SiteLogo({ className }: { className?: string }) {
+export function SiteLogoCopy({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 530 170" aria-hidden="true" className={className}>
       <defs>
@@ -58,7 +58,7 @@ export function SiteLogo({ className }: { className?: string }) {
           x1="154"
           y1="52"
           x2="154"
-          y2="16"
+          y2="20"
           gradientUnits="userSpaceOnUse"
         >
           <stop offset="0%" stopColor="var(--logo-bar-mid)" />
@@ -104,29 +104,29 @@ export function SiteLogo({ className }: { className?: string }) {
         x1="154"
         y1="52"
         x2="154"
-        y2="16"
+        y2="20"
         stroke="url(#ctlogo-pole-grad)"
         strokeWidth="3.5"
         strokeLinecap="round"
       />
 
-      {/* flag, closing the chart column at x 210 */}
+      {/* flag, closing the chart column at x 194 */}
       <path
         className="ctlogo-flag"
-        d="M 158 18 L 210 34 L 158 50 Z"
+        d="M 158 21 L 194 35 L 158 49 Z"
         fill="url(#ctlogo-gold)"
         stroke="var(--logo-plate-bot)"
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
 
-      {/* text column: left-aligned at x 226, the block centred down the plate */}
+      {/* text column: left-aligned at x 206, the block centred down the plate */}
       <text
-        x="226"
-        y="82"
+        x="206"
+        y="83"
         fontFamily="Arial, Helvetica, sans-serif"
         fontWeight="800"
-        fontSize="33"
+        fontSize="36"
       >
         <tspan className="ctlogo-word ctlogo-word1" fill="var(--logo-word)">Top</tspan>
         <tspan className="ctlogo-word ctlogo-word2" dx="4" fill="var(--logo-word)">College</tspan>
@@ -135,12 +135,12 @@ export function SiteLogo({ className }: { className?: string }) {
 
       <text
         className="ctlogo-tagline"
-        x="226"
-        y="113"
+        x="206"
+        y="114"
         fontFamily="Arial, Helvetica, sans-serif"
         fontWeight="700"
         fontSize="15"
-        letterSpacing="0.3"
+        letterSpacing="0.7"
         fill="var(--logo-tagline)"
       >
         {"DISCOVER  "}

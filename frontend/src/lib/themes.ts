@@ -16,7 +16,7 @@ export type Theme = {
   band: string;
 };
 
-/** The first entry is the default — it is what :root carries in globals.css. */
+/** Kept for reference while the switcher is parked; see `defaultTheme` below. */
 export const themes: Theme[] = [
   { key: "rose", name: "Rose", brand: "#ce4355", band: "#ffbdbf" },
   { key: "crimson", name: "Deep Crimson", brand: "#b71730", band: "#f79f9d" },
@@ -27,7 +27,16 @@ export const themes: Theme[] = [
   { key: "tangerine", name: "Tangerine", brand: "#b65d00", band: "#ffcba9" },
 ];
 
-export const defaultTheme = themes[0].key;
+/*
+  The palette the client signed off on. This was `themes[0].key` (rose) while
+  the switcher was live; it is pinned now that the review is settled.
+
+  :root in globals.css still carries the rose values, and [data-theme="tangerine"]
+  overrides them — layout.tsx stamps that attribute on <html>. Left that way on
+  purpose: the variants cost nothing while unused, and reviving the switcher is
+  a matter of uncommenting rather than rebuilding the palette.
+*/
+export const defaultTheme = "tangerine";
 
 /** Where the pick is remembered, so a refresh mid-demo keeps the colour. */
 export const THEME_STORAGE_KEY = "ct-theme";

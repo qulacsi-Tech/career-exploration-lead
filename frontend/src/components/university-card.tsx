@@ -1,6 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 
+/**
+ * Compact on phones, roomier from `sm` up: at full column width a 16:10 image
+ * pushed the name, location and the Know More button off the bottom of a phone
+ * screen. Shallower crop and tighter padding below `sm`; unchanged above it.
+ */
 export function UniversityCard({
   university,
 }: {
@@ -8,7 +13,7 @@ export function UniversityCard({
 }) {
   return (
     <article className="group overflow-hidden rounded-xl border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm">
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-alt">
+      <div className="relative aspect-[21/9] w-full overflow-hidden bg-bg-alt sm:aspect-[16/10]">
         <Image
           src={`/images/universities/${university.slug}.svg`}
           alt={`${university.name} campus`}
@@ -18,20 +23,20 @@ export function UniversityCard({
         />
       </div>
 
-      <div className="p-5 text-center">
+      <div className="p-4 text-center sm:p-5">
         <Link
           href={`/college/${university.slug}`}
           className="font-display text-base font-semibold text-ink hover:text-brand"
         >
           {university.name}
         </Link>
-        <p className="mt-1.5 flex items-center justify-center gap-1 text-sm text-ink-soft">
+        <p className="mt-1.5 flex items-center justify-center gap-1 text-xs text-ink-soft sm:text-sm">
           <PinIcon className="h-4 w-4 shrink-0 text-brand" />
           {university.city}, {university.state}
         </p>
         <Link
           href={`/college/${university.slug}`}
-          className="mt-5 block rounded-md bg-brand px-4 py-2 text-xs font-semibold text-white transition hover:bg-brand-dark"
+          className="mt-4 block rounded-md bg-brand px-4 py-2 text-xs font-semibold text-white transition hover:bg-brand-dark sm:mt-5"
         >
           Know More
         </Link>

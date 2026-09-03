@@ -3,7 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { THEME_STORAGE_KEY, defaultTheme, themes } from "@/lib/themes";
+import { defaultTheme } from "@/lib/themes";
 
 /*
   Self-hosted rather than pulled from `next/font/google`. The Google loader
@@ -38,30 +38,29 @@ export const metadata: Metadata = {
 };
 
 /*
-  Applies the reviewer's saved palette before first paint.
+  Palette bootstrap — parked along with the switcher.
 
-  It has to be a blocking inline script: the palette lives on <html> and the
-  server has no way to know which variant was picked, so doing this in an
-  effect would paint the default first and flash a different colour mid-demo.
-  The theme keys are inlined from the same list the switcher renders, so an
-  edited or stale localStorage value can only ever resolve to a real palette.
-*/
+  This read the reviewer's saved palette from localStorage before first paint.
+  With the switcher gone it would do harm rather than good: anyone who tried a
+  variant during review still has that key stored, and it would keep overriding
+  the signed-off palette with no UI left to change it back. The <html> attribute
+  below is now the single source of truth.
+
+  To revive the switcher, restore this and the <script> in <head>, and put
+  <ThemeSwitcher /> back on the homepage.
+
 const themeScript = `(function(){try{var t=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY,
 )});if(${JSON.stringify(themes.map((t) => t.key))}.indexOf(t)>-1){document.documentElement.dataset.theme=t}}catch(e){}})()`;
+*/
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
       data-theme={defaultTheme}
-      // The script above rewrites data-theme before React hydrates.
-      suppressHydrationWarning
       className={`${sora.variable} ${inter.variable} h-full antialiased`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
       <body className="min-h-full flex flex-col font-sans">
         <SiteHeader />
         <main className="flex-1">{children}</main>
