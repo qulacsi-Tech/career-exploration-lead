@@ -5,6 +5,7 @@ import { MobileNav } from "@/components/mobile-nav";
 const navLinks = [
   { label: "Courses", href: "/courses" },
   { label: "Top Ranked Colleges", href: "/colleges?sort=ranking" },
+  { label: "Compare", href: "/compare" },
   { label: "More", href: "/articles" },
   { label: "Study Abroad", href: "/study-abroad" },
 ];
@@ -17,8 +18,9 @@ export function SiteHeader() {
             custom properties, so it recolours with the palette switcher instead
             of carrying a fixed plate colour. */}
         <Link href="/" className="flex shrink-0 items-center" aria-label="TopCollegePath — home">
-          {/* The lockup is 3.1:1, so height drives width: 64px tall is 200px
-              wide, 72px is 224px. */}
+          {/* Tagline included, per the client's 5 Sep note. 3.66:1, so height
+              drives width: 56px tall is 205px wide, 64px is 234px, 72px is
+              263px — which the row has room for beside the nav. */}
           <SiteLogo className="h-14 w-auto sm:h-16 lg:h-[72px]" />
         </Link>
 

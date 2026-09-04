@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Gallery uploader: drop a batch of images, then name and describe each one.
+ * Batch uploader: drop files, then name and describe each one.
  *
  * Alt text is captured per image at upload time rather than left for later.
  * This is a public, SEO-driven site — the proposal calls for image sitemaps —
@@ -12,6 +12,16 @@ import { useEffect, useRef, useState } from "react";
  *
  * Previews are object URLs and are revoked on removal and on unmount; without
  * that, working through a long gallery leaks the whole batch into memory.
+ *
+ * Two options serve the three collections the 4 Sep MOM splits media into
+ * (§1.3), rather than three near-identical uploaders:
+ *
+ * - `acceptPdf` — press and print coverage arrives as a scan, so the Media
+ *   collection takes PDFs as well as images. A PDF has no usable thumbnail
+ *   without a renderer, so it previews as a labelled tile.
+ * - `highlightCap` — the Gallery collection marks its best shots. The cap is
+ *   enforced here rather than advised, because a "highlight" everything is
+ *   marked as stops being a highlight.
  */
 
 type PendingImage = {
@@ -21,6 +31,7 @@ type PendingImage = {
   url: string;
   label: string;
   alt: string;
+  isHighlight: boolean;
 };
 
 const newId = () =>
@@ -35,7 +46,18 @@ const labelFromFilename = (name: string) =>
 const formatSize = (bytes: number) =>
   bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
-export function MediaUploader() {
+const isPdf = (file: File) => file.type === "application/pdf";
+
+export function MediaUploader({
+  acceptPdf = false,
+  highlightCap,
+  /** Highlights already used by saved records, so the cap counts both. */
+  highlightsInUse = 0,
+}: {
+  acceptPdf?: boolean;
+  highlightCap?: number;
+  highlightsInUse?: number;
+} = {}) {
   const [images, setImages] = useState<PendingImage[]>([]);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,16 +74,20 @@ export function MediaUploader() {
     };
   }, []);
 
+  const isAccepted = (file: File) =>
+    file.type.startsWith("image/") || (acceptPdf && file.type === "application/pdf");
+
   const addFiles = (fileList: FileList | null) => {
     if (!fileList) return;
     const accepted = Array.from(fileList)
-      .filter((file) => file.type.startsWith("image/"))
+      .filter(isAccepted)
       .map((file) => ({
         id: newId(),
         file,
         url: URL.createObjectURL(file),
         label: labelFromFilename(file.name),
         alt: "",
+        isHighlight: false,
       }));
     if (accepted.length) setImages((prev) => [...prev, ...accepted]);
   };
@@ -76,7 +102,23 @@ export function MediaUploader() {
   const update = (id: string, patch: Partial<Pick<PendingImage, "label" | "alt">>) =>
     setImages((prev) => prev.map((image) => (image.id === id ? { ...image, ...patch } : image)));
 
-  const missingAlt = images.filter((image) => !image.alt.trim()).length;
+  const missingAlt = images.filter((image) => !image.alt.trim() && !isPdf(image.file)).length;
+
+  const highlightsHere = images.filter((image) => image.isHighlight).length;
+  const highlightsTotal = highlightsInUse + highlightsHere;
+  const capReached = highlightCap !== undefined && highlightsTotal >= highlightCap;
+
+  // Toggling off is always allowed; toggling on is refused at the cap rather
+  // than silently dropping the least recent, which would lose an editor's
+  // earlier choice without telling them.
+  const toggleHighlight = (id: string) =>
+    setImages((prev) =>
+      prev.map((image) => {
+        if (image.id !== id) return image;
+        if (!image.isHighlight && capReached) return image;
+        return { ...image, isHighlight: !image.isHighlight };
+      }),
+    );
 
   return (
     <div className="space-y-4">
@@ -106,15 +148,17 @@ export function MediaUploader() {
       >
         <UploadIcon className="h-7 w-7 text-ink-faint" />
         <p className="mt-2 text-sm font-medium text-ink">
-          Drag images here, or <span className="text-brand">browse</span>
+          Drag {acceptPdf ? "files" : "images"} here, or <span className="text-brand">browse</span>
         </p>
         <p className="mt-1 text-xs text-ink-faint">
-          JPG, PNG, WebP or SVG. Select several at once — each gets its own name and alt text.
+          {acceptPdf
+            ? "JPG, PNG, WebP, SVG or PDF. Print coverage is usually a PDF scan."
+            : "JPG, PNG, WebP or SVG. Select several at once — each gets its own name and alt text."}
         </p>
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept={acceptPdf ? "image/*,application/pdf" : "image/*"}
           multiple
           className="sr-only"
           onChange={(e) => {
@@ -128,10 +172,15 @@ export function MediaUploader() {
       {images.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-ink-soft">
-            {images.length} image{images.length === 1 ? "" : "s"} ready
+            {images.length} file{images.length === 1 ? "" : "s"} ready
             {missingAlt > 0 && (
               <span className="ml-2 rounded border border-brand/40 bg-brand-soft px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">
                 {missingAlt} missing alt text
+              </span>
+            )}
+            {highlightCap !== undefined && (
+              <span className="ml-2 rounded border border-line px-1.5 py-0.5 text-[11px] font-medium text-ink-soft">
+                {highlightsTotal} of {highlightCap} highlights used
               </span>
             )}
           </p>
@@ -149,13 +198,28 @@ export function MediaUploader() {
         {images.map((image) => (
           <li key={image.id} className="rounded-lg border border-line p-3">
             <div className="flex flex-col gap-3 sm:flex-row">
-              {/* Local object URL, so a plain img rather than next/image. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={image.url}
-                alt={image.alt || image.label || "Selected image preview"}
-                className="h-24 w-full shrink-0 rounded-md border border-line object-cover sm:w-36"
-              />
+              {/* A PDF has no thumbnail without a renderer, so it gets a
+                  labelled tile rather than a broken image box. */}
+              {isPdf(image.file) ? (
+                <div className="flex h-24 w-full shrink-0 flex-col items-center justify-center rounded-md border border-line bg-bg-alt sm:w-36">
+                  <span className="rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    PDF
+                  </span>
+                  <span className="mt-1 px-2 text-center text-[11px] text-ink-faint">
+                    {formatSize(image.file.size)}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {/* Local object URL, so a plain img rather than next/image. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={image.url}
+                    alt={image.alt || image.label || "Selected image preview"}
+                    className="h-24 w-full shrink-0 rounded-md border border-line object-cover sm:w-36"
+                  />
+                </>
+              )}
 
               <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
@@ -195,6 +259,28 @@ export function MediaUploader() {
                     Describe what is in the shot — used by screen readers and image search.
                   </p>
                 </div>
+
+                {highlightCap !== undefined && !isPdf(image.file) && (
+                  <div className="sm:col-span-2">
+                    <label className="flex items-center gap-2 text-xs text-ink-soft">
+                      <input
+                        type="checkbox"
+                        checked={image.isHighlight}
+                        onChange={() => toggleHighlight(image.id)}
+                        disabled={!image.isHighlight && capReached}
+                        className="h-4 w-4 rounded border-line text-brand focus:ring-brand disabled:opacity-40"
+                      />
+                      <span className={!image.isHighlight && capReached ? "opacity-50" : ""}>
+                        Use as a highlight
+                      </span>
+                      <span className="text-[11px] text-ink-faint">
+                        {!image.isHighlight && capReached
+                          ? `Cap of ${highlightCap} reached — clear one first.`
+                          : "Highlights lead the college page; the first is the listing thumbnail."}
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <button
@@ -277,6 +363,9 @@ export function ImageUploadField({
         url: URL.createObjectURL(file),
         label: labelFromFilename(file.name),
         alt: "",
+        // A single-image slot has no highlight concept; the field exists only
+        // because both slots share PendingImage.
+        isHighlight: false,
       };
     });
   };

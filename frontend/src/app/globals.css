@@ -403,3 +403,99 @@ body {
     stroke-dashoffset: 0;
   }
 }
+
+/* ------------------------------------------------------------------ *
+   Rich text
+
+   One block of styles for both the editor body (.tiptap-body, inside the admin
+   panel) and the rendered output (.rich-text, on the public site). Written once
+   and applied to both selectors on purpose: the point of a WYSIWYG editor is
+   that the editing view matches the published page, and two rule sets drift
+   apart the first time either is touched.
+ * ------------------------------------------------------------------ */
+
+.rich-text,
+.tiptap-body {
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+.rich-text > :first-child,
+.tiptap-body > :first-child { margin-top: 0; }
+.rich-text > :last-child,
+.tiptap-body > :last-child { margin-bottom: 0; }
+
+.rich-text p,
+.tiptap-body p { margin: 0.75em 0; }
+
+.rich-text h2, .tiptap-body h2,
+.rich-text h3, .tiptap-body h3,
+.rich-text h4, .tiptap-body h4 {
+  font-family: var(--font-display), inherit;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 1.5em 0 0.5em;
+  line-height: 1.3;
+}
+.rich-text h2, .tiptap-body h2 { font-size: 1.375rem; }
+.rich-text h3, .tiptap-body h3 { font-size: 1.125rem; }
+.rich-text h4, .tiptap-body h4 { font-size: 1rem; }
+
+.rich-text ul, .tiptap-body ul,
+.rich-text ol, .tiptap-body ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+}
+.rich-text ul, .tiptap-body ul { list-style: disc; }
+.rich-text ol, .tiptap-body ol { list-style: decimal; }
+.rich-text li, .tiptap-body li { margin: 0.25em 0; }
+
+.rich-text a, .tiptap-body a {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-text a:hover, .tiptap-body a:hover { color: var(--color-brand-dark); }
+
+.rich-text blockquote, .tiptap-body blockquote {
+  margin: 1em 0;
+  padding: 0.25em 0 0.25em 1em;
+  border-left: 3px solid var(--color-brand);
+  color: var(--color-ink-soft);
+}
+
+/* Tables scroll inside their own box rather than pushing the page sideways —
+   a pasted 8-column fee table would otherwise widen every ancestor. */
+.rich-text table, .tiptap-body table {
+  width: 100%;
+  margin: 1em 0;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: fixed;
+  overflow: hidden;
+}
+.rich-text th, .tiptap-body th,
+.rich-text td, .tiptap-body td {
+  border: 1px solid var(--color-line);
+  padding: 0.5em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
+.rich-text th, .tiptap-body th {
+  background: var(--color-bg-alt);
+  font-weight: 600;
+}
+
+/* The editor needs a visible caret target in an empty document, and the
+   selected-cell highlight that ProseMirror sets while dragging over a table. */
+.tiptap-body:focus { outline: none; }
+.tiptap-body .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-brand-soft);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.tiptap-body td, .tiptap-body th { position: relative; }

@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       <div className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
           <Link href="/" aria-label="TopCollegePath — home" className="mx-auto mb-6 block w-fit">
-            <SiteLogo className="h-14 w-auto" />
+            <SiteLogo className="h-16 w-auto" />
           </Link>
           {children}
         </div>

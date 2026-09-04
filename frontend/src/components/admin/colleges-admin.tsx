@@ -2,6 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { College } from "@/lib/mock-data";
+import {
+  programs,
+  rankingListsForProgram,
+  rankedColleges,
+  collegesInProgram,
+} from "@/lib/rankings-data";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { CollegeEditModal } from "@/components/admin/college-edit-modal";
@@ -17,17 +23,56 @@ import { TextField, SelectField, Field, NameSlugFields } from "@/components/admi
  */
 export function CollegesAdmin({ colleges }: { colleges: College[] }) {
   const [query, setQuery] = useState("");
+  const [programSlug, setProgramSlug] = useState("");
+  const [rankingSlug, setRankingSlug] = useState("");
   const [viewing, setViewing] = useState<College | null>(null);
   const [editing, setEditing] = useState<College | null>(null);
   const [adding, setAdding] = useState(false);
 
+  // Ranking lists belong to a program, so the second selector only has options
+  // once the first is set — and a stale ranking from a previous program must
+  // not keep filtering. Cleared in the program handler rather than an effect.
+  const rankingOptions = programSlug ? rankingListsForProgram(programSlug) : [];
+
+  const selectProgram = (slug: string) => {
+    setProgramSlug(slug);
+    setRankingSlug("");
+  };
+
+  /**
+   * Program, then ranking list, then free text — narrowing in that order.
+   *
+   * Both selectors read lib/rankings-data rather than filtering on `stream`
+   * here: the program-to-college join lives in one place so this screen, the
+   * homepage bands and the rankings module cannot drift apart.
+   *
+   * A ranking list also sets the ORDER, not just the membership — that is the
+   * point of picking one. Sorting by the list means an editor sees the colleges
+   * in the sequence the site will show them, pins included.
+   */
+  const scoped = useMemo(() => {
+    if (rankingSlug) {
+      const order = new Map(
+        rankedColleges(rankingSlug).map((row, index) => [row.college.slug, index]),
+      );
+      return colleges
+        .filter((c) => order.has(c.slug))
+        .sort((a, b) => (order.get(a.slug) ?? 0) - (order.get(b.slug) ?? 0));
+    }
+    if (programSlug) {
+      const inProgram = new Set(collegesInProgram(programSlug).map((c) => c.slug));
+      return colleges.filter((c) => inProgram.has(c.slug));
+    }
+    return colleges;
+  }, [colleges, programSlug, rankingSlug]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return colleges;
-    return colleges.filter((c) =>
+    if (!q) return scoped;
+    return scoped.filter((c) =>
       [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q)),
     );
-  }, [colleges, query]);
+  }, [scoped, query]);
 
   return (
     <div className="space-y-6">
@@ -49,14 +94,47 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
         title="All colleges"
         description={`${filtered.length} of ${colleges.length} shown`}
         actions={
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, city, stream"
-            aria-label="Search colleges"
-            className="w-56 rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={programSlug}
+              onChange={(e) => selectProgram(e.target.value)}
+              aria-label="Filter by program"
+              className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
+            >
+              <option value="">All programs</option>
+              {programs.map((program) => (
+                <option key={program.slug} value={program.slug}>
+                  {program.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={rankingSlug}
+              onChange={(e) => setRankingSlug(e.target.value)}
+              disabled={rankingOptions.length === 0}
+              aria-label="Filter by ranking list"
+              className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">
+                {programSlug ? "Any ranking" : "Select a program first"}
+              </option>
+              {rankingOptions.map((list) => (
+                <option key={list.slug} value={list.slug}>
+                  {list.name}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name, city, stream"
+              aria-label="Search colleges"
+              className="w-56 rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+            />
+          </div>
         }
       >
         {/* Wide table on a narrow screen: scroll it rather than wrap the cells. */}
@@ -114,7 +192,9 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-sm text-ink-soft">
-                    No colleges match “{query}”.
+                    {query
+                      ? `No colleges match “${query}”.`
+                      : "No colleges match the selected filters."}
                   </td>
                 </tr>
               )}

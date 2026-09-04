@@ -219,6 +219,277 @@ export const colleges: College[] = [
       },
     ],
   },
+  {
+    slug: "kaveri-institute-of-technology",
+    name: "Kaveri Institute of Technology",
+    city: "Bengaluru",
+    state: "Karnataka",
+    ownership: "Private",
+    stream: "Engineering",
+    ranking: { authority: "NIRF", rank: 48 },
+    rating: 4.3,
+    reviewCount: 1204,
+    coursesOffered: 12,
+    feesRange: "₹4.2L - 9.6L",
+    examsAccepted: ["JEE Main", "KCET", "COMEDK"],
+    tags: ["Top Placements"],
+    approvals: ["AICTE", "NBA", "NAAC A+"],
+    established: 1992,
+    about:
+      "Kaveri Institute of Technology is a private engineering college offering B.Tech and M.Tech programmes across nine branches, with a computer science intake that fills on KCET rank alone most years.",
+    ratingBreakdown: [
+      { label: "Placements", score: 4.4 },
+      { label: "Faculty", score: 4.1 },
+      { label: "Infrastructure", score: 4.4 },
+      { label: "Campus Life", score: 4.2 },
+    ],
+    courses: [
+      { name: "B.Tech Computer Science", duration: "48 Months", mode: "Full Time", fees: "₹9.6L Total Fees", exams: ["JEE Main", "KCET", "COMEDK"] },
+      { name: "B.Tech Electronics", duration: "48 Months", mode: "Full Time", fees: "₹7.8L Total Fees", exams: ["JEE Main", "KCET"] },
+      { name: "M.Tech VLSI Design", duration: "24 Months", mode: "Full Time", fees: "₹4.2L Total Fees", exams: ["GATE"] },
+    ],
+    placement: {
+      year: 2025,
+      average: "₹8.4 LPA",
+      median: "₹7.1 LPA",
+      highest: "₹44 LPA",
+      topRecruiters: ["Infosys", "Wipro", "Bosch", "Qualcomm", "Zoho"],
+    },
+    cutoffs: [
+      { exam: "KCET", category: "General", score: "Rank 2,480" },
+      { exam: "COMEDK", category: "General", score: "Rank 3,150" },
+      { exam: "JEE Main", category: "General", score: "94.2 percentile" },
+    ],
+    reviews: [
+      {
+        author: "Sneha Kulkarni",
+        course: "B.Tech Computer Science",
+        batch: "2021–25",
+        verified: true,
+        date: "22 Jul 2025",
+        rating: 4.4,
+        body: "Core CS placements were solid — most of the branch had an offer by the eighth semester. Labs are well equipped, though the hostel needs work.",
+      },
+    ],
+  },
+  {
+    slug: "northgate-college-of-engineering",
+    name: "Northgate College of Engineering",
+    city: "Pune",
+    state: "Maharashtra",
+    ownership: "Private",
+    stream: "Engineering",
+    ranking: { authority: "NIRF", rank: 63 },
+    rating: 4.0,
+    reviewCount: 742,
+    coursesOffered: 9,
+    feesRange: "₹3.4L - 7.2L",
+    examsAccepted: ["JEE Main", "MHT CET"],
+    tags: ["Top Rated"],
+    approvals: ["AICTE", "NBA"],
+    established: 2001,
+    about:
+      "Northgate College of Engineering runs B.Tech programmes with an industry-linked mechanical and mechatronics track, drawing recruiters from the Pune automotive belt.",
+    ratingBreakdown: [
+      { label: "Placements", score: 4.0 },
+      { label: "Faculty", score: 4.1 },
+      { label: "Infrastructure", score: 3.9 },
+      { label: "Campus Life", score: 4.0 },
+    ],
+    courses: [
+      { name: "B.Tech Mechanical", duration: "48 Months", mode: "Full Time", fees: "₹6.4L Total Fees", exams: ["JEE Main", "MHT CET"] },
+      { name: "B.Tech Computer Science", duration: "48 Months", mode: "Full Time", fees: "₹7.2L Total Fees", exams: ["JEE Main", "MHT CET"] },
+    ],
+    placement: {
+      year: 2025,
+      average: "₹6.2 LPA",
+      median: "₹5.4 LPA",
+      highest: "₹28 LPA",
+      topRecruiters: ["Tata Motors", "Bajaj Auto", "TCS", "Cognizant"],
+    },
+    cutoffs: [
+      { exam: "MHT CET", category: "General", score: "96.1 percentile" },
+      { exam: "JEE Main", category: "General", score: "88.5 percentile" },
+    ],
+    reviews: [
+      {
+        author: "Aditya Deshmukh",
+        course: "B.Tech Mechanical",
+        batch: "2020–24",
+        verified: true,
+        date: "5 May 2025",
+        rating: 4.1,
+        body: "The automotive tie-ups are the real draw — two internships came through the department directly.",
+      },
+    ],
+  },
+  {
+    slug: "sanjeevani-medical-college",
+    name: "Sanjeevani Medical College",
+    city: "Chennai",
+    state: "Tamil Nadu",
+    ownership: "Private",
+    stream: "Medical",
+    ranking: { authority: "NIRF", rank: 29 },
+    rating: 4.5,
+    reviewCount: 538,
+    coursesOffered: 7,
+    feesRange: "₹12L - 68L",
+    examsAccepted: ["NEET UG", "NEET PG"],
+    tags: ["Featured"],
+    approvals: ["NMC", "NAAC A++"],
+    established: 1976,
+    about:
+      "Sanjeevani Medical College is a private medical college with an attached 1,200-bed teaching hospital, offering MBBS alongside postgraduate programmes across eleven clinical specialities.",
+    ratingBreakdown: [
+      { label: "Placements", score: 4.3 },
+      { label: "Faculty", score: 4.7 },
+      { label: "Infrastructure", score: 4.6 },
+      { label: "Campus Life", score: 4.2 },
+    ],
+    courses: [
+      { name: "MBBS", duration: "66 Months", mode: "Full Time", fees: "₹68L Total Fees", exams: ["NEET UG"] },
+      { name: "MD General Medicine", duration: "36 Months", mode: "Full Time", fees: "₹42L Total Fees", exams: ["NEET PG"] },
+    ],
+    placement: {
+      year: 2025,
+      average: "₹11.8 LPA",
+      median: "₹10.4 LPA",
+      highest: "₹24 LPA",
+      topRecruiters: ["Apollo Hospitals", "Fortis Healthcare", "Manipal Hospitals"],
+    },
+    cutoffs: [
+      { exam: "NEET UG", category: "General", score: "612 marks" },
+      { exam: "NEET UG", category: "OBC", score: "584 marks" },
+    ],
+    reviews: [
+      {
+        author: "Divya Ramesh",
+        course: "MBBS",
+        batch: "2019–25",
+        verified: true,
+        date: "2 Aug 2025",
+        rating: 4.5,
+        body: "Clinical exposure from the second year onwards is the strength here — the attached hospital sees enough volume that you are never short of cases.",
+      },
+    ],
+  },
+  {
+    slug: "meridian-institute-of-medical-sciences",
+    name: "Meridian Institute of Medical Sciences",
+    city: "Hyderabad",
+    state: "Telangana",
+    ownership: "Deemed",
+    stream: "Medical",
+    ranking: { authority: "NIRF", rank: 44 },
+    rating: 4.2,
+    reviewCount: 396,
+    coursesOffered: 6,
+    feesRange: "₹15L - 74L",
+    examsAccepted: ["NEET UG", "NEET PG"],
+    tags: ["Top Rated"],
+    approvals: ["NMC", "UGC", "NAAC A+"],
+    established: 1994,
+    about:
+      "Meridian Institute of Medical Sciences is a deemed university running MBBS and postgraduate medical programmes, with a research wing focused on community and preventive medicine.",
+    ratingBreakdown: [
+      { label: "Placements", score: 4.1 },
+      { label: "Faculty", score: 4.4 },
+      { label: "Infrastructure", score: 4.3 },
+      { label: "Campus Life", score: 4.0 },
+    ],
+    courses: [
+      { name: "MBBS", duration: "66 Months", mode: "Full Time", fees: "₹74L Total Fees", exams: ["NEET UG"] },
+      { name: "MD Paediatrics", duration: "36 Months", mode: "Full Time", fees: "₹38L Total Fees", exams: ["NEET PG"] },
+    ],
+    placement: {
+      year: 2025,
+      average: "₹9.6 LPA",
+      median: "₹8.8 LPA",
+      highest: "₹19 LPA",
+      topRecruiters: ["Yashoda Hospitals", "Continental Hospitals", "AIG Hospitals"],
+    },
+    cutoffs: [
+      { exam: "NEET UG", category: "General", score: "578 marks" },
+      { exam: "NEET UG", category: "SC", score: "492 marks" },
+    ],
+    reviews: [
+      {
+        author: "Imran Sheikh",
+        course: "MBBS",
+        batch: "2018–24",
+        verified: true,
+        date: "17 Jun 2025",
+        rating: 4.2,
+        body: "Faculty in the pre-clinical years were excellent. Fees are steep, which is worth going in clear-eyed about.",
+      },
+    ],
+  },
+  /*
+    NOTE — this is the one record here that carries a REAL institution's name.
+    Every figure below (fees, placements, cutoffs, ranking, reviews) is invented
+    for the prototype, exactly like the fictional colleges above it.
+
+    Every other record uses a made-up name precisely so nothing here can be
+    mistaken for a claim about a real college. This one exists because the URL
+    was asked for by name. Before this build is shown to anyone outside the
+    project, either replace these figures with the university's published data
+    or rename the record — invented placement numbers under a real name are the
+    kind of thing that gets repeated as fact.
+  */
+  {
+    slug: "kr-mangalam-university",
+    name: "K.R. Mangalam University",
+    city: "Gurugram",
+    state: "Haryana",
+    ownership: "Private",
+    stream: "Management",
+    ranking: { authority: "NIRF", rank: 58 },
+    rating: 4.2,
+    reviewCount: 764,
+    coursesOffered: 14,
+    feesRange: "₹3.6L - 12L",
+    examsAccepted: ["CAT", "MAT", "CMAT", "CUET"],
+    tags: ["Top Rated"],
+    approvals: ["UGC", "AICTE", "NAAC A+"],
+    established: 2013,
+    about:
+      "K.R. Mangalam University is a private university in Gurugram offering programmes across management, engineering, law and applied sciences, with an on-campus placement cell serving the Delhi NCR recruiter base.",
+    ratingBreakdown: [
+      { label: "Placements", score: 4.1 },
+      { label: "Faculty", score: 4.3 },
+      { label: "Infrastructure", score: 4.4 },
+      { label: "Campus Life", score: 4.2 },
+    ],
+    courses: [
+      { name: "MBA", duration: "24 Months", mode: "Full Time", fees: "₹12L Total Fees", exams: ["CAT", "MAT", "CMAT"] },
+      { name: "BBA", duration: "36 Months", mode: "Full Time", fees: "₹5.4L Total Fees", exams: ["CUET"] },
+      { name: "B.Tech Computer Science", duration: "48 Months", mode: "Full Time", fees: "₹8.8L Total Fees", exams: ["JEE Main", "CUET"] },
+    ],
+    placement: {
+      year: 2025,
+      average: "₹7.4 LPA",
+      median: "₹6.5 LPA",
+      highest: "₹32 LPA",
+      topRecruiters: ["Deloitte", "HCLTech", "Amazon", "Genpact", "ICICI Bank"],
+    },
+    cutoffs: [
+      { exam: "CAT", category: "General", score: "72 percentile" },
+      { exam: "MAT", category: "General", score: "80 percentile" },
+      { exam: "CUET", category: "General", score: "185 marks" },
+    ],
+    reviews: [
+      {
+        author: "Nikhil Chauhan",
+        course: "MBA",
+        batch: "2023–25",
+        verified: true,
+        date: "14 Aug 2026",
+        rating: 4.2,
+        body: "Campus is modern and the NCR location helps with internships — several of my batch interned in Gurugram itself during the second semester.",
+      },
+    ],
+  },
 ];
 
 export type Exam = {

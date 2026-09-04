@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteLogo } from "@/components/site-logo";
 
 const footerColumns = [
   {
@@ -63,9 +64,23 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
-          <p>&copy; {new Date().getFullYear()} CollegeTime. All rights reserved.</p>
-          <p>info@collegetime.example &middot; +91 80 4000 0000</p>
+        <div className="flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+          {/*
+            Sized up from h-12 after the client reported it was hard to read:
+            at 48px the tagline set at 5.5px, which is below what anyone can
+            actually read. h-20 puts the wordmark at 21.7px and the tagline at
+            9.1px, and the footer has the width for the 293px plate.
+
+            `idPrefix` keeps this instance's gradient ids distinct from the
+            header's — both lockups render on every page.
+          */}
+          <Link href="/" className="shrink-0" aria-label="TopCollegePath — home">
+            <SiteLogo idPrefix="ctlogo-footer" className="h-20 w-auto" />
+          </Link>
+          <div className="flex flex-col gap-1 sm:items-end">
+            <p>&copy; {new Date().getFullYear()} CollegeTime. All rights reserved.</p>
+            <p>info@collegetime.example &middot; +91 80 4000 0000</p>
+          </div>
         </div>
       </div>
     </footer>

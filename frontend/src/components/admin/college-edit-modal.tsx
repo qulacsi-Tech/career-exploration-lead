@@ -10,7 +10,14 @@ import {
   TextAreaField,
   NameSlugFields,
 } from "@/components/admin/admin-fields";
-import { MediaUploader, ImageUploadField } from "@/components/admin/media-uploader";
+import { ImageUploadField } from "@/components/admin/media-uploader";
+import { CollegeMediaTabs } from "@/components/admin/college-media-tabs";
+import {
+  CollegeArticlesEditor,
+  CollegeAlertsEditor,
+} from "@/components/admin/college-articles";
+import { RichTextField } from "@/components/admin/rich-text-editor";
+import { activeTabTemplates, tabBody } from "@/lib/college-content";
 
 /**
  * Full-screen college editor, one tab per group of fields.
@@ -27,7 +34,14 @@ import { MediaUploader, ImageUploadField } from "@/components/admin/media-upload
  * and removed.
  */
 
-const TABS = [
+/**
+ * The fixed tabs — the ones backed by fields on the college record itself.
+ *
+ * SEO is deliberately not in this array: it is appended last, after the
+ * configurable tabs, so that adding a custom tab never pushes SEO further from
+ * where editors have learned to find it (the end).
+ */
+const FIXED_TABS = [
   { id: "basic", label: "Basic details" },
   { id: "courses", label: "Courses & fees" },
   { id: "rankings", label: "Rankings & approvals" },
@@ -35,10 +49,34 @@ const TABS = [
   { id: "cutoffs", label: "Cutoffs" },
   { id: "reviews", label: "Reviews" },
   { id: "media", label: "Media" },
-  { id: "seo", label: "SEO" },
+  { id: "articles", label: "Articles" },
+  { id: "alerts", label: "News & alerts" },
 ] as const;
 
-type TabId = (typeof TABS)[number]["id"];
+/**
+ * The full tab strip: fixed tabs, then whatever tab templates are active, then
+ * SEO.
+ *
+ * Custom tabs are prefixed `custom:` so a template slug can never collide with
+ * a fixed tab id — a template called "media" would otherwise silently take over
+ * the Media panel.
+ */
+const CUSTOM_PREFIX = "custom:";
+
+function useTabs() {
+  const templates = activeTabTemplates();
+  return [
+    ...FIXED_TABS.map((t) => ({ id: t.id as string, label: t.label, template: null })),
+    ...templates.map((t) => ({
+      id: `${CUSTOM_PREFIX}${t.slug}`,
+      label: t.label,
+      template: t,
+    })),
+    { id: "seo", label: "SEO", template: null },
+  ];
+}
+
+type TabId = string;
 
 export function CollegeEditModal({
   college,
@@ -82,6 +120,8 @@ function CollegeEditForm({ college, onDone }: { college: College; onDone: () => 
   const [tab, setTab] = useState<TabId>("basic");
   const [courses, setCourses] = useState(college.courses);
   const [cutoffs, setCutoffs] = useState(college.cutoffs);
+  const tabs = useTabs();
+  const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0];
 
   return (
     <form
@@ -95,7 +135,7 @@ function CollegeEditForm({ college, onDone }: { college: College; onDone: () => 
     >
       {/* Tab strip. Scrolls sideways rather than wrapping on a narrow screen. */}
       <div role="tablist" aria-label="College fields" className="-mx-5 flex gap-1 overflow-x-auto border-b border-line px-5">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -312,23 +352,29 @@ function CollegeEditForm({ college, onDone }: { college: College; onDone: () => 
           </div>
         )}
 
-        {tab === "media" && (
-          <div>
-            {/*
-              No path fields: images are uploaded, not referenced by a
-              hand-typed path. The stored path is whatever the media endpoint
-              returns, so asking an editor to type one only invites typos and
-              broken images.
-            */}
-            <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">Gallery</h3>
-            <p className="mt-1 text-xs text-ink-soft">
-              Campus photos shown on the college page. Every image needs a name and
-              alt text before it can be published.
-            </p>
-            <div className="mt-3">
-              <MediaUploader />
-            </div>
-          </div>
+        {/*
+          No path fields anywhere below: images are uploaded, not referenced by
+          a hand-typed path. The stored path is whatever the media endpoint
+          returns, so asking an editor to type one only invites typos and
+          broken images.
+        */}
+        {tab === "media" && <CollegeMediaTabs collegeSlug={college.slug} />}
+
+        {tab === "articles" && <CollegeArticlesEditor collegeSlug={college.slug} />}
+
+        {tab === "alerts" && <CollegeAlertsEditor collegeSlug={college.slug} />}
+
+        {/*
+          A configurable tab is one rich text document per college. The template
+          supplies the label and the hint; the body is this college's own.
+        */}
+        {activeTab.template && (
+          <RichTextField
+            label={`${activeTab.template.label} content`}
+            hint={activeTab.template.hint}
+            value={tabBody(college.slug, activeTab.template.slug)}
+            minHeight={320}
+          />
         )}
 
         {tab === "seo" && (

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  colleges,
   exams,
   locations,
   recommendedPrograms,
@@ -11,6 +10,7 @@ import {
   homeStreams,
 } from "@/lib/mock-data";
 import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
+import { CollegeBandsEditor } from "@/components/admin/college-bands-editor";
 import { TextField } from "@/components/admin/admin-fields";
 
 /*
@@ -93,26 +93,15 @@ export function HomepageSectionsAdmin() {
           ),
         },
         {
-          id: "top-colleges",
-          label: "Top Colleges",
-          render: () => (
-            <SectionEditor
-              name="top-colleges"
-              heading="Top Colleges"
-              subheading="Colleges Cherry Picked For You"
-              items={colleges.map((college) => ({
-                id: college.slug,
-                label: college.name,
-                meta: `${college.city}, ${college.state} · ${college.ranking.authority} #${college.ranking.rank} · ${college.feesRange}`,
-              }))}
-              featuring
-              featuringDefault="top"
-              itemsTitle="Featured colleges"
-              itemsHint="The pool the featuring mode draws from."
-            >
-              <TextField label="View All link" name="top-colleges-cta" defaultValue="/colleges" />
-            </SectionEditor>
-          ),
+          /*
+            Was a single "Top Colleges" section with a hand-ordered pool. It is
+            now repeatable bands bound to ranking lists (MOM §1.7): the ordering
+            lives in Rankings, and this screen chooses which ranking each band
+            shows rather than keeping a second copy of the order.
+          */
+          id: "college-bands",
+          label: "College bands",
+          render: () => <CollegeBandsEditor />,
         },
         {
           id: "top-exams",

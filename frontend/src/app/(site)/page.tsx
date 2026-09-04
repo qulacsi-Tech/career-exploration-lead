@@ -12,7 +12,6 @@ import { UniversityCard } from "@/components/university-card";
 import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
 import {
-  colleges,
   exams,
   locations,
   articles,
@@ -22,6 +21,7 @@ import {
   dataHighlights,
   homeStreams,
 } from "@/lib/mock-data";
+import { homepageBands, bandColleges } from "@/lib/rankings-data";
 
 const streamTabs = [
   "Management",
@@ -35,7 +35,20 @@ const streamTabs = [
   "Paramedical",
 ];
 
-const topColleges = [...colleges, ...colleges].slice(0, 6);
+/**
+ * The college bands, resolved through the same selector the admin preview uses
+ * so the page and the editor cannot disagree.
+ *
+ * Was `[...colleges, ...colleges].slice(0, 6)` — the directory padded out to
+ * fill a six-card grid. Each band now comes from a ranking list chosen in
+ * Admin → Sections → Homepage, which is what MOM §1.7 asks for.
+ */
+const visibleBands = homepageBands
+  .filter((band) => band.isVisible)
+  .map((band) => ({ band, colleges: bandColleges(band) }))
+  // A band bound to an empty ranking list renders as a heading over nothing,
+  // so it is dropped rather than shown hollow.
+  .filter(({ colleges }) => colleges.length > 0);
 const topExams = exams.slice(0, 6);
 
 /** Explore Careers is three columns; the middle one stacks two panels. */
@@ -157,30 +170,43 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Top colleges */}
-      <section className="border-b border-line bg-bg">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h2 className="font-display text-3xl font-bold text-ink">Top Colleges</h2>
-            <p className="mt-2 text-sm text-ink-soft">Colleges Cherry Picked For You</p>
-          </div>
+      {/* College bands. Repeatable, so "Popular Colleges" can sit alongside
+          "Recommended Colleges" rather than replacing it. Alternating grounds
+          keep adjacent bands from reading as one long section. */}
+      {visibleBands.map(({ band, colleges: bandRows }, index) => (
+        <section
+          key={band.id}
+          className={`border-b border-line ${index % 2 === 0 ? "bg-bg" : "bg-bg-alt"}`}
+        >
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <h2 className="font-display text-3xl font-bold text-ink">{band.heading}</h2>
+              {band.subheading && (
+                <p className="mt-2 text-sm text-ink-soft">{band.subheading}</p>
+              )}
+            </div>
 
-          <StreamTabs
-            streams={streamTabs}
-            active="Management"
-            hrefFor={(stream) => `/${stream.toLowerCase()}/colleges`}
-          />
+            {/* Only the first band carries the stream tabs: repeating them under
+                every heading turns a navigation aid into wallpaper. */}
+            {index === 0 && (
+              <StreamTabs
+                streams={streamTabs}
+                active="Management"
+                hrefFor={(stream) => `/${stream.toLowerCase()}/colleges`}
+              />
+            )}
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {topColleges.map((college, i) => (
-              <TopCollegeCard key={`${college.slug}-${i}`} college={college} />
-            ))}
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {bandRows.map((college) => (
+                <TopCollegeCard key={college.slug} college={college} />
+              ))}
+            </div>
+            <div className="mt-10 text-center">
+              <ViewAllButton href="/colleges" />
+            </div>
           </div>
-          <div className="mt-10 text-center">
-            <ViewAllButton href="/colleges" />
-          </div>
-        </div>
-      </section>
+        </section>
+      ))}
 
       {/* Top exams — warm neutral band so it reads apart from Top Colleges */}
       <section className="border-b border-line bg-bg-alt">
