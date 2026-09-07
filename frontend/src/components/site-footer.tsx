@@ -1,22 +1,32 @@
 import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
+import { footerColumns } from "@/lib/collections-data";
+import { exams } from "@/lib/mock-data";
 
-const footerColumns = [
-  {
-    title: "MBA",
-    links: ["Top MBA Colleges", "MBA Colleges in Bangalore", "MBA Colleges in Pune", "MBA Fees", "CAT Exam"],
-  },
-  {
-    title: "Engineering",
-    links: ["Top Engineering Colleges", "B.Tech Colleges", "JEE Main", "JEE Advanced", "Engineering Predictor"],
-  },
+/**
+ * The exam and company columns, which are not collections.
+ *
+ * Exams link to exam records and Company to static pages, so neither is a group
+ * of colleges. They stay declared here; the college columns come from
+ * `footerColumns()` and are editable under Content → Collections.
+ */
+const staticColumns = [
   {
     title: "Exams",
-    links: ["CAT", "XAT", "CMAT", "Karnataka PGCET", "Exam Calendar"],
+    links: exams.slice(0, 4).map((exam) => ({
+      // The short form: "Common Admission Test (CAT)" does not fit a footer column.
+      label: exam.name.replace(/^.*\(([^)]+)\)$/, "$1"),
+      href: `/exams/${exam.slug}`,
+    })),
   },
   {
     title: "Company",
-    links: ["About Us", "Contact Us", "Privacy Policy", "Terms of Use"],
+    links: [
+      { label: "About Us", href: "/about" },
+      { label: "Contact Us", href: "/enquiry" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms of Use", href: "/terms" },
+    ],
   },
 ];
 
@@ -47,15 +57,21 @@ export function SiteFooter() {
           </form>
         </div>
 
+        {/*
+          The college columns are collections — an editor adds "MBA Colleges in
+          Hyderabad" under Content → Collections, places it in a footer column,
+          and it appears here pointing at its own page. Previously every link
+          here was a string with href="#".
+        */}
         <div className="grid grid-cols-2 gap-8 py-10 sm:grid-cols-4">
-          {footerColumns.map((col) => (
+          {[...footerColumns(), ...staticColumns].map((col) => (
             <div key={col.title}>
               <p className="font-display text-sm font-semibold text-white">{col.title}</p>
               <ul className="mt-3 space-y-2 text-sm text-white/60">
                 {col.links.map((link) => (
-                  <li key={link}>
-                    <Link href="#" className="hover:text-white">
-                      {link}
+                  <li key={link.href}>
+                    <Link href={link.href} className="hover:text-white">
+                      {link.label}
                     </Link>
                   </li>
                 ))}

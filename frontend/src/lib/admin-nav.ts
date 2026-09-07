@@ -57,6 +57,14 @@ export const adminNav: AdminNavSection[] = [
       { label: "Specialisations", href: "/admin/specialisations", phase: 1 },
       { label: "Exams", href: "/admin/exams", phase: 1 },
       { label: "Rankings", href: "/admin/rankings", phase: 1 },
+      /*
+        Sits under Content rather than Sections because a collection owns a URL.
+        It was the "College bands" tab inside Sections → Homepage, which only
+        made sense while a band was the sole thing a group of colleges could be;
+        a collection that also fills a footer column has no business being
+        edited from a screen named after a page it does not appear on.
+      */
+      { label: "Collections", href: "/admin/collections", phase: 1 },
       { label: "Locations", href: "/admin/locations", phase: 1 },
       { label: "Articles", href: "/admin/articles", phase: 2 },
       { label: "Static Pages", href: "/admin/pages", phase: 1 },

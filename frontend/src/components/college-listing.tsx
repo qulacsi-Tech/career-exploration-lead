@@ -21,6 +21,7 @@ export function CollegeListing({
   colleges,
   emptyMessage,
   sidebar,
+  children,
 }: {
   breadcrumbs: { label: string; href?: string }[];
   title: string;
@@ -29,6 +30,13 @@ export function CollegeListing({
   colleges: College[];
   emptyMessage: string;
   sidebar?: ReactNode;
+  /**
+   * Extra content below the listing, inside the main column so it keeps the
+   * sidebar beside it. Used for a collection's editor-authored intro copy and
+   * FAQ block — rich text and structured records, which the plain-string
+   * `intro` prop above cannot carry.
+   */
+  children?: ReactNode;
 }) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -71,6 +79,8 @@ export function CollegeListing({
               </Link>
             </div>
           )}
+
+          {children}
         </div>
 
         {sidebar && <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">{sidebar}</aside>}

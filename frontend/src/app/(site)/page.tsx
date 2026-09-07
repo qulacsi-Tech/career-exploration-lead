@@ -21,7 +21,7 @@ import {
   dataHighlights,
   homeStreams,
 } from "@/lib/mock-data";
-import { homepageBands, bandColleges } from "@/lib/rankings-data";
+import { homepageCollections, collectionHref } from "@/lib/collections-data";
 
 const streamTabs = [
   "Management",
@@ -40,15 +40,15 @@ const streamTabs = [
  * so the page and the editor cannot disagree.
  *
  * Was `[...colleges, ...colleges].slice(0, 6)` — the directory padded out to
- * fill a six-card grid. Each band now comes from a ranking list chosen in
- * Admin → Sections → Homepage, which is what MOM §1.7 asks for.
+ * fill a six-card grid, then bands bound to ranking lists (MOM §1.7). Each band
+ * is now a *collection* placed on the homepage: the group of colleges is edited
+ * under Content → Collections, where it also owns a page and can fill a footer
+ * column, and this page reads its homepage placements.
+ *
+ * Hidden, unpublished and empty ones are dropped inside the selector — a band
+ * is a heading over nothing otherwise.
  */
-const visibleBands = homepageBands
-  .filter((band) => band.isVisible)
-  .map((band) => ({ band, colleges: bandColleges(band) }))
-  // A band bound to an empty ranking list renders as a heading over nothing,
-  // so it is dropped rather than shown hollow.
-  .filter(({ colleges }) => colleges.length > 0);
+const visibleBands = homepageCollections();
 const topExams = exams.slice(0, 6);
 
 /** Explore Careers is three columns; the middle one stacks two panels. */
@@ -173,16 +173,21 @@ export default function Home() {
       {/* College bands. Repeatable, so "Popular Colleges" can sit alongside
           "Recommended Colleges" rather than replacing it. Alternating grounds
           keep adjacent bands from reading as one long section. */}
-      {visibleBands.map(({ band, colleges: bandRows }, index) => (
+      {visibleBands.map(({ collection, colleges: bandRows }, index) => (
         <section
-          key={band.id}
+          key={collection.id}
           className={`border-b border-line ${index % 2 === 0 ? "bg-bg" : "bg-bg-alt"}`}
         >
           <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="text-center">
-              <h2 className="font-display text-3xl font-bold text-ink">{band.heading}</h2>
-              {band.subheading && (
-                <p className="mt-2 text-sm text-ink-soft">{band.subheading}</p>
+              {/* `heading` is the homepage-specific wording when the page
+                  title is written for search ("Top Colleges" here, "Top
+                  Management Colleges in India" on the page itself). */}
+              <h2 className="font-display text-3xl font-bold text-ink">
+                {collection.heading || collection.title}
+              </h2>
+              {collection.subheading && (
+                <p className="mt-2 text-sm text-ink-soft">{collection.subheading}</p>
               )}
             </div>
 
@@ -202,7 +207,9 @@ export default function Home() {
               ))}
             </div>
             <div className="mt-10 text-center">
-              <ViewAllButton href="/colleges" />
+              {/* The band's own page, not the directory: a visitor clicking
+                  through "Top Colleges" wants more of those, not all 30,000. */}
+              <ViewAllButton href={collectionHref(collection)} />
             </div>
           </div>
         </section>

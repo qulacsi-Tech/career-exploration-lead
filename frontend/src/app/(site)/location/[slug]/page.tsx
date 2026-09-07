@@ -6,31 +6,13 @@ import {
   SidebarLinks,
 } from "@/components/college-listing";
 import { colleges, locations, homeStreams } from "@/lib/mock-data";
+import { matchesCity } from "@/lib/location-match";
 
 export function generateStaticParams() {
   return locations.map((location) => ({ slug: location.slug }));
 }
 
 const getLocation = (slug: string) => locations.find((location) => location.slug === slug);
-
-/**
- * The city's name in the directory and the city on a college record are not
- * always spelled the same — "Bangalore" in the locations list, "Bengaluru" on
- * the colleges. Aliases keep the join working without rewriting either.
- *
- * This is exactly the kind of thing that becomes a real column once the API
- * exists; for now it lives here rather than being silently wrong.
- */
-const CITY_ALIASES: Record<string, string[]> = {
-  bangalore: ["bangalore", "bengaluru"],
-  "delhi-ncr": ["delhi", "new delhi", "gurgaon", "gurugram", "noida", "delhi ncr"],
-  mumbai: ["mumbai", "navi mumbai", "thane"],
-};
-
-const matchesCity = (citySlug: string, cityName: string, collegeCity: string) => {
-  const names = CITY_ALIASES[citySlug] ?? [cityName.toLowerCase()];
-  return names.includes(collegeCity.toLowerCase());
-};
 
 export async function generateMetadata({
   params,

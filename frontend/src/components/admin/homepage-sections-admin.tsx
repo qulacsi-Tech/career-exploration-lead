@@ -10,7 +10,7 @@ import {
   homeStreams,
 } from "@/lib/mock-data";
 import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
-import { CollegeBandsEditor } from "@/components/admin/college-bands-editor";
+import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
 import { TextField } from "@/components/admin/admin-fields";
 
 /*
@@ -94,14 +94,16 @@ export function HomepageSectionsAdmin() {
         },
         {
           /*
-            Was a single "Top Colleges" section with a hand-ordered pool. It is
-            now repeatable bands bound to ranking lists (MOM §1.7): the ordering
-            lives in Rankings, and this screen chooses which ranking each band
-            shows rather than keeping a second copy of the order.
+            Was a single "Top Colleges" section with a hand-ordered pool, then
+            repeatable bands bound to ranking lists (MOM §1.7). Now the bands are
+            collections, edited under Content → Collections: a group of colleges
+            that also fills a footer column and owns a page is not a homepage
+            concern. What is left here is the homepage's own decision — which
+            collections appear, in what order, at how many cards.
           */
           id: "college-bands",
           label: "College bands",
-          render: () => <CollegeBandsEditor />,
+          render: () => <HomepageCollectionsPicker />,
         },
         {
           id: "top-exams",
