@@ -1,17 +1,14 @@
 /**
+ * ARCHIVED — the original plated lockup, kept verbatim.
+ *
+ * The live mark is `site-logo.tsx`, which drops the plate and sits directly on
+ * whatever ground it is placed on. This file is the version that carried the
+ * dark brand-ink plate behind the type: nothing renders it today, and it is
+ * here so the plated artwork can be restored or referenced without digging
+ * through history. If the live logo changes shape, this one does not have to
+ * follow — it is a snapshot, not a variant.
+ *
  * The TopCollegePath mark, drawn inline so it recolours with the palette.
- *
- * ## No plate
- *
- * The lockup used to sit on a dark brand-ink plate, which read as a brown box
- * pasted onto both the white header and the dark footer. The plate and its
- * frame are gone; the mark now sits directly on the page ground, and `surface`
- * picks the type colours that ground needs. The plated original is archived
- * verbatim in `site-logo-plated.tsx`.
- *
- * Only the *type* switches. The staircase, pole and flag keep their gold and
- * brand gradients on both grounds — they carry the brand, and they hold up
- * against white and against the footer ink alike.
  *
  * Inline rather than an <Image> pointing at a .svg for the same reason
  * hero-backdrop.tsx is: every fill reads a --logo-* custom property, so the
@@ -110,16 +107,8 @@ const TAGLINE_CENTER_X = 325;
 const TAGLINE_Y = 99;
 const TAGLINE_SIZE = 16;
 
-export function SiteLogo({
+export function SiteLogoPlated({
   className,
-  /**
-   * Which ground the mark is sitting on.
-   *
-   * `light` is the default (the header, and any page body). `dark` is for the
-   * footer and any brand-coloured band: the wordmark goes white and the
-   * tagline lifts, because ink-on-ink is unreadable.
-   */
-  surface = "light",
   /**
    * Scopes the gradient and filter ids.
    *
@@ -129,27 +118,21 @@ export function SiteLogo({
    * being harmless the moment one is tinted differently, so the call sites keep
    * them distinct.
    */
-  idPrefix = "ctlogo",
+  idPrefix = "ctlogo-plated",
 }: {
   className?: string;
-  surface?: "light" | "dark";
   idPrefix?: string;
 }) {
   const id = (name: string) => `${idPrefix}-${name}`;
-  const onDark = surface === "dark";
-
-  // "Top College" carries the weight; "Path" stays accent gold on both grounds.
-  const wordFill = onDark ? "var(--logo-word)" : "var(--color-ink)";
-  const taglineFill = onDark
-    ? "var(--logo-tagline)"
-    : "color-mix(in oklab, var(--color-ink-soft) 88%, var(--color-brand))";
-  // On white the gold flag needs a darker keyline to hold its edge; on the
-  // footer the plate colour it used to sit on is the right outline.
-  const flagStroke = onDark ? "var(--logo-plate-bot)" : "var(--color-brand-dark)";
 
   return (
     <svg viewBox={`0 0 ${PLATE_W} ${PLATE_H}`} aria-hidden="true" className={className}>
       <defs>
+        <linearGradient id={id("plate")} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="var(--logo-plate-top)" />
+          <stop offset="100%" stopColor="var(--logo-plate-bot)" />
+        </linearGradient>
+
         <linearGradient id={id("bar")} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="var(--logo-bar-lo)" />
           <stop offset="55%" stopColor="var(--logo-bar-mid)" />
@@ -185,6 +168,19 @@ export function SiteLogo({
         </filter>
       </defs>
 
+      <rect x="0" y="0" width={PLATE_W} height={PLATE_H} rx="18" fill={`url(#${id("plate")})`} />
+      <rect
+        className="ctlogo-frame"
+        x="1"
+        y="1"
+        width={PLATE_W - 2}
+        height={PLATE_H - 2}
+        rx="17"
+        fill="none"
+        stroke="var(--logo-frame)"
+        strokeWidth="2"
+      />
+
       {/* The mark, in its native coordinates and placed by MARK_TRANSFORM. */}
       <g transform={MARK_TRANSFORM}>
         {/* steps: 5 bars of 24 on a 31 pitch, x 18 -> 166, baseline y 148.
@@ -215,7 +211,7 @@ export function SiteLogo({
           className="ctlogo-flag"
           d="M 158 18 L 210 34 L 158 50 Z"
           fill={`url(#${id("gold")})`}
-          stroke={flagStroke}
+          stroke="var(--logo-plate-bot)"
           strokeWidth="1.5"
           strokeLinejoin="round"
         />
@@ -229,8 +225,8 @@ export function SiteLogo({
         fontWeight="800"
         fontSize={WORD_SIZE}
       >
-        <tspan className="ctlogo-word ctlogo-word1" fill={wordFill}>Top</tspan>
-        <tspan className="ctlogo-word ctlogo-word2" dx="4" fill={wordFill}>College</tspan>
+        <tspan className="ctlogo-word ctlogo-word1" fill="var(--logo-word)">Top</tspan>
+        <tspan className="ctlogo-word ctlogo-word2" dx="4" fill="var(--logo-word)">College</tspan>
         <tspan className="ctlogo-word ctlogo-word3" dx="4" fill="var(--logo-accent)">Path</tspan>
       </text>
 
@@ -243,7 +239,7 @@ export function SiteLogo({
         fontWeight="700"
         fontSize={TAGLINE_SIZE}
         letterSpacing="0.3"
-        fill={taglineFill}
+        fill="var(--logo-tagline)"
       >
         {"DISCOVER  "}
         <tspan className="ctlogo-dot ctlogo-dot1" fill="var(--logo-accent)">

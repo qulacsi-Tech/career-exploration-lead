@@ -10,7 +10,7 @@ import { RecommendedProgram } from "@/lib/mock-data";
  */
 export function RecommendedProgramCard({ program }: { program: RecommendedProgram }) {
   return (
-    <article className="group flex flex-col rounded-xl bg-surface p-3 shadow-sm transition hover:shadow-md sm:p-4">
+    <article className="group flex flex-col rounded-xl border border-white/60 bg-surface/70 p-3 shadow-sm backdrop-blur-xl transition hover:shadow-lg sm:p-4">
       <div className="relative aspect-[21/9] w-full overflow-hidden rounded-lg border border-line bg-bg-alt sm:aspect-[16/9]">
         <Image
           src={`/images/programs/${program.slug}.svg`}

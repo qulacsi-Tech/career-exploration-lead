@@ -91,7 +91,7 @@ export function SiteFooter() {
             header's — both lockups render on every page.
           */}
           <Link href="/" className="shrink-0" aria-label="TopCollegePath — home">
-            <SiteLogo idPrefix="ctlogo-footer" className="h-20 w-auto" />
+            <SiteLogo idPrefix="ctlogo-footer" surface="dark" className="h-20 w-auto" />
           </Link>
           <div className="flex flex-col gap-1 sm:items-end">
             <p>&copy; {new Date().getFullYear()} CollegeTime. All rights reserved.</p>

@@ -9,7 +9,7 @@ import { TagLink } from "@/components/ui/tag-link";
  */
 export function CareerPanelCard({ panels }: { panels: CareerPanel[] }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-6">
+    <div className="rounded-xl border border-white/70 bg-surface/60 p-6 backdrop-blur-xl">
       {panels.map((panel, i) => (
         <section key={panel.title} className={i > 0 ? "mt-8" : undefined}>
           <div className="flex items-baseline justify-between gap-3">

@@ -17,7 +17,7 @@ export function TopCollegeCard({ college }: { college: College }) {
     "/images/colleges/bengaluru-institute-of-management-studies.jpg";
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm">
+    <article className="group flex flex-col overflow-hidden rounded-lg border border-white/70 bg-surface/60 backdrop-blur-xl transition hover:border-brand/40 hover:shadow-lg">
       <div className="flex flex-1 items-start gap-4 p-4">
         <div className="relative h-[72px] w-24 shrink-0 overflow-hidden rounded-md border border-line bg-bg-alt">
           <Image

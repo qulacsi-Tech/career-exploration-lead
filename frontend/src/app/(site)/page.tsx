@@ -11,6 +11,9 @@ import { CareerPanelCard } from "@/components/career-panel-card";
 import { UniversityCard } from "@/components/university-card";
 import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
+import { StoryStreamExplorer } from "@/components/story-stream-explorer";
+import { SectionJourneyConnector } from "@/components/ui/section-journey-connector";
+import { FlowRibbons } from "@/components/ui/flow-ribbons";
 import {
   exams,
   locations,
@@ -140,35 +143,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Browse by location */}
-      <section className="border-b border-line bg-bg">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <h2 className="text-center font-display text-2xl font-bold text-ink">Browse By Location</h2>
-          <div className="mt-8">
-            <LocationCarousel locations={locations} />
-          </div>
-        </div>
+      {/* Browse by location - Storytelling Hub Showcase */}
+      <section className="relative bg-bg pt-10">
+        <LocationCarousel locations={locations} />
       </section>
 
-      {/* Explore your future */}
-      <section className="bg-brand py-16">
-        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl font-bold text-white">Explore Your Future</h2>
-          <p className="mt-2 text-sm text-white/80">Select a stream to see colleges cherry-picked for you</p>
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {homeStreams.map((s) => (
-              <Link
-                key={s.name}
-                href={`/${s.slug}/colleges`}
-                className="rounded-xl bg-white/10 px-5 py-5 text-left text-white transition hover:bg-white/20"
-              >
-                <p className="font-medium">{s.name}</p>
-                <p className="text-xs text-white/70">{s.count.toLocaleString()} colleges</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Storytelling Journey Connector Bridge */}
+      <SectionJourneyConnector
+        fromBadge="Step 01: Regional Hubs"
+        toBadge="Step 02: Academic Streams"
+        title="Connect location with your target discipline"
+      />
+
+      {/* Explore your future - Interactive Story Stream Explorer */}
+      <StoryStreamExplorer streams={homeStreams} />
 
       {/* College bands. Repeatable, so "Popular Colleges" can sit alongside
           "Recommended Colleges" rather than replacing it. Alternating grounds
@@ -176,9 +164,10 @@ export default function Home() {
       {visibleBands.map(({ collection, colleges: bandRows }, index) => (
         <section
           key={collection.id}
-          className={`border-b border-line ${index % 2 === 0 ? "bg-bg" : "bg-bg-alt"}`}
+          className={`relative overflow-hidden border-b border-line ${index % 2 === 0 ? "bg-bg" : "bg-bg-alt"}`}
         >
-          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+          <FlowRibbons segment={2 + index} />
+          <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="text-center">
               {/* `heading` is the homepage-specific wording when the page
                   title is written for search ("Top Colleges" here, "Top
@@ -216,8 +205,9 @@ export default function Home() {
       ))}
 
       {/* Top exams — warm neutral band so it reads apart from Top Colleges */}
-      <section className="border-b border-line bg-bg-alt">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden border-b border-line bg-bg-alt">
+        <FlowRibbons segment={5} />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-3xl font-bold text-ink">Top Exams</h2>
             <p className="mt-2 text-sm text-ink-soft">Exams Cherry Picked For You</p>
@@ -241,8 +231,9 @@ export default function Home() {
       </section>
 
       {/* Recommended colleges */}
-      <section className="bg-brand py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-brand py-20">
+        <FlowRibbons segment={6} tone="dark" intensity="bold" />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 className="text-center font-display text-3xl font-bold text-white">Recommended Colleges</h2>
           <div className="mt-10 grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {recommendedPrograms.map((program) => (
@@ -253,8 +244,9 @@ export default function Home() {
       </section>
 
       {/* Explore careers */}
-      <section className="border-b border-line bg-bg">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden border-b border-line bg-bg">
+        <FlowRibbons segment={7} />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-3xl font-bold text-ink">Explore Careers</h2>
             <p className="mt-2 text-sm text-ink-soft">
@@ -309,8 +301,9 @@ export default function Home() {
       </section>
 
       {/* Recommended university */}
-      <section className="border-b border-line bg-bg-alt">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden border-b border-line bg-bg-alt">
+        <FlowRibbons segment={8} />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <h2 className="text-center font-display text-3xl font-bold text-ink">Recommended University</h2>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {recommendedUniversities.map((university) => (
@@ -321,8 +314,9 @@ export default function Home() {
       </section>
 
       {/* Data */}
-      <section className="border-b border-line bg-bg-tint">
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden border-b border-line bg-bg-tint">
+        <FlowRibbons segment={9} />
+        <div className="relative z-10 mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-4xl font-extrabold text-ink sm:text-5xl">Data</h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm font-semibold text-ink">
@@ -334,7 +328,7 @@ export default function Home() {
             {dataHighlights.map((highlight, i) => (
               <div
                 key={highlight.slug}
-                className={`border-t border-line ${i % 2 === 0 ? "sm:border-r" : ""}`}
+                className={`border-t border-white/70 bg-surface/45 backdrop-blur-xl ${i % 2 === 0 ? "sm:border-r" : ""}`}
               >
                 <DataHighlight highlight={highlight} />
               </div>
@@ -344,8 +338,9 @@ export default function Home() {
       </section>
 
       {/* Articles */}
-      <section className="bg-bg">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-bg">
+        <FlowRibbons segment={10} />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl font-bold text-ink sm:text-3xl">Latest News &amp; Updates</h2>
             <Link href="/articles" className="text-sm font-semibold text-brand hover:underline">
@@ -357,7 +352,7 @@ export default function Home() {
               <Link
                 key={a.slug}
                 href={`/articles/${a.slug}`}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-white/70 bg-surface/60 backdrop-blur-xl transition hover:border-brand/40 hover:shadow-lg"
               >
                 <div className="relative aspect-[21/9] w-full overflow-hidden bg-bg-alt sm:aspect-[16/9]">
                   <Image

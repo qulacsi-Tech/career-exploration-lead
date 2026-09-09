@@ -12,7 +12,7 @@ export function UniversityCard({
   university: { slug: string; name: string; city: string; state: string };
 }) {
   return (
-    <article className="group overflow-hidden rounded-xl border border-line bg-surface transition hover:border-brand/40 hover:shadow-sm">
+    <article className="group overflow-hidden rounded-xl border border-white/70 bg-surface/60 backdrop-blur-xl transition hover:border-brand/40 hover:shadow-lg">
       <div className="relative aspect-[21/9] w-full overflow-hidden bg-bg-alt sm:aspect-[16/10]">
         <Image
           src={`/images/universities/${university.slug}.svg`}
