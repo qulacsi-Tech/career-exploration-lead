@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useScroll, useTransform, MotionValue } from "framer-motion";
+import { LeafGlow } from "@/components/ui/leaf-glow";
 import { MapPin, Building2, ArrowUpRight, ArrowDown } from "lucide-react";
 
 interface Location {
@@ -56,78 +57,6 @@ const locationMeta: Record<
 
 /** Scroll span reserved for the cards; the tail lets the stage unpin calmly. */
 const TRACK_END = 0.9;
-
-/**
- * Animated colour wash that lives *under* the glass.
- *
- * Wide, heavily blurred arcs drift, breathe, and draw themselves as the
- * section advances. They sit directly on the page ground — there is no band of
- * flat colour anywhere — so this section stays continuous with the page.
- */
-function LightRibbons({ progress }: { progress: MotionValue<number> }) {
-  const pathLength = useTransform(progress, [0, TRACK_END], [0.08, 1]);
-  const drift = useTransform(progress, [0, 1], [40, -80]);
-
-  const arcs = [
-    { d: "M -140 980 C 300 760, 260 300, 60 -80", color: "#2f8f7a", body: 0.3 },
-    { d: "M 1580 940 C 1160 720, 1200 280, 1380 -80", color: "var(--color-brand)", body: 0.34 },
-    { d: "M 1580 620 C 1180 900, 620 900, -140 760", color: "var(--color-brand)", body: 0.16 },
-  ];
-
-  return (
-    <motion.div
-      style={{ y: drift }}
-      className="pointer-events-none absolute inset-x-0 -top-32 bottom-0 z-0 overflow-hidden"
-    >
-      <svg
-        className="h-full w-full"
-        viewBox="0 0 1440 900"
-        preserveAspectRatio="none"
-        fill="none"
-        aria-hidden="true"
-      >
-        <defs>
-          <filter id="ribbon-soft" x="-40%" y="-20%" width="180%" height="140%">
-            <feGaussianBlur stdDeviation="36" />
-          </filter>
-          <filter id="ribbon-edge" x="-40%" y="-20%" width="180%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="b" />
-            <feMerge>
-              <feMergeNode in="b" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        {arcs.map((arc, i) => (
-          <g key={i}>
-            {/* Wide diffused body, breathing on its own cycle */}
-            <motion.path
-              d={arc.d}
-              stroke={arc.color}
-              strokeWidth={i === 2 ? 80 : 120}
-              strokeLinecap="round"
-              filter="url(#ribbon-soft)"
-              initial={{ strokeOpacity: arc.body }}
-              animate={{ strokeOpacity: [arc.body, arc.body * 0.55, arc.body] }}
-              transition={{ duration: 9 + i * 2, repeat: Infinity, ease: "easeInOut" }}
-            />
-            {/* Crisp edge that draws itself with scroll */}
-            <motion.path
-              d={arc.d}
-              stroke={arc.color}
-              strokeWidth="1.5"
-              strokeOpacity={i === 2 ? 0.3 : 0.45}
-              strokeLinecap="round"
-              filter="url(#ribbon-edge)"
-              style={{ pathLength }}
-            />
-          </g>
-        ))}
-      </svg>
-    </motion.div>
-  );
-}
 
 /**
  * Frosted plate the deck sits on. It frames the banner and blurs the moving
@@ -387,7 +316,7 @@ export function LocationCarousel({ locations }: { locations: Location[] }) {
     >
       {/* Sticky stage — transparent, so the page ground runs straight through */}
       <div className="sticky top-16 z-10 flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden px-4 sm:px-8">
-        <LightRibbons progress={scrollYProgress} />
+        <LeafGlow variant={0} intensity="bold" />
 
         {/* Header */}
         <div className="relative z-20 mx-auto w-full max-w-3xl shrink-0 pt-8 text-center sm:pt-10">

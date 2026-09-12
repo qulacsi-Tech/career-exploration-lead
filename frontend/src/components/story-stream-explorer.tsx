@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, useInView, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { LeafGlow } from "@/components/ui/leaf-glow";
 import {
   Briefcase,
   Cpu,
@@ -77,82 +78,6 @@ const SPIN_TURNS = 2; // full rotations per spin
 const FLIP_GAP = 600; // ms of stillness between the last spin and the first flip
 const FLIP_STEP = 450; // ms between coin flips
 const CYCLE = 8000; // ms — a new shuffle every eight seconds
-
-/**
- * The same ambient arcs as the destination stage, pushed harder: more strands,
- * stronger colour, and a faster breathing cycle, so step two reads as the
- * louder continuation of step one rather than a different visual language.
- */
-function StreamRibbons() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-
-  const pathLength = useTransform(scrollYProgress, [0.05, 0.75], [0.05, 1]);
-  const drift = useTransform(scrollYProgress, [0, 1], [70, -120]);
-
-  const arcs = [
-    { d: "M -160 940 C 320 780, 240 300, 40 -100", color: "#2f8f7a", w: 130, body: 0.4 },
-    { d: "M 1600 900 C 1120 700, 1220 240, 1400 -100", color: "var(--color-brand)", w: 140, body: 0.46 },
-    { d: "M 1600 560 C 1180 880, 560 880, -160 700", color: "var(--color-brand)", w: 90, body: 0.24 },
-    { d: "M -160 220 C 380 340, 1040 120, 1600 300", color: "#2f8f7a", w: 80, body: 0.2 },
-  ];
-
-  return (
-    <motion.div
-      ref={ref}
-      style={{ y: drift }}
-      className="pointer-events-none absolute inset-x-0 -top-40 bottom-0 z-0 overflow-hidden"
-    >
-      <svg
-        className="h-full w-full"
-        viewBox="0 0 1440 900"
-        preserveAspectRatio="none"
-        fill="none"
-        aria-hidden="true"
-      >
-        <defs>
-          <filter id="stream-soft" x="-40%" y="-20%" width="180%" height="140%">
-            <feGaussianBlur stdDeviation="34" />
-          </filter>
-          <filter id="stream-edge" x="-40%" y="-20%" width="180%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="b" />
-            <feMerge>
-              <feMergeNode in="b" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        {arcs.map((arc, i) => (
-          <g key={i}>
-            <motion.path
-              d={arc.d}
-              stroke={arc.color}
-              strokeWidth={arc.w}
-              strokeLinecap="round"
-              filter="url(#stream-soft)"
-              initial={{ strokeOpacity: arc.body }}
-              animate={{ strokeOpacity: [arc.body, arc.body * 0.5, arc.body] }}
-              transition={{ duration: 7 + i * 1.5, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.path
-              d={arc.d}
-              stroke={arc.color}
-              strokeWidth="1.5"
-              strokeOpacity={0.5}
-              strokeLinecap="round"
-              filter="url(#stream-edge)"
-              style={{ pathLength }}
-            />
-          </g>
-        ))}
-      </svg>
-    </motion.div>
-  );
-}
 
 /**
  * One disc in the play.
@@ -314,7 +239,7 @@ export function StoryStreamExplorer({ streams }: { streams: StreamItem[] }) {
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-bg-alt py-20 lg:py-28">
-      <StreamRibbons />
+      <LeafGlow variant={1} intensity="bold" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}

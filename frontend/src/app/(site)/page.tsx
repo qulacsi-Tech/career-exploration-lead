@@ -13,7 +13,9 @@ import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
 import { StoryStreamExplorer } from "@/components/story-stream-explorer";
 import { SectionJourneyConnector } from "@/components/ui/section-journey-connector";
-import { FlowRibbons } from "@/components/ui/flow-ribbons";
+import { LeafGlow } from "@/components/ui/leaf-glow";
+import { AutoStoryFrame } from "@/components/ui/auto-story-frame";
+import { NewspaperDispatch } from "@/components/newspaper-dispatch";
 import {
   exams,
   locations,
@@ -166,7 +168,7 @@ export default function Home() {
           key={collection.id}
           className={`relative overflow-hidden border-b border-line ${index % 2 === 0 ? "bg-bg" : "bg-bg-alt"}`}
         >
-          <FlowRibbons segment={2 + index} />
+          <LeafGlow variant={2 + index} />
           <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="text-center">
               {/* `heading` is the homepage-specific wording when the page
@@ -206,7 +208,7 @@ export default function Home() {
 
       {/* Top exams — warm neutral band so it reads apart from Top Colleges */}
       <section className="relative overflow-hidden border-b border-line bg-bg-alt">
-        <FlowRibbons segment={5} />
+        <LeafGlow variant={5} />
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-3xl font-bold text-ink">Top Exams</h2>
@@ -230,22 +232,35 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Recommended colleges */}
-      <section className="relative overflow-hidden bg-brand py-20">
-        <FlowRibbons segment={6} tone="dark" intensity="bold" />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-center font-display text-3xl font-bold text-white">Recommended Colleges</h2>
-          <div className="mt-10 grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {recommendedPrograms.map((program) => (
-              <RecommendedProgramCard key={program.slug} program={program} />
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Recommended colleges — one programme at a time, told as an editorial
+          spread: the picture sits inside the copy and the type wraps it. */}
+      <AutoStoryFrame
+        segment={6}
+        tone="brand"
+        label="Recommended"
+        title="Programs worth"
+        highlight="a closer look"
+        items={recommendedPrograms.map((program) => ({
+          key: program.slug,
+          eyebrow: "Online & On-campus",
+          headline: program.name,
+          subline: `Offered at ${program.university}`,
+          image: `/images/programs/${program.slug}.svg`,
+          imageAlt: `${program.name} program visual`,
+          facts: [
+            { label: "Online duration", value: program.online.duration },
+            { label: "Online fees", value: program.online.fees },
+            { label: "On-campus duration", value: program.onCampus.duration },
+            { label: "On-campus fees", value: program.onCampus.fees },
+          ],
+          href: `/courses/${program.slug}`,
+          cta: "Explore this program",
+        }))}
+      />
 
       {/* Explore careers */}
       <section className="relative overflow-hidden border-b border-line bg-bg">
-        <FlowRibbons segment={7} />
+        <LeafGlow variant={7} />
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-3xl font-bold text-ink">Explore Careers</h2>
@@ -300,22 +315,31 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Recommended university */}
-      <section className="relative overflow-hidden border-b border-line bg-bg-alt">
-        <FlowRibbons segment={8} />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <h2 className="text-center font-display text-3xl font-bold text-ink">Recommended University</h2>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {recommendedUniversities.map((university) => (
-              <UniversityCard key={university.slug} university={university} />
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Recommended university — same editorial frame, quieter ground */}
+      <AutoStoryFrame
+        segment={8}
+        label="Recommended"
+        title="Campuses shaping"
+        highlight="their regions"
+        items={recommendedUniversities.map((university) => ({
+          key: university.slug,
+          eyebrow: `${university.city}, ${university.state}`,
+          headline: university.name,
+          subline: "Accredited programs, verified placement records and open intakes.",
+          image: `/images/universities/${university.slug}.svg`,
+          imageAlt: `${university.name} campus`,
+          facts: [
+            { label: "City", value: university.city },
+            { label: "State", value: university.state },
+          ],
+          href: `/college/${university.slug}`,
+          cta: "Know more",
+        }))}
+      />
 
       {/* Data */}
       <section className="relative overflow-hidden border-b border-line bg-bg-tint">
-        <FlowRibbons segment={9} />
+        <LeafGlow variant={9} />
         <div className="relative z-10 mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-4xl font-extrabold text-ink sm:text-5xl">Data</h2>
@@ -337,44 +361,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Articles */}
-      <section className="relative overflow-hidden bg-bg">
-        <FlowRibbons segment={10} />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-2xl font-bold text-ink sm:text-3xl">Latest News &amp; Updates</h2>
-            <Link href="/articles" className="text-sm font-semibold text-brand hover:underline">
-              View All
-            </Link>
-          </div>
-          <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-3 sm:gap-6">
-            {articles.map((a) => (
-              <Link
-                key={a.slug}
-                href={`/articles/${a.slug}`}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-white/70 bg-surface/60 backdrop-blur-xl transition hover:border-brand/40 hover:shadow-lg"
-              >
-                <div className="relative aspect-[21/9] w-full overflow-hidden bg-bg-alt sm:aspect-[16/9]">
-                  <Image
-                    src={`/images/articles/${a.slug}.svg`}
-                    alt={a.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <div className="flex flex-1 flex-col p-4 sm:p-6">
-                  <p className="text-xs text-ink-faint">{a.date}</p>
-                  <p className="mt-1.5 font-display text-sm font-semibold text-ink group-hover:text-brand sm:mt-2 sm:text-base">
-                    {a.title}
-                  </p>
-                  <p className="mt-1.5 text-xs text-ink-soft sm:mt-2 sm:text-sm">{a.excerpt}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Articles — set as a broadsheet that folds itself to the next edition */}
+      <NewspaperDispatch articles={articles} />
 
       {/* Client-review palette picker. Homepage only; remove once a variant is
           signed off. See components/theme-switcher.tsx. */}
