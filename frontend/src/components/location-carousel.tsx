@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useScroll, useTransform, MotionValue } from "framer-motion";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import { LeafGlow } from "@/components/ui/leaf-glow";
-import { MapPin, Building2, ArrowUpRight, ArrowDown } from "lucide-react";
+import { MapPin, Building2, ArrowUpRight, ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
 
 interface Location {
   slug: string;
@@ -55,69 +55,183 @@ const locationMeta: Record<
   },
 };
 
-/** Scroll span reserved for the cards; the tail lets the stage unpin calmly. */
-const TRACK_END = 0.9;
+/**
+ * Where each card flies in from when its turn comes. Fixed per position rather
+ * than randomised, so server and client agree and the choreography repeats
+ * identically on every pass through the deck.
+ */
+const ENTRY_VECTORS = [
+  { x: 0, y: 1 }, // up from the bottom
+  { x: 1, y: 0.3 }, // in from the right
+  { x: 0, y: -1 }, // down from the top
+  { x: -1, y: 0.2 }, // in from the left
+  { x: 0.6, y: 1 }, // up from the bottom-right
+  { x: -0.8, y: -0.75 }, // down from the top-left
+];
+
+const X_THROW = 900;
+const Y_THROW = 620;
+
+/** How long a destination holds the stage before the deck advances. */
+const DWELL = 4500;
 
 /**
- * Frosted plate the deck sits on. It frames the banner and blurs the moving
- * ribbons travelling behind it, so the animation reads through the glass.
+ * Destination hubs, dealt as a card deck inside one full-width frame.
+ *
+ * The deck used to be scroll-driven: the section reserved several screens of
+ * track and pinned a sticky stage, so a visitor had to scroll the whole deck
+ * before the page moved on. It now runs on a timer instead — the section is an
+ * ordinary block in the flow, the page scrolls past at its own pace, and the
+ * cards advance by themselves. The entry choreography is unchanged: each card
+ * flies in from its own direction, locks in the centre, then settles back as
+ * the next lands on top.
+ *
+ * It pauses on hover, so reading a card never fights the rotation, and stops
+ * altogether while the section is off screen.
  */
-function GlassFrame() {
+export function LocationCarousel({ locations }: { locations: Location[] }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  // No `once`: the timer stops when the frame is scrolled away.
+  const inView = useInView(sectionRef, { amount: 0.35 });
+  const reduceMotion = useReducedMotion();
+
+  const [active, setActive] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [hovered, setHovered] = useState(false);
+
+  const total = locations.length;
+  const running = playing && !hovered && inView && !reduceMotion && total > 1;
+
+  const go = useCallback(
+    (dir: 1 | -1) => setActive((i) => (i + dir + total) % total),
+    [total]
+  );
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = setTimeout(() => setActive((i) => (i + 1) % total), DWELL);
+    return () => clearTimeout(timer);
+  }, [active, running, total]);
+
+  const current = locations[active];
+
   return (
-    <div className="pointer-events-none absolute -inset-3 z-0 overflow-hidden rounded-[40px] border border-white/60 bg-white/40 shadow-[0_40px_100px_-45px_rgba(28,33,40,0.45)] backdrop-blur-2xl sm:-inset-6">
-      {/* Sheen sweep */}
-      <motion.div
-        className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/55 to-transparent"
-        animate={{ x: ["-120%", "420%"] }}
-        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.5 }}
-      />
-      {/* Top edge highlight */}
-      <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
-    </div>
+    <section ref={sectionRef} className="relative overflow-hidden bg-bg py-16 lg:py-20">
+      <LeafGlow variant={0} intensity="bold" />
+
+      {/* 90% of the viewport, with a ceiling so the card does not stretch
+          past a readable width on a very wide screen. */}
+      <div className="relative z-10 mx-auto w-[90%] max-w-[1500px]">
+        <div
+          className="relative overflow-hidden rounded-[36px] border border-white/70 bg-white/50 shadow-[0_40px_110px_-50px_rgba(28,33,40,0.5)] backdrop-blur-2xl"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          {/* Glass tells: a lit top edge and a sheen crossing on a loop */}
+          <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 z-20 w-1/4 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            animate={{ x: ["-120%", "520%"] }}
+            transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", repeatDelay: 2.5 }}
+          />
+
+          {/* Top rail */}
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line px-6 py-5 sm:px-10">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-faint">
+                Destination hubs
+              </span>
+              <h2 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                Where Ambition Meets <span className="italic text-brand">Opportunity</span>
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                {locations.map((loc, i) => (
+                  <button
+                    key={loc.slug}
+                    type="button"
+                    onClick={() => setActive(i)}
+                    aria-label={`Show ${loc.name}`}
+                    aria-current={i === active}
+                    className={`h-1.5 rounded-full transition-all duration-500 ${
+                      i === active ? "w-8 bg-brand" : "w-4 bg-line hover:bg-brand/40"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => go(-1)}
+                aria-label="Previous destination"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/60 text-ink shadow-sm backdrop-blur-xl transition-colors hover:border-brand/40 hover:bg-brand hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => go(1)}
+                aria-label="Next destination"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/60 text-ink shadow-sm backdrop-blur-xl transition-colors hover:border-brand/40 hover:bg-brand hover:text-white"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlaying((p) => !p)}
+                aria-pressed={!playing}
+                aria-label={playing ? "Pause the deck" : "Play the deck"}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/60 text-ink shadow-sm backdrop-blur-xl transition-colors hover:border-brand/40 hover:bg-brand hover:text-white"
+              >
+                {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Stage. Clipped, so a card in flight is masked at the frame edge
+              and never spills into the rest of the page. */}
+          <div className="relative h-[420px] overflow-hidden p-4 sm:h-[520px] sm:p-6">
+            {locations.map((loc, index) => (
+              <DeckCard
+                key={loc.slug}
+                location={loc}
+                index={index}
+                active={active}
+                reduceMotion={!!reduceMotion}
+              />
+            ))}
+          </div>
+
+          {/* Bottom rail: where you are in the deck */}
+          <div className="flex items-center justify-between gap-4 border-t border-line px-6 py-4 sm:px-10">
+            <span className="font-display text-sm font-semibold text-ink">{current?.name}</span>
+            <span className="text-[11px] tabular-nums tracking-[0.16em] text-ink-faint">
+              {String(active + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
 /**
- * Where each banner flies in from, as a fraction of the travel distance below.
- * Fixed per position rather than randomised, so the sequence is stable across
- * renders (a random pick would differ between server and client) and every
- * visitor sees the same choreography. The list cycles if more cities are added.
- */
-const ENTRY_VECTORS = [
-  { x: 0, y: 0 }, // first card is already on stage
-  { x: 1, y: 0.3 }, // in from the right
-  { x: 0, y: -1 }, // down from the top
-  { x: -1, y: 0.2 }, // in from the left
-  { x: 0.55, y: 1 }, // up from the bottom-right
-  { x: -0.8, y: -0.75 }, // down from the top-left
-  { x: 0, y: 1 }, // straight up from the bottom
-  { x: 1, y: -0.6 }, // down from the top-right
-];
-
-/** Travel distance for a full-strength entry, in px. */
-const X_TRAVEL = 900;
-const Y_TRAVEL = 620;
-
-/**
- * One banner in the deck.
- *
- * Each card flies in from its own direction — right, top, left, a corner —
- * crosses the stage, and locks in the centre, then settles back as the next
- * card lands on top of it. The stage clips, so a card in flight is masked at
- * the stage edge and can never spill into the rest of the page.
+ * One card in the deck: off stage in its own direction, centred while it is
+ * active, then receding into the stack once the next one lands.
  */
 function DeckCard({
   location,
   index,
-  total,
-  progress,
-  activeIndex,
+  active,
+  reduceMotion,
 }: {
   location: Location;
   index: number;
-  total: number;
-  progress: MotionValue<number>;
-  activeIndex: number;
+  active: number;
+  reduceMotion: boolean;
 }) {
   const meta = locationMeta[location.slug] || {
     tag: "Educational Hub",
@@ -126,76 +240,46 @@ function DeckCard({
     highlight: "Top Academic Ecosystem",
   };
 
-  const seg = TRACK_END / total;
-  const isFirst = index === 0;
-
-  // Off stage -> half way across, edge showing -> locked in the centre.
-  const offStart = isFirst ? 0 : index * seg - seg * 0.72;
-  const peekAt = isFirst ? 0.0001 : index * seg - seg * 0.34;
-  const lockAt = isFirst ? 0.0002 : index * seg;
-
-  // Depth = how many cards will eventually rest on top of this one.
-  const depth = total - 1 - index;
-  const restY = -depth * 10;
-  const restScale = 1 - depth * 0.03;
-
+  const offset = index - active;
+  const depth = Math.abs(offset);
   const vector = ENTRY_VECTORS[index % ENTRY_VECTORS.length];
-  const fromX = vector.x * X_TRAVEL;
-  const fromY = vector.y * Y_TRAVEL;
-  // Tilt away from the direction of travel, straightening as the card lands.
-  const fromRotate = vector.x * -4 + vector.y * 1.5;
 
-  const x = useTransform(
-    progress,
-    [offStart, peekAt, lockAt],
-    isFirst ? [0, 0, 0] : [fromX, fromX * 0.42, 0]
-  );
-
-  const y = useTransform(
-    progress,
-    [offStart, peekAt, lockAt, 1],
-    isFirst ? [0, 0, 0, restY] : [fromY, fromY * 0.42, 0, restY]
-  );
-
-  const rotate = useTransform(
-    progress,
-    [offStart, lockAt],
-    isFirst ? [0, 0] : [fromRotate, 0]
-  );
-
-  const scale = useTransform(
-    progress,
-    [peekAt, lockAt, 1],
-    isFirst ? [1, 1, restScale] : [0.95, 1, restScale]
-  );
-
-  const opacity = useTransform(
-    progress,
-    [offStart, peekAt, lockAt],
-    isFirst ? [1, 1, 1] : [0, 1, 1]
-  );
-
-  // Render only the settled stack plus the single card currently rising in.
-  if (index > activeIndex + 1) return null;
-
-  const stackedBehind = Math.max(0, activeIndex - index);
+  const state =
+    offset === 0
+      ? { x: 0, y: 0, rotate: 0, scale: 1, opacity: 1 }
+      : offset < 0
+        ? // Already seen: recede into the deck behind the active card.
+          { x: 0, y: -depth * 16, rotate: 0, scale: 1 - depth * 0.04, opacity: depth > 2 ? 0 : 0.5 }
+        : // Still to come: waiting off stage, tilted away from its direction.
+          {
+            x: vector.x * X_THROW,
+            y: vector.y * Y_THROW,
+            rotate: vector.x * -4 + vector.y * 1.5,
+            scale: 0.94,
+            opacity: 0,
+          };
 
   return (
     <motion.div
-      style={{ x, y, rotate, scale, opacity, zIndex: 10 + index }}
-      className="absolute inset-0"
+      className="absolute inset-4 sm:inset-6"
+      initial={false}
+      animate={reduceMotion ? { x: 0, y: 0, opacity: offset === 0 ? 1 : 0 } : state}
+      transition={{ type: "spring", stiffness: 95, damping: 19 }}
+      style={{ zIndex: offset === 0 ? 30 : 20 - depth }}
+      aria-hidden={offset !== 0}
     >
       <Link
         href={`/location/${location.slug}`}
-        className="group relative flex h-full w-full flex-col justify-end overflow-hidden rounded-[32px] border border-white/70 shadow-[0_30px_70px_-25px_rgba(28,33,40,0.55)]"
+        tabIndex={offset === 0 ? 0 : -1}
+        className="group relative flex h-full w-full flex-col justify-end overflow-hidden rounded-[28px] border border-white/70 shadow-[0_30px_70px_-25px_rgba(28,33,40,0.55)]"
       >
         {/* City photography */}
-        <div className="absolute inset-0 overflow-hidden rounded-[32px]">
+        <div className="absolute inset-0 overflow-hidden rounded-[28px]">
           <Image
             src={`/images/locations/${location.slug}.jpg`}
             alt={`${location.name} campus destination`}
             fill
-            sizes="(max-width: 1024px) 92vw, 900px"
+            sizes="(max-width: 1024px) 90vw, 1400px"
             className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
             priority={index < 2}
           />
@@ -253,146 +337,12 @@ function DeckCard({
           </div>
         </div>
 
-        {/* Cards buried in the deck recede into the page ground */}
+        {/* Cards buried in the deck recede into the paper */}
         <div
-          className="pointer-events-none absolute inset-0 z-20 rounded-[32px] bg-bg transition-opacity duration-500"
-          style={{ opacity: Math.min(0.6, stackedBehind * 0.26) }}
+          className="pointer-events-none absolute inset-0 z-20 rounded-[28px] bg-bg transition-opacity duration-500"
+          style={{ opacity: offset < 0 ? Math.min(0.55, depth * 0.25) : 0 }}
         />
       </Link>
     </motion.div>
-  );
-}
-
-export function LocationCarousel({ locations }: { locations: Location[] }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
-
-  useEffect(() => {
-    return scrollYProgress.on("change", (latest) => {
-      const idx = Math.min(
-        locations.length - 1,
-        Math.max(0, Math.floor((latest / TRACK_END) * locations.length))
-      );
-      setActiveCardIndex(idx);
-    });
-  }, [scrollYProgress, locations.length]);
-
-  /**
-   * Jump straight to the next banner — or, once the deck is complete, past the
-   * section entirely. Mirrors the maths behind `useScroll`: progress 0 is the
-   * container top at the viewport top, progress 1 is its bottom at the bottom.
-   */
-  const goToNext = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const rect = el.getBoundingClientRect();
-    const trackTop = window.scrollY + rect.top;
-    const trackLength = el.offsetHeight - window.innerHeight;
-    const seg = TRACK_END / locations.length;
-
-    const isLast = activeCardIndex >= locations.length - 1;
-    const targetProgress = isLast ? 1 : (activeCardIndex + 1) * seg + seg * 0.05;
-
-    window.scrollTo({
-      top: trackTop + trackLength * targetProgress + (isLast ? 8 : 0),
-      behavior: "smooth",
-    });
-  }, [activeCardIndex, locations.length]);
-
-  const active = locations[activeCardIndex];
-  const isLast = activeCardIndex >= locations.length - 1;
-
-  return (
-    <div
-      ref={containerRef}
-      className="relative w-full"
-      style={{ minHeight: `${100 + locations.length * 60}vh` }}
-    >
-      {/* Sticky stage — transparent, so the page ground runs straight through */}
-      <div className="sticky top-16 z-10 flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden px-4 sm:px-8">
-        <LeafGlow variant={0} intensity="bold" />
-
-        {/* Header */}
-        <div className="relative z-20 mx-auto w-full max-w-3xl shrink-0 pt-8 text-center sm:pt-10">
-          <h2 className="font-display text-3xl font-semibold leading-[1.15] tracking-tight text-ink sm:text-[2.4rem]">
-            Where Ambition Meets <span className="italic text-brand">Opportunity</span>
-          </h2>
-
-          <p className="mt-3 text-sm text-ink-soft sm:text-base">
-            Six corridors where India builds its careers — one at a time.
-          </p>
-        </div>
-
-        {/* Deck stage: clipped so the rising banner never touches header or rail */}
-        <div className="relative z-10 min-h-0 w-full flex-1 overflow-hidden py-8">
-          <div className="absolute left-1/2 top-1/2 h-[88%] w-[92%] max-w-[980px] -translate-x-1/2 -translate-y-1/2">
-            <GlassFrame />
-            {locations.map((loc, index) => (
-              <DeckCard
-                key={loc.slug}
-                location={loc}
-                index={index}
-                total={locations.length}
-                progress={scrollYProgress}
-                activeIndex={activeCardIndex}
-              />
-            ))}
-          </div>
-
-          {/* Fade the rising banner into the stage floor */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-14 bg-gradient-to-t from-bg to-transparent" />
-        </div>
-
-        {/* Progress rail + jump control */}
-        <div className="relative z-20 mx-auto w-full max-w-[980px] shrink-0 pb-7">
-          <div className="flex items-end justify-between gap-4">
-            <div className="min-w-0">
-              <span className="block font-display text-sm font-semibold text-ink">
-                {active?.name}
-              </span>
-              <span className="text-[11px] tabular-nums tracking-[0.16em] text-ink-faint">
-                {String(activeCardIndex + 1).padStart(2, "0")} /{" "}
-                {String(locations.length).padStart(2, "0")}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={goToNext}
-              className="group inline-flex shrink-0 items-center gap-2.5 rounded-full border border-white/70 bg-white/55 py-2 pl-4 pr-2 text-sm font-medium text-ink shadow-sm backdrop-blur-xl transition-colors hover:border-brand/40 hover:bg-brand hover:text-white"
-              aria-label={
-                isLast
-                  ? "Skip to the next section"
-                  : `Jump to ${locations[activeCardIndex + 1]?.name}`
-              }
-            >
-              <span className="hidden sm:inline">
-                {isLast ? "Next section" : locations[activeCardIndex + 1]?.name}
-              </span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white/70 text-ink transition-colors group-hover:border-white/40 group-hover:bg-white/20 group-hover:text-white">
-                <ArrowDown className="h-4 w-4" />
-              </span>
-            </button>
-          </div>
-
-          <div className="mt-3 flex gap-1.5">
-            {locations.map((loc, i) => (
-              <span
-                key={loc.slug}
-                className={`h-[3px] flex-1 rounded-full transition-colors duration-500 ${
-                  i <= activeCardIndex ? "bg-brand" : "bg-line"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

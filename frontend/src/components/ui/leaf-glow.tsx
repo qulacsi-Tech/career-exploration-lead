@@ -52,8 +52,15 @@ export function LeafGlow({
   const flip = ORIENTATIONS[((variant % ORIENTATIONS.length) + ORIENTATIONS.length) % ORIENTATIONS.length];
   const onDark = tone === "dark";
 
-  const lineOpacity = intensity === "bold" ? (onDark ? 0.4 : 0.34) : onDark ? 0.26 : 0.22;
-  const glowOpacity = intensity === "bold" ? 0.3 : 0.2;
+  /*
+   * Deliberately faint. The client's note on the first pass was that the art
+   * competed with the copy, so these are set at the level where the leaves read
+   * as a shade in the paper rather than as a picture behind the text: a few
+   * percent, with the glow weaker still. Treat ~0.10 as the ceiling — past that
+   * the strokes start crossing headlines again.
+   */
+  const lineOpacity = intensity === "bold" ? (onDark ? 0.11 : 0.085) : onDark ? 0.08 : 0.06;
+  const glowOpacity = intensity === "bold" ? (onDark ? 0.08 : 0.06) : 0.045;
   const fill = onDark ? "#ffffff" : "var(--color-brand)";
 
   const mask = {
@@ -76,7 +83,7 @@ export function LeafGlow({
       {/* Glow: the same drawing, blurred, breathing under the strokes */}
       <motion.div
         className="absolute -inset-8"
-        style={{ ...mask, background: fill, filter: "blur(14px)" }}
+        style={{ ...mask, background: fill, filter: "blur(22px)" }}
         initial={{ opacity: glowOpacity }}
         animate={{ opacity: [glowOpacity, glowOpacity * 0.55, glowOpacity] }}
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}

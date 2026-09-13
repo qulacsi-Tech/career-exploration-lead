@@ -145,10 +145,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Browse by location - Storytelling Hub Showcase */}
-      <section className="relative bg-bg pt-10">
-        <LocationCarousel locations={locations} />
-      </section>
+      {/* Browse by location — an auto-running deck in its own full frame */}
+      <LocationCarousel locations={locations} />
 
       {/* Storytelling Journey Connector Bridge */}
       <SectionJourneyConnector
