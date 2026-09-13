@@ -6,8 +6,8 @@ import { GraduationCap, Tag } from "lucide-react";
 const collegeImages: Record<string, string> = {
   "bengaluru-institute-of-management-studies":
     "/images/colleges/bengaluru-institute-of-management-studies.jpg",
-  "horizon-school-of-business": "/images/colleges/horizon-school-of-business.svg",
-  "eastwind-institute-of-management": "/images/colleges/eastwind-institute-of-management.svg",
+  "horizon-school-of-business": "/images/colleges/horizon-school-of-business.jpg",
+  "eastwind-institute-of-management": "/images/colleges/eastwind-institute-of-management.jpg",
 };
 
 /**

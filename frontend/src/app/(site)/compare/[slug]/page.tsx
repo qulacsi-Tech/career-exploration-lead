@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { ComparisonTable } from "@/components/comparison-table";
+import { ComparisonBoard } from "@/components/comparison-board";
 import { CollegeCard } from "@/components/college-card";
+import { colleges as allColleges } from "@/lib/mock-data";
 import {
   curatedComparisons,
   resolveComparison,
@@ -89,7 +90,17 @@ export default async function ComparePage({
 
       <section className="mt-8">
         <h2 className="sr-only">Comparison table</h2>
-        <ComparisonTable colleges={colleges} />
+        {/* Slim options for the empty slot's picker — the board only needs a
+            whole College for the ones actually being compared. */}
+        <ComparisonBoard
+          colleges={colleges}
+          options={allColleges.map(({ slug, name, city, state }) => ({
+            slug,
+            name,
+            city,
+            state,
+          }))}
+        />
       </section>
 
       {/* The editorial verdict is what separates this from two data columns,

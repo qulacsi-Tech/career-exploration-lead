@@ -13,7 +13,6 @@ import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
 import { StoryStreamExplorer } from "@/components/story-stream-explorer";
 import { SectionJourneyConnector } from "@/components/ui/section-journey-connector";
-import { LeafGlow } from "@/components/ui/leaf-glow";
 import { AutoStoryFrame } from "@/components/ui/auto-story-frame";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
 import {
@@ -166,7 +165,6 @@ export default function Home() {
           key={collection.id}
           className={`relative overflow-hidden border-b border-line ${index % 2 === 0 ? "bg-bg" : "bg-bg-alt"}`}
         >
-          <LeafGlow variant={2 + index} />
           <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="text-center">
               {/* `heading` is the homepage-specific wording when the page
@@ -206,7 +204,6 @@ export default function Home() {
 
       {/* Top exams — warm neutral band so it reads apart from Top Colleges */}
       <section className="relative overflow-hidden border-b border-line bg-bg-alt">
-        <LeafGlow variant={5} />
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-3xl font-bold text-ink">Top Exams</h2>
@@ -233,17 +230,15 @@ export default function Home() {
       {/* Recommended colleges — one programme at a time, told as an editorial
           spread: the picture sits inside the copy and the type wraps it. */}
       <AutoStoryFrame
-        segment={6}
         tone="brand"
-        label="Recommended"
-        title="Programs worth"
-        highlight="a closer look"
+        title="Recommended"
+        highlight="Colleges"
         items={recommendedPrograms.map((program) => ({
           key: program.slug,
           eyebrow: "Online & On-campus",
           headline: program.name,
           subline: `Offered at ${program.university}`,
-          image: `/images/programs/${program.slug}.svg`,
+          image: `/images/programs/${program.slug}.jpg`,
           imageAlt: `${program.name} program visual`,
           facts: [
             { label: "Online duration", value: program.online.duration },
@@ -258,7 +253,6 @@ export default function Home() {
 
       {/* Explore careers */}
       <section className="relative overflow-hidden border-b border-line bg-bg">
-        <LeafGlow variant={7} />
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-3xl font-bold text-ink">Explore Careers</h2>
@@ -292,22 +286,24 @@ export default function Home() {
                 Discover More
               </Link>
             </div>
-            {/* Campus artwork illustration on right of banner */}
+            {/* Campus photograph on the right of the banner. It bleeds to the
+                edges and fades into the brand ground on its left, rather than
+                sitting as a contained object the way the old illustration did —
+                a photograph with empty space around it reads as a mistake. */}
             <div
               aria-hidden
-              className="absolute inset-y-0 right-0 hidden w-1/2 items-center justify-end pr-4 lg:flex"
+              className="absolute inset-y-0 right-0 hidden w-1/2 lg:block"
             >
-              <div className="relative h-full w-full max-w-sm">
-                <Image
-                  src="/images/banners/promo-banner-campus.svg"
-                  alt="Campus illustration"
-                  fill
-                  // Only rendered at lg and up, where max-w-sm caps the box at
-                  // 384px. Below that the wrapper is display:none.
-                  sizes="(min-width: 1024px) 384px, 1px"
-                  className="object-contain"
-                />
-              </div>
+              <Image
+                src="/images/banners/promo-banner-campus.jpg"
+                alt=""
+                fill
+                // Only rendered at lg and up, where this is half of a container
+                // that tops out near 1280px. Below that the wrapper is hidden.
+                sizes="(min-width: 1024px) 640px, 1px"
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-brand via-brand/55 to-brand/20" />
             </div>
           </div>
         </div>
@@ -315,16 +311,14 @@ export default function Home() {
 
       {/* Recommended university — same editorial frame, quieter ground */}
       <AutoStoryFrame
-        segment={8}
-        label="Recommended"
-        title="Campuses shaping"
-        highlight="their regions"
+        title="Recommended"
+        highlight="Colleges"
         items={recommendedUniversities.map((university) => ({
           key: university.slug,
           eyebrow: `${university.city}, ${university.state}`,
           headline: university.name,
           subline: "Accredited programs, verified placement records and open intakes.",
-          image: `/images/universities/${university.slug}.svg`,
+          image: `/images/universities/${university.slug}.jpg`,
           imageAlt: `${university.name} campus`,
           facts: [
             { label: "City", value: university.city },
@@ -337,7 +331,6 @@ export default function Home() {
 
       {/* Data */}
       <section className="relative overflow-hidden border-b border-line bg-bg-tint">
-        <LeafGlow variant={9} />
         <div className="relative z-10 mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-4xl font-extrabold text-ink sm:text-5xl">Data</h2>

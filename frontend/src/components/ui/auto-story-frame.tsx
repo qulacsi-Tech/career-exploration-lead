@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Pause, Play } from "lucide-react";
-import { LeafGlow } from "@/components/ui/leaf-glow";
 
 export type StoryFrameItem = {
   key: string;
@@ -47,17 +46,14 @@ export function AutoStoryFrame({
   title,
   highlight,
   items,
-  segment,
   tone = "light",
 }: {
-  /** Small caps label in the frame's top rail. */
-  label: string;
+  /** Optional small-caps line above the heading in the frame's top rail. */
+  label?: string;
   title: string;
   /** Trailing words of the title, set in italic. */
   highlight?: string;
   items: StoryFrameItem[];
-  /** Picks the backdrop's orientation; see LeafGlow. */
-  segment: number;
   /** `brand` is the frame on a brand-coloured ground: dark glass, white type. */
   tone?: "light" | "brand";
 }) {
@@ -98,7 +94,6 @@ export function AutoStoryFrame({
       ref={sectionRef}
       className={`relative overflow-hidden py-20 ${onBrand ? "bg-brand" : "border-b border-line bg-bg-alt"}`}
     >
-      <LeafGlow variant={segment} tone={onBrand ? "dark" : "light"} intensity="bold" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div
@@ -118,9 +113,11 @@ export function AutoStoryFrame({
             className={`flex flex-wrap items-center justify-between gap-4 border-b px-6 py-5 sm:px-10 ${rule}`}
           >
             <div>
-              <span className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${faint}`}>
-                {label}
-              </span>
+              {label && (
+                <span className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${faint}`}>
+                  {label}
+                </span>
+              )}
               <h2
                 className={`font-display text-2xl font-semibold tracking-tight sm:text-3xl ${heading}`}
               >

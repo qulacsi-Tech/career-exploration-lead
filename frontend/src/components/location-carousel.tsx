@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { LeafGlow } from "@/components/ui/leaf-glow";
 import { MapPin, Building2, ArrowUpRight, ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
 
 interface Location {
@@ -117,7 +116,6 @@ export function LocationCarousel({ locations }: { locations: Location[] }) {
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-bg py-16 lg:py-20">
-      <LeafGlow variant={0} intensity="bold" />
 
       {/* 90% of the viewport, with a ceiling so the card does not stretch
           past a readable width on a very wide screen. */}

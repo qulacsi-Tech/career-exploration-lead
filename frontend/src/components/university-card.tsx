@@ -15,7 +15,7 @@ export function UniversityCard({
     <article className="group overflow-hidden rounded-xl border border-white/70 bg-surface/60 backdrop-blur-xl transition hover:border-brand/40 hover:shadow-lg">
       <div className="relative aspect-[21/9] w-full overflow-hidden bg-bg-alt sm:aspect-[16/10]">
         <Image
-          src={`/images/universities/${university.slug}.svg`}
+          src={`/images/universities/${university.slug}.jpg`}
           alt={`${university.name} campus`}
           fill
           sizes="(max-width: 768px) 100vw, 33vw"

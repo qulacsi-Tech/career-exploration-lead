@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { LeafGlow } from "@/components/ui/leaf-glow";
 import {
   Briefcase,
   Cpu,
@@ -15,6 +14,12 @@ import {
   Award,
   BookOpen,
   GraduationCap,
+  Compass,
+  Lightbulb,
+  Rocket,
+  Sparkles,
+  Telescope,
+  Trophy,
   Pause,
   Play,
   Shuffle,
@@ -69,6 +74,17 @@ const streamEnhancements: Record<
 };
 
 /**
+ * Face-down artwork, one per position.
+ *
+ * Deliberately *not* the stream's own icon: the disc's job before it turns is
+ * to look like a card back, and printing Engineering's chip on the back of the
+ * Engineering disc would answer the question the flip is there to ask. These
+ * are neutral study motifs instead, varied so six discs sitting side by side
+ * do not read as six copies of one image.
+ */
+const BACK_ICONS = [Compass, Lightbulb, Rocket, Telescope, Trophy, Sparkles, GraduationCap];
+
+/**
  * One unhurried round: each disc spins up like a wheel, one after another;
  * once the last has spun, they turn over in the same order like coins.
  */
@@ -114,6 +130,7 @@ function StreamDisc({
     badge: "Verified Curriculum",
   };
   const Icon = data.icon;
+  const BackIcon = BACK_ICONS[index % BACK_ICONS.length];
 
   return (
     <motion.div
@@ -147,11 +164,8 @@ function StreamDisc({
           }}
         >
           <span className="absolute inset-2.5 rounded-full border border-dashed border-brand/25" />
-          <span className="relative flex h-11 w-11 items-center justify-center rounded-full border border-brand/30 bg-surface/90 text-brand">
-            <GraduationCap className="h-5 w-5" />
-          </span>
-          <span className="relative text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-ink/70">
-            {String(index + 1).padStart(2, "0")}
+          <span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand/30 bg-surface/90 text-brand">
+            <BackIcon className="h-6 w-6" />
           </span>
         </button>
 
@@ -165,15 +179,11 @@ function StreamDisc({
             <Icon className="h-5 w-5" />
           </span>
 
-          <h3 className="mt-1 font-display text-lg font-bold leading-tight text-ink transition-colors group-hover:text-brand">
+          <h3 className="mt-1.5 font-display text-lg font-bold leading-tight text-ink transition-colors group-hover:text-brand">
             {stream.name}
           </h3>
 
-          <span className="text-[11px] font-semibold text-brand">
-            {stream.count.toLocaleString()} Colleges
-          </span>
-
-          <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             Explore <ArrowUpRight className="h-3 w-3" />
           </span>
         </Link>
@@ -239,7 +249,6 @@ export function StoryStreamExplorer({ streams }: { streams: StreamItem[] }) {
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-bg-alt py-20 lg:py-28">
-      <LeafGlow variant={1} intensity="bold" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}

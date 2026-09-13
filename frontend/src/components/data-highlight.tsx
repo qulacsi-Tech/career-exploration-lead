@@ -8,11 +8,11 @@ export function DataHighlight({ highlight }: { highlight: DataHighlightType }) {
     <div className="flex flex-col items-center px-2 py-10 text-center sm:px-8">
       <div className="relative h-20 w-24 overflow-hidden rounded-lg transition-transform duration-300 hover:scale-105">
         <Image
-          src={`/images/data/${highlight.slug}.svg`}
+          src={`/images/data/${highlight.slug}.jpg`}
           alt={highlight.title}
           fill
           sizes="96px"
-          className="object-contain"
+          className="object-cover"
         />
       </div>
       <h3 className="mt-4 font-display text-xl font-semibold text-ink">{highlight.title}</h3>

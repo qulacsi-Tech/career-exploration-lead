@@ -13,7 +13,7 @@ export function RecommendedProgramCard({ program }: { program: RecommendedProgra
     <article className="group flex flex-col rounded-xl border border-white/60 bg-surface/70 p-3 shadow-sm backdrop-blur-xl transition hover:shadow-lg sm:p-4">
       <div className="relative aspect-[21/9] w-full overflow-hidden rounded-lg border border-line bg-bg-alt sm:aspect-[16/9]">
         <Image
-          src={`/images/programs/${program.slug}.svg`}
+          src={`/images/programs/${program.slug}.jpg`}
           alt={`${program.name} program visual`}
           fill
           sizes="(max-width: 768px) 100vw, 33vw"

@@ -249,7 +249,7 @@ function LeadPage({ lead }: { lead: Article }) {
 
       <div className="relative mt-4 aspect-[16/8] w-full overflow-hidden border border-ink/15 bg-bg-alt grayscale-[35%]">
         <Image
-          src={`/images/articles/${lead.slug}.svg`}
+          src={`/images/articles/${lead.slug}.jpg`}
           alt={lead.title}
           fill
           sizes="(max-width: 640px) 90vw, 45vw"

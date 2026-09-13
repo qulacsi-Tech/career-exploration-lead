@@ -110,6 +110,12 @@ export function useCompare() {
       }
     },
     remove: (slug: string) => setSlugs(selection.filter((s) => s !== slug)),
+    /**
+     * Replaces the whole selection. The comparison board changes two or three
+     * slugs at once when it navigates, and doing that through `toggle` would
+     * publish a half-updated tray between calls.
+     */
+    set: (next: string[]) => setSlugs(next.slice(0, MAX_COMPARE)),
     clear: () => setSlugs(EMPTY),
   };
 }
