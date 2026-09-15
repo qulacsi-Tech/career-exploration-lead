@@ -11,7 +11,7 @@ import { CareerPanelCard } from "@/components/career-panel-card";
 import { UniversityCard } from "@/components/university-card";
 import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
-import { StoryStreamExplorer } from "@/components/story-stream-explorer";
+import { StreamGrid } from "@/components/stream-grid";
 import { SectionJourneyConnector } from "@/components/ui/section-journey-connector";
 import { AutoStoryFrame } from "@/components/ui/auto-story-frame";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
@@ -154,8 +154,8 @@ export default function Home() {
         title="Connect location with your target discipline"
       />
 
-      {/* Explore your future - Interactive Story Stream Explorer */}
-      <StoryStreamExplorer streams={homeStreams} />
+      {/* Streams, shown directly — no animation, per the 15 Sep MoM */}
+      <StreamGrid streams={homeStreams} />
 
       {/* College bands. Repeatable, so "Popular Colleges" can sit alongside
           "Recommended Colleges" rather than replacing it. Alternating grounds
