@@ -1,14 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { College } from "@/lib/mock-data";
+import { collegePhoto } from "@/lib/college-images";
 import { GraduationCap, Tag } from "lucide-react";
-
-const collegeImages: Record<string, string> = {
-  "bengaluru-institute-of-management-studies":
-    "/images/colleges/bengaluru-institute-of-management-studies.jpg",
-  "horizon-school-of-business": "/images/colleges/horizon-school-of-business.jpg",
-  "eastwind-institute-of-management": "/images/colleges/eastwind-institute-of-management.jpg",
-};
 
 /**
  * Travel-card format: a portrait tile whose photo grows on hover.
@@ -29,9 +23,10 @@ const collegeImages: Record<string, string> = {
  */
 export function TopCollegeCard({ college }: { college: College }) {
   const featured = college.courses[0];
-  const imgSrc =
-    collegeImages[college.slug] ||
-    "/images/colleges/bengaluru-institute-of-management-studies.jpg";
+  /* Shared with the college page's hero, so a card and the page it opens show
+     the same campus. The local map this replaced covered three slugs and sent
+     everything else to the Bengaluru photo. */
+  const imgSrc = collegePhoto(college.slug);
 
   return (
     <article className="group relative flex h-[440px] flex-col overflow-hidden rounded-[28px] border border-white/70 bg-surface/70 p-3 shadow-sm backdrop-blur-xl transition-shadow duration-300 hover:shadow-xl focus-within:shadow-xl">

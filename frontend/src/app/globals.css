@@ -499,3 +499,53 @@ body {
   pointer-events: none;
 }
 .tiptap-body td, .tiptap-body th { position: relative; }
+
+/* ------------------------------------------------------------------ *
+   Recruiter marquee (components/college/recruiter-marquee.tsx)
+
+   The track holds two identical rows, so translating it by exactly -50%
+   lands the second copy where the first started and the loop has no seam.
+   The duration is set inline per instance, paced by how many names there
+   are.
+
+   Reduced motion does not slow the marquee down, it removes it: the track
+   wraps as an ordinary list and the duplicated row — which only exists to
+   make the loop continuous — is dropped, so nothing is read twice.
+ * ------------------------------------------------------------------ */
+
+.recruiter-marquee-track {
+  animation-name: recruiter-marquee-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Pause on hover, and on keyboard focus of any name inside it. */
+.recruiter-marquee:hover .recruiter-marquee-track,
+.recruiter-marquee:focus-within .recruiter-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes recruiter-marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recruiter-marquee-track {
+    animation: none;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+  }
+  .recruiter-marquee-row {
+    flex-wrap: wrap;
+    gap: 0.625rem;
+  }
+  .recruiter-marquee-row[aria-hidden="true"] {
+    display: none;
+  }
+  .recruiter-marquee::before,
+  .recruiter-marquee::after {
+    display: none;
+  }
+}
