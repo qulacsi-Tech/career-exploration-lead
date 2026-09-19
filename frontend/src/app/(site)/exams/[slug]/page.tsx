@@ -5,6 +5,8 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
 import { exams, colleges } from "@/lib/mock-data";
+import { testsForExam } from "@/lib/practice-data";
+import { TestCard } from "@/components/practice/test-card";
 
 export function generateStaticParams() {
   return exams.map((exam) => ({ slug: exam.slug }));
@@ -40,6 +42,8 @@ export default async function ExamDetailPage({
   // Colleges naming this exam, matched on the short form the college record
   // uses ("CAT") rather than the exam's full title.
   const shortName = exam.name.replace(/\s*\(.*\)\s*/, "").trim();
+  const practiceTests = testsForExam(slug);
+
   const accepting = colleges.filter((college) =>
     college.examsAccepted.some(
       (accepted) =>
@@ -90,6 +94,40 @@ export default async function ExamDetailPage({
               {exam.description}
             </p>
           </section>
+
+          {/*
+            Practice sits directly under About, ahead of the pattern and cutoff
+            tables. Someone reading an exam page is preparing for it, and the
+            paper is the thing they can act on now — burying it below three
+            reference sections would make the module's best entry point the one
+            fewest people scroll to.
+          */}
+          {practiceTests.length > 0 && (
+            <section id="practice">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-ink">
+                    Practice for {shortName}
+                  </h2>
+                  <p className="mt-1 text-sm text-ink-soft">
+                    Mock papers in the real exam interface, with solutions and analysis.
+                  </p>
+                </div>
+                <Link
+                  href={`/exams/${slug}/practice`}
+                  className="shrink-0 text-sm font-semibold text-brand hover:text-brand-dark"
+                >
+                  All practice tests
+                </Link>
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {practiceTests.slice(0, 2).map((test) => (
+                  <TestCard key={test.slug} test={test} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {exam.sections && exam.sections.length > 0 && (
             <section id="pattern">

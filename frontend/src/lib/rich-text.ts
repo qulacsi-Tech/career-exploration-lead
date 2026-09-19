@@ -28,13 +28,26 @@
  * nodes silently — the editor shows a table, the page shows nothing, and there
  * is no error anywhere. Keeping one array makes that failure impossible.
  *
- * No image node, per the 5 Sep decision (§11 Q5): body content is text, tables
- * and lists this cycle, which keeps this decoupled from the media pipeline.
+ * ## Images: added 19 Sep, reversing the 5 Sep decision
+ *
+ * §11 Q5 of the 4 Sep plan ruled out an image node so this stayed decoupled
+ * from the media pipeline while both were being built. That pipeline shipped in
+ * the same cycle, so the reason has expired — and the practice module needs
+ * figures in question stems, in options (an Abstract Reasoning option *is* a
+ * diagram) and in worked solutions.
+ *
+ * Carrying figures in the document rather than in a question type is what keeps
+ * text, image and mixed questions to one record shape. See
+ * `docs/2026-09-19-exam-practice-module-plan.md` §3.
+ *
+ * Every other rich-text field on the site inherits this the moment it lands —
+ * college content, articles and course detail can all carry figures now.
  */
 
 import type { JSONContent } from "@tiptap/core";
 import { StarterKit } from "@tiptap/starter-kit";
 import { TableKit } from "@tiptap/extension-table";
+import { Image } from "@tiptap/extension-image";
 import { generateHTML } from "@tiptap/html";
 
 /**
@@ -48,10 +61,10 @@ import { generateHTML } from "@tiptap/html";
 export type RichTextDoc = JSONContent & { type: "doc" };
 
 /**
- * The schema. Scope per the MOM §1.4: formatted text, tables and lists.
+ * The schema. Formatted text, tables, lists and figures.
  *
  * StarterKit in v3 already carries bold, italic, underline, headings, both
- * lists, blockquote and link — so the only thing added is tables.
+ * lists, blockquote and link — so the additions are tables and images.
  */
 export const richTextExtensions = [
   StarterKit.configure({
@@ -66,6 +79,33 @@ export const richTextExtensions = [
   }),
   TableKit.configure({
     table: { resizable: false, HTMLAttributes: { class: "rich-table" } },
+  }),
+  /*
+    `inline: false` — a figure is a block, never a character inside a sentence.
+    Inline images in an exam question produce a stem whose line height jumps
+    around the diagram, and there is no case in this content where a figure
+    belongs mid-sentence.
+
+    `allowBase64: false` on purpose. A pasted base64 image would inline
+    megabytes into a document that is fetched on every render and cannot be
+    cached, CDN-served or resized. Figures are uploads with URLs.
+
+    Width and height ride along as attributes so the renderer can reserve the
+    space before the file decodes. A question that reflows while it loads costs
+    the candidate seconds, and seconds are what the whole exercise measures.
+  */
+  Image.configure({
+    inline: false,
+    allowBase64: false,
+    HTMLAttributes: { class: "rich-figure" },
+  }).extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        width: { default: null },
+        height: { default: null },
+      };
+    },
   }),
 ];
 
@@ -156,4 +196,44 @@ export function docFromParagraphs(...paragraphs: string[]): RichTextDoc {
       content: text ? [{ type: "text", text }] : [],
     })),
   };
+}
+
+/* ------------------------------------------------------------------ *
+   Seed builders
+
+   `docFromParagraphs` covers prose. Question content mixes prose with
+   figures, so these compose instead: `doc(para(…), figure({…}))`.
+   They exist for the mock data files — nothing at runtime builds
+   documents by hand.
+ * ------------------------------------------------------------------ */
+
+/** One paragraph node. An empty string gives an empty paragraph. */
+export function para(text: string): JSONContent {
+  return { type: "paragraph", content: text ? [{ type: "text", text }] : [] };
+}
+
+/**
+ * One figure node.
+ *
+ * `alt` is required rather than optional, and the type enforces it. On a public
+ * page a missing alt is an accessibility failure; on an exam question it is
+ * also a candidate who cannot answer at all. See the plan's §3 note on writing
+ * alt text that describes a figure without solving it.
+ *
+ * `width` and `height` are the file's intrinsic pixel dimensions, used to
+ * reserve layout space — not a display size.
+ */
+export function figure(attrs: {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  title?: string;
+}): JSONContent {
+  return { type: "image", attrs };
+}
+
+/** Assembles nodes into a document. */
+export function doc(...nodes: JSONContent[]): RichTextDoc {
+  return { type: "doc", content: nodes };
 }

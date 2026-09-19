@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 180" width="640" height="180" role="img">
+<rect width="640" height="180" fill="#ffffff"/>
+<g transform="translate(20,10) scale(0.8)"><rect x="20" y="20" width="120" height="120" fill="none" stroke="#1c2128" stroke-width="2.5" rx="4"/>
+<circle cx="48" cy="48" r="13" fill="#ce4355"/></g>
+<text x="84" y="172" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="#8a93a1">1</text>
+<g transform="translate(180,10) scale(0.8)"><rect x="20" y="20" width="120" height="120" fill="none" stroke="#1c2128" stroke-width="2.5" rx="4"/>
+<circle cx="112" cy="48" r="13" fill="#ce4355"/></g>
+<text x="244" y="172" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="#8a93a1">2</text>
+<g transform="translate(340,10) scale(0.8)"><rect x="20" y="20" width="120" height="120" fill="none" stroke="#1c2128" stroke-width="2.5" rx="4"/>
+<circle cx="112" cy="112" r="13" fill="#ce4355"/></g>
+<text x="404" y="172" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="#8a93a1">3</text>
+<g transform="translate(500,10) scale(0.8)"><rect x="20" y="20" width="120" height="120" fill="#faf7f5" stroke="#8a93a1" stroke-width="2.5" stroke-dasharray="8 6" rx="4"/></g>
+<text x="564" y="98" text-anchor="middle" font-family="system-ui,sans-serif" font-size="40" font-weight="600" fill="#8a93a1">?</text>
+<text x="564" y="172" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="#8a93a1">4</text>
+</svg>

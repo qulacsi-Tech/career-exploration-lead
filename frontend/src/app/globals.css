@@ -54,6 +54,35 @@
      rather than as palette, so it is held constant across the variants. */
   --hero-window: #ffc9a8;
 
+  /*
+    TEST PLAYER — question palette states
+    -------------------------------------
+    Five states, and they are not ours to restyle freely: every Indian entrance
+    exam uses this vocabulary and candidates read it by muscle memory. Green is
+    answered, red is seen-but-unanswered, violet is marked for review. Recolouring
+    those to the brand family would make a familiar control unreadable to exactly
+    the people it is for.
+
+    So the hues are kept and only the depths are solved, against white numerals
+    at AA or better:
+
+      --practice-answered      5.73:1 on white
+      --practice-unanswered    5.69:1 on white
+      --practice-marked        8.12:1 on white
+
+    Not-visited carries ink on a neutral tile (15.17:1) rather than white on a
+    fill, because a grey deep enough for white text stops reading as "empty".
+
+    Shared by every theme variant. These are status colours, not palette: an
+    answered question is green in all seven, the way a traffic light does not
+    change hue with the building behind it. State is also carried by SHAPE (see
+    .palette-* below), so the five remain distinguishable without colour.
+  */
+  --practice-answered: #177544;
+  --practice-unanswered: #bd3520;
+  --practice-marked: #67359f;
+  --practice-not-visited: #f0ece8;
+
   /* Rose — OKLCH hue 16.9. brand 4.61:1 and brand-dark 6.58:1 on white,
      brand-ink 9.06:1 on brand-soft, band ink 7.51:1 / 5.00:1 on the band,
      body ink 15.03:1 on the tint, white 14.40:1 at the hero's brightest point. */
@@ -465,6 +494,23 @@ body {
   color: var(--color-ink-soft);
 }
 
+/* Figures.
+
+   `height: auto` with the width and height attributes still on the element:
+   the attributes give the browser the aspect ratio so it reserves the right
+   box before the file decodes, and the CSS then lets it scale down on a narrow
+   screen. Setting a CSS width instead would win over the attributes and bring
+   the layout shift back. */
+.rich-text .rich-figure,
+.tiptap-body .rich-figure {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+  border-radius: 0.5rem;
+  background: var(--color-bg-alt);
+}
+
 /* Tables scroll inside their own box rather than pushing the page sideways —
    a pasted 8-column fee table would otherwise widen every ancestor. */
 .rich-text table, .tiptap-body table {
@@ -548,4 +594,82 @@ body {
   .recruiter-marquee::after {
     display: none;
   }
+}
+
+/* ------------------------------------------------------------------ *
+   Test player — question palette tiles
+
+   The five states differ by SHAPE as well as colour, exactly as the real
+   exam software does. That convention is usually described as decoration;
+   it is not. It is the reason the palette stays readable to a candidate with
+   a colour vision deficiency, for whom the green "answered" and the red
+   "not answered" tiles are otherwise near-identical.
+
+     not-visited      square, neutral fill
+     not-answered     arch pointing DOWN  (rounded bottom)
+     answered         arch pointing UP    (rounded top)
+     marked           circle
+     answered-marked  circle + a tick dot
+
+   Sizes and fonts come from Tailwind on the element; only the silhouette and
+   the fill live here.
+ * ------------------------------------------------------------------ */
+
+.palette-tile {
+  position: relative;
+  border-radius: 0.25rem;
+}
+
+.palette-tile--not-visited {
+  background: var(--practice-not-visited);
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+}
+
+.palette-tile--not-answered {
+  background: var(--practice-unanswered);
+  color: #ffffff;
+  border-radius: 0.25rem 0.25rem 45% 45%;
+}
+
+.palette-tile--answered {
+  background: var(--practice-answered);
+  color: #ffffff;
+  border-radius: 45% 45% 0.25rem 0.25rem;
+}
+
+.palette-tile--marked,
+.palette-tile--answered-marked {
+  background: var(--practice-marked);
+  color: #ffffff;
+  border-radius: 50%;
+}
+
+/* The tick that distinguishes "answered & marked" — which counts for
+   evaluation — from "marked", which does not. Drawn rather than a glyph so it
+   stays crisp at 32px and needs no icon font. */
+.palette-tile--answered-marked::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  bottom: -1px;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--practice-answered);
+  box-shadow: 0 0 0 2px var(--color-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+}
+
+/* The question the candidate is on, whatever its state. A ring rather than a
+   recolour: overwriting the fill would hide whether the current question is
+   answered, which is the one thing they are about to act on. */
+.palette-tile--current {
+  outline: 2.5px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .palette-tile { transition: none; }
 }

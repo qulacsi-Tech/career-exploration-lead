@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 360" width="520" height="360" role="img">
+  <rect width="520" height="360" fill="#ffffff"/>
+  <path d="M 250 48 L 60 300 L 224 300 Z" fill="#ffebeb"/>
+  <path d="M 250 48 L 224 300 L 470 300 Z" fill="#fbf1dd"/>
+  <g fill="none" stroke="#1c2128" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M 250 48 L 60 300 L 470 300 Z"/>
+    <path d="M 250 48 L 224 300" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="none" stroke="#ce4355" stroke-width="2">
+    <path d="M 250 48 L 250 300" stroke-dasharray="5 5"/>
+    <path d="M 250 286 L 264 286 L 264 300"/>
+  </g>
+  <g fill="#1c2128" font-family="Georgia, serif" font-size="22" font-style="italic">
+    <text x="250" y="34" text-anchor="middle">A</text>
+    <text x="46" y="322">B</text>
+    <text x="224" y="324" text-anchor="middle">D</text>
+    <text x="466" y="322">C</text>
+  </g>
+  <g font-family="Georgia, serif" font-size="17">
+    <text x="140" y="250" text-anchor="middle" fill="#7b1a2a">24</text>
+    <text x="350" y="250" text-anchor="middle" fill="#8a6414">36</text>
+    <text x="284" y="170" fill="#ce4355" font-size="15">common height</text>
+  </g>
+</svg>

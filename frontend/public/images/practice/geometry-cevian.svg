@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 360" width="520" height="360" role="img">
+  <rect width="520" height="360" fill="#ffffff"/>
+  <g fill="none" stroke="#1c2128" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M 250 48 L 60 300 L 470 300 Z"/>
+    <path d="M 250 48 L 224 300" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#1c2128" font-family="Georgia, serif" font-size="22" font-style="italic">
+    <text x="250" y="34" text-anchor="middle">A</text>
+    <text x="46" y="322">B</text>
+    <text x="224" y="324" text-anchor="middle">D</text>
+    <text x="466" y="322">C</text>
+  </g>
+  <g fill="#5b6472" font-family="Georgia, serif" font-size="17">
+    <text x="142" y="288" text-anchor="middle">2</text>
+    <text x="347" y="288" text-anchor="middle">3</text>
+  </g>
+</svg>
