@@ -12,7 +12,6 @@ import { UniversityCard } from "@/components/university-card";
 import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
 import { StreamGrid } from "@/components/stream-grid";
-import { SectionJourneyConnector } from "@/components/ui/section-journey-connector";
 import { AutoStoryFrame } from "@/components/ui/auto-story-frame";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
 import {
@@ -147,14 +146,10 @@ export default function Home() {
       {/* Browse by location — an auto-running deck in its own full frame */}
       <LocationCarousel locations={locations} />
 
-      {/* Storytelling Journey Connector Bridge */}
-      <SectionJourneyConnector
-        fromBadge="Step 01: Regional Hubs"
-        toBadge="Step 02: Academic Streams"
-        title="Connect location with your target discipline"
-      />
-
-      {/* Streams, shown directly — no animation, per the 15 Sep MoM */}
+      {/* Streams follow the location deck directly. The "Step 01 / Step 02"
+          connector that used to bridge them is gone: it narrated a journey
+          nobody had asked to be taken on, and cost a screenful of height to
+          say that two adjacent sections were adjacent. */}
       <StreamGrid streams={homeStreams} />
 
       {/* College bands. Repeatable, so "Popular Colleges" can sit alongside

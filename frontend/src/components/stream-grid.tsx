@@ -9,7 +9,6 @@ import {
   ArrowUpRight,
   Award,
   BookOpen,
-  TrendingUp,
 } from "lucide-react";
 
 interface StreamItem {
@@ -61,16 +60,53 @@ const streamEnhancements: Record<
 };
 
 /**
- * The streams, shown plainly.
+ * The streams, as discs that turn over on hover.
  *
- * Replaces the shuffling coin deck (`story-stream-explorer`), per the 15 Sep
- * MoM: "No animation is required for displaying streams... displayed directly
- * on the website." Every stream is legible on arrival — nothing is face-down,
- * nothing is waiting its turn, and there is no timer.
+ * ## What came back, and what did not
  *
- * With the animation gone this is a server component again: no state, no
- * effects, no framer-motion on the client for a section that is six links.
- * Hover is a border and a lift, which CSS does on its own.
+ * The circular coin format is the one this section had before the card grid.
+ * What the 15 Sep MOM removed was never the shape — it was the **autoplay**:
+ * a deck that spun and dealt the discs on an eight-second timer, turning
+ * streams face-down while somebody was trying to read them.
+ *
+ * So the disc returns and the timer does not. Nothing moves until a visitor
+ * points at it.
+ *
+ * ## Why the stream is on the FRONT
+ *
+ * The original was face-down by default and the shuffle did the revealing.
+ * With the shuffle gone, face-down would mean six identical discs and no way
+ * to tell which is Engineering without hovering each one — and no way at all on
+ * a touch screen, where there is no hover. That would break the MOM
+ * instruction that streams be "displayed directly" far harder than the
+ * animation ever did.
+ *
+ * Face-up it is: the name and the icon are readable on arrival and in the HTML
+ * a crawler receives. The turn is a reward for interest, not a toll on it.
+ *
+ * ## Why the CTC sits outside the disc
+ *
+ * Anything only reachable by hover is unreachable on a phone. The salary range
+ * is the number people actually compare streams on, so it is printed under the
+ * circle where everyone gets it; the back face carries the tagline and the
+ * call to action, which are enrichment rather than information.
+ *
+ * ## The small labels are ink-soft, not ink-faint
+ *
+ * The badge and the "Avg CTC" caption were thinned to sit more quietly beside
+ * the bigger discs. They were on `ink-faint`, which measures 3.10:1 on the disc
+ * and 2.91:1 on the section ground — under AA before any thinning. Lightening
+ * the weight of type that is also low contrast is how a label stops being
+ * readable at all, so the weight came down and the colour moved up to
+ * `ink-soft`: 5.98:1 and 5.61:1. Lighter to look at, easier to read.
+ *
+ * ## No JavaScript
+ *
+ * The flip is `:hover` and `:focus-within` on a CSS class (globals.css). No
+ * state, no effects, no framer-motion — so this stays a server component and
+ * the section ships no client JS whatsoever. Each disc is a single link, which
+ * is also why keyboard focus reaches the back face without any tabindex
+ * juggling: there is only ever one focusable thing per stream.
  */
 export function StreamGrid({ streams }: { streams: StreamItem[] }) {
   return (
@@ -85,7 +121,10 @@ export function StreamGrid({ streams }: { streams: StreamItem[] }) {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <ul
+          role="list"
+          className="mx-auto mt-12 grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-4"
+        >
           {streams.map((stream) => {
             const data = streamEnhancements[stream.slug] || {
               icon: BookOpen,
@@ -96,46 +135,51 @@ export function StreamGrid({ streams }: { streams: StreamItem[] }) {
             const Icon = data.icon;
 
             return (
-              <Link
-                key={stream.slug}
-                href={`/${stream.slug}/colleges`}
-                className="group flex flex-col rounded-2xl border border-line bg-surface p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-brand/50 hover:shadow-lg"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft text-brand transition-colors duration-300 group-hover:bg-brand group-hover:text-white">
-                    <Icon className="h-5 w-5" />
-                  </span>
+              <li key={stream.slug} className="flex flex-col items-center">
+                <Link
+                  href={`/${stream.slug}/colleges`}
+                  aria-label={`${stream.name} — ${data.tagline}. Average CTC ${data.salaryRange}.`}
+                  className="stream-coin block w-full max-w-[200px] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-4 focus-visible:ring-offset-bg-alt"
+                >
+                  <div className="stream-coin-inner">
+                    {/* Front — identity. Legible on arrival, and in the HTML. */}
+                    <span className="stream-coin-face gap-2 border border-line bg-surface px-4 text-center shadow-[0_18px_40px_-26px_rgba(28,33,40,0.5)]">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-soft text-brand">
+                        <Icon className="h-6 w-6" />
+                      </span>
+                      <span className="font-display text-lg font-semibold leading-tight text-ink">
+                        {stream.name}
+                      </span>
+                      <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-soft">
+                        {data.badge}
+                      </span>
+                    </span>
 
-                  <span className="rounded-full border border-line bg-bg-alt px-2.5 py-1 text-[11px] font-semibold text-ink-soft">
-                    {data.badge}
-                  </span>
-                </div>
+                    {/* Back — enrichment. Never the only home of anything. */}
+                    <span className="stream-coin-face--back stream-coin-face gap-2 border border-brand/30 bg-brand px-5 text-center text-white shadow-[0_22px_50px_-26px_rgba(28,33,40,0.6)]">
+                      <span className="text-[13px] font-medium leading-snug">{data.tagline}</span>
+                      <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+                        Explore <ArrowUpRight className="h-3 w-3" />
+                      </span>
+                    </span>
+                  </div>
+                </Link>
 
-                <h3 className="mt-5 font-display text-xl font-bold text-ink transition-colors group-hover:text-brand">
-                  {stream.name}
-                </h3>
-                <p className="mt-1 text-sm text-ink-soft">{data.tagline}</p>
-
-                <div className="mt-5 flex items-center justify-between border-t border-line-soft pt-4 text-sm">
-                  <span className="flex items-center gap-1.5 text-ink-soft">
-                    <TrendingUp className="h-4 w-4 text-brand" />
-                    Avg CTC <strong className="font-semibold text-ink">{data.salaryRange}</strong>
+                <p className="mt-3 flex flex-col items-center text-center">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-soft">
+                    Avg CTC
                   </span>
-
-                  <span className="flex items-center gap-1 text-sm font-semibold text-brand">
-                    Explore
-                    <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </span>
-                </div>
-              </Link>
+                  <span className="mt-0.5 text-sm font-semibold text-ink">{data.salaryRange}</span>
+                </p>
+              </li>
             );
           })}
-        </div>
+        </ul>
 
         {/* Closing prompt for anyone who has not settled on a stream */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-6 shadow-sm sm:flex-row sm:px-8">
+        <div className="mt-14 flex flex-col items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-6 shadow-sm sm:flex-row sm:px-8">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
               <Award className="h-5 w-5" />
             </span>
             <div>
