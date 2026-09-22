@@ -14,7 +14,15 @@ export type StoryFrameItem = {
   headline: string;
   /** Quieter second line: the university, the state. */
   subline: string;
-  image: string;
+  /**
+   * One or more photographs of the item.
+   *
+   * Where there is more than one they cross-fade inside the frame, on their own
+   * slower timer than the story rotation. Two is the intended case — the client
+   * asked for two images per college — and one still works, in which case
+   * nothing fades and no controls appear.
+   */
+  images: string[];
   imageAlt: string;
   /** Two to four facts. Rendered as a run-in definition row under the text. */
   facts: { label: string; value: string }[];
@@ -24,6 +32,107 @@ export type StoryFrameItem = {
 
 /** How long each story holds the frame before the next one takes over. */
 const DWELL = 5200;
+
+/**
+ * How long each photograph holds before cross-fading to the next.
+ *
+ * Longer than the story dwell on purpose: two things changing on the same beat
+ * read as one glitch, and the photograph is the slower, quieter layer.
+ */
+const PHOTO_DWELL = 3800;
+
+/**
+ * The photographs for one story, cross-fading in place.
+ *
+ * ## Stops on hover and on keyboard focus
+ *
+ * Both, not just hover. `pointer-fine` users get the pause the client asked
+ * for; a keyboard user tabbing to the card gets the same, because a picture
+ * changing under a focused link is exactly as distracting either way. This is
+ * the behaviour `recruiter-marquee` already has in CSS (globals.css) — the same
+ * rule, expressed in state because this fade is driven by a timer rather than
+ * by an animation that can simply be paused.
+ *
+ * `paused` from the parent covers the two cases the card cannot see for itself:
+ * the frame being off screen, and the visitor having pressed Pause.
+ */
+function PhotoCrossfade({
+  images,
+  alt,
+  paused,
+}: {
+  images: string[];
+  alt: string;
+  paused: boolean;
+}) {
+  const reduceMotion = useReducedMotion();
+  const [index, setIndex] = useState(0);
+  const [held, setHeld] = useState(false);
+
+  /*
+    De-duplicated before anything else.
+
+    A caller can hand over the same file twice — several of the photo pool's
+    entries double as a college's or university's own art, so an innocent
+    `[ownArt, primaryPhoto]` pair collapses to one image for some slugs. Fading
+    a photograph to itself looks like a frozen card rather than a transition,
+    and React separately objects to the repeated key. Collapsing here means the
+    single-image branch below takes over and the card is honestly static.
+  */
+  const frames = Array.from(new Set(images));
+  const total = frames.length;
+  const running = total > 1 && !paused && !held && !reduceMotion;
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = setTimeout(() => setIndex((i) => (i + 1) % total), PHOTO_DWELL);
+    return () => clearTimeout(timer);
+  }, [running, index, total]);
+
+  // A story with one photograph needs none of the machinery below.
+  if (total <= 1) {
+    return (
+      <Image
+        src={frames[0]}
+        alt={alt}
+        fill
+        sizes="(max-width: 640px) 90vw, 42vw"
+        className="object-cover"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="absolute inset-0"
+      onMouseEnter={() => setHeld(true)}
+      onMouseLeave={() => setHeld(false)}
+      onFocusCapture={() => setHeld(true)}
+      onBlurCapture={() => setHeld(false)}
+    >
+      {frames.map((src, i) => (
+        /*
+          All photographs stay mounted and only their opacity moves. Swapping
+          the `src` of one <img> would show a blank box on every change until
+          the next file decoded — the flash the cross-fade exists to avoid.
+
+          Keyed by src, which is unique because `frames` is de-duplicated above.
+        */
+        <Image
+          key={src}
+          src={src}
+          alt={i === 0 ? alt : ""}
+          aria-hidden={i !== 0}
+          fill
+          sizes="(max-width: 640px) 90vw, 42vw"
+          className={`object-cover transition-opacity duration-[1200ms] ease-in-out ${
+            i === index ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
 
 const wordIn = {
   hidden: { opacity: 0, y: 24, filter: "blur(6px)" },
@@ -226,12 +335,10 @@ export function AutoStoryFrame({
                   className="relative mb-4 ml-0 aspect-[4/3] w-full overflow-hidden rounded-[28px] border border-white/60 bg-bg-alt shadow-[0_30px_70px_-35px_rgba(28,33,40,0.6)] sm:float-right sm:mb-6 sm:ml-8 sm:w-[46%] lg:w-[42%]"
                   style={{ shapeOutside: "inset(0 round 28px)", shapeMargin: "1.5rem" }}
                 >
-                  <Image
-                    src={item.image}
+                  <PhotoCrossfade
+                    images={item.images}
                     alt={item.imageAlt}
-                    fill
-                    sizes="(max-width: 640px) 90vw, 42vw"
-                    className="object-cover"
+                    paused={!playing || !inView}
                   />
                   {/* Eyebrow rides on the image, so the text column starts on the headline */}
                   <figcaption className="absolute inset-x-4 bottom-4">

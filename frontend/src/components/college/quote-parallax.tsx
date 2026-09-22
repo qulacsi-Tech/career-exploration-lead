@@ -67,9 +67,15 @@ export function QuoteParallax({
           className="object-cover"
         />
       </motion.div>
+      {/*
+        The middle stop carries the quote, so it is the one that has to hold.
+        `brand-ink/70` was the thin point — and brand-ink is a mid-dark maroon
+        rather than black, so 70% of it is a good deal lighter than it sounds.
+        Deepened to /85 with a darker close.
+      */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-gradient-to-br from-brand-ink/92 via-brand-ink/70 to-black/75"
+        className="absolute inset-0 -z-10 bg-gradient-to-br from-brand-ink/95 via-brand-ink/85 to-black/85"
       />
 
       <motion.blockquote
@@ -106,7 +112,7 @@ export function QuoteParallax({
           <span aria-hidden className="mx-auto mb-5 block h-px w-16 bg-gold" />
           <cite className="not-italic">
             <span className="font-display text-base font-bold text-gold">{author}</span>
-            <span className="mt-1 block text-sm text-white/65">
+            <span className="mt-1 block text-sm text-white/85">
               {course} &middot; Batch {batch}
             </span>
           </cite>

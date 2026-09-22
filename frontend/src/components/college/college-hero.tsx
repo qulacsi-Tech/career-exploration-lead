@@ -87,7 +87,19 @@ export function CollegeHero({
   const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "14%"]);
   const copyY = useTransform(scrollYProgress, [0, 1], [0, -60]);
   const copyFade = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
-  const scrimFade = useTransform(scrollYProgress, [0, 1], [0.55, 0.85]);
+  /*
+    The scrim's opacity ramps as the hero scrolls away — but the value that
+    matters is the one at rest, because that is when the hero is fully in view
+    and everything on it is being read.
+
+    It used to start at 0.55, which multiplied the gradient below
+    (`black/70 → black/45 → black/80`) down to roughly 39% / 25% / 44% actual
+    darkness. The headline and the meta line sit in that middle band, so on a
+    bright campus photo they were reading white-on-white. Starting at 0.80
+    keeps the same scroll gesture while putting the floor somewhere the type
+    survives a pale sky.
+  */
+  const scrimFade = useTransform(scrollYProgress, [0, 1], [0.8, 0.92]);
 
   const stats: HeroStat[] = [
     {
@@ -160,7 +172,7 @@ export function CollegeHero({
               initial={reduceMotion ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="flex flex-wrap items-center gap-2 text-xs font-medium text-white/60"
+              className="flex flex-wrap items-center gap-2 text-xs font-medium text-white/85"
             >
               <Link href="/" className="transition hover:text-white">
                 Home
@@ -210,7 +222,7 @@ export function CollegeHero({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.35 }}
             >
-              <p className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/75">
+              <p className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/90">
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin className="h-4 w-4 text-gold" />
                   {city}, {state}
@@ -278,7 +290,17 @@ export function CollegeHero({
                 /* Middle card steps out of the column — the reference's
                    scattered cards, but on a rule, so it reads as arrangement
                    rather than as drift. */
-                className={`rounded-2xl border border-white/20 bg-white/12 p-5 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)] backdrop-blur-xl ${
+                /*
+                  Backed with ink rather than white.
+
+                  These panels sit in the photograph's right third, which is
+                  exactly where the brand wash below fades to fully transparent
+                  — so `bg-white/12` left a 12% white film and a blur as the
+                  only thing between white type and whatever was shot that day.
+                  A dark backing gives the gold label and the white figure a
+                  known ground instead of a hopeful one.
+                */
+                className={`rounded-2xl border border-white/20 bg-ink/45 p-5 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)] backdrop-blur-xl ${
                   i === 1 ? "lg:-translate-x-8" : ""
                 }`}
               >
@@ -297,7 +319,7 @@ export function CollegeHero({
                     stat.value
                   )}
                 </p>
-                <p className="mt-2 text-xs leading-relaxed text-white/65">{stat.note}</p>
+                <p className="mt-2 text-xs leading-relaxed text-white/85">{stat.note}</p>
               </motion.li>
             ))}
           </ul>

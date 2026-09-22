@@ -58,3 +58,23 @@ export function collegePhotoSet(slug: string, count: number): string[] {
   const rotated = [...rest.slice(start), ...rest.slice(0, start)];
   return [primary, ...rotated].slice(0, Math.min(count, POOL.length));
 }
+
+/**
+ * `count` distinct photographs, with `lead` first.
+ *
+ * `collegePhotoSet` starts from whatever the pool says is this slug's primary.
+ * This starts from a photograph the caller already holds — a programme's own
+ * illustration, a university's own art — and fills the remainder from the pool
+ * **without ever repeating the lead**.
+ *
+ * That guarantee is the whole point. Several of the university files are also
+ * pool entries, so the obvious `[ownArt, collegePhoto(slug)]` returns the same
+ * file twice for any slug whose primary *is* its own art. Two identical frames
+ * in a cross-fade is not a subtle bug: it fades from a photograph to itself, so
+ * the card looks frozen while the timer runs, and React additionally complains
+ * about the duplicate key.
+ */
+export function photoSetLedBy(lead: string, slug: string, count: number): string[] {
+  const others = collegePhotoSet(slug, POOL.length).filter((src) => src !== lead);
+  return [lead, ...others].slice(0, count);
+}

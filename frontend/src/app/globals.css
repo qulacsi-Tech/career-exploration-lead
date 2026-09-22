@@ -733,3 +733,18 @@ body {
     transition: none;
   }
 }
+
+/* Slider tracks (components/college-slider.tsx).
+
+   The scrollbar is hidden because the arrows and dots already say there is
+   more to see, and a horizontal bar under a card row reads as a layout bug.
+   Scrolling itself is untouched — trackpad, touch and keyboard all still work,
+   which is the whole reason the slider is a real overflow container rather
+   than a translated track. */
+.slider-track {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.slider-track::-webkit-scrollbar {
+  display: none;
+}

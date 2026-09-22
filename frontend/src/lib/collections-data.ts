@@ -177,10 +177,24 @@ export const collections: Collection[] = [
     subheading: "Colleges Cherry Picked For You",
     scope: { programSlug: "management" },
     rankingListSlug: "management-nirf",
+    /*
+      Ten members, so the homepage band exercises the slider — the client asked
+      it to carry at least ten. Every slug here is a Management college, which
+      is what this collection's scope says it holds; picking from another stream
+      to pad the count would make the admin's stray-selection warning fire and
+      the listing page contradict its own title.
+    */
     collegeSlugs: [
       "eastwind-institute-of-management",
       "bengaluru-institute-of-management-studies",
       "horizon-school-of-business",
+      "meridian-school-of-business",
+      "ashwattha-business-school",
+      "sahyadri-institute-of-management",
+      "vantage-school-of-management",
+      "greenfield-school-of-management",
+      "kr-mangalam-university",
+      "orchid-institute-of-business-studies",
     ],
     seo: {
       metaTitle: "Top Management Colleges in India 2026: Fees, Placements & Rankings",
@@ -191,7 +205,9 @@ export const collections: Collection[] = [
       ),
       faqs: [],
     },
-    placements: { homepage: { order: 0, limit: 6, isVisible: true } },
+    /* limit 10, not the default 6: the band is the slider's demo surface, and
+       a limit below the membership would slice the track back down again. */
+    placements: { homepage: { order: 0, limit: 10, isVisible: true } },
     isPublished: true,
     updatedAt: "2 Sep 2026",
   },

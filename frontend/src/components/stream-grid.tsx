@@ -84,21 +84,26 @@ const streamEnhancements: Record<
  * Face-up it is: the name and the icon are readable on arrival and in the HTML
  * a crawler receives. The turn is a reward for interest, not a toll on it.
  *
- * ## Why the CTC sits outside the disc
+ * ## What sits where, and why
  *
- * Anything only reachable by hover is unreachable on a phone. The salary range
- * is the number people actually compare streams on, so it is printed under the
- * circle where everyone gets it; the back face carries the tagline and the
- * call to action, which are enrichment rather than information.
+ * The disc is small, so what goes on it was chosen rather than crammed:
  *
- * ## The small labels are ink-soft, not ink-faint
+ * - **Front:** icon and stream name. Two lines is what a 150px circle holds
+ *   at a readable size; a third would push all three under it.
+ * - **Back:** the badge, the tagline and the call to action. All flavour —
+ *   nothing a visitor needs in order to choose.
+ * - **Under the disc:** the average CTC. Anything only reachable by hover is
+ *   unreachable on a phone, and this is the number people actually compare
+ *   streams on, so it is never hover-gated.
  *
- * The badge and the "Avg CTC" caption were thinned to sit more quietly beside
- * the bigger discs. They were on `ink-faint`, which measures 3.10:1 on the disc
- * and 2.91:1 on the section ground — under AA before any thinning. Lightening
- * the weight of type that is also low contrast is how a label stops being
- * readable at all, so the weight came down and the colour moved up to
- * `ink-soft`: 5.98:1 and 5.61:1. Lighter to look at, easier to read.
+ * ## The floor on the small type
+ *
+ * The captions are thin and quiet by request, and they stop at 9px with
+ * `ink-soft` rather than going further. `ink-faint` was the obvious colour for
+ * type this light and measures 3.10:1 on the disc and 2.91:1 on the section
+ * ground — under AA before any thinning. Type that is small, thin AND low
+ * contrast is type nobody reads, so the weight and size came down while the
+ * colour went up: `ink-soft` is 5.98:1 and 5.61:1 on those two grounds.
  *
  * ## No JavaScript
  *
@@ -110,7 +115,7 @@ const streamEnhancements: Record<
  */
 export function StreamGrid({ streams }: { streams: StreamItem[] }) {
   return (
-    <section className="border-b border-line bg-bg-alt py-16 lg:py-20">
+    <section className="border-b border-line bg-bg-alt py-14 lg:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
@@ -123,7 +128,7 @@ export function StreamGrid({ streams }: { streams: StreamItem[] }) {
 
         <ul
           role="list"
-          className="mx-auto mt-12 grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-4"
+          className="mx-auto mt-10 grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-6"
         >
           {streams.map((stream) => {
             const data = streamEnhancements[stream.slug] || {
@@ -139,37 +144,43 @@ export function StreamGrid({ streams }: { streams: StreamItem[] }) {
                 <Link
                   href={`/${stream.slug}/colleges`}
                   aria-label={`${stream.name} — ${data.tagline}. Average CTC ${data.salaryRange}.`}
-                  className="stream-coin block w-full max-w-[200px] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-4 focus-visible:ring-offset-bg-alt"
+                  className="stream-coin block w-full max-w-[150px] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg-alt"
                 >
                   <div className="stream-coin-inner">
-                    {/* Front — identity. Legible on arrival, and in the HTML. */}
-                    <span className="stream-coin-face gap-2 border border-line bg-surface px-4 text-center shadow-[0_18px_40px_-26px_rgba(28,33,40,0.5)]">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-soft text-brand">
-                        <Icon className="h-6 w-6" />
+                    {/* Front — identity only. At this size the disc holds an
+                        icon and a name legibly; a third line would force all
+                        three below a readable size. */}
+                    <span className="stream-coin-face gap-1.5 border border-line bg-surface px-3 text-center shadow-[0_14px_30px_-24px_rgba(28,33,40,0.5)]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft text-brand">
+                        <Icon className="h-4 w-4" />
                       </span>
-                      <span className="font-display text-lg font-semibold leading-tight text-ink">
+                      <span className="font-display text-[13px] font-medium leading-tight text-ink">
                         {stream.name}
-                      </span>
-                      <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-soft">
-                        {data.badge}
                       </span>
                     </span>
 
-                    {/* Back — enrichment. Never the only home of anything. */}
-                    <span className="stream-coin-face--back stream-coin-face gap-2 border border-brand/30 bg-brand px-5 text-center text-white shadow-[0_22px_50px_-26px_rgba(28,33,40,0.6)]">
-                      <span className="text-[13px] font-medium leading-snug">{data.tagline}</span>
-                      <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
-                        Explore <ArrowUpRight className="h-3 w-3" />
+                    {/* Back — the badge and tagline the front no longer has
+                        room for. Both are flavour rather than information; the
+                        number people actually compare on is under the disc. */}
+                    <span className="stream-coin-face--back stream-coin-face gap-1 border border-brand/30 bg-brand px-3.5 text-center text-white shadow-[0_16px_34px_-24px_rgba(28,33,40,0.6)]">
+                      <span className="text-[8px] font-medium uppercase tracking-[0.14em] text-white/75">
+                        {data.badge}
+                      </span>
+                      <span className="text-[11px] font-normal leading-snug">{data.tagline}</span>
+                      <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider">
+                        Explore <ArrowUpRight className="h-2.5 w-2.5" />
                       </span>
                     </span>
                   </div>
                 </Link>
 
-                <p className="mt-3 flex flex-col items-center text-center">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-soft">
+                <p className="mt-2.5 flex flex-col items-center text-center leading-tight">
+                  <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-ink-soft">
                     Avg CTC
                   </span>
-                  <span className="mt-0.5 text-sm font-semibold text-ink">{data.salaryRange}</span>
+                  <span className="mt-0.5 text-[11px] font-medium text-ink-soft">
+                    {data.salaryRange}
+                  </span>
                 </p>
               </li>
             );
@@ -177,7 +188,7 @@ export function StreamGrid({ streams }: { streams: StreamItem[] }) {
         </ul>
 
         {/* Closing prompt for anyone who has not settled on a stream */}
-        <div className="mt-14 flex flex-col items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-6 shadow-sm sm:flex-row sm:px-8">
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-6 shadow-sm sm:flex-row sm:px-8">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
               <Award className="h-5 w-5" />

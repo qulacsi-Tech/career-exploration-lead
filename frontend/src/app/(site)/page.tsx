@@ -13,6 +13,8 @@ import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
 import { StreamGrid } from "@/components/stream-grid";
 import { AutoStoryFrame } from "@/components/ui/auto-story-frame";
+import { CollegeSlider } from "@/components/college-slider";
+import { photoSetLedBy } from "@/lib/college-images";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
 import {
   exams,
@@ -183,11 +185,30 @@ export default function Home() {
               />
             )}
 
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {bandRows.map((college) => (
-                <TopCollegeCard key={college.slug} college={college} />
-              ))}
-            </div>
+            {/*
+              Three or fewer fits one row, so it stays a grid — a slider with
+              nothing to slide is a control that only advertises its own
+              emptiness. Above three it becomes a track, which is what lets a
+              band carry ten colleges without turning the homepage into four
+              rows of cards.
+
+              The threshold is read off the resolved rows rather than stored on
+              the collection: how many cards a band shows is already decided by
+              its membership and its `limit`, and a second setting that could
+              disagree with both is a setting that eventually will.
+            */}
+            {bandRows.length > 3 ? (
+              <CollegeSlider
+                colleges={bandRows}
+                label={collection.heading || collection.title}
+              />
+            ) : (
+              <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {bandRows.map((college) => (
+                  <TopCollegeCard key={college.slug} college={college} />
+                ))}
+              </div>
+            )}
             <div className="mt-10 text-center">
               {/* The band's own page, not the directory: a visitor clicking
                   through "Top Colleges" wants more of those, not all 30,000. */}
@@ -233,7 +254,10 @@ export default function Home() {
           eyebrow: "Online & On-campus",
           headline: program.name,
           subline: `Offered at ${program.university}`,
-          image: `/images/programs/${program.slug}.jpg`,
+          /* Two images per card, per the client's feedback. The programme's own
+             art leads, and `photoSetLedBy` fills the second frame from the
+             shared pool while guaranteeing it differs from the first. */
+          images: photoSetLedBy(`/images/programs/${program.slug}.jpg`, program.slug, 2),
           imageAlt: `${program.name} program visual`,
           facts: [
             { label: "Online duration", value: program.online.duration },
@@ -313,7 +337,14 @@ export default function Home() {
           eyebrow: `${university.city}, ${university.state}`,
           headline: university.name,
           subline: "Accredited programs, verified placement records and open intakes.",
-          image: `/images/universities/${university.slug}.jpg`,
+          /* Two images, as above. `photoSetLedBy` matters more here than for
+             programmes: every university's own art is also a pool entry, so a
+             naive pair returns the same file twice. */
+          images: photoSetLedBy(
+            `/images/universities/${university.slug}.jpg`,
+            university.slug,
+            2,
+          ),
           imageAlt: `${university.name} campus`,
           facts: [
             { label: "City", value: university.city },
