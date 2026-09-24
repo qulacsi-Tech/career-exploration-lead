@@ -1,56 +1,57 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { CollegeCard } from "@/components/college-card";
-import { Chip } from "@/components/ui/chip";
-import { ArrowRight, Briefcase, Star, TrendingUp, Trophy } from "lucide-react";
-import { QuoteParallax } from "@/components/college/quote-parallax";
-import { StoryBackdrop } from "@/components/college/story-backdrop";
-import { FactMosaic, type FactItem } from "@/components/college/fact-mosaic";
-import { Reveal, RevealGroup, RevealItem } from "@/components/college/reveal";
-import { collegePhoto } from "@/lib/college-images";
-import { colleges } from "@/lib/mock-data";
-import { alertsFor } from "@/lib/college-content";
-import { ComparisonTable } from "@/components/comparison-table";
-import { sectionHref, sectionsFor } from "@/lib/college-sections";
+import { BellRing, Headset, MessagesSquare, PhoneCall, Sparkles } from "lucide-react";
 import {
-  comparisonsFeaturing,
-  similarColleges,
-  compareUrl,
-} from "@/lib/comparison-data";
+  BigFigure,
+  CardLink,
+  ColumnLabel,
+  DataList,
+  DetailCard,
+  FaqAccordion,
+  IconStat,
+  MeterList,
+  PeerGrid,
+  PollStat,
+  ReviewSnippet,
+  ScoreRow,
+} from "@/components/college/detail-ui";
+import { Chip } from "@/components/ui/chip";
+import { alertsFor } from "@/lib/college-content";
+import {
+  faqsFor,
+  lakhValue,
+  monogram,
+  overallScore,
+  percentOf,
+  shortFee,
+} from "@/lib/college-insights";
+import { sectionHref } from "@/lib/college-sections";
+import { similarColleges } from "@/lib/comparison-data";
+import { colleges } from "@/lib/mock-data";
 
 /**
- * The college overview — what this institution is, and where to go next.
+ * College Info — the overview, drawn as a column of cards.
  *
- * ## It used to be the whole college
+ * ## Visual first, one card per question
  *
- * Every section (Courses & Fees, Cutoffs, Placements, Scholarships, Hostel,
- * Campus, Videos, Reviews, Articles) now lives at its own URL under
- * `/college/<slug>/…`, per the 15 Sep feedback. This page is act one only: the
- * alerts, the about copy, the fact bento, the conversion sidebar, and the
- * comparison tail a visitor reaches once they have decided.
+ * Each card answers one thing a visitor came to find out — what it costs, where
+ * it places, how hard it is to get in, what students think — and answers it
+ * with a figure, a bar or a badge before any sentence. The copy that remains is
+ * the one-paragraph introduction and the captions under the numbers.
  *
- * The hero and the tab rail are in `layout.tsx`, so they persist across every
- * section rather than re-mounting per tab.
+ * Every card ends on a link to its full section, so the overview is a tour of
+ * the college rather than all of it: the rail is at the top, but the moment a
+ * visitor wants more of one topic is the moment they finish reading its card.
  *
- * ## What stayed on this page and why
+ * ## What moved away
  *
- * The **comparison tail** — peers, curated verdicts, similar colleges. It is
- * not a section of the college; it is the answer to "is this the right one",
- * which is the question the overview exists to serve. Putting it behind its own
- * tab would hide it from exactly the visitors who have not yet decided.
+ * The side-by-side comparison table now has its own Compare tab. Similar
+ * colleges stay here as a short list — "what else should I look at" belongs on
+ * the page visitors land on.
  *
- * The **pull quote** likewise: one student's words belong under the
- * introduction, not filed away in Reviews with the other twelve.
- *
- * ## What deliberately did not change
- *
- * - **Still a server component.** Motion and interaction live in leaf client
- *   components under `components/college/`; the data, the metadata and the
- *   content render on the server.
- * - **Reduced motion gets the finished page**, not a faster animation. Each
- *   primitive renders its resting state when the preference is set — including
- *   the backdrop, which keeps its shapes and drops only the drift.
+ * Still a server component: the cards that animate or expand are small client
+ * primitives in `components/college/detail-ui`.
  */
 
 export function generateStaticParams() {
@@ -76,27 +77,6 @@ export async function generateMetadata({
   };
 }
 
-/** Section heading, used by every section here so the rhythm is one rule. */
-function SectionHeading({
-  eyebrow,
-  title,
-  lede,
-}: {
-  eyebrow: string;
-  title: string;
-  lede?: string;
-}) {
-  return (
-    <Reveal>
-      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-brand">{eyebrow}</p>
-      <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-        {title}
-      </h2>
-      {lede && <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">{lede}</p>}
-    </Reveal>
-  );
-}
-
 export default async function CollegeOverviewPage({
   params,
 }: {
@@ -106,358 +86,360 @@ export default async function CollegeOverviewPage({
   const college = getCollege(slug);
   if (!college) notFound();
 
-  const related = colleges.filter((c) => c.slug !== college.slug).slice(0, 3);
-
-  /**
-   * Comparison, at the bottom of the page and not on the homepage (MOM §1.6).
-   *
-   * `peers` are same-program colleges nearest by rank, so the inline table
-   * compares like with like rather than whatever happens to be next in the
-   * directory. `curatedPairs` are the hand-written pages this college appears
-   * in — the versions with an actual verdict.
-   */
-  const peers = similarColleges(college, 2);
-  const curatedPairs = comparisonsFeaturing(college.slug);
+  const short = monogram(college.name);
+  const href = (section: string) => sectionHref(college.slug, section);
 
   const alerts = [...alertsFor(college.slug)].sort(
     (a, b) => Number(b.isUrgent) - Number(a.isUrgent),
   );
 
-  /**
-   * The pull quote: the best-rated review, longest first among ties.
-   *
-   * Longest as the tiebreak because a two-line review set at 40px is a quote
-   * with nothing in it — the band needs a sentence that carries the weight of
-   * the treatment. A college with no reviews simply gets no quote band.
-   */
-  const featuredReview = [...college.reviews].sort(
-    (a, b) => b.rating - a.rating || b.body.length - a.body.length,
-  )[0];
+  /* Fees as bars against the dearest programme, dearest first. */
+  const feeRows = college.courses
+    .map((course) => ({ course, lakh: lakhValue(course.fees) }))
+    .sort((a, b) => (b.lakh ?? 0) - (a.lakh ?? 0));
+  const maxFee = Math.max(...feeRows.map((row) => row.lakh ?? 0), 1);
 
-  /**
-   * The Overview bento.
-   *
-   * These were the sidebar's "Quick Facts" definition list, which a visitor's
-   * eye slid past on the way to the callback form. As the second half of the
-   * Overview they are the thing being read: the paragraph says what the college
-   * is, the tiles say what it is made of.
-   *
-   * The age is derived at build time. These pages are statically generated, so
-   * the figure is as fresh as the last deploy — which for a number that moves
-   * once a year is the right trade against making the page dynamic.
-   */
-  const yearsRunning = new Date().getFullYear() - college.established;
-  const facts: FactItem[] = [
-    {
-      icon: "calendar",
-      label: "Established",
-      value: college.established,
-      note: `${yearsRunning} years of teaching on this campus.`,
-    },
-    {
-      icon: "building",
-      label: "Ownership",
-      value: college.ownership,
-      note: `A ${college.ownership.toLowerCase()} institution, strongest in ${college.stream.toLowerCase()}.`,
-    },
-    {
-      icon: "book",
-      label: "Programmes offered",
-      value: college.coursesOffered,
-      note: "Degrees across undergraduate and postgraduate levels.",
-      accent: true,
-    },
-    {
-      icon: "wallet",
-      label: "Total fees",
-      value: college.feesRange,
-      note: "Full programme cost, lowest to highest course.",
-    },
-    {
-      icon: "award",
-      label: "Accreditations",
-      value: `${college.approvals.length} bodies`,
-      note: "Recognised and approved by:",
-      chips: college.approvals,
-    },
+  /* Packages against the highest, so the gap between median and top shows. */
+  const packages = [
+    { label: "Median package", value: college.placement.median },
+    { label: "Average package", value: college.placement.average },
+    { label: "Highest package", value: college.placement.highest },
   ];
+  const maxPackage = Math.max(...packages.map((p) => lakhValue(p.value) ?? 0), 1);
 
-  /* The sections this college has, minus the overview itself — the onward
-     links below the introduction. Same list the rail reads, so a college with
-     no videos gets no Videos card here either. */
-  const onward = sectionsFor(college).filter((section) => section.slug !== "");
+  /* Peers: same stream first, nearest by rank, then anyone else to fill. */
+  const sameStream = similarColleges(college, 8);
+  const peers = [
+    ...sameStream,
+    ...colleges.filter(
+      (c) => c.slug !== college.slug && !sameStream.some((s) => s.slug === c.slug),
+    ),
+  ].slice(0, 8);
+
+  const reviews = [...college.reviews]
+    .sort((a, b) => b.rating - a.rating || b.body.length - a.body.length)
+    .slice(0, 2);
+
+  const faqs = faqsFor(college);
+  const overall = overallScore(college);
 
   return (
-    <div>
+    <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
+      <h2 className="font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
+        {college.name} Overview
+      </h2>
+
+      {/* What's new */}
       {alerts.length > 0 && (
-        <div className="border-b border-line bg-bg-alt">
-          <RevealGroup
-            as="ul"
-            className="mx-auto max-w-7xl space-y-2 px-4 py-6 sm:px-6 lg:px-8"
-            stagger={0.06}
-          >
+        <DetailCard
+          title="What's new?"
+          action={
+            <span className="inline-flex items-center gap-1.5 text-sm text-ink-faint">
+              <BellRing className="h-4 w-4" />
+              For all courses
+            </span>
+          }
+        >
+          <ul className="space-y-3">
             {alerts.map((alert) => (
-              <RevealItem
+              <li
                 key={alert.id}
-                as="li"
-                className={`flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-sm ${
-                  alert.isUrgent
-                    ? "border-brand/40 bg-brand-soft text-brand-ink"
-                    : "border-line bg-surface text-ink-soft"
+                className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3.5 ${
+                  alert.isUrgent ? "bg-brand-soft" : "bg-bg-alt"
                 }`}
               >
+                {alert.isUrgent && (
+                  <span aria-hidden className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand" />
+                  </span>
+                )}
                 <Chip tone={alert.isUrgent ? "brand" : undefined}>{alert.kind}</Chip>
-                <span className="font-medium">{alert.title}</span>
-                <span className="ml-auto shrink-0 text-xs opacity-70">{alert.date}</span>
-              </RevealItem>
+                <span className="min-w-0 flex-1 font-medium text-ink">{alert.title}</span>
+                <span className="shrink-0 text-sm text-ink-faint">{alert.date}</span>
+              </li>
             ))}
-          </RevealGroup>
-        </div>
+          </ul>
+        </DetailCard>
       )}
 
-      {/* ---------------------------------------------------------------- *
-          About, the fact bento and the conversion sidebar.
-
-          No `overflow-hidden` here, deliberately. The backdrop pulls its blooms
-          and rings outside the reading column but clips them against its own
-          box — so a second clip on this wrapper buys nothing and costs the
-          sidebar: an ancestor with `overflow` other than `visible` becomes the
-          scrollport that `position: sticky` binds to, and the sticky sidebar
-          silently stops sticking. It did exactly that.
-       * ---------------------------------------------------------------- */}
-       
-      <div className="relative">
-        <StoryBackdrop />
-
-        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="min-w-0">
-              <SectionHeading eyebrow="The institution" title={`About ${college.name}`} />
-              <Reveal delay={0.1}>
-                <p className="mt-6 text-lg leading-relaxed text-ink-soft">{college.about}</p>
-              </Reveal>
-              <div className="mt-10">
-                <FactMosaic items={facts} />
-              </div>
-
-              {/*
-                Onward links.
-
-                With the sections on separate pages the rail is the navigation,
-                but the rail is a thin strip at the top that a visitor reading
-                the introduction has already scrolled past. This is the same
-                list again at the point they finish reading — which is where
-                they decide what they want to know next.
-              */}
-              {onward.length > 0 && (
-                <div className="mt-14">
-                  <h2 className="font-display text-lg font-bold text-ink">
-                    Explore {college.name}
-                  </h2>
-                  <RevealGroup className="mt-4 grid gap-3 sm:grid-cols-2" stagger={0.05}>
-                    {onward.map((section) => (
-                      <RevealItem key={section.slug}>
-                        <Link
-                          href={sectionHref(college.slug, section.slug)}
-                          className="group flex h-full items-start gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-brand/50 hover:shadow-sm"
-                        >
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-display text-sm font-bold text-ink transition-colors group-hover:text-brand">
-                              {section.label}
-                            </span>
-                            <span className="mt-1 block text-xs leading-relaxed text-ink-soft">
-                              {section.blurb(college)}
-                            </span>
-                          </span>
-                          <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-brand transition-transform group-hover:translate-x-0.5" />
-                        </Link>
-                      </RevealItem>
-                    ))}
-                  </RevealGroup>
-                </div>
-              )}
-            </div>
-
-            {/* Sidebar — the conversion tools. */}
-            <aside className="space-y-5 lg:sticky lg:top-[150px] lg:self-start">
-              {/*
-                At a glance — the four numbers worth carrying beside the
-                introduction. Rank and rating are in the hero, but a sticky copy
-                is a reference, not a repeat. The two package figures are pulled
-                forward from the Placements page, which is now a click away
-                rather than a scroll.
-
-                Kept to four so the whole sidebar clears a laptop viewport when
-                pinned. A fifth tile pushes the callback button off-screen,
-                which is the one thing in this column that has to stay visible.
-              */}
-              <Reveal>
-                <div className="rounded-3xl border border-line bg-surface p-6">
-                  <p className="font-display font-semibold text-ink">At a glance</p>
-                  <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-line">
-                    {[
-                      {
-                        icon: <Trophy className="h-4 w-4" />,
-                        label: `${college.ranking.authority} rank`,
-                        value: `#${college.ranking.rank}`,
-                      },
-                      {
-                        icon: <Star className="h-4 w-4" />,
-                        label: "Student rating",
-                        value: `${college.rating.toFixed(1)} / 5`,
-                      },
-                      {
-                        icon: <TrendingUp className="h-4 w-4" />,
-                        label: `Avg package ${college.placement.year}`,
-                        value: college.placement.average,
-                      },
-                      {
-                        icon: <Briefcase className="h-4 w-4" />,
-                        label: "Highest package",
-                        value: college.placement.highest,
-                      },
-                    ].map((stat) => (
-                      <div key={stat.label} className="bg-surface p-4">
-                        <span className="inline-flex text-brand">{stat.icon}</span>
-                        <dd className="mt-2 font-display text-xl font-extrabold text-ink">
-                          {stat.value}
-                        </dd>
-                        <dt className="mt-0.5 text-[11px] leading-tight text-ink-faint">
-                          {stat.label}
-                        </dt>
-                      </div>
-                    ))}
-                  </dl>
-                  {/* A route now, not an anchor. */}
-                  <Link
-                    href={sectionHref(college.slug, "placements")}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
-                  >
-                    See full placement record
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </Reveal>
-
-              <Reveal delay={0.08}>
-                <form className="rounded-3xl border border-brand/30 bg-brand-soft p-6">
-                  <p className="font-display text-lg font-bold text-brand-ink">Get a Callback</p>
-                  <p className="mt-1 text-xs leading-relaxed text-brand-ink/80">
-                    Talk to an admission counsellor about {college.name}.
-                  </p>
-                  <div className="mt-5 space-y-3">
-                    <input
-                      required
-                      placeholder="Full name"
-                      className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm focus:border-brand focus:outline-none"
-                    />
-                    <input
-                      required
-                      type="tel"
-                      placeholder="Mobile number"
-                      className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm focus:border-brand focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
-                    >
-                      Request Callback
-                    </button>
-                  </div>
-                </form>
-              </Reveal>
-
-              <Reveal delay={0.16} className="rounded-3xl border border-line bg-surface p-6">
-                <p className="font-display font-semibold text-ink">Contact Information</p>
-                <p className="mt-2 text-sm text-ink-soft">
-                  {college.city}, {college.state}
-                </p>
-                <p className="mt-1 text-sm text-ink-soft">
-                  admissions@{college.slug.split("-")[0]}.example
-                </p>
-              </Reveal>
-            </aside>
+      {/* Snapshot — student scores on the left, the key facts on the right. */}
+      <DetailCard>
+        <div className="grid gap-10 md:grid-cols-2">
+          <div className="space-y-6">
+            {college.ratingBreakdown.map((row) => (
+              <ScoreRow key={row.label} score={row.score} label={row.label} />
+            ))}
+          </div>
+          <div className="space-y-6">
+            <IconStat
+              icon="trophy"
+              value={`#${college.ranking.rank}`}
+              label={`${college.ranking.authority} ${college.stream} ranking`}
+            />
+            <IconStat icon="rupee" value={college.feesRange} label="Total fees, all programmes" />
+            <IconStat
+              icon="trend"
+              value={college.placement.average}
+              label={`Average package, ${college.placement.year}`}
+            />
+            <IconStat
+              icon="calendar"
+              value={`${college.established}`}
+              label={`Established · ${college.ownership}`}
+            />
           </div>
         </div>
-      </div>
+      </DetailCard>
 
-      {featuredReview && (
-        <QuoteParallax
-          quote={featuredReview.body}
-          author={featuredReview.author}
-          course={featuredReview.course}
-          batch={featuredReview.batch}
-          photo={collegePhoto(college.slug)}
-        />
+      {/* About */}
+      <DetailCard
+        title={`About ${short}`}
+        footer={
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-sm font-semibold text-ink">Approved by</span>
+            {college.approvals.map((approval) => (
+              <Chip key={approval} tone="brand">
+                {approval}
+              </Chip>
+            ))}
+          </div>
+        }
+      >
+        <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">{college.about}</p>
+        <div className="mt-9 grid gap-8 sm:grid-cols-3">
+          <BigFigure label="Programmes" value={`${college.coursesOffered}`} note="Degrees on offer" />
+          <BigFigure
+            label="Student rating"
+            value={college.rating.toFixed(1)}
+            note={`From ${college.reviewCount.toLocaleString("en-IN")} reviews`}
+          />
+          <BigFigure
+            label="Years running"
+            value={`${new Date().getFullYear() - college.established}`}
+            note={`Since ${college.established}`}
+          />
+        </div>
+      </DetailCard>
+
+      {/* Courses & fees */}
+      {college.courses.length > 0 && (
+        <DetailCard
+          title="Courses & Fees"
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-sm font-semibold text-ink">Exams accepted</span>
+                {college.examsAccepted.map((exam) => (
+                  <Chip key={exam}>{exam}</Chip>
+                ))}
+              </div>
+              <CardLink href={href("courses")}>All courses &amp; fees</CardLink>
+            </div>
+          }
+        >
+          <div className="grid gap-10 md:grid-cols-2">
+            <div>
+              <ColumnLabel>Total fees by programme</ColumnLabel>
+              <MeterList
+                rows={feeRows.map(({ course, lakh }) => ({
+                  label: course.name,
+                  display: shortFee(course.fees),
+                  fraction: lakh === null ? null : lakh / maxFee,
+                }))}
+              />
+            </div>
+            <div>
+              <ColumnLabel>Programmes offered</ColumnLabel>
+              <DataList
+                rows={college.courses.map((course) => ({
+                  label: course.name,
+                  value: (
+                    <>
+                      <span className="font-display text-base font-bold text-ink">
+                        {course.duration.replace(" Months", "")}
+                      </span>{" "}
+                      months &middot; {course.mode}
+                    </>
+                  ),
+                }))}
+              />
+            </div>
+          </div>
+        </DetailCard>
       )}
 
-      {/* ---------------------------------------------------------------- *
-          The tail: is this the right college?
-       * ---------------------------------------------------------------- */}
-      <div className="mx-auto max-w-7xl space-y-24 px-4 py-24 sm:px-6 lg:px-8">
-        {/* Comparison against peers. Inline rather than behind a click: the
-            comparison IS the answer to "is this the right college", and hiding
-            it behind a link loses the visitors who would not take the extra
-            step. */}
-        {peers.length > 0 && (
-          <section>
-            <SectionHeading
-              eyebrow="Side by side"
-              title={`${college.name} vs similar colleges`}
-              lede={`Compared with the ${college.stream.toLowerCase()} colleges closest to it by ranking.`}
+      {/* Placements */}
+      <DetailCard
+        title={`${short} Placements ${college.placement.year}`}
+        footer={
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-sm text-ink-soft">
+              <span className="font-semibold text-ink">Top recruiters:</span>{" "}
+              {college.placement.topRecruiters.slice(0, 5).join(", ")}
+            </p>
+            <CardLink href={href("placements")}>Full placement report</CardLink>
+          </div>
+        }
+      >
+        <div className="grid gap-10 md:grid-cols-2">
+          <BigFigure
+            label="Average package"
+            value={college.placement.average}
+            note={`Highest ${college.placement.highest} · median ${college.placement.median}`}
+          />
+          <div>
+            <ColumnLabel>Package spread</ColumnLabel>
+            <MeterList
+              rows={packages.map((p) => {
+                const lakh = lakhValue(p.value);
+                return {
+                  label: p.label,
+                  display: p.value,
+                  fraction: lakh === null ? null : lakh / maxPackage,
+                  highlight: p.label === "Average package",
+                };
+              })}
             />
-            <Reveal className="mt-8" delay={0.1}>
-              <ComparisonTable colleges={[college, ...peers]} />
-            </Reveal>
-            <Reveal delay={0.16}>
-              <Link
-                href={compareUrl([college.slug, ...peers.map((c) => c.slug)])}
-                className="mt-6 inline-block rounded-full border border-brand px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white"
-              >
-                Open full comparison
-              </Link>
-            </Reveal>
-          </section>
-        )}
+          </div>
+        </div>
+      </DetailCard>
 
-        {curatedPairs.length > 0 && (
-          <section>
-            <SectionHeading eyebrow="Verdicts" title="Which should you choose?" />
-            <RevealGroup className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {curatedPairs.map((comparison) => (
-                <RevealItem key={comparison.slug}>
-                  <Link
-                    href={`/compare/${comparison.slug}`}
-                    className="group block h-full rounded-2xl border border-line bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lg"
-                  >
-                    <h3 className="font-display text-lg font-bold text-ink transition-colors group-hover:text-brand">
-                      {comparison.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-ink-soft">
-                      {comparison.intro}
-                    </p>
-                  </Link>
-                </RevealItem>
-              ))}
-            </RevealGroup>
-          </section>
-        )}
+      {/* Counsellor call-out */}
+      <section className="relative overflow-hidden rounded-2xl border border-line bg-surface p-6 shadow-[0_1px_3px_rgba(28,33,40,0.06)] sm:p-9">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-xl">
+            <p className="font-display text-2xl font-extrabold tracking-tight text-brand sm:text-3xl">
+              Confused about {short}?
+            </p>
+            <p className="mt-2 text-base text-ink-soft">
+              Talk to an admission counsellor about fees, cut-offs and your chances — free.
+            </p>
+            <Link
+              href="/enquiry"
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-dark"
+            >
+              <PhoneCall className="h-4 w-4" />
+              Get a free callback
+            </Link>
+          </div>
+          {/* A small composed illustration from icons — no asset to ship. */}
+          <div aria-hidden className="relative mx-auto h-32 w-40 shrink-0 sm:mx-0">
+            <span className="absolute inset-4 rotate-6 rounded-3xl bg-brand-soft" />
+            <span className="absolute inset-4 -rotate-3 rounded-3xl border-2 border-brand/30 bg-surface" />
+            <Headset className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 text-brand" />
+            <Sparkles className="absolute right-0 top-0 h-6 w-6 text-gold" />
+            <Sparkles className="absolute bottom-1 left-0 h-4 w-4 text-brand/60" />
+          </div>
+        </div>
+      </section>
 
-        {/* Related colleges */}
-        <section>
-          <SectionHeading eyebrow="Keep looking" title="Similar Colleges You May Like" />
-          {/* Two-up, not three: at three the cards are ~400px and every stat
-              label wraps. Two gives each card ~630px, which is enough for the
-              values to read on one line. */}
-          <RevealGroup className="mt-10 grid gap-5 lg:grid-cols-2">
-            {related.map((c) => (
-              <RevealItem key={c.slug}>
-                <CollegeCard college={c} />
-              </RevealItem>
+      {/* What students say */}
+      {college.ratingBreakdown.length > 0 && (
+        <DetailCard
+          title="What Students Say"
+          footer={
+            (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-ink-soft">
+                  Overall <strong className="text-ink">{overall.toFixed(1)} / 5</strong> across{" "}
+                  {college.reviewCount.toLocaleString("en-IN")} reviews
+                </p>
+                <CardLink href={href("reviews")}>Read all reviews</CardLink>
+              </div>
+            )
+          }
+        >
+          <div className="grid gap-10 sm:grid-cols-2">
+            {college.ratingBreakdown.map((row) => (
+              <PollStat
+                key={row.label}
+                fraction={row.score / 5}
+                value={row.score}
+                caption={`out of 5 for ${row.label.toLowerCase()}.`}
+                note={`${college.reviewCount.toLocaleString("en-IN")} reviews`}
+              />
             ))}
-          </RevealGroup>
-        </section>
-      </div>
+          </div>
+        </DetailCard>
+      )}
+
+      {/* Cut-offs */}
+      {college.cutoffs.length > 0 && (
+        <DetailCard
+          title={`${short} Cut-Offs`}
+          action={<CardLink href={href("cutoffs")}>All cut-offs</CardLink>}
+        >
+          <MeterList
+            rows={college.cutoffs.map((cutoff) => {
+              const percent = percentOf(cutoff.score);
+              return {
+                label: `${cutoff.exam} · ${cutoff.category}`,
+                display: cutoff.score,
+                fraction: percent === null ? null : percent / 100,
+              };
+            })}
+          />
+        </DetailCard>
+      )}
+
+      {/* Reviews */}
+      {reviews.length > 0 && (
+        <DetailCard
+          title={`Reviews about ${short}`}
+          action={<CardLink href={href("reviews")}>All reviews</CardLink>}
+        >
+          <div className="space-y-5">
+            {reviews.map((review, i) => (
+              <ReviewSnippet key={`${review.author}-${i}`} review={review} clamp />
+            ))}
+          </div>
+        </DetailCard>
+      )}
+
+      {/* Similar colleges */}
+      {peers.length > 0 && (
+        <DetailCard
+          title={`Explore Colleges Similar to ${short}`}
+          action={<CardLink href={href("compare")}>Compare</CardLink>}
+        >
+          <PeerGrid
+            peers={peers.map((peer) => ({
+              slug: peer.slug,
+              name: peer.name,
+              score: peer.rating,
+              ownership: peer.ownership,
+              city: peer.city,
+              state: peer.state,
+              reviewCount: peer.reviewCount,
+            }))}
+          />
+        </DetailCard>
+      )}
+
+      {/* Q&A */}
+      <DetailCard
+        footer={<CardLink href={href("qna")}>See all questions</CardLink>}
+      >
+        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start">
+          <span
+            aria-hidden
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-soft text-brand"
+          >
+            <MessagesSquare className="h-8 w-8" />
+          </span>
+          <div>
+            <h2 className="font-display text-xl font-bold tracking-tight text-brand sm:text-2xl">
+              What do students ask about {college.name}?
+            </h2>
+            <p className="mt-2 text-base leading-relaxed text-ink-soft">
+              Quick answers on fees, admissions, cut-offs and placements at{" "}
+              <strong className="text-ink">{college.name}</strong>.
+            </p>
+          </div>
+        </div>
+        <FaqAccordion faqs={faqs.slice(0, 3)} />
+      </DetailCard>
     </div>
   );
 }
