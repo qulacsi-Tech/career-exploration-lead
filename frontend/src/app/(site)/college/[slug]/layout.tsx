@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { CollegeMasthead } from "@/components/college/college-masthead";
 import { collegePhoto } from "@/lib/college-images";
 import { highlightsFor, videosFor } from "@/lib/college-content";
-import { faqsFor, monogram } from "@/lib/college-insights";
+import { faqsOf, monogram, shortNameOf, taglineOf } from "@/lib/college-insights";
 import { colleges } from "@/lib/mock-data";
 import { collegeSections, sectionHref } from "@/lib/college-sections";
 
@@ -42,24 +42,21 @@ export default async function CollegeLayout({
   /*
     Dates resolved here, on the server, so the client never renders a
     different value from the one in the static HTML. "Last updated" is the
-    build date — the page is statically generated, so that is when its content
-    was last refreshed.
+    record's own save date from the admin; a record without one falls back to
+    the build date, which is when this static page last refreshed.
   */
   const now = new Date();
   const intake = now.getFullYear() + 1;
-  /* Built by hand: `toLocaleDateString` gives "Sept" on some runtimes. */
-  const month = now.toLocaleString("en", { month: "short" }).slice(0, 3);
-  const updatedOn = `${now.getDate()} ${month} '${String(now.getFullYear()).slice(-2)}`;
-
-  /* Shiksha-style short name: initials and city — "BIMS Bengaluru". */
-  const shortName = `${monogram(college.name)} ${college.city}`;
+  const saved = college.updatedAt ? new Date(college.updatedAt) : null;
+  const updatedOn = shortDate(saved && !Number.isNaN(saved.getTime()) ? saved : now);
 
   return (
     <div className="bg-bg-alt pb-4">
       <CollegeMasthead
         slug={college.slug}
         name={college.name}
-        title={`${shortName}: Courses, Fees, Admission ${intake}, Placements, Ranking, Scholarships`}
+        title={`${shortNameOf(college)}: ${taglineOf(college, intake)}`}
+        locality={college.locality}
         city={college.city}
         state={college.state}
         ownership={college.ownership}
@@ -68,9 +65,11 @@ export default async function CollegeLayout({
         rating={college.rating}
         reviewCount={college.reviewCount}
         averagePackage={college.placement.average}
-        qnaCount={faqsFor(college).length}
-        photo={collegePhoto(college.slug)}
+        qnaCount={faqsOf(college).length}
+        photo={college.coverImage || collegePhoto(college.slug)}
+        logo={college.logo}
         monogram={monogram(college.name)}
+        brochureHref={college.brochureUrl || "/enquiry"}
         mediaCount={{
           photos: highlightsFor(college.slug).length,
           videos: videosFor(college.slug).length,
@@ -82,4 +81,10 @@ export default async function CollegeLayout({
       {children}
     </div>
   );
+}
+
+/** "28 Sep '26". Built by hand: `toLocaleDateString` gives "Sept" on some runtimes. */
+function shortDate(date: Date): string {
+  const month = date.toLocaleString("en", { month: "short" }).slice(0, 3);
+  return `${date.getDate()} ${month} '${String(date.getFullYear()).slice(-2)}`;
 }

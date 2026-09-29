@@ -25,8 +25,19 @@ export type College = {
     mode: string;
     fees: string;
     exams: string[];
+    /** "Graduation with 50%" — shown under the programme on Courses. */
+    eligibility?: string;
+    seats?: number;
   }[];
-  placement: { year: number; average: string; median: string; highest: string; topRecruiters: string[] };
+  placement: {
+    year: number;
+    average: string;
+    median: string;
+    highest: string;
+    topRecruiters: string[];
+    /** Share of the batch placed, 0-100. */
+    placedPercent?: number;
+  };
   cutoffs: { exam: string; category: string; score: string }[];
   reviews: {
     author: string;
@@ -37,6 +48,41 @@ export type College = {
     rating: number;
     body: string;
   }[];
+
+  /*
+    Detail-page fields. Optional, so a record without them still renders: the
+    page falls back to a derived value (initials for the logo, a pool photo for
+    the cover, generated Q&A) and the admin editor shows the gap as empty.
+  */
+  /** "BIMS Bengaluru" — the masthead title. Falls back to initials + city. */
+  shortName?: string;
+  /** Street / area line before the city — "Hosur Road". */
+  locality?: string;
+  /** Uploaded image paths. */
+  logo?: string;
+  coverImage?: string;
+  /** Uploaded brochure PDF. The Brochure button falls back to the enquiry form. */
+  brochureUrl?: string;
+  /** When an editor last saved the record — "30 Jul 2026". */
+  updatedAt?: string;
+  faculty?: {
+    count?: number;
+    /** "15:1" */
+    studentRatio?: string;
+    /** Share holding a PhD, 0-100. */
+    phdPercent?: number;
+    members: { name: string; designation: string; department: string; qualification?: string }[];
+  };
+  /** Editor-written Q&A. Empty means the page generates answers from the record. */
+  faqs?: { question: string; answer: string }[];
+  /** Colleges an editor pins as similar. Empty means nearest by stream and rank. */
+  similarSlugs?: string[];
+  seo?: {
+    metaTitle?: string;
+    metaDescription?: string;
+    /** After the short name in the H1 — "Courses, Fees, Admission 2027, …". */
+    h1Tagline?: string;
+  };
 };
 
 export const colleges: College[] = [
@@ -56,6 +102,34 @@ export const colleges: College[] = [
     tags: ["Top Placements", "Featured"],
     approvals: ["AICTE", "NAAC A++"],
     established: 1998,
+    shortName: "BIMS Bengaluru",
+    locality: "Hosur Road",
+    updatedAt: "28 Sep 2026",
+    faculty: {
+      count: 64,
+      studentRatio: "12:1",
+      phdPercent: 78,
+      members: [
+        { name: "Dr. Meera Iyer", designation: "Dean", department: "Strategy", qualification: "PhD, IIM Bangalore" },
+        { name: "Dr. Rahul Menon", designation: "Professor", department: "Finance", qualification: "PhD, ISB" },
+        { name: "Prof. Anita Desai", designation: "Associate Professor", department: "Marketing", qualification: "FPM, IIM Ahmedabad" },
+      ],
+    },
+    faqs: [
+      {
+        question: "Is BIMS good for an MBA in finance?",
+        answer: "Finance is the most-chosen specialisation at BIMS. Students rate the finance faculty highly, and banking and consulting firms recruit from the batch every year.",
+      },
+      {
+        question: "Does BIMS offer hostel accommodation?",
+        answer: "Yes. On-campus hostels are available for MBA students on a first-come basis; see the Infrastructure tab for room types and charges.",
+      },
+    ],
+    seo: {
+      metaTitle: "BIMS Bengaluru: MBA Fees 2027, Placements, Cut-Offs & Reviews",
+      metaDescription:
+        "BIMS Bengaluru MBA fees, CAT cut-offs, 2025 placements (avg ₹14.2 LPA) and student reviews. Compare with similar B-schools.",
+    },
     about:
       "Bengaluru Institute of Management Studies (BIMS) is a private business school offering full-time MBA, executive MBA and doctoral programmes, with a placement record consistently ranked among the top private B-schools in South India.",
     ratingBreakdown: [
@@ -71,6 +145,8 @@ export const colleges: College[] = [
         mode: "Full Time",
         fees: "₹18.4L Total Fees",
         exams: ["CAT", "XAT", "GMAT"],
+        eligibility: "Graduation with 50% marks",
+        seats: 180,
       },
       {
         name: "Executive MBA",
@@ -93,6 +169,7 @@ export const colleges: College[] = [
       median: "₹12.8 LPA",
       highest: "₹42 LPA",
       topRecruiters: ["Deloitte", "Amazon", "TCS", "Axis Bank", "Flipkart"],
+      placedPercent: 94,
     },
     cutoffs: [
       { exam: "CAT", category: "General", score: "92 percentile" },

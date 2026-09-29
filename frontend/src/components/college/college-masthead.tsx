@@ -96,6 +96,7 @@ export function CollegeMasthead({
   slug,
   name,
   title,
+  locality,
   city,
   state,
   ownership,
@@ -106,7 +107,9 @@ export function CollegeMasthead({
   averagePackage,
   qnaCount,
   photo,
+  logo,
   monogram,
+  brochureHref,
   mediaCount,
   sections,
   updatedOn,
@@ -116,6 +119,8 @@ export function CollegeMasthead({
   name: string;
   /** "BIMS Bengaluru: Courses, Fees, Admission 2027, …" — the h1. */
   title: string;
+  /** Street / area line before the city, when the record has one. */
+  locality?: string;
   city: string;
   state: string;
   ownership: string;
@@ -127,7 +132,11 @@ export function CollegeMasthead({
   averagePackage: string;
   qnaCount: number;
   photo: string;
+  /** Uploaded logo. Without one the tile shows `monogram`. */
+  logo?: string;
   monogram: string;
+  /** The uploaded brochure, or the enquiry form when there is none. */
+  brochureHref: string;
   /** Photos and videos, for the banner chip. Zero hides it. */
   mediaCount: { photos: number; videos: number };
   sections: MastheadSection[];
@@ -222,9 +231,15 @@ export function CollegeMasthead({
 
           {/* Logo tile. No logos in the data, so the college's initials. */}
           <div className="absolute -bottom-8 left-5 z-10 flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-surface p-1.5 shadow-lg sm:left-8 sm:h-20 sm:w-20">
-            <span className="flex h-full w-full items-center justify-center rounded-xl bg-brand-soft font-display text-base font-extrabold tracking-tight text-brand-ink sm:text-lg">
-              {monogram}
-            </span>
+            {logo ? (
+              <span className="relative block h-full w-full overflow-hidden rounded-xl">
+                <Image src={logo} alt={`${name} logo`} fill sizes="80px" className="object-contain" />
+              </span>
+            ) : (
+              <span className="flex h-full w-full items-center justify-center rounded-xl bg-brand-soft font-display text-base font-extrabold tracking-tight text-brand-ink sm:text-lg">
+                {monogram}
+              </span>
+            )}
           </div>
         </motion.div>
 
@@ -247,6 +262,7 @@ export function CollegeMasthead({
               <span className="inline-flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
                 <span>
+                  {locality && `${locality}, `}
                   <Link href={`/location/${city.toLowerCase()}`} className="text-brand hover:underline">
                     {city}
                   </Link>
@@ -310,7 +326,7 @@ export function CollegeMasthead({
               {comparing ? "Added" : "Compare"}
             </button>
             <Link
-              href="/enquiry"
+              href={brochureHref}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark"
             >
               <Download className="h-4 w-4" />
@@ -358,7 +374,7 @@ export function CollegeMasthead({
                   </p>
                 </div>
                 <Link
-                  href="/enquiry"
+                  href={brochureHref}
                   className="hidden shrink-0 items-center gap-2 rounded-full border border-ink/70 px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand hover:text-brand sm:inline-flex"
                 >
                   <Download className="h-4 w-4" />

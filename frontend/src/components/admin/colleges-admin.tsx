@@ -10,6 +10,7 @@ import {
 } from "@/lib/rankings-data";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { auditCollege } from "@/lib/college-audit";
 import { CollegeEditModal } from "@/components/admin/college-edit-modal";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
 
@@ -148,6 +149,7 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
                 <th scope="col" className="py-2 pr-3 font-semibold">Stream</th>
                 <th scope="col" className="py-2 pr-3 font-semibold">Courses</th>
                 <th scope="col" className="py-2 pr-3 font-semibold">Rating</th>
+                <th scope="col" className="py-2 pr-3 font-semibold">Checks</th>
                 <th scope="col" className="py-2 pl-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -167,6 +169,9 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
                   <td className="py-3 pr-3 text-ink-soft">
                     {college.rating}
                     <span className="text-ink-faint"> ({college.reviewCount})</span>
+                  </td>
+                  <td className="py-3 pr-3">
+                    <CheckBadge college={college} />
                   </td>
                   <td className="py-3 pl-3">
                     <div className="flex justify-end gap-2">
@@ -191,7 +196,7 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-sm text-ink-soft">
+                  <td colSpan={8} className="py-10 text-center text-sm text-ink-soft">
                     {query
                       ? `No colleges match “${query}”.`
                       : "No colleges match the selected filters."}
@@ -329,10 +334,11 @@ function ViewCollegeModal({
             </div>
           </AdminSubsection>
 
-          <AdminSubsection title="SEO" description="Title, meta description, canonical and schema.">
-            <p className="rounded-lg border border-dashed border-line bg-bg-alt px-4 py-5 text-center text-xs text-ink-soft">
-              No SEO fields on the record yet — they arrive with the colleges API.
-            </p>
+          <AdminSubsection title="SEO" description="Title and meta description.">
+            <dl className="grid grid-cols-1 gap-y-3 text-sm">
+              <Field label="Meta title" value={college.seo?.metaTitle || "— generated"} />
+              <Field label="Meta description" value={college.seo?.metaDescription || "— uses About"} />
+            </dl>
           </AdminSubsection>
         </div>
       )}
@@ -418,5 +424,26 @@ function AddCollegeForm({ onDone }: { onDone: () => void }) {
         />
       </div>
     </form>
+  );
+}
+
+/**
+ * Mismatch count from the consistency checks — where this record contradicts
+ * itself on the public page. Fallback gaps are left to the editor's panel:
+ * nearly every seed record has some, and a column of them would hide the
+ * records with real contradictions.
+ */
+function CheckBadge({ college }: { college: College }) {
+  const mismatches = auditCollege(college).filter((issue) => issue.kind === "mismatch");
+  if (mismatches.length === 0) {
+    return <span className="text-xs text-ink-faint">OK</span>;
+  }
+  return (
+    <span
+      title={mismatches.map((issue) => issue.message).join(" · ")}
+      className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand-ink"
+    >
+      {mismatches.length} mismatch{mismatches.length > 1 ? "es" : ""}
+    </span>
   );
 }

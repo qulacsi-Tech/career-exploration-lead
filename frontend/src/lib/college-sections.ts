@@ -20,6 +20,18 @@
  */
 
 import type { College } from "@/lib/mock-data";
+import { tabTemplates } from "@/lib/college-content";
+
+/**
+ * The label of a rich-text tab, as the editor named its template.
+ *
+ * Admissions, Infrastructure and Scholarships are admin-defined templates, so
+ * their names come from there — renaming a template in the admin renames the
+ * public tab. The fallback covers a template that has been deleted.
+ */
+function templateLabel(templateSlug: string, fallback: string): string {
+  return tabTemplates.find((t) => t.slug === templateSlug)?.label || fallback;
+}
 
 export type CollegeSection = {
   /** URL segment. The overview's is empty — it is the college's own page. */
@@ -52,7 +64,7 @@ export const collegeSections: CollegeSection[] = [
   },
   {
     slug: "admission-process",
-    label: "Admissions",
+    label: templateLabel("admission-process", "Admissions"),
     blurb: (college) => `Step-by-step admission process, documents and key dates for ${college.name}.`,
   },
   {
@@ -77,7 +89,7 @@ export const collegeSections: CollegeSection[] = [
   },
   {
     slug: "hostel",
-    label: "Infrastructure",
+    label: templateLabel("hostel-facilities", "Infrastructure"),
     blurb: (college) => `Hostel, mess, sports and campus amenities at ${college.name}.`,
   },
   {
@@ -97,7 +109,7 @@ export const collegeSections: CollegeSection[] = [
   },
   {
     slug: "scholarships",
-    label: "Scholarships",
+    label: templateLabel("scholarships", "Scholarships"),
     blurb: (college) => `Institute and government scholarships available at ${college.name}, with eligibility and how to apply.`,
   },
   {

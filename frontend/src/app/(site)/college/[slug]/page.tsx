@@ -19,15 +19,14 @@ import {
 import { Chip } from "@/components/ui/chip";
 import { alertsFor } from "@/lib/college-content";
 import {
-  faqsFor,
+  faqsOf,
   lakhValue,
   monogram,
-  overallScore,
   percentOf,
   shortFee,
+  similarOf,
 } from "@/lib/college-insights";
 import { sectionHref } from "@/lib/college-sections";
-import { similarColleges } from "@/lib/comparison-data";
 import { colleges } from "@/lib/mock-data";
 
 /**
@@ -70,9 +69,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const college = getCollege(slug);
   if (!college) return { title: "College not found" };
+  /* The editor's SEO fields when set, the generated ones otherwise. */
   return {
-    title: `${college.name}: Courses, Fees, Placements & Reviews`,
-    description: college.about,
+    title: college.seo?.metaTitle || `${college.name}: Courses, Fees, Placements & Reviews`,
+    description: college.seo?.metaDescription || college.about,
     alternates: { canonical: `/college/${college.slug}` },
   };
 }
@@ -107,21 +107,15 @@ export default async function CollegeOverviewPage({
   ];
   const maxPackage = Math.max(...packages.map((p) => lakhValue(p.value) ?? 0), 1);
 
-  /* Peers: same stream first, nearest by rank, then anyone else to fill. */
-  const sameStream = similarColleges(college, 8);
-  const peers = [
-    ...sameStream,
-    ...colleges.filter(
-      (c) => c.slug !== college.slug && !sameStream.some((s) => s.slug === c.slug),
-    ),
-  ].slice(0, 8);
+  /* Peers: the editor's pinned picks, then nearest by stream and rank. */
+  const peers = similarOf(college, 8);
 
   const reviews = [...college.reviews]
     .sort((a, b) => b.rating - a.rating || b.body.length - a.body.length)
     .slice(0, 2);
 
-  const faqs = faqsFor(college);
-  const overall = overallScore(college);
+  const faqs = faqsOf(college);
+  const overall = college.rating;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
@@ -208,7 +202,15 @@ export default async function CollegeOverviewPage({
       >
         <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">{college.about}</p>
         <div className="mt-9 grid gap-8 sm:grid-cols-3">
-          <BigFigure label="Programmes" value={`${college.coursesOffered}`} note="Degrees on offer" />
+          <BigFigure
+            label="Programmes"
+            value={`${college.coursesOffered}`}
+            note={
+              college.courses.length < college.coursesOffered
+                ? `${college.courses.length} listed with fees`
+                : "Degrees on offer"
+            }
+          />
           <BigFigure
             label="Student rating"
             value={college.rating.toFixed(1)}
@@ -286,7 +288,11 @@ export default async function CollegeOverviewPage({
           <BigFigure
             label="Average package"
             value={college.placement.average}
-            note={`Highest ${college.placement.highest} · median ${college.placement.median}`}
+            note={
+              college.placement.placedPercent !== undefined
+                ? `${college.placement.placedPercent}% of the batch placed · highest ${college.placement.highest}`
+                : `Highest ${college.placement.highest} · median ${college.placement.median}`
+            }
           />
           <div>
             <ColumnLabel>Package spread</ColumnLabel>

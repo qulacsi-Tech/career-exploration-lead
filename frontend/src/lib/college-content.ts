@@ -54,14 +54,15 @@ export const tabTemplates: TabTemplate[] = [
   },
   {
     slug: "hostel-facilities",
-    label: "Hostel & Facilities",
+    /* Labels match the public tab names — the rail reads them from here. */
+    label: "Infrastructure",
     sortOrder: 2,
     isActive: true,
     hint: "Accommodation, mess, sports, labs and campus amenities.",
   },
   {
     slug: "admission-process",
-    label: "Admission Process",
+    label: "Admissions",
     sortOrder: 3,
     isActive: true,
     hint: "Step-by-step process, documents required and key dates.",
@@ -245,6 +246,12 @@ export type GalleryImage = {
   name: string;
   /** Required, not optional: image sitemaps are in signed scope. */
   alt: string;
+  /**
+   * The uploaded file's path, as the media endpoint returns it. Optional only
+   * while the seed records predate uploads — without it the page falls back to
+   * a stock campus photo, which is a placeholder, not the college's own image.
+   */
+  src?: string;
   isHighlight: boolean;
 };
 

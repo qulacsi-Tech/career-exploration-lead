@@ -28,20 +28,22 @@ import { collegePhotoSet } from "@/lib/college-images";
 import {
   articlesFor,
   highlightsFor,
+  mediaFor,
   tabBody,
   videoEmbedUrl,
   videosFor,
 } from "@/lib/college-content";
 import {
-  faqsFor,
+  faqsOf,
   lakhValue,
-  overallScore,
   percentOf,
   rankingTable,
   shortFee,
+  similarOf,
 } from "@/lib/college-insights";
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
-import { comparisonsFeaturing, compareUrl, similarColleges } from "@/lib/comparison-data";
+import { comparisonsFeaturing, compareUrl } from "@/lib/comparison-data";
+import { rankingsForCollege } from "@/lib/rankings-data";
 import { colleges, type College } from "@/lib/mock-data";
 import { isRichTextEmpty } from "@/lib/rich-text";
 
@@ -230,7 +232,13 @@ function Courses({ college }: { college: College }) {
                     <Layers className="h-4 w-4 text-brand" />
                     {course.mode}
                   </span>
+                  {course.seats !== undefined && <span>{course.seats} seats</span>}
                 </p>
+                {course.eligibility && (
+                  <p className="mt-1.5 text-sm text-ink-soft">
+                    <span className="font-semibold text-ink">Eligibility:</span> {course.eligibility}
+                  </p>
+                )}
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {course.exams.map((exam) => (
                     <li key={exam}>
@@ -345,16 +353,31 @@ function Fees({ college }: { college: College }) {
 }
 
 function Faculty({ college }: { college: College }) {
-  const faculty = college.ratingBreakdown.find((row) => row.label === "Faculty");
+  const rating = college.ratingBreakdown.find((row) => row.label === "Faculty");
+  const faculty = college.faculty;
+  const stats: { icon: IconName; value: string | number; label: string }[] = [];
+  if (faculty?.count !== undefined) stats.push({ icon: "users", value: faculty.count, label: "Faculty members" });
+  if (faculty?.studentRatio) stats.push({ icon: "grad", value: faculty.studentRatio, label: "Student–faculty ratio" });
+  if (faculty?.phdPercent !== undefined) stats.push({ icon: "award", value: `${faculty.phdPercent}%`, label: "Faculty with a PhD" });
 
   return (
     <>
-      {faculty && (
+      {stats.length > 0 && (
+        <DetailCard>
+          <div className="grid gap-8 sm:grid-cols-3">
+            {stats.map((stat) => (
+              <IconStat key={stat.label} icon={stat.icon} value={stat.value} label={stat.label} />
+            ))}
+          </div>
+        </DetailCard>
+      )}
+
+      {rating && (
         <DetailCard title="What Students Say About Faculty">
           <div className="grid gap-10 md:grid-cols-2 md:items-center">
             <PollStat
-              fraction={faculty.score / 5}
-              value={faculty.score}
+              fraction={rating.score / 5}
+              value={rating.score}
               caption="out of 5 is how students rate the faculty."
               note={`${college.reviewCount.toLocaleString("en-IN")} reviews`}
             />
@@ -372,12 +395,41 @@ function Faculty({ college }: { college: College }) {
           </div>
         </DetailCard>
       )}
-      {/* No faculty roster in the data yet — said plainly, not padded out. */}
-      <EmptyCard
-        icon="users"
-        title="Faculty profiles coming soon"
-        body={`${college.name} has not published its faculty list here yet. A counsellor can share department and teaching staff details.`}
-      />
+
+      {faculty && faculty.members.length > 0 ? (
+        <DetailCard title={`Faculty at ${college.name}`}>
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {faculty.members.map((member) => (
+              <li key={member.name} className="flex items-start gap-4 rounded-xl bg-bg-alt p-5">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-soft font-display text-sm font-bold text-brand-ink">
+                  {member.name
+                    .replace(/^(Dr|Prof)\.\s*/i, "")
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-display text-base font-bold text-ink">{member.name}</p>
+                  <p className="text-sm text-ink-soft">
+                    {member.designation} &middot; {member.department}
+                  </p>
+                  {member.qualification && (
+                    <p className="mt-1 text-xs text-ink-faint">{member.qualification}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </DetailCard>
+      ) : (
+        /* No roster on the record — said plainly, not padded out. */
+        <EmptyCard
+          icon="users"
+          title="Faculty profiles coming soon"
+          body={`${college.name} has not published its faculty list here yet. A counsellor can share department and teaching staff details.`}
+        />
+      )}
     </>
   );
 }
@@ -392,7 +444,7 @@ function Reviews({ college }: { college: College }) {
       />
     );
   }
-  const overall = overallScore(college);
+  const overall = college.rating;
 
   return (
     <>
@@ -456,7 +508,14 @@ function Placements({ college }: { college: College }) {
   return (
     <>
       <DetailCard title={`Placement Statistics ${college.placement.year}`}>
-        <div className="grid gap-8 sm:grid-cols-3">
+        <div
+          className={`grid gap-8 sm:grid-cols-3 ${
+            college.placement.placedPercent !== undefined ? "lg:grid-cols-4" : ""
+          }`}
+        >
+          {college.placement.placedPercent !== undefined && (
+            <BigFigure label="Batch placed" value={`${college.placement.placedPercent}%`} />
+          )}
           {packages.map((p) => (
             <BigFigure key={p.label} label={p.label} value={p.value} />
           ))}
@@ -528,6 +587,7 @@ function Cutoffs({ college }: { college: College }) {
 
 function Rankings({ college }: { college: College }) {
   const { rows, position, of } = rankingTable(college);
+  const listed = rankingsForCollege(college.slug);
   const best = Math.min(...rows.map((row) => row.ranking.rank));
 
   return (
@@ -553,6 +613,24 @@ function Rankings({ college }: { college: College }) {
           </div>
         </div>
       </DetailCard>
+
+      {listed.length > 0 && (
+        <DetailCard title={`${college.name} Rankings`}>
+          <ul className="divide-y divide-line border-y border-line">
+            {listed.map(({ entry, list }) => (
+              <li key={list.slug} className="flex items-center justify-between gap-4 py-4">
+                <div className="min-w-0">
+                  <p className="font-semibold text-ink">{list.name}</p>
+                  <p className="text-xs text-ink-faint">Updated {list.updatedAt}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-brand-soft px-4 py-1.5 font-display text-lg font-extrabold text-brand-ink">
+                  #{entry.rank}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </DetailCard>
+      )}
 
       <DetailCard title={`${college.ranking.authority} Rank Among ${college.stream} Peers`}>
         <p className="mb-5 text-sm text-ink-soft">
@@ -602,7 +680,7 @@ function Gallery({ college }: { college: College }) {
               >
                 <div className={i === 0 ? "aspect-[16/10] h-full" : "aspect-[4/3]"}>
                   <Image
-                    src={photos[i % photos.length]}
+                    src={image.src || photos[i % photos.length]}
                     alt={image.alt}
                     fill
                     sizes={i === 0 ? "(max-width: 640px) 100vw, 66vw" : "(max-width: 640px) 100vw, 33vw"}
@@ -651,7 +729,7 @@ function Gallery({ college }: { college: College }) {
 }
 
 function Compare({ college }: { college: College }) {
-  const peers = similarColleges(college, 2);
+  const peers = similarOf(college, 2);
   const curated = comparisonsFeaturing(college.slug);
   if (peers.length === 0 && curated.length === 0) {
     return (
@@ -719,14 +797,15 @@ function QnA({ college }: { college: College }) {
         </div>
       }
     >
-      <FaqAccordion faqs={faqsFor(college)} />
+      <FaqAccordion faqs={faqsOf(college)} />
     </DetailCard>
   );
 }
 
 function News({ college }: { college: College }) {
   const articles = articlesFor(college.slug);
-  if (articles.length === 0) {
+  const press = mediaFor(college.slug);
+  if (articles.length === 0 && press.length === 0) {
     return (
       <EmptyCard
         icon="news"
@@ -737,20 +816,60 @@ function News({ college }: { college: College }) {
   }
 
   return (
-    <DetailCard>
-      <ul className="divide-y divide-line">
-        {articles.map((article) => (
-          <li key={article.slug} className="py-6 first:pt-0 last:pb-0">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
-              {article.publishedAt} &middot; {article.author}
-            </p>
-            <h3 className="mt-2 font-display text-xl font-bold leading-snug text-ink">
-              {article.title}
-            </h3>
-            <p className="mt-2 text-base leading-relaxed text-ink-soft">{article.summary}</p>
-          </li>
-        ))}
-      </ul>
-    </DetailCard>
+    <>
+      {articles.length > 0 && (
+        <DetailCard title="Latest News">
+          <ul className="divide-y divide-line">
+            {articles.map((article) => (
+              <li key={article.slug} className="py-6 first:pt-0 last:pb-0">
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
+                  {article.publishedAt} &middot; {article.author}
+                </p>
+                <h3 className="mt-2 font-display text-xl font-bold leading-snug text-ink">
+                  {article.title}
+                </h3>
+                <p className="mt-2 text-base leading-relaxed text-ink-soft">{article.summary}</p>
+              </li>
+            ))}
+          </ul>
+        </DetailCard>
+      )}
+
+      {/* Press coverage — the admin's "Media & press" collection. */}
+      {press.length > 0 && (
+        <DetailCard title="In the Media">
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {press.map((item) => {
+              const body = (
+                <>
+                  <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
+                    {item.publication} &middot; {item.date}
+                  </p>
+                  <p className="mt-2 font-display text-base font-bold leading-snug text-ink">
+                    {item.title}
+                  </p>
+                </>
+              );
+              return (
+                <li key={item.id}>
+                  {item.externalLink ? (
+                    <a
+                      href={item.externalLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block h-full rounded-xl bg-bg-alt p-5 transition hover:bg-brand-soft"
+                    >
+                      {body}
+                    </a>
+                  ) : (
+                    <div className="h-full rounded-xl bg-bg-alt p-5">{body}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </DetailCard>
+      )}
+    </>
   );
 }

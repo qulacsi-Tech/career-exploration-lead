@@ -63,13 +63,6 @@ export function monogram(name: string): string {
   return letters.slice(0, 4).join("");
 }
 
-/** Mean of the category scores — the overall the reviews page leads with. */
-export function overallScore(college: College): number {
-  const rows = college.ratingBreakdown;
-  if (rows.length === 0) return college.rating;
-  return rows.reduce((total, row) => total + row.score, 0) / rows.length;
-}
-
 /**
  * The college among its stream's peers, ordered by rank — the Rankings card.
  * Real ranks from the directory, not an extrapolated table.
@@ -148,4 +141,57 @@ export function faqsFor(college: College): Faq[] {
   }
 
   return faqs;
+}
+
+/* ------------------------------------------------------------------ *
+   Record-first resolvers
+
+   Each detail-page value an editor can set in the admin is read through one
+   of these: the editor's value when present, otherwise the derived fallback
+   the page used before the field existed. The page never reads the optional
+   fields directly, so "admin value or fallback" is decided in one place.
+ * ------------------------------------------------------------------ */
+
+/** "BIMS Bengaluru" — the editor's short name, else initials and city. */
+export function shortNameOf(college: College): string {
+  return college.shortName?.trim() || `${monogram(college.name)} ${college.city}`;
+}
+
+/** The H1 after the short name. `intake` is the coming admission year. */
+export function taglineOf(college: College, intake: number): string {
+  return (
+    college.seo?.h1Tagline?.trim() ||
+    `Courses, Fees, Admission ${intake}, Placements, Ranking, Scholarships`
+  );
+}
+
+/**
+ * The Q&A shown on the page: the editor's own questions first, then the
+ * answers generated from the record. Generated ones whose question an editor
+ * has already written are dropped, so the list never asks the same thing twice.
+ */
+export function faqsOf(college: College): Faq[] {
+  const written = (college.faqs ?? []).filter((faq) => faq.question.trim() && faq.answer.trim());
+  const asked = new Set(written.map((faq) => faq.question.trim().toLowerCase()));
+  return [...written, ...faqsFor(college).filter((faq) => !asked.has(faq.question.toLowerCase()))];
+}
+
+/**
+ * Similar colleges: the editor's pinned picks in their order, then the nearest
+ * same-stream colleges by rank, then anyone else, up to `limit`.
+ */
+export function similarOf(college: College, limit = 8): College[] {
+  const picked = (college.similarSlugs ?? [])
+    .map((slug) => colleges.find((entry) => entry.slug === slug))
+    .filter((entry): entry is College => entry !== undefined && entry.slug !== college.slug);
+  const seen = new Set([college.slug, ...picked.map((entry) => entry.slug)]);
+  const byRank = colleges
+    .filter((entry) => !seen.has(entry.slug))
+    .sort(
+      (a, b) =>
+        Number(b.stream === college.stream) - Number(a.stream === college.stream) ||
+        Math.abs(a.ranking.rank - college.ranking.rank) -
+          Math.abs(b.ranking.rank - college.ranking.rank),
+    );
+  return [...picked, ...byRank].slice(0, limit);
 }

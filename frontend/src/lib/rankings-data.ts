@@ -239,3 +239,15 @@ export const describeScope = (list: RankingList) => {
   if (type.scope === "exam") return list.scopeValue.toUpperCase().replace(/-/g, " ");
   return list.scopeValue;
 };
+
+/**
+ * Every ranking list a college appears in, with its rank there — the public
+ * Rankings tab. Read from the Rankings module, so a list an editor adds or a
+ * rank they change there shows on the college page without touching the
+ * college record.
+ */
+export const rankingsForCollege = (collegeSlug: string) =>
+  rankingEntries
+    .filter((entry) => entry.collegeSlug === collegeSlug)
+    .map((entry) => ({ entry, list: rankingListBySlug(entry.rankingListSlug) }))
+    .filter((row): row is { entry: RankingEntry; list: RankingList } => row.list !== undefined);
