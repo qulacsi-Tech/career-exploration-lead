@@ -2,7 +2,26 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CollegeCard } from "@/components/college-card";
 import { Chip } from "@/components/ui/chip";
-import { colleges, faqs } from "@/lib/mock-data";
+import { getColleges } from "@/lib/api";
+
+// Static FAQ data — remains hardcoded until a CMS FAQ endpoint is built
+const faqs = [
+  {
+    question: "What is the eligibility criteria for pursuing an MBA?",
+    answer:
+      "For most full-time MBA programmes, candidates need a bachelor's degree with at least 50% aggregate marks (45% for reserved categories) from a recognised university, along with a valid CAT, XAT, GMAT or equivalent score.",
+  },
+  {
+    question: "What are the best government MBA colleges in India?",
+    answer:
+      "Government-run and centrally funded MBA programmes are offered through the IIMs, FMS Delhi, and several state-run university departments, each with its own entrance exam and cutoff.",
+  },
+  {
+    question: "How much does an MBA typically cost in India?",
+    answer:
+      "Total fees range from roughly ₹2L at government institutes to ₹25L+ at top private and deemed universities, depending on ranking, mode of study, and specialisation.",
+  },
+];
 
 const filterGroups = [
   { label: "Location", options: ["Bangalore", "Hyderabad", "Pune", "Mumbai", "Delhi NCR"] },
@@ -24,6 +43,14 @@ export default async function CollegesListingPage({
   const params = await searchParams;
   const activeFilters = Object.entries(params).filter(([, v]) => v);
 
+  // Read pagination / sort from query params
+  const page = params.page ? Number(params.page) : 1;
+  const sort = typeof params.sort === "string" ? params.sort : "popularity";
+  const q = typeof params.q === "string" ? params.q : undefined;
+
+  // Fetch from live API
+  const { data: colleges, meta } = await getColleges({ page, limit: 20, sort, q });
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Breadcrumbs
@@ -39,7 +66,7 @@ export default async function CollegesListingPage({
           <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">
             Business &amp; Management Studies Colleges
           </h1>
-          <p className="mt-1 text-sm text-ink-soft">{colleges.length * 47} Results</p>
+          <p className="mt-1 text-sm text-ink-soft">{meta.total} Results</p>
         </div>
         <Link
           href="/enquiry"
@@ -88,40 +115,58 @@ export default async function CollegesListingPage({
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3 text-sm">
             <span className="font-medium text-ink-soft">Sort by:</span>
             <div className="flex flex-wrap gap-2">
-              {["Popularity", "Top Rated", "Most Viewed"].map((s, i) => (
-                <button
+              {(["popularity", "rating", "views"] as const).map((s) => (
+                <Link
                   key={s}
+                  href={`?sort=${s}`}
                   className={`rounded-full border px-3 py-1 ${
-                    i === 0 ? "border-brand bg-brand-soft text-brand-ink" : "border-line text-ink-soft"
+                    sort === s
+                      ? "border-brand bg-brand-soft text-brand-ink"
+                      : "border-line text-ink-soft hover:border-brand hover:text-brand"
                   }`}
                 >
-                  {s}
-                </button>
+                  {s === "popularity" ? "Popularity" : s === "rating" ? "Top Rated" : "Most Viewed"}
+                </Link>
               ))}
             </div>
           </div>
 
           <div className="space-y-4">
-            {[...colleges, ...colleges].map((college, i) => (
-              <CollegeCard key={`${college.slug}-${i}`} college={college} />
+            {colleges.map((college) => (
+              <CollegeCard key={college.slug} college={college} />
             ))}
+
+            {colleges.length === 0 && (
+              <p className="py-12 text-center text-sm text-ink-faint">No colleges found.</p>
+            )}
           </div>
 
-          {/* Crawlable pagination */}
-          <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-2 text-sm">
-            <Link href="?page=1" className="rounded-full border border-brand bg-brand-soft px-3 py-1.5 text-brand-ink">
-              1
-            </Link>
-            <Link href="?page=2" className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand">
-              2
-            </Link>
-            <Link href="?page=3" className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand">
-              3
-            </Link>
-            <Link href="?page=2" className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand">
-              Next &rarr;
-            </Link>
-          </nav>
+          {/* Pagination */}
+          {meta.pages > 1 && (
+            <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-2 text-sm">
+              {Array.from({ length: Math.min(meta.pages, 5) }, (_, i) => i + 1).map((p) => (
+                <Link
+                  key={p}
+                  href={`?page=${p}&sort=${sort}`}
+                  className={`rounded-full border px-3 py-1.5 ${
+                    p === page
+                      ? "border-brand bg-brand-soft text-brand-ink"
+                      : "border-line text-ink-soft hover:border-brand"
+                  }`}
+                >
+                  {p}
+                </Link>
+              ))}
+              {page < meta.pages && (
+                <Link
+                  href={`?page=${page + 1}&sort=${sort}`}
+                  className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand"
+                >
+                  Next &rarr;
+                </Link>
+              )}
+            </nav>
+          )}
         </div>
 
         {/* Right rail */}

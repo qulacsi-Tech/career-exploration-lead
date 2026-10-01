@@ -1,5 +1,8 @@
-// Placeholder content for UI development only — replaced by real API data once
-// the backend's College/Course/Exam endpoints exist (see backend/models).
+// ── REPLACED BY LIVE API ──────────────────────────────────────────────────────
+// All pages now fetch from the FastAPI backend via src/lib/api.ts.
+// This file is kept only as a type reference. Do not import data arrays from
+// here in pages — import from @/lib/api instead.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export type College = {
   slug: string;
