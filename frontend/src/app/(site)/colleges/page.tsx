@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CollegeCard } from "@/components/college-card";
 import { Chip } from "@/components/ui/chip";
-import { colleges, faqs } from "@/lib/mock-data";
+import { getColleges } from "@/lib/api";
+import { faqs } from "@/lib/mock-data";
 
 const filterGroups = [
   { label: "Location", options: ["Bangalore", "Hyderabad", "Pune", "Mumbai", "Delhi NCR"] },
@@ -16,13 +17,41 @@ const filterGroups = [
   { label: "Ownership", options: ["Private", "Government", "Deemed"] },
 ];
 
+const SORT_LABELS: Record<string, string> = {
+  popularity: "Popularity",
+  rating: "Top Rated",
+  views: "Most Viewed",
+};
+
 export default async function CollegesListingPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const activeFilters = Object.entries(params).filter(([, v]) => v);
+
+  const page  = params.page  ? Number(params.page)  : 1;
+  const sort  = typeof params.sort  === "string" ? params.sort  : "popularity";
+  const q     = typeof params.q     === "string" ? params.q     : undefined;
+  const city  = typeof params.city  === "string" ? params.city  : undefined;
+  const exam  = typeof params.exam  === "string" ? params.exam  : undefined;
+  const ownership = typeof params.ownership === "string" ? params.ownership : undefined;
+
+  // Active URL filter chips (everything except page itself)
+  const activeFilters = Object.entries(params).filter(
+    ([k, v]) => v && k !== "page"
+  );
+
+  let colleges: Awaited<ReturnType<typeof getColleges>>["data"] = [];
+  let meta = { total: 0, page: 1, limit: 20, pages: 1 };
+
+  try {
+    const res = await getColleges({ page, limit: 20, sort, q, city, exam, ownership });
+    colleges = res.data;
+    meta = res.meta;
+  } catch {
+    // backend unavailable — show empty state
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -39,7 +68,7 @@ export default async function CollegesListingPage({
           <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">
             Business &amp; Management Studies Colleges
           </h1>
-          <p className="mt-1 text-sm text-ink-soft">{colleges.length * 47} Results</p>
+          <p className="mt-1 text-sm text-ink-soft">{meta.total} Results</p>
         </div>
         <Link
           href="/enquiry"
@@ -52,9 +81,7 @@ export default async function CollegesListingPage({
       {activeFilters.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {activeFilters.map(([key, value]) => (
-            <Chip key={key} tone="brand">
-              {String(value)}
-            </Chip>
+            <Chip key={key} tone="brand">{String(value)}</Chip>
           ))}
         </div>
       )}
@@ -88,40 +115,57 @@ export default async function CollegesListingPage({
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3 text-sm">
             <span className="font-medium text-ink-soft">Sort by:</span>
             <div className="flex flex-wrap gap-2">
-              {["Popularity", "Top Rated", "Most Viewed"].map((s, i) => (
-                <button
-                  key={s}
-                  className={`rounded-full border px-3 py-1 ${
-                    i === 0 ? "border-brand bg-brand-soft text-brand-ink" : "border-line text-ink-soft"
+              {Object.entries(SORT_LABELS).map(([key, label]) => (
+                <Link
+                  key={key}
+                  href={`?sort=${key}`}
+                  className={`rounded-full border px-3 py-1 transition ${
+                    sort === key
+                      ? "border-brand bg-brand-soft text-brand-ink"
+                      : "border-line text-ink-soft hover:border-brand hover:text-brand"
                   }`}
                 >
-                  {s}
-                </button>
+                  {label}
+                </Link>
               ))}
             </div>
           </div>
 
           <div className="space-y-4">
-            {[...colleges, ...colleges].map((college, i) => (
-              <CollegeCard key={`${college.slug}-${i}`} college={college} />
+            {colleges.map((college) => (
+              <CollegeCard key={college.slug} college={college} />
             ))}
+            {colleges.length === 0 && (
+              <p className="py-16 text-center text-sm text-ink-faint">No colleges found.</p>
+            )}
           </div>
 
           {/* Crawlable pagination */}
-          <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-2 text-sm">
-            <Link href="?page=1" className="rounded-full border border-brand bg-brand-soft px-3 py-1.5 text-brand-ink">
-              1
-            </Link>
-            <Link href="?page=2" className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand">
-              2
-            </Link>
-            <Link href="?page=3" className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand">
-              3
-            </Link>
-            <Link href="?page=2" className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand">
-              Next &rarr;
-            </Link>
-          </nav>
+          {meta.pages > 1 && (
+            <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-2 text-sm">
+              {Array.from({ length: Math.min(meta.pages, 5) }, (_, i) => i + 1).map((p) => (
+                <Link
+                  key={p}
+                  href={`?page=${p}&sort=${sort}`}
+                  className={`rounded-full border px-3 py-1.5 ${
+                    p === page
+                      ? "border-brand bg-brand-soft text-brand-ink"
+                      : "border-line text-ink-soft hover:border-brand"
+                  }`}
+                >
+                  {p}
+                </Link>
+              ))}
+              {page < meta.pages && (
+                <Link
+                  href={`?page=${page + 1}&sort=${sort}`}
+                  className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand"
+                >
+                  Next &rarr;
+                </Link>
+              )}
+            </nav>
+          )}
         </div>
 
         {/* Right rail */}
@@ -153,7 +197,7 @@ export default async function CollegesListingPage({
         </aside>
       </div>
 
-      {/* FAQs */}
+      {/* FAQs — static for now; CMS FAQ API is Phase 3 scope */}
       <section className="mt-16">
         <h2 className="font-display text-2xl font-bold text-ink">FAQs</h2>
         <div className="mt-6 space-y-3">

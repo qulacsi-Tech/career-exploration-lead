@@ -4,15 +4,18 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
-import { exams, colleges } from "@/lib/mock-data";
 import { testsForExam } from "@/lib/practice-data";
 import { TestCard } from "@/components/practice/test-card";
+import { getExam, getExamSlugs, getColleges } from "@/lib/api";
 
-export function generateStaticParams() {
-  return exams.map((exam) => ({ slug: exam.slug }));
+export async function generateStaticParams() {
+  try {
+    const slugs = await getExamSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
-
-const getExam = (slug: string) => exams.find((exam) => exam.slug === slug);
 
 export async function generateMetadata({
   params,
@@ -20,14 +23,16 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const exam = getExam(slug);
-  if (!exam) return { title: "Exam not found" };
-
-  return {
-    title: `${exam.name}: Dates, Registration, Pattern & Cutoffs`,
-    description: exam.description,
-    alternates: { canonical: `/exams/${exam.slug}` },
-  };
+  try {
+    const exam = await getExam(slug);
+    return {
+      title: `${exam.name}: Dates, Registration, Pattern & Cutoffs`,
+      description: exam.description,
+      alternates: { canonical: `/exams/${exam.slug}` },
+    };
+  } catch {
+    return { title: "Exam not found" };
+  }
 }
 
 export default async function ExamDetailPage({
@@ -36,26 +41,32 @@ export default async function ExamDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const exam = getExam(slug);
-  if (!exam) notFound();
 
-  // Colleges naming this exam, matched on the short form the college record
-  // uses ("CAT") rather than the exam's full title.
+  let exam: Awaited<ReturnType<typeof getExam>>;
+  try {
+    exam = await getExam(slug);
+  } catch {
+    notFound();
+  }
+
+  // Short name: "Common Admission Test (CAT)" → "CAT"
   const shortName = exam.name.replace(/\s*\(.*\)\s*/, "").trim();
+
+  // Practice tests (still from local data — practice API is Phase 3)
   const practiceTests = testsForExam(slug);
 
-  const accepting = colleges.filter((college) =>
-    college.examsAccepted.some(
-      (accepted) =>
-        accepted.toLowerCase() === shortName.toLowerCase() ||
-        exam.name.toLowerCase().includes(accepted.toLowerCase()),
-    ),
-  );
+  // Colleges accepting this exam — fetched live
+  let accepting: Awaited<ReturnType<typeof getColleges>>["data"] = [];
+  try {
+    const res = await getColleges({ exam: shortName, limit: 10 });
+    accepting = res.data;
+  } catch {
+    accepting = [];
+  }
 
-  // Cutoffs already on the college records for this exam — the highest-intent
-  // thing on the page, so it is rendered rather than linked away to.
-  const cutoffRows = colleges.flatMap((college) =>
-    college.cutoffs
+  // Cutoff rows derived from accepting colleges
+  const cutoffRows = accepting.flatMap((college) =>
+    (college.cutoffs ?? [])
       .filter((cutoff) => cutoff.exam.toLowerCase() === shortName.toLowerCase())
       .map((cutoff) => ({ college, cutoff })),
   );
@@ -88,27 +99,19 @@ export default async function ExamDetailPage({
 
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-12">
+
+          {/* About */}
           <section id="about">
             <h2 className="font-display text-xl font-bold text-ink">About {shortName}</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">
-              {exam.description}
-            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">{exam.description}</p>
           </section>
 
-          {/*
-            Practice sits directly under About, ahead of the pattern and cutoff
-            tables. Someone reading an exam page is preparing for it, and the
-            paper is the thing they can act on now — burying it below three
-            reference sections would make the module's best entry point the one
-            fewest people scroll to.
-          */}
+          {/* Practice */}
           {practiceTests.length > 0 && (
             <section id="practice">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl font-bold text-ink">
-                    Practice for {shortName}
-                  </h2>
+                  <h2 className="font-display text-xl font-bold text-ink">Practice for {shortName}</h2>
                   <p className="mt-1 text-sm text-ink-soft">
                     Mock papers in the real exam interface, with solutions and analysis.
                   </p>
@@ -120,7 +123,6 @@ export default async function ExamDetailPage({
                   All practice tests
                 </Link>
               </div>
-
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 {practiceTests.slice(0, 2).map((test) => (
                   <TestCard key={test.slug} test={test} />
@@ -129,6 +131,7 @@ export default async function ExamDetailPage({
             </section>
           )}
 
+          {/* Exam pattern */}
           {exam.sections && exam.sections.length > 0 && (
             <section id="pattern">
               <h2 className="font-display text-xl font-bold text-ink">Exam pattern</h2>
@@ -159,6 +162,7 @@ export default async function ExamDetailPage({
             </section>
           )}
 
+          {/* Cutoffs */}
           {cutoffRows.length > 0 && (
             <section id="cutoffs">
               <h2 className="font-display text-xl font-bold text-ink">
@@ -197,6 +201,7 @@ export default async function ExamDetailPage({
             </section>
           )}
 
+          {/* Accepting colleges */}
           {accepting.length > 0 && (
             <section id="colleges">
               <h2 className="font-display text-xl font-bold text-ink">
@@ -211,6 +216,7 @@ export default async function ExamDetailPage({
           )}
         </div>
 
+        {/* Sidebar */}
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-2xl border border-line bg-surface p-5">
             <p className="font-display font-semibold text-ink">Key dates</p>
@@ -242,10 +248,9 @@ export default async function ExamDetailPage({
                 </div>
               )}
             </dl>
-
             {exam.officialSite && (
               <a
-                href={exam.officialSite}
+                href={`https://${exam.officialSite}`}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
                 className="mt-4 block truncate text-xs text-brand hover:underline"

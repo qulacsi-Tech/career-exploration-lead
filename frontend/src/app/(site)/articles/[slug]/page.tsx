@@ -4,13 +4,15 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
-import { RichText } from "@/components/rich-text";
-import { fullArticles, articleBySlug, otherArticles } from "@/lib/articles-data";
-import { colleges } from "@/lib/mock-data";
-import { richTextToPlain } from "@/lib/rich-text";
+import { getArticle, getArticleSlugs, getArticles, getCollege } from "@/lib/api";
 
-export function generateStaticParams() {
-  return fullArticles.map((article) => ({ slug: article.slug }));
+export async function generateStaticParams() {
+  try {
+    const slugs = await getArticleSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -19,22 +21,22 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const article = articleBySlug(slug);
-  if (!article) return { title: "Article not found" };
-
-  return {
-    title: article.title,
-    // Falls back to the opening of the body rather than leaving it empty: a
-    // missing description hands the search engine the choice of snippet.
-    description: article.excerpt || richTextToPlain(article.body, 155),
-    alternates: { canonical: `/articles/${article.slug}` },
-    openGraph: {
-      type: "article",
+  try {
+    const article = await getArticle(slug);
+    return {
       title: article.title,
       description: article.excerpt,
-      publishedTime: article.date,
-    },
-  };
+      alternates: { canonical: `/articles/${article.slug}` },
+      openGraph: {
+        type: "article",
+        title: article.title,
+        description: article.excerpt,
+        publishedTime: article.date,
+      },
+    };
+  } catch {
+    return { title: "Article not found" };
+  }
 }
 
 export default async function ArticlePage({
@@ -43,14 +45,37 @@ export default async function ArticlePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const article = articleBySlug(slug);
-  if (!article) notFound();
 
-  const mentioned = article.relatedCollegeSlugs
-    .map((s) => colleges.find((c) => c.slug === s))
-    .filter((c): c is (typeof colleges)[number] => c !== undefined);
+  let article: Awaited<ReturnType<typeof getArticle>>;
+  try {
+    article = await getArticle(slug);
+  } catch {
+    notFound();
+  }
 
-  const more = otherArticles(article.slug);
+  // Fetch related colleges by slug (parallel, ignore individual failures)
+  const relatedSlugs = article.relatedCollegeSlugs ?? [];
+  const mentioned = (
+    await Promise.allSettled(relatedSlugs.map((s) => getCollege(s)))
+  )
+    .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof getCollege>>> =>
+      r.status === "fulfilled"
+    )
+    .map((r) => r.value);
+
+  // Other articles for the sidebar
+  let more: Awaited<ReturnType<typeof getArticles>>["data"] = [];
+  try {
+    const res = await getArticles({ limit: 5 });
+    more = res.data.filter((a) => a.slug !== slug).slice(0, 3);
+  } catch {
+    more = [];
+  }
+
+  // Render plain-text body: split on double newlines into paragraphs
+  const bodyParagraphs = article.body
+    ? article.body.split(/\n\n+/).map((p) => p.trim()).filter(Boolean)
+    : [];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -65,14 +90,12 @@ export default async function ArticlePage({
       <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <article className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 text-xs text-ink-faint">
-            <Chip tone="brand">{article.category}</Chip>
+            {article.category && <Chip tone="brand">{article.category}</Chip>}
             <span>{article.date}</span>
-            <span>&middot; {article.author}</span>
-            <span>&middot; {article.readMinutes} min read</span>
+            {article.author && <span>&middot; {article.author}</span>}
+            {article.readMinutes && <span>&middot; {article.readMinutes} min read</span>}
           </div>
 
-          {/* Measured column: body copy set the full width of a 1216px page is
-              unreadable, whatever the font. */}
           <h1 className="mt-3 max-w-3xl font-display text-2xl font-bold text-ink sm:text-3xl">
             {article.title}
           </h1>
@@ -80,9 +103,13 @@ export default async function ArticlePage({
             {article.excerpt}
           </p>
 
-          <div className="mt-6 max-w-3xl border-t border-line pt-6">
-            <RichText doc={article.body} />
-          </div>
+          {bodyParagraphs.length > 0 && (
+            <div className="mt-6 max-w-3xl space-y-4 border-t border-line pt-6 text-sm leading-relaxed text-ink-soft">
+              {bodyParagraphs.map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+          )}
 
           {mentioned.length > 0 && (
             <section className="mt-12">

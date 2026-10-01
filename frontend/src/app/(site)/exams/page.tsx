@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
-import { exams } from "@/lib/mock-data";
+import { getExams } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Entrance Exams: Dates, Registration & Cutoffs",
@@ -10,20 +10,22 @@ export const metadata: Metadata = {
     "Entrance exam calendar with conducting bodies, registration deadlines and exam dates for national and state-level tests.",
 };
 
-/**
- * The exam index.
- *
- * National tests first, then state — the split is the first thing a candidate
- * filters on, and it is a stable property of the exam rather than a filter that
- * needs building.
- */
-export default function ExamsIndexPage() {
+export default async function ExamsIndexPage() {
+  let exams: Awaited<ReturnType<typeof getExams>>["data"] = [];
+
+  try {
+    const res = await getExams({ limit: 100 });
+    exams = res.data;
+  } catch {
+    exams = [];
+  }
+
   const national = exams.filter((exam) => exam.level === "National");
-  const state = exams.filter((exam) => exam.level === "State");
+  const state    = exams.filter((exam) => exam.level === "State");
 
   const groups = [
     { label: "National exams", items: national },
-    { label: "State exams", items: state },
+    { label: "State exams",    items: state },
   ].filter((group) => group.items.length > 0);
 
   return (
@@ -45,6 +47,10 @@ export default function ExamsIndexPage() {
         </Link>
       </div>
 
+      {exams.length === 0 && (
+        <p className="mt-16 text-center text-sm text-ink-faint">No exams found.</p>
+      )}
+
       <div className="mt-8 space-y-10">
         {groups.map((group) => (
           <section key={group.label}>
@@ -61,16 +67,11 @@ export default function ExamsIndexPage() {
                     <Chip tone={exam.level === "National" ? "gold" : "neutral"}>{exam.level}</Chip>
                   </div>
                   <p className="mt-1 text-xs text-ink-faint">{exam.conductingBody}</p>
-                  <p className="mt-2 line-clamp-2 flex-1 text-sm text-ink-soft">
-                    {exam.description}
-                  </p>
-
+                  <p className="mt-2 line-clamp-2 flex-1 text-sm text-ink-soft">{exam.description}</p>
                   <dl className="mt-4 grid grid-cols-2 gap-x-4 border-t border-line-soft pt-3 text-sm">
                     <div className="min-w-0">
                       <dt className="text-xs text-ink-faint">Registration closes</dt>
-                      <dd className="mt-0.5 truncate font-medium text-ink">
-                        {exam.registrationCloses}
-                      </dd>
+                      <dd className="mt-0.5 truncate font-medium text-ink">{exam.registrationCloses}</dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-xs text-ink-faint">Exam date</dt>

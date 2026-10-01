@@ -27,39 +27,17 @@ import {
   shortFee,
 } from "@/lib/college-insights";
 import { sectionHref } from "@/lib/college-sections";
-import { similarColleges } from "@/lib/comparison-data";
-import { colleges } from "@/lib/mock-data";
+import { getCollege, getCollegeSlugs, getSimilarColleges } from "@/lib/api";
+import type { College } from "@/lib/api";
 
-/**
- * College Info — the overview, drawn as a column of cards.
- *
- * ## Visual first, one card per question
- *
- * Each card answers one thing a visitor came to find out — what it costs, where
- * it places, how hard it is to get in, what students think — and answers it
- * with a figure, a bar or a badge before any sentence. The copy that remains is
- * the one-paragraph introduction and the captions under the numbers.
- *
- * Every card ends on a link to its full section, so the overview is a tour of
- * the college rather than all of it: the rail is at the top, but the moment a
- * visitor wants more of one topic is the moment they finish reading its card.
- *
- * ## What moved away
- *
- * The side-by-side comparison table now has its own Compare tab. Similar
- * colleges stay here as a short list — "what else should I look at" belongs on
- * the page visitors land on.
- *
- * Still a server component: the cards that animate or expand are small client
- * primitives in `components/college/detail-ui`.
- */
-
-export function generateStaticParams() {
-  return colleges.map((c) => ({ slug: c.slug }));
-}
-
-function getCollege(slug: string) {
-  return colleges.find((c) => c.slug === slug);
+export async function generateStaticParams() {
+  try {
+    const slugs = await getCollegeSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    // Backend unavailable at build time — pages render on-demand
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -68,13 +46,16 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const college = getCollege(slug);
-  if (!college) return { title: "College not found" };
-  return {
-    title: `${college.name}: Courses, Fees, Placements & Reviews`,
-    description: college.about,
-    alternates: { canonical: `/college/${college.slug}` },
-  };
+  try {
+    const college = await getCollege(slug);
+    return {
+      title: `${college.name}: Courses, Fees, Placements & Reviews`,
+      description: college.about,
+      alternates: { canonical: `/college/${college.slug}` },
+    };
+  } catch {
+    return { title: "College not found" };
+  }
 }
 
 export default async function CollegeOverviewPage({
@@ -83,45 +64,56 @@ export default async function CollegeOverviewPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const college = getCollege(slug);
-  if (!college) notFound();
 
+  let college: College;
+  try {
+    college = await getCollege(slug);
+  } catch {
+    notFound();
+  }
+
+  // college-insights helpers accept the same College shape (structural compat)
   const short = monogram(college.name);
-  const href = (section: string) => sectionHref(college.slug, section);
+  const href  = (section: string) => sectionHref(college.slug, section);
 
   const alerts = [...alertsFor(college.slug)].sort(
     (a, b) => Number(b.isUrgent) - Number(a.isUrgent),
   );
 
-  /* Fees as bars against the dearest programme, dearest first. */
-  const feeRows = college.courses
+  // Fees as bars against the dearest programme, dearest first
+  const feeRows = (college.courses ?? [])
     .map((course) => ({ course, lakh: lakhValue(course.fees) }))
     .sort((a, b) => (b.lakh ?? 0) - (a.lakh ?? 0));
   const maxFee = Math.max(...feeRows.map((row) => row.lakh ?? 0), 1);
 
-  /* Packages against the highest, so the gap between median and top shows. */
-  const packages = [
-    { label: "Median package", value: college.placement.median },
-    { label: "Average package", value: college.placement.average },
-    { label: "Highest package", value: college.placement.highest },
-  ];
+  // Package spread
+  const placement = college.placement;
+  const packages = placement
+    ? [
+        { label: "Median package",  value: placement.median  },
+        { label: "Average package", value: placement.average },
+        { label: "Highest package", value: placement.highest },
+      ]
+    : [];
   const maxPackage = Math.max(...packages.map((p) => lakhValue(p.value) ?? 0), 1);
 
-  /* Peers: same stream first, nearest by rank, then anyone else to fill. */
-  const sameStream = similarColleges(college, 8);
-  const peers = [
-    ...sameStream,
-    ...colleges.filter(
-      (c) => c.slug !== college.slug && !sameStream.some((s) => s.slug === c.slug),
-    ),
-  ].slice(0, 8);
+  // Peer grid — similar colleges from API
+  let peers: College[] = [];
+  try {
+    peers = await getSimilarColleges(slug, 8);
+  } catch {
+    peers = [];
+  }
 
-  const reviews = [...college.reviews]
+  const reviews = [...(college.reviews ?? [])]
     .sort((a, b) => b.rating - a.rating || b.body.length - a.body.length)
     .slice(0, 2);
 
-  const faqs = faqsFor(college);
-  const overall = overallScore(college);
+  // faqsFor needs placement — guard for missing data
+  const faqs = college.placement
+    ? faqsFor(college as Parameters<typeof faqsFor>[0])
+    : [];
+  const overall = overallScore(college as Parameters<typeof overallScore>[0]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
@@ -163,11 +155,11 @@ export default async function CollegeOverviewPage({
         </DetailCard>
       )}
 
-      {/* Snapshot — student scores on the left, the key facts on the right. */}
+      {/* Snapshot */}
       <DetailCard>
         <div className="grid gap-10 md:grid-cols-2">
           <div className="space-y-6">
-            {college.ratingBreakdown.map((row) => (
+            {(college.ratingBreakdown ?? []).map((row) => (
               <ScoreRow key={row.label} score={row.score} label={row.label} />
             ))}
           </div>
@@ -178,59 +170,65 @@ export default async function CollegeOverviewPage({
               label={`${college.ranking.authority} ${college.stream} ranking`}
             />
             <IconStat icon="rupee" value={college.feesRange} label="Total fees, all programmes" />
-            <IconStat
-              icon="trend"
-              value={college.placement.average}
-              label={`Average package, ${college.placement.year}`}
-            />
-            <IconStat
-              icon="calendar"
-              value={`${college.established}`}
-              label={`Established · ${college.ownership}`}
-            />
+            {placement && (
+              <IconStat
+                icon="trend"
+                value={placement.average}
+                label={`Average package, ${placement.year}`}
+              />
+            )}
+            {college.established && (
+              <IconStat
+                icon="calendar"
+                value={`${college.established}`}
+                label={`Established · ${college.ownership}`}
+              />
+            )}
           </div>
         </div>
       </DetailCard>
 
       {/* About */}
-      <DetailCard
-        title={`About ${short}`}
-        footer={
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-sm font-semibold text-ink">Approved by</span>
-            {college.approvals.map((approval) => (
-              <Chip key={approval} tone="brand">
-                {approval}
-              </Chip>
-            ))}
+      {college.about && (
+        <DetailCard
+          title={`About ${short}`}
+          footer={
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-sm font-semibold text-ink">Approved by</span>
+              {(college.approvals ?? []).map((approval) => (
+                <Chip key={approval} tone="brand">{approval}</Chip>
+              ))}
+            </div>
+          }
+        >
+          <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">{college.about}</p>
+          <div className="mt-9 grid gap-8 sm:grid-cols-3">
+            <BigFigure label="Programmes" value={`${college.coursesOffered}`} note="Degrees on offer" />
+            <BigFigure
+              label="Student rating"
+              value={college.rating.toFixed(1)}
+              note={`From ${college.reviewCount.toLocaleString("en-IN")} reviews`}
+            />
+            {college.established && (
+              <BigFigure
+                label="Years running"
+                value={`${new Date().getFullYear() - college.established}`}
+                note={`Since ${college.established}`}
+              />
+            )}
           </div>
-        }
-      >
-        <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">{college.about}</p>
-        <div className="mt-9 grid gap-8 sm:grid-cols-3">
-          <BigFigure label="Programmes" value={`${college.coursesOffered}`} note="Degrees on offer" />
-          <BigFigure
-            label="Student rating"
-            value={college.rating.toFixed(1)}
-            note={`From ${college.reviewCount.toLocaleString("en-IN")} reviews`}
-          />
-          <BigFigure
-            label="Years running"
-            value={`${new Date().getFullYear() - college.established}`}
-            note={`Since ${college.established}`}
-          />
-        </div>
-      </DetailCard>
+        </DetailCard>
+      )}
 
       {/* Courses & fees */}
-      {college.courses.length > 0 && (
+      {feeRows.length > 0 && (
         <DetailCard
           title="Courses & Fees"
           footer={
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="mr-1 text-sm font-semibold text-ink">Exams accepted</span>
-                {college.examsAccepted.map((exam) => (
+                {(college.examsAccepted ?? []).map((exam) => (
                   <Chip key={exam}>{exam}</Chip>
                 ))}
               </div>
@@ -252,7 +250,7 @@ export default async function CollegeOverviewPage({
             <div>
               <ColumnLabel>Programmes offered</ColumnLabel>
               <DataList
-                rows={college.courses.map((course) => ({
+                rows={(college.courses ?? []).map((course) => ({
                   label: course.name,
                   value: (
                     <>
@@ -270,40 +268,42 @@ export default async function CollegeOverviewPage({
       )}
 
       {/* Placements */}
-      <DetailCard
-        title={`${short} Placements ${college.placement.year}`}
-        footer={
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="text-sm text-ink-soft">
-              <span className="font-semibold text-ink">Top recruiters:</span>{" "}
-              {college.placement.topRecruiters.slice(0, 5).join(", ")}
-            </p>
-            <CardLink href={href("placements")}>Full placement report</CardLink>
-          </div>
-        }
-      >
-        <div className="grid gap-10 md:grid-cols-2">
-          <BigFigure
-            label="Average package"
-            value={college.placement.average}
-            note={`Highest ${college.placement.highest} · median ${college.placement.median}`}
-          />
-          <div>
-            <ColumnLabel>Package spread</ColumnLabel>
-            <MeterList
-              rows={packages.map((p) => {
-                const lakh = lakhValue(p.value);
-                return {
-                  label: p.label,
-                  display: p.value,
-                  fraction: lakh === null ? null : lakh / maxPackage,
-                  highlight: p.label === "Average package",
-                };
-              })}
+      {placement && (
+        <DetailCard
+          title={`${short} Placements ${placement.year}`}
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm text-ink-soft">
+                <span className="font-semibold text-ink">Top recruiters:</span>{" "}
+                {placement.topRecruiters.slice(0, 5).join(", ")}
+              </p>
+              <CardLink href={href("placements")}>Full placement report</CardLink>
+            </div>
+          }
+        >
+          <div className="grid gap-10 md:grid-cols-2">
+            <BigFigure
+              label="Average package"
+              value={placement.average}
+              note={`Highest ${placement.highest} · median ${placement.median}`}
             />
+            <div>
+              <ColumnLabel>Package spread</ColumnLabel>
+              <MeterList
+                rows={packages.map((p) => {
+                  const lakh = lakhValue(p.value);
+                  return {
+                    label: p.label,
+                    display: p.value,
+                    fraction: lakh === null ? null : lakh / maxPackage,
+                    highlight: p.label === "Average package",
+                  };
+                })}
+              />
+            </div>
           </div>
-        </div>
-      </DetailCard>
+        </DetailCard>
+      )}
 
       {/* Counsellor call-out */}
       <section className="relative overflow-hidden rounded-2xl border border-line bg-surface p-6 shadow-[0_1px_3px_rgba(28,33,40,0.06)] sm:p-9">
@@ -323,7 +323,6 @@ export default async function CollegeOverviewPage({
               Get a free callback
             </Link>
           </div>
-          {/* A small composed illustration from icons — no asset to ship. */}
           <div aria-hidden className="relative mx-auto h-32 w-40 shrink-0 sm:mx-0">
             <span className="absolute inset-4 rotate-6 rounded-3xl bg-brand-soft" />
             <span className="absolute inset-4 -rotate-3 rounded-3xl border-2 border-brand/30 bg-surface" />
@@ -335,23 +334,21 @@ export default async function CollegeOverviewPage({
       </section>
 
       {/* What students say */}
-      {college.ratingBreakdown.length > 0 && (
+      {(college.ratingBreakdown ?? []).length > 0 && (
         <DetailCard
           title="What Students Say"
           footer={
-            (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-ink-soft">
-                  Overall <strong className="text-ink">{overall.toFixed(1)} / 5</strong> across{" "}
-                  {college.reviewCount.toLocaleString("en-IN")} reviews
-                </p>
-                <CardLink href={href("reviews")}>Read all reviews</CardLink>
-              </div>
-            )
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-ink-soft">
+                Overall <strong className="text-ink">{overall.toFixed(1)} / 5</strong> across{" "}
+                {college.reviewCount.toLocaleString("en-IN")} reviews
+              </p>
+              <CardLink href={href("reviews")}>Read all reviews</CardLink>
+            </div>
           }
         >
           <div className="grid gap-10 sm:grid-cols-2">
-            {college.ratingBreakdown.map((row) => (
+            {(college.ratingBreakdown ?? []).map((row) => (
               <PollStat
                 key={row.label}
                 fraction={row.score / 5}
@@ -364,14 +361,14 @@ export default async function CollegeOverviewPage({
         </DetailCard>
       )}
 
-      {/* Cut-offs */}
-      {college.cutoffs.length > 0 && (
+      {/* Cutoffs */}
+      {(college.cutoffs ?? []).length > 0 && (
         <DetailCard
           title={`${short} Cut-Offs`}
           action={<CardLink href={href("cutoffs")}>All cut-offs</CardLink>}
         >
           <MeterList
-            rows={college.cutoffs.map((cutoff) => {
+            rows={(college.cutoffs ?? []).map((cutoff) => {
               const percent = percentOf(cutoff.score);
               return {
                 label: `${cutoff.exam} · ${cutoff.category}`,
@@ -397,7 +394,7 @@ export default async function CollegeOverviewPage({
         </DetailCard>
       )}
 
-      {/* Similar colleges */}
+      {/* Similar colleges — live from API */}
       {peers.length > 0 && (
         <DetailCard
           title={`Explore Colleges Similar to ${short}`}
@@ -418,28 +415,28 @@ export default async function CollegeOverviewPage({
       )}
 
       {/* Q&A */}
-      <DetailCard
-        footer={<CardLink href={href("qna")}>See all questions</CardLink>}
-      >
-        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start">
-          <span
-            aria-hidden
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-soft text-brand"
-          >
-            <MessagesSquare className="h-8 w-8" />
-          </span>
-          <div>
-            <h2 className="font-display text-xl font-bold tracking-tight text-brand sm:text-2xl">
-              What do students ask about {college.name}?
-            </h2>
-            <p className="mt-2 text-base leading-relaxed text-ink-soft">
-              Quick answers on fees, admissions, cut-offs and placements at{" "}
-              <strong className="text-ink">{college.name}</strong>.
-            </p>
+      {faqs.length > 0 && (
+        <DetailCard footer={<CardLink href={href("qna")}>See all questions</CardLink>}>
+          <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start">
+            <span
+              aria-hidden
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-soft text-brand"
+            >
+              <MessagesSquare className="h-8 w-8" />
+            </span>
+            <div>
+              <h2 className="font-display text-xl font-bold tracking-tight text-brand sm:text-2xl">
+                What do students ask about {college.name}?
+              </h2>
+              <p className="mt-2 text-base leading-relaxed text-ink-soft">
+                Quick answers on fees, admissions, cut-offs and placements at{" "}
+                <strong className="text-ink">{college.name}</strong>.
+              </p>
+            </div>
           </div>
-        </div>
-        <FaqAccordion faqs={faqs.slice(0, 3)} />
-      </DetailCard>
+          <FaqAccordion faqs={faqs.slice(0, 3)} />
+        </DetailCard>
+      )}
     </div>
   );
 }
