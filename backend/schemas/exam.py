@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -8,7 +8,14 @@ class ExamSchema(BaseModel):
     conductingBody: str
     level: str
     description: str
-    registrationCloses: Optional[str]
-    examDate: Optional[str]
+    registrationCloses: Optional[str] = None
+    examDate: Optional[str] = None
+    # Extended detail fields
+    mode: Optional[str] = None
+    frequency: Optional[str] = None
+    applicationFee: Optional[str] = None
+    officialSite: Optional[str] = None
+    durationMinutes: Optional[int] = None
+    sections: Optional[List[str]] = None
 
     model_config = ConfigDict(populate_by_name=True)

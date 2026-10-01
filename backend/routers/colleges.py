@@ -49,6 +49,19 @@ async def get_all_slugs(db: DbSession):
     return SuccessResponse[list](data=slugs)
 
 
+@router.get("/similar", response_model=SuccessResponse[list])
+async def get_similar_colleges(
+    db: DbSession,
+    slug: str = Query(..., description="Slug of the reference college"),
+    limit: int = Query(8, ge=1, le=20),
+):
+    """Return colleges similar to the given slug (same stream first).
+    Used by the college detail page peer grid."""
+    svc = CollegeService(db)
+    similar = await svc.get_similar(slug, limit=limit)
+    return SuccessResponse[list](data=similar)
+
+
 @router.get("/{slug}", response_model=SuccessResponse[CollegeDetailSchema])
 async def get_college(slug: str, db: DbSession):
     svc = CollegeService(db)

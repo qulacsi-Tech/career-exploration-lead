@@ -174,3 +174,11 @@ class CollegeService:
 
     async def increment_views(self, slug: str) -> None:
         await self.repo.increment_views(slug)
+
+    async def get_similar(self, slug: str, limit: int = 8) -> List[CollegeListSchema]:
+        """Return colleges similar to the given one (same stream first, then any)."""
+        college = await self.repo.get_by_slug(slug)
+        if not college:
+            raise NotFoundError("College")
+        similar = await self.repo.get_similar(college, limit=limit)
+        return [_to_list_schema(c) for c in similar]

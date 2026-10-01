@@ -1,8 +1,8 @@
 import uuid
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from core.database import Base
 
@@ -25,6 +25,13 @@ class Exam(Base):
     exam_date = Column(String(50), nullable=True)
     stream = Column(String(100), nullable=True, index=True)
     is_featured = Column(Boolean, nullable=False, default=False, index=True)
+    # Extended detail fields
+    mode = Column(String(50), nullable=True)           # Online | Offline | Hybrid
+    frequency = Column(String(100), nullable=True)     # e.g. "Once a year"
+    application_fee = Column(String(100), nullable=True)
+    official_site = Column(String(300), nullable=True)
+    duration_minutes = Column(Integer, nullable=True)
+    sections = Column(JSONB, nullable=True)            # ["VARC", "DILR", "QA"]
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()

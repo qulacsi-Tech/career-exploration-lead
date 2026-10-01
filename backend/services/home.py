@@ -144,5 +144,12 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
             RecommendedUniversitySchema(**u) for u in universities_raw
         ],
         dataHighlights=_DATA_HIGHLIGHTS,
-        streams=[StreamCountSchema(name=s["name"], count=s["count"]) for s in stream_counts],
+        streams=[
+            StreamCountSchema(
+                slug=s["name"].lower().replace(" ", "-"),
+                name=s["name"],
+                count=s["count"],
+            )
+            for s in stream_counts
+        ],
     )

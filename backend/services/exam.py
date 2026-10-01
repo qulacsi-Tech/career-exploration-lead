@@ -19,6 +19,12 @@ def _to_schema(exam: Exam) -> ExamSchema:
         description=exam.description,
         registrationCloses=exam.registration_closes,
         examDate=exam.exam_date,
+        mode=exam.mode,
+        frequency=exam.frequency,
+        applicationFee=exam.application_fee,
+        officialSite=exam.official_site,
+        durationMinutes=exam.duration_minutes,
+        sections=exam.sections,
     )
 
 

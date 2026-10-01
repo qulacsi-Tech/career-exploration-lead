@@ -11,6 +11,7 @@ from schemas.program import ProgramSchema
 
 
 class StreamCountSchema(BaseModel):
+    slug: str
     name: str
     count: int
 

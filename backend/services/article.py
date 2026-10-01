@@ -16,7 +16,13 @@ def _fmt_date(d) -> str:
     try:
         return d.strftime("%-d %b %Y")
     except ValueError:
+        # Windows does not support %-d
         return d.strftime("%d %b %Y").lstrip("0")
+
+
+def _related_slugs(article: Article) -> List[str]:
+    raw = article.related_college_slugs or ""
+    return [s.strip() for s in raw.split(",") if s.strip()]
 
 
 def _to_list_schema(article: Article) -> ArticleListSchema:
@@ -25,6 +31,9 @@ def _to_list_schema(article: Article) -> ArticleListSchema:
         title=article.title,
         excerpt=article.excerpt,
         date=_fmt_date(article.published_at),
+        author=article.author or "Editorial Desk",
+        category=article.category,
+        readMinutes=article.read_minutes or 5,
     )
 
 
@@ -34,7 +43,11 @@ def _to_detail_schema(article: Article) -> ArticleDetailSchema:
         title=article.title,
         excerpt=article.excerpt,
         date=_fmt_date(article.published_at),
+        author=article.author or "Editorial Desk",
+        category=article.category,
+        readMinutes=article.read_minutes or 5,
         body=article.body,
+        relatedCollegeSlugs=_related_slugs(article),
     )
 
 
