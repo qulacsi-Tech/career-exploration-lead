@@ -5,14 +5,18 @@ import {
   CounsellingCard,
   SidebarLinks,
 } from "@/components/college-listing";
-import { colleges, locations, homeStreams } from "@/lib/mock-data";
-import { matchesCity } from "@/lib/location-match";
+import { homeStreams, locations } from "@/lib/mock-data";
+import { getColleges, getLocation, getLocations } from "@/lib/api";
 
-export function generateStaticParams() {
-  return locations.map((location) => ({ slug: location.slug }));
+export async function generateStaticParams() {
+  try {
+    const locs = await getLocations();
+    return locs.map((loc) => ({ slug: loc.slug }));
+  } catch {
+    // Fallback to mock slugs so the build never hard-fails
+    return locations.map((loc) => ({ slug: loc.slug }));
+  }
 }
-
-const getLocation = (slug: string) => locations.find((location) => location.slug === slug);
 
 export async function generateMetadata({
   params,
@@ -20,14 +24,16 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const location = getLocation(slug);
-  if (!location) return { title: "Location not found" };
-
-  return {
-    title: `Colleges in ${location.name}: Fees, Placements & Admissions`,
-    description: `Compare ${location.collegeCount} colleges in ${location.name} by fees, placements, accepted exams and rankings.`,
-    alternates: { canonical: `/location/${location.slug}` },
-  };
+  try {
+    const location = await getLocation(slug);
+    return {
+      title: `Colleges in ${location.name}: Fees, Placements & Admissions`,
+      description: `Compare ${location.collegeCount} colleges in ${location.name} by fees, placements, accepted exams and rankings.`,
+      alternates: { canonical: `/location/${location.slug}` },
+    };
+  } catch {
+    return { title: "Location not found" };
+  }
 }
 
 export default async function LocationPage({
@@ -36,13 +42,32 @@ export default async function LocationPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const location = getLocation(slug);
-  if (!location) notFound();
 
-  const inCity = colleges.filter((college) =>
-    matchesCity(location.slug, location.name, college.city),
-  );
+  let location: Awaited<ReturnType<typeof getLocation>>;
+  try {
+    location = await getLocation(slug);
+  } catch {
+    notFound();
+  }
 
+  // Colleges in this city from live API
+  let inCity: Awaited<ReturnType<typeof getColleges>>["data"] = [];
+  try {
+    const res = await getColleges({ city: location.name, limit: 50 });
+    inCity = res.data;
+  } catch {
+    inCity = [];
+  }
+
+  // All locations for "Other cities" sidebar — from API with mock fallback
+  let allLocations: Awaited<ReturnType<typeof getLocations>> = [];
+  try {
+    allLocations = await getLocations();
+  } catch {
+    allLocations = locations;
+  }
+
+  // Streams that have at least one college in this city
   const streamsHere = homeStreams.filter((stream) =>
     inCity.some((college) => college.stream === stream.name),
   );
@@ -67,14 +92,12 @@ export default async function LocationPage({
             items={streamsHere.map((stream) => ({
               label: stream.name,
               href: `/${stream.slug}/colleges`,
-              meta: String(
-                inCity.filter((college) => college.stream === stream.name).length,
-              ),
+              meta: String(inCity.filter((college) => college.stream === stream.name).length),
             }))}
           />
           <SidebarLinks
             title="Other cities"
-            items={locations
+            items={allLocations
               .filter((other) => other.slug !== location.slug)
               .map((other) => ({
                 label: other.name,

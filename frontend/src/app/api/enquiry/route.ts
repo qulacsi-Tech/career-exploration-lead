@@ -1,41 +1,35 @@
 import { NextResponse } from "next/server";
 
 /**
- * The leads endpoint.
+ * Enquiry / lead-capture endpoint.
  *
- * ## What this does and does not do
+ * Validates the submission, applies rate limiting and honeypot protection,
+ * then forwards a shaped payload to the FastAPI backend.
  *
- * It validates a submission and hands back a reference. It does **not** persist
- * anything yet: the backend has no lead model (`backend/models/` is empty), and
- * writing to the filesystem from a route handler would not survive a deploy.
- * When the API is ready, set `ENQUIRY_FORWARD_URL` and the handler posts the
- * validated payload on — the contract below is the one to build against.
+ * Set ENQUIRY_FORWARD_URL in .env.local to activate forwarding:
+ *   ENQUIRY_FORWARD_URL=http://localhost:8000/api/v1/leads
  *
- * Until then a submission is logged with its reference, so a lead captured
- * during a demo is at least recoverable from the server log rather than lost
- * silently while the form says "thank you".
- *
- * ## Why the validation is duplicated here
- *
- * The form validates too, for the error messages. This validates because the
- * form's checks are a convenience a client can skip — anything can POST here.
+ * Without it, submissions are logged to the server console so nothing is lost
+ * during development / review.
  */
 
 const FORWARD_URL = process.env.ENQUIRY_FORWARD_URL;
 
-export type EnquiryErrors = Partial<Record<"name" | "phone" | "email" | "stream" | "consent", string>>;
+export type EnquiryErrors = Partial<
+  Record<"name" | "phone" | "email" | "stream" | "consent", string>
+>;
 
-/** Digits only, then 10 for an Indian mobile or 8-15 for anything international. */
 const phonePattern = /^(?:\+?91)?[6-9]\d{9}$|^\+?\d{8,15}$/;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function validate(data: Record<string, unknown>): EnquiryErrors {
   const errors: EnquiryErrors = {};
-  const str = (key: string) => (typeof data[key] === "string" ? (data[key] as string).trim() : "");
+  const str = (key: string) =>
+    typeof data[key] === "string" ? (data[key] as string).trim() : "";
 
   if (str("name").length < 2) errors.name = "Enter your full name.";
 
-  const phone = str("phone").replace(/[\s-()]/g, "");
+  const phone = str("phone").replace(/[\s\-()]/g, "");
   if (!phone) errors.phone = "Enter a mobile number we can call you on.";
   else if (!phonePattern.test(phone)) errors.phone = "That does not look like a valid number.";
 
@@ -44,37 +38,28 @@ function validate(data: Record<string, unknown>): EnquiryErrors {
   else if (!emailPattern.test(email)) errors.email = "That does not look like a valid email.";
 
   if (!str("stream")) errors.stream = "Pick the stream you are interested in.";
-  if (data.consent !== true) errors.consent = "We need your consent before a counsellor can call.";
+  if (data.consent !== true)
+    errors.consent = "We need your consent before a counsellor can call.";
 
   return errors;
 }
 
-/**
- * Crude flood control, keyed by IP.
- *
- * In-memory, so it resets on redeploy and is per-instance on a serverless
- * platform — it stops a script hammering one box, not a distributed flood. Real
- * rate limiting belongs at the edge or in shared storage; this is the version
- * that costs nothing and is better than none.
- */
+/** In-memory flood control — per-IP, resets on redeploy. */
 const RATE_LIMIT = { windowMs: 60_000, max: 5 };
 const hits = new Map<string, { count: number; resetAt: number }>();
 
-function rateLimited(ip: string) {
+function rateLimited(ip: string): boolean {
   const now = Date.now();
   const entry = hits.get(ip);
-
   if (!entry || now > entry.resetAt) {
     hits.set(ip, { count: 1, resetAt: now + RATE_LIMIT.windowMs });
     return false;
   }
-
   entry.count += 1;
   return entry.count > RATE_LIMIT.max;
 }
 
-/** Short, human-quotable reference: TCP-<base36 time>-<random>. */
-function reference() {
+function reference(): string {
   return `TCP-${Date.now().toString(36).toUpperCase()}-${Math.random()
     .toString(36)
     .slice(2, 6)
@@ -97,13 +82,11 @@ export async function POST(request: Request) {
   if (rateLimited(ip)) {
     return NextResponse.json(
       { ok: false, message: "Too many requests. Try again in a minute." },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
-  // Honeypot: a field no human sees, so anything filling it is a bot. Answered
-  // with a success shape on purpose — telling a scraper it was detected only
-  // teaches it to avoid the trap next time.
+  // Honeypot — silent success for bots
   if (typeof body.company === "string" && body.company.trim() !== "") {
     return NextResponse.json({ ok: true, reference: reference() });
   }
@@ -113,16 +96,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, errors }, { status: 422 });
   }
 
-  const lead = {
-    reference: reference(),
+  const ref = reference();
+
+  // ── Shape the payload for the FastAPI LeadCreateSchema ──────────────────
+  // The enquiry form collects: name, phone, email, stream, city, message.
+  // The backend wants:        name, phone, email?, collegeSlug?, type.
+  const backendPayload = {
     name: String(body.name).trim(),
-    phone: String(body.phone).trim(),
-    email: String(body.email).trim(),
-    stream: String(body.stream),
-    city: typeof body.city === "string" ? body.city : "",
-    message: typeof body.message === "string" ? body.message.trim().slice(0, 1000) : "",
-    source: typeof body.source === "string" ? body.source : "enquiry-page",
-    submittedAt: new Date().toISOString(),
+    phone: String(body.phone).replace(/[\s\-()]/g, ""),
+    email: typeof body.email === "string" ? body.email.trim() : undefined,
+    // collegeSlug may be passed by the form on a college detail page
+    collegeSlug:
+      typeof body.collegeSlug === "string" ? body.collegeSlug : undefined,
+    type: "enquiry" as const,
   };
 
   if (FORWARD_URL) {
@@ -130,22 +116,37 @@ export async function POST(request: Request) {
       const upstream = await fetch(FORWARD_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(lead),
+        body: JSON.stringify(backendPayload),
       });
 
-      if (!upstream.ok) throw new Error(`Upstream responded ${upstream.status}`);
+      if (!upstream.ok) {
+        const errBody = await upstream.text().catch(() => "");
+        throw new Error(`Backend responded ${upstream.status}: ${errBody}`);
+      }
     } catch (error) {
-      // The lead is worth more than the tidy failure: log it in full so it can
-      // be recovered by hand, and tell the visitor honestly.
-      console.error("Enquiry forward failed", { lead, error });
+      // Log everything so a lead during demo/review is recoverable
+      console.error("Enquiry forward failed", {
+        ref,
+        payload: backendPayload,
+        error: error instanceof Error ? error.message : error,
+      });
       return NextResponse.json(
         { ok: false, message: "We could not submit that just now. Please try again." },
-        { status: 502 }
+        { status: 502 },
       );
     }
   } else {
-    console.info("Enquiry received (no forward configured)", lead);
+    // No backend configured — log locally so nothing is silently lost
+    console.info("Enquiry received (no ENQUIRY_FORWARD_URL configured)", {
+      ref,
+      ...backendPayload,
+      stream: typeof body.stream === "string" ? body.stream : "",
+      city: typeof body.city === "string" ? body.city : "",
+      message:
+        typeof body.message === "string" ? body.message.trim().slice(0, 500) : "",
+      submittedAt: new Date().toISOString(),
+    });
   }
 
-  return NextResponse.json({ ok: true, reference: lead.reference });
+  return NextResponse.json({ ok: true, reference: ref });
 }
