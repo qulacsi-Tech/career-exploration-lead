@@ -6,6 +6,10 @@ import {
   ApiError,
   adminCreateCollege,
   adminCreateExam,
+  adminCreateCourse,
+  adminCreateSpecialisation,
+  adminUpdateCourse,
+  adminUpdateSpecialisation,
   adminCreateStudyAbroadItem,
   adminUpdateLeadStatus,
   LEAD_STATUSES,
@@ -193,5 +197,78 @@ export async function updateLeadStatus(id: string, status: string): Promise<Admi
     adminUpdateLeadStatus(token, id, status as LeadStatus)
   );
   if ("ok" in result) revalidatePath("/admin");
+  return result;
+}
+
+// ── Courses and specialisations ──────────────────────────────────────────────
+
+const COURSE_FIELDS = [
+  "name", "fullName", "level", "stream", "duration", "averageFees", "about",
+  "eligibility", "modes", "examsAccepted",
+] as const;
+const COURSE_NULLABLE = new Set(["averageFees", "about", "eligibility"]);
+const COURSE_LISTS = new Set(["modes", "examsAccepted"]);
+
+const SPEC_FIELDS = ["name", "courseSlug", "duration", "averageFees", "about"] as const;
+const SPEC_NULLABLE = new Set(["duration", "averageFees", "about"]);
+
+/** Reads the named fields. Empty optional text becomes null; lists split on commas. */
+function fieldsBody(form: FormData, fields: readonly string[], nullable: Set<string>, lists: Set<string>) {
+  const out: Record<string, unknown> = {};
+  for (const field of fields) {
+    const value = String(form.get(field) ?? "").trim();
+    if (lists.has(field)) {
+      out[field] = value.split(",").map((item) => item.trim()).filter(Boolean);
+    } else if (value === "" && nullable.has(field)) {
+      out[field] = null;
+    } else {
+      out[field] = value;
+    }
+  }
+  return out;
+}
+
+export async function saveCourse(slug: string, form: FormData): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) =>
+    adminUpdateCourse(token, slug, fieldsBody(form, COURSE_FIELDS, COURSE_NULLABLE, COURSE_LISTS))
+  );
+  if ("ok" in result) revalidatePath("/courses", "layout");
+  return result;
+}
+
+export async function createCourse(
+  _prev: AdminActionResult | undefined,
+  form: FormData
+): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) =>
+    adminCreateCourse(token, {
+      ...fieldsBody(form, COURSE_FIELDS, COURSE_NULLABLE, COURSE_LISTS),
+      slug: String(form.get("slug") ?? "").trim(),
+      fullName: String(form.get("fullName") ?? "").trim(),
+    })
+  );
+  if ("ok" in result) revalidatePath("/courses", "layout");
+  return result;
+}
+
+export async function saveSpecialisation(slug: string, form: FormData): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) =>
+    adminUpdateSpecialisation(token, slug, fieldsBody(form, SPEC_FIELDS, SPEC_NULLABLE, new Set()))
+  );
+  if ("ok" in result) revalidatePath("/courses", "layout");
+  return result;
+}
+
+export async function createSpecialisation(
+  _prev: AdminActionResult | undefined,
+  form: FormData
+): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) =>
+    adminCreateSpecialisation(token, {
+      ...fieldsBody(form, SPEC_FIELDS, SPEC_NULLABLE, new Set()),
+      slug: String(form.get("slug") ?? "").trim(),
+    })
+  );
+  if ("ok" in result) revalidatePath("/courses", "layout");
   return result;
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { Course } from "@/lib/mock-data";
+import { createCourse, saveCourse } from "@/lib/admin-actions";
+import type { AdminCourse } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import {
@@ -11,7 +12,6 @@ import {
   Field,
   NameSlugFields,
 } from "@/components/admin/admin-fields";
-import { ImageUploadField } from "@/components/admin/media-uploader";
 
 const LEVELS = ["UG", "PG", "Diploma", "Doctorate"];
 const STREAMS = [
@@ -26,13 +26,18 @@ const STREAMS = [
   "Paramedical",
 ];
 
-export function CoursesAdmin({ courses }: { courses: Course[] }) {
+/*
+  Only fields the API stores are edited here. Colleges offering a course are
+  counted from the directory, and the status is set by the publish flow, so
+  neither is shown as an input.
+*/
+export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
   return (
-    <ResourceAdmin<Course>
+    <ResourceAdmin<AdminCourse>
       title="Courses"
       description="Degree programmes offered across the directory, with eligibility, fees and accepted exams."
       addLabel="Add course"
-      addDescription="Basic details now; specialisations and SEO on the record afterwards."
+      addDescription="Basic details now; eligibility and exams on the record afterwards."
       rows={courses}
       getKey={(course) => course.slug}
       searchIn={(course) => [course.name, course.fullName, course.stream, course.level]}
@@ -52,12 +57,8 @@ export function CoursesAdmin({ courses }: { courses: Course[] }) {
         { key: "level", label: "Level", render: (course) => course.level },
         { key: "stream", label: "Stream", render: (course) => course.stream },
         { key: "duration", label: "Duration", render: (course) => course.duration },
-        { key: "fees", label: "Average fees", render: (course) => course.averageFees },
-        {
-          key: "colleges",
-          label: "Colleges",
-          render: (course) => course.collegeCount.toLocaleString(),
-        },
+        { key: "fees", label: "Average fees", render: (course) => course.averageFees ?? "—" },
+        { key: "colleges", label: "Colleges", render: (course) => course.collegeCount.toLocaleString("en-IN") },
       ]}
       renderView={(course) => (
         <div className="space-y-6">
@@ -67,24 +68,19 @@ export function CoursesAdmin({ courses }: { courses: Course[] }) {
               <Field label="Level" value={course.level} />
               <Field label="Stream" value={course.stream} />
               <Field label="Duration" value={course.duration} />
-              <Field label="Average fees" value={course.averageFees} />
-              <Field label="Colleges offering" value={course.collegeCount.toLocaleString()} />
+              <Field label="Average fees" value={course.averageFees ?? "—"} />
+              <Field label="Colleges offering" value={course.collegeCount.toLocaleString("en-IN")} />
             </dl>
-            <p className="mt-3 text-sm leading-relaxed text-ink-soft">{course.about}</p>
+            <p className="mt-3 text-sm leading-relaxed text-ink-soft">{course.about ?? "—"}</p>
           </AdminSubsection>
 
           <AdminSubsection title="Eligibility">
-            <p className="text-sm text-ink-soft">{course.eligibility}</p>
+            <p className="text-sm text-ink-soft">{course.eligibility ?? "—"}</p>
           </AdminSubsection>
 
           <AdminSubsection title="Modes & exams">
-            <div className="flex flex-wrap gap-2">
-              {[...course.modes, ...course.examsAccepted].map((tag) => (
-                <span key={tag} className="rounded-md border border-line px-2 py-1 text-xs text-ink-soft">
-                  {tag}
-                </span>
-              ))}
-            </div>
+            <p className="text-sm text-ink-soft">Modes: {course.modes.join(", ") || "—"}</p>
+            <p className="mt-1 text-sm text-ink-soft">Exams: {course.examsAccepted.join(", ") || "—"}</p>
           </AdminSubsection>
         </div>
       )}
@@ -94,114 +90,67 @@ export function CoursesAdmin({ courses }: { courses: Course[] }) {
           label: "Basic details",
           render: (course) => (
             <FieldGrid>
-              <NameSlugFields
-                nameLabel="Short name"
-                defaultName={course.name}
-                defaultSlug={course.slug}
-              />
+              <TextField label="Short name" name="name" defaultValue={course.name} required />
               <TextField label="Full name" name="fullName" defaultValue={course.fullName} required />
               <SelectField label="Level" name="level" defaultValue={course.level} options={LEVELS} />
-              <SelectWithOtherField
-                label="Stream"
-                name="stream"
-                defaultValue={course.stream}
-                options={STREAMS}
-                customPlaceholder="e.g. Design, Hospitality"
-              />
-              <TextField label="Duration" name="duration" defaultValue={course.duration} />
+              <SelectWithOtherField label="Stream" name="stream" defaultValue={course.stream} options={STREAMS} />
+              <TextField label="Duration" name="duration" defaultValue={course.duration} required />
+              <TextField label="Average fees" name="averageFees" defaultValue={course.averageFees ?? ""} />
               <TextAreaField
                 label="About"
                 name="about"
+                defaultValue={course.about ?? ""}
                 rows={4}
-                defaultValue={course.about}
                 className="sm:col-span-2 lg:col-span-3"
-                hint="Shown on the course page and used for the search snippet."
               />
             </FieldGrid>
           ),
         },
         {
           id: "eligibility",
-          label: "Eligibility & fees",
+          label: "Eligibility & exams",
           render: (course) => (
             <FieldGrid>
-              <TextField label="Average fees" name="averageFees" defaultValue={course.averageFees} />
+              <TextAreaField
+                label="Eligibility"
+                name="eligibility"
+                defaultValue={course.eligibility ?? ""}
+                rows={3}
+                className="sm:col-span-2 lg:col-span-3"
+              />
               <TextField
                 label="Modes"
                 name="modes"
                 defaultValue={course.modes.join(", ")}
-                hint="Comma separated."
+                hint="Comma separated, e.g. Full Time, Online"
+                className="sm:col-span-2"
               />
               <TextField
-                label="Exams accepted"
+                label="Accepted exams"
                 name="examsAccepted"
                 defaultValue={course.examsAccepted.join(", ")}
-                hint="Comma separated."
-              />
-              <TextAreaField
-                label="Eligibility"
-                name="eligibility"
-                rows={3}
-                defaultValue={course.eligibility}
-                className="sm:col-span-2 lg:col-span-3"
+                hint="Comma separated, e.g. CAT, XAT"
+                className="sm:col-span-2"
               />
             </FieldGrid>
           ),
         },
-        {
-          id: "seo",
-          label: "SEO",
-          render: (course) => (
-            <div className="space-y-5">
-              <FieldGrid>
-                <TextField
-                  label="Meta title"
-                  name="metaTitle"
-                  placeholder={`${course.name} — Fees, Eligibility & Colleges`}
-                  className="sm:col-span-2"
-                  hint="Around 60 characters."
-                />
-                <TextField label="Canonical URL" name="canonical" placeholder={`/courses/${course.slug}`} />
-                <TextAreaField
-                  label="Meta description"
-                  name="metaDescription"
-                  rows={3}
-                  placeholder="Around 155 characters, shown in search results."
-                  className="sm:col-span-2 lg:col-span-3"
-                />
-                <ImageUploadField
-                  label="Open Graph image"
-                  name="ogImage"
-                  altLabel="og:image:alt"
-                  hint="Shown when the page is shared. 1200x630 renders best."
-                />
-                <SelectWithOtherField
-                  label="Schema type"
-                  name="schemaType"
-                  defaultValue="Course"
-                  options={["Course", "EducationalOccupationalProgram", "WebPage"]}
-                  customPlaceholder="Any schema.org type"
-                />
-                <SelectField label="Indexing" name="robots" options={["Index, follow", "No index"]} />
-              </FieldGrid>
-            </div>
-          ),
-        },
       ]}
+      onSave={(course, data) => saveCourse(course.slug, data)}
+      onAdd={(data) => createCourse(undefined, data)}
       renderAddForm={() => (
         <>
-          <NameSlugFields nameLabel="Short name" namePlaceholder="MBA" slugPlaceholder="mba" />
+          <NameSlugFields
+            nameLabel="Short name"
+            namePlaceholder="MBA"
+            slugPlaceholder="mba"
+          />
           <TextField label="Full name" name="fullName" placeholder="Master of Business Administration" required />
           <SelectField label="Level" name="level" options={LEVELS} />
           <SelectWithOtherField label="Stream" name="stream" options={STREAMS} />
-          <TextField label="Duration" name="duration" placeholder="24 Months" />
-          <TextAreaField
-            label="About"
-            name="about"
-            rows={3}
-            className="sm:col-span-2"
-            placeholder="Short description used on the course page and in search results."
-          />
+          <TextField label="Duration" name="duration" placeholder="24 Months" required />
+          <TextField label="Average fees" name="averageFees" placeholder="₹4L - 25L" />
+          <TextAreaField label="About" name="about" rows={3} className="sm:col-span-2" />
         </>
       )}
     />

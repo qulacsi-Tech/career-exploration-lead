@@ -654,6 +654,59 @@ export async function getCollectionPage(slug: string): Promise<CollectionPagePay
   return apiFetch<CollectionPagePayload>(`/collections/${slug}/page`);
 }
 
+// ── Admin catalogue (courses and specialisations) ───────────────────────────
+
+export type AdminSpecialisation = {
+  id: string;
+  slug: string;
+  name: string;
+  courseSlug: string;
+  courseName: string;
+  stream: string;
+  duration: string | null;
+  averageFees: string | null;
+  collegeCount: number;
+  about: string | null;
+};
+
+export type AdminCourse = {
+  id: string;
+  slug: string;
+  name: string;
+  fullName: string;
+  level: "UG" | "PG" | "Diploma" | "Doctorate";
+  stream: string;
+  duration: string;
+  modes: string[];
+  eligibility: string | null;
+  averageFees: string | null;
+  examsAccepted: string[];
+  collegeCount: number;
+  about: string | null;
+  isPublished: boolean;
+  specialisations: AdminSpecialisation[];
+};
+
+export async function adminGetCatalogue(token: string): Promise<AdminCourse[]> {
+  return adminRequest<AdminCourse[]>(token, "GET", "/admin/catalogue");
+}
+
+export async function adminCreateCourse(token: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "POST", "/admin/courses", body);
+}
+
+export async function adminUpdateCourse(token: string, slug: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/courses/${slug}`, body);
+}
+
+export async function adminCreateSpecialisation(token: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "POST", "/admin/specialisations", body);
+}
+
+export async function adminUpdateSpecialisation(token: string, slug: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/specialisations/${slug}`, body);
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

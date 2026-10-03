@@ -1,207 +1,113 @@
 "use client";
 
-import { useState } from "react";
-import { Course, Specialisation } from "@/lib/mock-data";
+import { createSpecialisation, saveSpecialisation } from "@/lib/admin-actions";
+import type { AdminCourse, AdminSpecialisation } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import {
   TextField,
   SelectField,
-  SelectWithOtherField,
   TextAreaField,
   Field,
   NameSlugFields,
 } from "@/components/admin/admin-fields";
-import { ImageUploadField } from "@/components/admin/media-uploader";
 
 /**
- * Specialisations hang off a course, so the parent course is a select rather
- * than free text — a specialisation with a mistyped parent disappears from the
- * course page without any obvious error.
+ * A specialisation belongs to one course. The course's name and stream are copied
+ * onto it by the API, so the editor only chooses the parent course and the
+ * fields that describe the specialisation itself.
  */
 export function SpecialisationsAdmin({
   specialisations,
   courses,
 }: {
-  specialisations: Specialisation[];
-  courses: Course[];
+  specialisations: AdminSpecialisation[];
+  courses: Pick<AdminCourse, "slug" | "name">[];
 }) {
-  const courseNames = courses.map((course) => course.name);
+  const courseOptions = courses.map((course) => course.slug);
+  const courseLabel = (slug: string) => courses.find((course) => course.slug === slug)?.name ?? slug;
 
   return (
-    <ResourceAdmin<Specialisation>
+    <ResourceAdmin<AdminSpecialisation>
       title="Specialisations"
-      description="Electives and branches within a course, each with its own page and fees."
+      description="Streams within a course, such as Finance under MBA. Each belongs to exactly one course."
       addLabel="Add specialisation"
-      addDescription="Pick the parent course, then the basics."
+      addDescription="Pick the parent course first. The stream follows from it."
       rows={specialisations}
       getKey={(item) => item.slug}
       searchIn={(item) => [item.name, item.courseName, item.stream]}
-      searchPlaceholder="Search name, course, stream"
+      searchPlaceholder="Search name or course"
       columns={[
         {
           key: "name",
           label: "Specialisation",
-          render: (item) => (
-            <>
-              <p className="font-medium text-ink">{item.name}</p>
-              <p className="text-xs text-ink-faint">{item.slug}</p>
-            </>
-          ),
+          className: "text-ink",
+          render: (item) => <p className="font-medium text-ink">{item.name}</p>,
         },
-        {
-          key: "course",
-          label: "Course",
-          render: (item) => (
-            <span className="rounded-md border border-line px-2 py-0.5 text-xs text-ink-soft">
-              {item.courseName}
-            </span>
-          ),
-        },
+        { key: "course", label: "Course", render: (item) => item.courseName },
         { key: "stream", label: "Stream", render: (item) => item.stream },
-        { key: "duration", label: "Duration", render: (item) => item.duration },
-        { key: "fees", label: "Average fees", render: (item) => item.averageFees },
-        {
-          key: "colleges",
-          label: "Colleges",
-          render: (item) => item.collegeCount.toLocaleString(),
-        },
+        { key: "duration", label: "Duration", render: (item) => item.duration ?? "—" },
+        { key: "fees", label: "Average fees", render: (item) => item.averageFees ?? "—" },
+        { key: "colleges", label: "Colleges", render: (item) => item.collegeCount.toLocaleString("en-IN") },
       ]}
       renderView={(item) => (
         <div className="space-y-6">
-          <AdminSubsection title="Basic details">
+          <AdminSubsection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
               <Field label="Parent course" value={item.courseName} />
               <Field label="Stream" value={item.stream} />
-              <Field label="Duration" value={item.duration} />
-              <Field label="Average fees" value={item.averageFees} />
-              <Field label="Colleges offering" value={item.collegeCount.toLocaleString()} />
+              <Field label="Duration" value={item.duration ?? "—"} />
+              <Field label="Average fees" value={item.averageFees ?? "—"} />
+              <Field label="Colleges offering" value={item.collegeCount.toLocaleString("en-IN")} />
               <Field label="Slug" value={item.slug} />
             </dl>
-            <p className="mt-3 text-sm leading-relaxed text-ink-soft">{item.about}</p>
+            <p className="mt-3 text-sm leading-relaxed text-ink-soft">{item.about ?? "—"}</p>
           </AdminSubsection>
         </div>
       )}
       editTabs={[
         {
           id: "basic",
-          label: "Basic details",
+          label: "Details",
           render: (item) => (
             <FieldGrid>
-              <NameSlugFields defaultName={item.name} defaultSlug={item.slug} />
+              <TextField label="Name" name="name" defaultValue={item.name} required />
               <SelectField
                 label="Parent course"
                 name="courseSlug"
-                defaultValue={item.courseName}
-                options={courseNames}
+                defaultValue={item.courseSlug}
+                options={courseOptions}
+                labelFor={courseLabel}
               />
-              <TextField label="Stream" name="stream" defaultValue={item.stream} />
-              <TextField label="Duration" name="duration" defaultValue={item.duration} />
-              <TextField label="Average fees" name="averageFees" defaultValue={item.averageFees} />
+              <TextField label="Duration" name="duration" defaultValue={item.duration ?? ""} />
+              <TextField label="Average fees" name="averageFees" defaultValue={item.averageFees ?? ""} />
               <TextAreaField
                 label="About"
                 name="about"
+                defaultValue={item.about ?? ""}
                 rows={4}
-                defaultValue={item.about}
                 className="sm:col-span-2 lg:col-span-3"
               />
-            </FieldGrid>
-          ),
-        },
-        {
-          id: "seo",
-          label: "SEO",
-          render: (item) => (
-            <FieldGrid>
-              <TextField
-                label="Meta title"
-                name="metaTitle"
-                placeholder={`${item.name} in ${item.courseName} — Colleges & Fees`}
-                className="sm:col-span-2"
-                hint="Around 60 characters."
-              />
-              <TextField
-                label="Canonical URL"
-                name="canonical"
-                placeholder={`/courses/${item.courseSlug}/${item.slug}`}
-              />
-              <TextAreaField
-                label="Meta description"
-                name="metaDescription"
-                rows={3}
-                placeholder="Around 155 characters, shown in search results."
-                className="sm:col-span-2 lg:col-span-3"
-              />
-              <ImageUploadField
-                label="Open Graph image"
-                name="ogImage"
-                altLabel="og:image:alt"
-                hint="Shown when the page is shared. 1200x630 renders best."
-              />
-              <SelectWithOtherField
-                label="Schema type"
-                name="schemaType"
-                defaultValue="EducationalOccupationalProgram"
-                options={["EducationalOccupationalProgram", "Course", "WebPage"]}
-                customPlaceholder="Any schema.org type"
-              />
-              <SelectField label="Indexing" name="robots" options={["Index, follow", "No index"]} />
             </FieldGrid>
           ),
         },
       ]}
-      renderAddForm={() => <SpecialisationAddForm courses={courses} />}
+      onSave={(item, data) => saveSpecialisation(item.slug, data)}
+      onAdd={(data) => createSpecialisation(undefined, data)}
+      renderAddForm={() => (
+        <>
+          <NameSlugFields nameLabel="Name" namePlaceholder="Finance" slugPlaceholder="mba-finance" />
+          <SelectField
+            label="Parent course"
+            name="courseSlug"
+            options={courseOptions}
+            labelFor={courseLabel}
+          />
+          <TextField label="Duration" name="duration" placeholder="24 Months" />
+          <TextField label="Average fees" name="averageFees" placeholder="₹6L - 24L" />
+          <TextAreaField label="About" name="about" rows={3} className="sm:col-span-2" />
+        </>
+      )}
     />
-  );
-}
-
-/**
- * Separate component so the parent-course select can hold state: specialisation
- * slugs are prefixed with the course ("mba" + "finance" -> "mba-finance"), so
- * changing the course has to change the generated slug with it.
- */
-function SpecialisationAddForm({ courses }: { courses: Course[] }) {
-  const [courseSlug, setCourseSlug] = useState(courses[0]?.slug ?? "");
-
-  return (
-    <>
-      <div>
-        <label htmlFor="courseSlug" className="block text-xs font-semibold text-ink">
-          Parent course
-        </label>
-        <select
-          id="courseSlug"
-          name="courseSlug"
-          value={courseSlug}
-          onChange={(e) => setCourseSlug(e.target.value)}
-          className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
-        >
-          {courses.map((course) => (
-            <option key={course.slug} value={course.slug}>
-              {course.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Remounts when the course changes, so the prefix is reapplied to the
-          slug rather than left showing the previous course's. */}
-      <NameSlugFields
-        key={courseSlug}
-        namePlaceholder="Finance"
-        slugPlaceholder={`${courseSlug}-finance`}
-        slugPrefix={courseSlug}
-      />
-
-      <TextField label="Duration" name="duration" placeholder="24 Months" />
-      <TextField label="Average fees" name="averageFees" placeholder="₹6L - 24L" />
-      <TextAreaField
-        label="About"
-        name="about"
-        rows={3}
-        className="sm:col-span-2"
-        placeholder="What the specialisation covers."
-      />
-    </>
   );
 }
