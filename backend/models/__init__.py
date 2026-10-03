@@ -18,3 +18,4 @@ from models.specialisation import Specialisation  # noqa: F401
 from models.ranking import RankingList, RankingEntry  # noqa: F401
 from models.study_abroad import StudyAbroadItem  # noqa: F401
 from models.collection import Collection  # noqa: F401
+from models.site_content import SiteContent  # noqa: F401

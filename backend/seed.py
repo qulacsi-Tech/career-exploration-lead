@@ -33,6 +33,7 @@ from models.ranking import RankingList, RankingEntry
 from models.user import User, UserRole
 from models.study_abroad import StudyAbroadItem
 from models.collection import Collection as CollectionModel
+from models.site_content import SiteContent
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -668,6 +669,18 @@ async def _seed_collections(session: AsyncSession) -> None:
     print(f"  ✓ {len(items)} collections seeded")
 
 
+async def _seed_site_content(session: AsyncSession) -> None:
+    """Writes the default homepage content from seed_data/site_content.json (rebuilt every run)."""
+    from sqlalchemy import delete
+
+    print("Seeding site content …")
+    blocks = json.loads((Path(__file__).parent / "seed_data" / "site_content.json").read_text(encoding="utf-8"))
+    await session.execute(delete(SiteContent))
+    session.add_all([SiteContent(key=key, data=value) for key, value in blocks.items()])
+    await session.commit()
+    print(f"  ✓ {len(blocks)} content blocks seeded")
+
+
 async def _seed_admin(session: AsyncSession) -> None:
     """Create the ADMIN user from ADMIN_EMAIL / ADMIN_PASSWORD (env only).
 
@@ -710,6 +723,7 @@ async def main() -> None:
         await _seed_rankings(session)
         await _seed_study_abroad(session)
         await _seed_collections(session)
+        await _seed_site_content(session)
         await _seed_admin(session)
         await _sync_meilisearch(session)
     await engine.dispose()

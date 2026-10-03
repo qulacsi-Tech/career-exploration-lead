@@ -1,3 +1,4 @@
+from sqlalchemy import select
 """Home service — assembles the single aggregated home-page response."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -118,6 +119,13 @@ _DATA_HIGHLIGHTS = [
 ]
 
 
+async def _stored(db: AsyncSession, key: str, model):
+    """A stored content block as typed models. Missing content is an empty section, not an error."""
+    from models.site_content import SiteContent
+    row = (await db.execute(select(SiteContent).where(SiteContent.key == key))).scalar_one_or_none()
+    return [model.model_validate(item) for item in (row.data if row else [])]
+
+
 async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     college_svc = CollegeService(db)
     exam_svc = ExamService(db)
@@ -139,11 +147,11 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
         locations=locations,
         articles=articles,
         recommendedPrograms=programs,
-        careerPanels=_CAREER_PANELS,
+        careerPanels=await _stored(db, "home.careerPanels", CareerPanelSchema),
         recommendedUniversities=[
             RecommendedUniversitySchema(**u) for u in universities_raw
         ],
-        dataHighlights=_DATA_HIGHLIGHTS,
+        dataHighlights=await _stored(db, "home.dataHighlights", DataHighlightSchema),
         streams=[
             StreamCountSchema(
                 slug=s["name"].lower().replace(" ", "-"),
