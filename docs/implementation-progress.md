@@ -183,6 +183,9 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 | `GET /collections/homepage`, `/collections/footer`, `/collections/slugs`, `/collections/{slug}/page` | ✅ |
 | Home page bands, site footer columns, `/colleges/[slug]` collection pages read the API | ✅ |
 | Search results page `/search?q=` (colleges, exams, cities) | ✅ |
+| Admin dashboard figures from `GET /admin/dashboard` (no sample data) | ✅ |
+| Admin leads inbox `/admin/leads`: status filter, pagination, status change (the nav link previously led to a missing page) | ✅ |
+| Lead update returns 400 for a malformed id, 404 for an unknown one (previously a server error) | ✅ |
 | Checked in the running app: home band, footer, search matches, collection page, unknown slug 404 | ✅ |
 
 Note: the collection page subtitle is now "N colleges" (the scope description it had before is not carried over yet).
@@ -191,7 +194,7 @@ Note: the collection page subtitle is now "N colleges" (the scope description it
 | Item |
 |---|
 | Admin collections editor on the API (membership picker, scope, placements, SEO, publishing) |
-| Admin courses, specialisations, rankings, and leads pages on the API (endpoints for courses, rankings, and leads exist) |
+| Admin courses and specialisations pages on the API (course endpoints exist; no admin endpoint for specialisations yet) |
 | Admin editor for the collection placements and SEO fields |
 
 ---
@@ -213,7 +216,7 @@ Note: the collection page subtitle is now "N colleges" (the scope description it
 | College edit: placements, cutoffs, reviews, media, SEO not stored | Shown in the form with a notice; no backend write path yet |
 | Admin list shows records loaded one by one | Each college row is read in detail (up to 200 requests); an admin list with detail fields would remove this |
 | Logout does not revoke tokens | Stateless JWT; the cookie is cleared, the token stays valid until it expires |
-| Admin courses, specialisations, rankings, leads, collections pages | Still on mock data; the API endpoints for courses, rankings and leads exist |
+| Admin courses, specialisations, rankings, collections pages | Still on mock data; course and ranking read endpoints exist, admin write endpoints do not |
 
 ### Backend Features Not Yet Built
 | Feature | Notes |
