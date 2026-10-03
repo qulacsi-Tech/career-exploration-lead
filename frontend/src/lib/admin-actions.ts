@@ -7,6 +7,8 @@ import {
   adminCreateCollege,
   adminCreateExam,
   adminCreateCourse,
+  adminCreateRanking,
+  adminUpdateRanking,
   adminCreateSpecialisation,
   adminUpdateCourse,
   adminUpdateSpecialisation,
@@ -212,10 +214,16 @@ const COURSE_LISTS = new Set(["modes", "examsAccepted"]);
 const SPEC_FIELDS = ["name", "courseSlug", "duration", "averageFees", "about"] as const;
 const SPEC_NULLABLE = new Set(["duration", "averageFees", "about"]);
 
-/** Reads the named fields. Empty optional text becomes null; lists split on commas. */
+/**
+ * Reads the named fields that are on the form. Only the active editor tab is
+ * mounted, so a field absent from the form is not part of this save and is left
+ * out of the request rather than cleared. Empty optional text becomes null;
+ * lists split on commas.
+ */
 function fieldsBody(form: FormData, fields: readonly string[], nullable: Set<string>, lists: Set<string>) {
   const out: Record<string, unknown> = {};
   for (const field of fields) {
+    if (!form.has(field)) continue;
     const value = String(form.get(field) ?? "").trim();
     if (lists.has(field)) {
       out[field] = value.split(",").map((item) => item.trim()).filter(Boolean);
@@ -270,5 +278,61 @@ export async function createSpecialisation(
     })
   );
   if ("ok" in result) revalidatePath("/courses", "layout");
+  return result;
+}
+
+// ── Rankings ─────────────────────────────────────────────────────────────────
+
+/**
+ * Reads a ranking form. The ordered entries travel as one JSON field, written by
+ * the entries editor, so a save always carries the complete list.
+ */
+function rankingBody(form: FormData): { value: Record<string, unknown> } | { error: string } {
+  let entries: unknown;
+  try {
+    entries = JSON.parse(String(form.get("entries") ?? "[]"));
+  } catch {
+    return { error: "The college list could not be read. Reload the page and try again." };
+  }
+  if (!Array.isArray(entries)) return { error: "The college list must be a list." };
+
+  const stream = String(form.get("stream") ?? "").trim();
+  const yearText = String(form.get("year") ?? "").trim();
+  return {
+    value: {
+      name: String(form.get("name") ?? "").trim(),
+      authority: String(form.get("authority") ?? "").trim(),
+      // Non-numeric text is passed through so the API reports it by field name.
+      year: /^\d+$/.test(yearText) ? Number(yearText) : yearText,
+      stream: stream === "" ? null : stream,
+      entries,
+    },
+  };
+}
+
+function revalidateRankings() {
+  // Collections and college pages order by these lists, so their caches go too.
+  revalidatePath("/colleges", "layout");
+  revalidatePath("/", "layout");
+}
+
+export async function saveRanking(slug: string, form: FormData): Promise<AdminActionResult> {
+  const body = rankingBody(form);
+  if ("error" in body) return body;
+  const result = await attempt("/admin/rankings", (token) => adminUpdateRanking(token, slug, body.value));
+  if ("ok" in result) revalidateRankings();
+  return result;
+}
+
+export async function createRanking(
+  _prev: AdminActionResult | undefined,
+  form: FormData
+): Promise<AdminActionResult> {
+  const body = rankingBody(form);
+  if ("error" in body) return body;
+  const result = await attempt("/admin/rankings", (token) =>
+    adminCreateRanking(token, { ...body.value, slug: String(form.get("slug") ?? "").trim() })
+  );
+  if ("ok" in result) revalidateRankings();
   return result;
 }

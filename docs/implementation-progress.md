@@ -184,6 +184,8 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 | Home page bands, site footer columns, `/colleges/[slug]` collection pages read the API | ✅ |
 | Search results page `/search?q=` (colleges, exams, cities) | ✅ |
 | Admin dashboard figures from `GET /admin/dashboard` (no sample data) | ✅ |
+| Admin rankings: list, create, replace (details and ordered entries), delete refused while a collection uses the list; colleges must exist, appear once, and have unique ranks | ✅ |
+| Saves no longer clear fields on editor tabs that are not on screen | ✅ |
 | Admin courses and specialisations: list, create, edit (stored fields only), parent-course change; name and stream copied to specialisations; cached course pages revalidated | ✅ |
 | Admin leads inbox `/admin/leads`: status filter, pagination, status change (the nav link previously led to a missing page) | ✅ |
 | Lead update returns 400 for a malformed id, 404 for an unknown one (previously a server error) | ✅ |
@@ -215,8 +217,9 @@ Note: the collection page subtitle is now "N colleges" (the scope description it
 |---|---|
 | College edit: placements, cutoffs, reviews, media, SEO not stored | Shown in the form with a notice; no backend write path yet |
 | Admin list shows records loaded one by one | Each college row is read in detail (up to 200 requests); an admin list with detail fields would remove this |
+| Known issue | Five collections order by ranking slugs that are not in the database (`management-bengaluru`, `engineering-india`, `medical-neet`, `management-cat`); those collections fall back to the editor's order |
 | Logout does not revoke tokens | Stateless JWT; the cookie is cleared, the token stays valid until it expires |
-| Admin rankings and collections pages | Still on mock data; ranking read endpoints exist, admin write endpoints do not |
+| Admin collections page | Still on mock data; the largest remaining Phase 4 item |
 
 ### Backend Features Not Yet Built
 | Feature | Notes |

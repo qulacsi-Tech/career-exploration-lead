@@ -707,6 +707,36 @@ export async function adminUpdateSpecialisation(token: string, slug: string, bod
   return adminRequest<{ message: string }>(token, "PATCH", `/admin/specialisations/${slug}`, body);
 }
 
+// ── Admin rankings ─────────────────────────────────────────────────────────
+
+export type AdminRankingEntry = { collegeSlug: string; rank: number; score: string | null };
+
+export type AdminRanking = {
+  id: string;
+  slug: string;
+  name: string;
+  authority: string;
+  year: number;
+  stream: string | null;
+  entries: AdminRankingEntry[];
+};
+
+export async function adminGetRankings(token: string): Promise<AdminRanking[]> {
+  return adminRequest<AdminRanking[]>(token, "GET", "/admin/rankings");
+}
+
+export async function adminCreateRanking(token: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "POST", "/admin/rankings", body);
+}
+
+export async function adminUpdateRanking(token: string, slug: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/rankings/${slug}`, body);
+}
+
+export async function adminDeleteRanking(token: string, slug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/rankings/${slug}`);
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */
