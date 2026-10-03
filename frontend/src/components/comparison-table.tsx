@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 import { compareRows } from "@/lib/comparison-data";
 import { Chip } from "@/components/ui/chip";
 

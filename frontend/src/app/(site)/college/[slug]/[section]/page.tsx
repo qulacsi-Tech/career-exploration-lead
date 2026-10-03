@@ -41,8 +41,9 @@ import {
   shortFee,
 } from "@/lib/college-insights";
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
-import { comparisonsFeaturing, compareUrl, similarColleges } from "@/lib/comparison-data";
-import { colleges, type College } from "@/lib/mock-data";
+import { comparisonsFeaturing, compareUrl } from "@/lib/comparison-data";
+import { similarColleges } from "@/lib/comparison-resolve";
+import { getCollegeOrNull, getCollegeSlugs, type CollegeDetail as College } from "@/lib/api";
 import { isRichTextEmpty } from "@/lib/rich-text";
 
 /**
@@ -60,12 +61,13 @@ import { isRichTextEmpty } from "@/lib/rich-text";
  * language as the overview: figures, bars and badges first, prose last.
  */
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
   /* Every college x every tab: the rail is fixed, so every tab is a page. */
-  return colleges.flatMap((college) =>
+  const slugs = await getCollegeSlugs();
+  return slugs.flatMap((slug) =>
     collegeSections
       .filter((section) => section.slug !== "")
-      .map((section) => ({ slug: college.slug, section: section.slug })),
+      .map((section) => ({ slug, section: section.slug })),
   );
 }
 
@@ -75,7 +77,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string; section: string }>;
 }): Promise<Metadata> {
   const { slug, section: sectionSlug } = await params;
-  const college = colleges.find((entry) => entry.slug === slug);
+  const college = await getCollegeOrNull(slug);
   const section = sectionBySlug(sectionSlug);
   if (!college || !section) return { title: "Page not found" };
 
@@ -94,7 +96,7 @@ export default async function CollegeSectionRoute({
 }) {
   const { slug, section: sectionSlug } = await params;
 
-  const college = colleges.find((entry) => entry.slug === slug);
+  const college = await getCollegeOrNull(slug);
   if (!college) notFound();
 
   /* Videos used to be a tab of its own; it now shares the Gallery page. The
@@ -445,17 +447,23 @@ function Reviews({ college }: { college: College }) {
 }
 
 function Placements({ college }: { college: College }) {
+  const placement = college.placement;
+  if (!placement) {
+    return (
+      <EmptyCard icon="grad" title="No placement data" body={`${college.name} has not published placement figures.`} />
+    );
+  }
   const packages = [
-    { label: "Median package", value: college.placement.median },
-    { label: "Average package", value: college.placement.average },
-    { label: "Highest package", value: college.placement.highest },
+    { label: "Median package", value: placement.median },
+    { label: "Average package", value: placement.average },
+    { label: "Highest package", value: placement.highest },
   ];
   const max = Math.max(...packages.map((p) => lakhValue(p.value) ?? 0), 1);
   const placementScore = college.ratingBreakdown.find((row) => row.label === "Placements");
 
   return (
     <>
-      <DetailCard title={`Placement Statistics ${college.placement.year}`}>
+      <DetailCard title={`Placement Statistics ${placement.year}`}>
         <div className="grid gap-8 sm:grid-cols-3">
           {packages.map((p) => (
             <BigFigure key={p.label} label={p.label} value={p.value} />
@@ -478,7 +486,7 @@ function Placements({ college }: { college: College }) {
       </DetailCard>
 
       <DetailCard title="Top Recruiters">
-        <RecruiterMarquee recruiters={college.placement.topRecruiters} />
+        <RecruiterMarquee recruiters={placement.topRecruiters} />
       </DetailCard>
 
       {placementScore && (
@@ -650,8 +658,8 @@ function Gallery({ college }: { college: College }) {
   );
 }
 
-function Compare({ college }: { college: College }) {
-  const peers = similarColleges(college, 2);
+async function Compare({ college }: { college: College }) {
+  const peers = await similarColleges(college, 2);
   const curated = comparisonsFeaturing(college.slug);
   if (peers.length === 0 && curated.length === 0) {
     return (

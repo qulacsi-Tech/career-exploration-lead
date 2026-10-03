@@ -12,7 +12,7 @@
  * from those same fields.
  */
 
-import type { College } from "@/lib/mock-data";
+import type { CollegeDetail as College } from "@/lib/api";
 import { colleges } from "@/lib/mock-data";
 
 /**
@@ -115,12 +115,14 @@ export function faqsFor(college: College): Faq[] {
     });
   }
 
-  faqs.push({
-    question: `How are placements at ${college.name}?`,
-    answer: `In ${college.placement.year}, the average package was ${college.placement.average}, the median ${college.placement.median} and the highest ${college.placement.highest}. Top recruiters include ${college.placement.topRecruiters
-      .slice(0, 4)
-      .join(", ")}.`,
-  });
+  if (college.placement) {
+    faqs.push({
+      question: `How are placements at ${college.name}?`,
+      answer: `In ${college.placement.year}, the average package was ${college.placement.average}, the median ${college.placement.median} and the highest ${college.placement.highest}. Top recruiters include ${college.placement.topRecruiters
+        .slice(0, 4)
+        .join(", ")}.`,
+    });
+  }
 
   if (college.cutoffs.length > 0) {
     const first = college.cutoffs[0];

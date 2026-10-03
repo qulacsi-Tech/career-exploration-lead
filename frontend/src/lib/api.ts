@@ -25,10 +25,31 @@ export type PaginationMeta = {
   pages: number;
 };
 
+/**
+ * A non-2xx response from the API. Carries the status so a page can turn a 404
+ * into notFound() while letting every other failure surface as an error.
+ */
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+/**
+ * Public reads are cached for a minute. Prerendered pages then build from the
+ * API, and an edit reaches the public site within a minute. Admin reads bypass
+ * this cache (see adminGetColleges and adminGetLeads).
+ */
+const PUBLIC_REVALIDATE_SECONDS = 60;
+
 async function apiFetch<T>(path: string): Promise<T> {
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`API ${res.status} on ${url}`);
+  const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
+  if (!res.ok) throw new ApiError(res.status, `API ${res.status} on ${url}`);
   const json = (await res.json()) as ApiResponse<T>;
   return json.data;
 }
@@ -37,8 +58,8 @@ async function apiListFetch<T>(
   path: string
 ): Promise<{ data: T[]; meta: PaginationMeta }> {
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`API ${res.status} on ${url}`);
+  const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
+  if (!res.ok) throw new ApiError(res.status, `API ${res.status} on ${url}`);
   const json = (await res.json()) as ApiListResponse<T>;
   return { data: json.data, meta: json.meta };
 }
@@ -92,7 +113,8 @@ export type College = {
   established?: number;
   about?: string;
   ratingBreakdown?: RatingBreakdown[];
-  placement?: Placement;
+  /** Null when the college has no placement record. */
+  placement?: Placement | null;
   cutoffs?: Cutoff[];
   reviews?: Review[];
 };
@@ -191,10 +213,23 @@ export async function getHomeData(): Promise<HomeData> {
 
 // ── Colleges ──────────────────────────────────────────────────────────────
 
+/**
+ * A college from the detail endpoint: the list fields plus the detail-only ones.
+ * `placement` is null for a college with no placement record.
+ */
+export type CollegeDetail = Omit<College, "ratingBreakdown" | "placement" | "cutoffs" | "reviews"> & {
+  ratingBreakdown: RatingBreakdown[];
+  placement: Placement | null;
+  cutoffs: Cutoff[];
+  reviews: Review[];
+};
+
 export type CollegeParams = {
   page?: number;
   limit?: number;
   stream?: string;
+  /** Course name, e.g. "MBA". Matches the course and its variants. */
+  course?: string;
   city?: string;
   state?: string;
   ownership?: string;
@@ -214,6 +249,7 @@ export async function getColleges(
   if (params?.page) qs.set("page", String(params.page));
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.stream) qs.set("stream", params.stream);
+  if (params?.course) qs.set("course", params.course);
   if (params?.city) qs.set("city", params.city);
   if (params?.state) qs.set("state", params.state);
   if (params?.ownership) qs.set("ownership", params.ownership);
@@ -228,8 +264,18 @@ export async function getColleges(
 }
 
 /** Full college detail by slug (includes courses, placement, cutoffs, reviews). */
-export async function getCollege(slug: string): Promise<College> {
-  return apiFetch<College>(`/colleges/${slug}`);
+export async function getCollege(slug: string): Promise<CollegeDetail> {
+  return apiFetch<CollegeDetail>(`/colleges/${slug}`);
+}
+
+/** College by slug, or null when the API has no such college. Other errors still throw. */
+export async function getCollegeOrNull(slug: string): Promise<CollegeDetail | null> {
+  try {
+    return await getCollege(slug);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
 /** Related colleges for the sidebar (same stream, different college). */
@@ -284,7 +330,7 @@ export async function getExam(slug: string): Promise<Exam> {
 
 /** All exam slugs — used by generateStaticParams. */
 export async function getExamSlugs(): Promise<string[]> {
-  const res = await getExams({ limit: 200 });
+  const res = await getExams({ limit: 100 });
   return res.data.map((e) => e.slug);
 }
 
@@ -373,4 +419,167 @@ export async function registerUser(data: {
 /** Full-text search across colleges, exams, locations. */
 export async function search(q: string) {
   return apiFetch(`/search?q=${encodeURIComponent(q)}`);
+}
+
+// ── Course Catalogue types ────────────────────────────────────────────────
+
+export type Specialisation = {
+  slug: string;
+  name: string;
+  courseSlug: string;
+  courseName: string;
+  stream: string;
+  duration?: string;
+  averageFees?: string;
+  collegeCount: number;
+  about?: string;
+};
+
+export type CourseCatalogue = {
+  slug: string;
+  name: string;
+  fullName: string;
+  level: "UG" | "PG" | "Diploma" | "Doctorate";
+  stream: string;
+  duration: string;
+  modes: string[];
+  eligibility?: string;
+  averageFees?: string;
+  examsAccepted: string[];
+  collegeCount: number;
+  about?: string;
+  // Detail only
+  specialisations?: Specialisation[];
+};
+
+// ── Ranking types ─────────────────────────────────────────────────────────
+
+export type RankingEntry = { collegeSlug: string; rank: number; score?: string };
+export type RankingList = {
+  slug: string;
+  name: string;
+  authority: string;
+  year: number;
+  stream?: string;
+  entries: RankingEntry[];
+};
+
+// ── Auth types ────────────────────────────────────────────────────────────
+
+export type AuthUser = { id: string; name: string; email: string; role: string };
+export type AuthResult = { accessToken: string; user: AuthUser };
+
+// ── Course Catalogue functions ────────────────────────────────────────────
+
+export async function getCourses(params?: {
+  page?: number;
+  limit?: number;
+  stream?: string;
+  level?: string;
+}): Promise<{ data: CourseCatalogue[]; meta: PaginationMeta }> {
+  const qs = new URLSearchParams();
+  if (params?.page)   qs.set("page",   String(params.page));
+  if (params?.limit)  qs.set("limit",  String(params.limit));
+  if (params?.stream) qs.set("stream", params.stream);
+  if (params?.level)  qs.set("level",  params.level);
+  const query = qs.toString() ? `?${qs}` : "";
+  return apiListFetch<CourseCatalogue>(`/courses${query}`);
+}
+
+export async function getCourse(slug: string): Promise<CourseCatalogue> {
+  return apiFetch<CourseCatalogue>(`/courses/${slug}`);
+}
+
+export async function getCourseSlugs(): Promise<string[]> {
+  return apiFetch<string[]>("/courses/slugs");
+}
+
+// ── Rankings functions ────────────────────────────────────────────────────
+
+export async function getRankings(): Promise<RankingList[]> {
+  return apiFetch<RankingList[]>("/rankings");
+}
+
+export async function getRanking(slug: string): Promise<RankingList> {
+  return apiFetch<RankingList>(`/rankings/${slug}`);
+}
+
+// ── Auth mutations ────────────────────────────────────────────────────────
+
+/** Login — returns accessToken + user. */
+export async function loginUser(data: {
+  email: string;
+  password: string;
+}): Promise<AuthResult> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message ?? "Login failed");
+  return json.data;
+}
+
+/** Refresh access token using an existing (still-valid) token. */
+export async function refreshToken(token: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken: token }),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message ?? "Token refresh failed");
+  return json.data.accessToken;
+}
+
+// ── Sitemap ───────────────────────────────────────────────────────────────
+
+/** Slugs for one kind of page, from the backend's sitemap endpoints. */
+export async function getSitemapSlugs(
+  kind: "colleges" | "exams" | "articles" | "courses"
+): Promise<string[]> {
+  return apiFetch<string[]>(`/sitemap/${kind}`);
+}
+
+// ── Admin API helpers (used from Server Components in /admin) ─────────────
+
+/** Admin: list all colleges (requires Authorization header). */
+export async function adminGetColleges(
+  token: string,
+  params?: { page?: number; limit?: number; q?: string }
+): Promise<{ data: College[]; meta: PaginationMeta }> {
+  const qs = new URLSearchParams();
+  if (params?.page)  qs.set("page",  String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.q)     qs.set("q",     params.q);
+  const query = qs.toString() ? `?${qs}` : "";
+  const url = `${API_BASE}/admin/colleges${query}`;
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new ApiError(res.status, `Admin API ${res.status}`);
+  const json = (await res.json()) as { success: true; data: College[]; meta: PaginationMeta };
+  return { data: json.data, meta: json.meta };
+}
+
+/** Admin: list all leads. */
+export async function adminGetLeads(
+  token: string,
+  params?: { page?: number; limit?: number; status?: string }
+): Promise<{ data: unknown[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (params?.page)   qs.set("page",   String(params.page));
+  if (params?.limit)  qs.set("limit",  String(params.limit));
+  if (params?.status) qs.set("status", params.status);
+  const query = qs.toString() ? `?${qs}` : "";
+  const url = `${API_BASE}/admin/leads${query}`;
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new ApiError(res.status, `Admin leads API ${res.status}`);
+  const json = await res.json();
+  return { data: json.data, total: json.data?.length ?? 0 };
 }

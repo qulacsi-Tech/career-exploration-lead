@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -5,19 +6,22 @@ import {
   CounsellingCard,
   SidebarLinks,
 } from "@/components/college-listing";
-import { homeStreams, courses, locations } from "@/lib/mock-data";
-import { getColleges, getLocations } from "@/lib/api";
+import { getColleges, getCourses, getHomeData, getLocations } from "@/lib/api";
 
 /**
  * Stream-scoped college listing — /management/colleges, /engineering/colleges.
- * generateStaticParams is keyed from homeStreams so only known streams get
- * pre-built pages; unknown slugs fall through to notFound().
+ * generateStaticParams is keyed from the home payload's streams so only known
+ * streams get pre-built pages; unknown slugs fall through to notFound().
+ *
+ * `cache` makes the home payload one request per render, shared by the metadata
+ * and the page, rather than one per call.
  */
-export function generateStaticParams() {
-  return homeStreams.map((stream) => ({ stream: stream.slug }));
-}
+const loadHome = cache(getHomeData);
 
-const getStream = (slug: string) => homeStreams.find((s) => s.slug === slug);
+export async function generateStaticParams() {
+  const home = await loadHome();
+  return home.streams.map((stream) => ({ stream: stream.slug }));
+}
 
 export async function generateMetadata({
   params,
@@ -25,7 +29,8 @@ export async function generateMetadata({
   params: Promise<{ stream: string }>;
 }): Promise<Metadata> {
   const { stream: streamSlug } = await params;
-  const stream = getStream(streamSlug);
+  const home = await loadHome();
+  const stream = home.streams.find((s) => s.slug === streamSlug);
   if (!stream) return { title: "Colleges not found" };
   return {
     title: `Top ${stream.name} Colleges: Fees, Placements & Cutoffs`,
@@ -40,30 +45,17 @@ export default async function StreamCollegesPage({
   params: Promise<{ stream: string }>;
 }) {
   const { stream: streamSlug } = await params;
-  const stream = getStream(streamSlug);
+  const home = await loadHome();
+  const stream = home.streams.find((s) => s.slug === streamSlug);
   if (!stream) notFound();
 
-  // Live colleges for this stream
-  let inStream: Awaited<ReturnType<typeof getColleges>>["data"] = [];
-  let total = stream.count; // fall back to the declared count if fetch fails
-  try {
-    const res = await getColleges({ stream: stream.name, limit: 50 });
-    inStream = res.data;
-    total = res.meta.total;
-  } catch {
-    inStream = [];
-  }
-
-  // Locations for "By city" sidebar — API with mock fallback
-  let allLocations: Awaited<ReturnType<typeof getLocations>> = [];
-  try {
-    allLocations = await getLocations();
-  } catch {
-    allLocations = locations;
-  }
-
-  // Courses in this stream (CMS catalogue — still from mock-data)
-  const streamCourses = courses.filter((course) => course.stream === stream.name);
+  // Errors are not caught here: a failed request reaches the route's error
+  // boundary, rather than rendering an empty directory that looks real.
+  const [{ data: inStream, meta }, allLocations, { data: streamCourses }] = await Promise.all([
+    getColleges({ stream: stream.name, limit: 50 }),
+    getLocations(),
+    getCourses({ stream: stream.name, limit: 200 }),
+  ]);
 
   // Cities that actually have colleges in this stream
   const citiesWithStream = allLocations.filter((location) =>
@@ -80,7 +72,7 @@ export default async function StreamCollegesPage({
         { label: stream.name },
       ]}
       title={`Top ${stream.name} Colleges`}
-      subtitle={`${inStream.length} of ${total.toLocaleString()} listed`}
+      subtitle={`${inStream.length} of ${meta.total.toLocaleString()} listed`}
       intro={`${stream.name} colleges compared on fees, placements, rankings and accepted entrance exams. Add two or three to the compare tray to see them side by side.`}
       colleges={inStream}
       emptyMessage={`No ${stream.name.toLowerCase()} colleges are in the directory yet.`}
@@ -108,7 +100,7 @@ export default async function StreamCollegesPage({
           )}
           <SidebarLinks
             title="Other streams"
-            items={homeStreams
+            items={home.streams
               .filter((other) => other.slug !== stream.slug)
               .map((other) => ({
                 label: other.name,

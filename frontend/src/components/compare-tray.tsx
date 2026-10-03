@@ -2,7 +2,6 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { colleges } from "@/lib/mock-data";
 import { MAX_COMPARE, compareUrl } from "@/lib/comparison-data";
 
 /**
@@ -30,40 +29,52 @@ import { MAX_COMPARE, compareUrl } from "@/lib/comparison-data";
  * three colleges someone has since dismissed is noise, so the scope matches how
  * long the intent lasts.
  *
+ * ## Names travel with the slug
+ *
+ * Each entry carries the college's name, so the tray can label itself without
+ * reading the college directory. The directory lives on the API, and this is a
+ * client component. A stored name can be stale if a college is renamed mid-
+ * session, which is an acceptable trade for a tray that outlives nothing.
+ *
  * Every storage access is wrapped: Safari's private mode throws on write, and a
  * comparison tray is not worth taking the page down for.
  */
 
+export type CompareEntry = { slug: string; name: string };
+
 const STORAGE_KEY = "tcp:compare";
 
 /** Stable empty array — a new [] each call would loop the snapshot check. */
-const EMPTY: string[] = [];
+const EMPTY: CompareEntry[] = [];
 
-let slugs: string[] = EMPTY;
+let entries: CompareEntry[] = EMPTY;
 let hydrated = false;
 const listeners = new Set<() => void>();
 
-function readStorage(): string[] {
+function isEntry(value: unknown): value is CompareEntry {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as CompareEntry).slug === "string" &&
+    typeof (value as CompareEntry).name === "string"
+  );
+}
+
+function readStorage(): CompareEntry[] {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY;
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return EMPTY;
 
-    // Filtered against the directory: a stored slug for a college that has
-    // since been removed would otherwise sit in the tray unrenderable.
-    const valid = parsed
-      .filter((s): s is string => typeof s === "string")
-      .filter((s) => colleges.some((c) => c.slug === s))
-      .slice(0, MAX_COMPARE);
-
+    const valid = parsed.filter(isEntry).slice(0, MAX_COMPARE);
     return valid.length > 0 ? valid : EMPTY;
   } catch {
     return EMPTY;
   }
 }
 
-function writeStorage(next: string[]) {
+function writeStorage(next: CompareEntry[]) {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
@@ -76,7 +87,7 @@ function subscribe(listener: () => void) {
   // only runs on the client, and after the first render has committed.
   if (!hydrated) {
     hydrated = true;
-    slugs = readStorage();
+    entries = readStorage();
   }
   listeners.add(listener);
   return () => {
@@ -84,39 +95,41 @@ function subscribe(listener: () => void) {
   };
 }
 
-const getSnapshot = () => slugs;
+const getSnapshot = () => entries;
 
 /** The server has no tray. Must be a stable reference, hence EMPTY. */
 const getServerSnapshot = () => EMPTY;
 
-function setSlugs(next: string[]) {
-  slugs = next.length > 0 ? next : EMPTY;
-  writeStorage(slugs);
+function setEntries(next: CompareEntry[]) {
+  entries = next.length > 0 ? next.slice(0, MAX_COMPARE) : EMPTY;
+  writeStorage(entries);
   listeners.forEach((listener) => listener());
 }
 
 export function useCompare() {
   const selection = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const slugs = selection.map((entry) => entry.slug);
 
   return {
-    slugs: selection,
-    isSelected: (slug: string) => selection.includes(slug),
+    slugs,
+    entries: selection,
+    isSelected: (slug: string) => slugs.includes(slug),
     isFull: selection.length >= MAX_COMPARE,
-    toggle: (slug: string) => {
-      if (selection.includes(slug)) {
-        setSlugs(selection.filter((s) => s !== slug));
+    toggle: (entry: CompareEntry) => {
+      if (slugs.includes(entry.slug)) {
+        setEntries(selection.filter((e) => e.slug !== entry.slug));
       } else if (selection.length < MAX_COMPARE) {
-        setSlugs([...selection, slug]);
+        setEntries([...selection, entry]);
       }
     },
-    remove: (slug: string) => setSlugs(selection.filter((s) => s !== slug)),
+    remove: (slug: string) => setEntries(selection.filter((e) => e.slug !== slug)),
     /**
      * Replaces the whole selection. The comparison board changes two or three
-     * slugs at once when it navigates, and doing that through `toggle` would
+     * colleges at once when it navigates, and doing that through `toggle` would
      * publish a half-updated tray between calls.
      */
-    set: (next: string[]) => setSlugs(next.slice(0, MAX_COMPARE)),
-    clear: () => setSlugs(EMPTY),
+    set: (next: CompareEntry[]) => setEntries(next),
+    clear: () => setEntries(EMPTY),
   };
 }
 
@@ -141,7 +154,15 @@ export function CompareProvider({ children }: { children: React.ReactNode }) {
  * tray that quietly swaps out a college the visitor picked is worse than one
  * that says it is full.
  */
-export function CompareToggle({ slug, className }: { slug: string; className?: string }) {
+export function CompareToggle({
+  slug,
+  name,
+  className,
+}: {
+  slug: string;
+  name: string;
+  className?: string;
+}) {
   const { isSelected, isFull, toggle } = useCompare();
   const selected = isSelected(slug);
   const disabled = !selected && isFull;
@@ -156,7 +177,7 @@ export function CompareToggle({ slug, className }: { slug: string; className?: s
         type="checkbox"
         checked={selected}
         disabled={disabled}
-        onChange={() => toggle(slug)}
+        onChange={() => toggle({ slug, name })}
         className="h-3.5 w-3.5 rounded border-line text-brand focus:ring-brand"
       />
       {selected ? "Added" : "Compare"}
@@ -165,12 +186,8 @@ export function CompareToggle({ slug, className }: { slug: string; className?: s
 }
 
 function CompareTray() {
-  const { slugs: selection, remove, clear } = useCompare();
-  if (selection.length === 0) return null;
-
-  const selected = selection
-    .map((slug) => colleges.find((c) => c.slug === slug))
-    .filter((c): c is (typeof colleges)[number] => c !== undefined);
+  const { entries: selected, slugs, remove, clear } = useCompare();
+  if (selected.length === 0) return null;
 
   const ready = selected.length >= 2;
 
@@ -214,7 +231,7 @@ function CompareTray() {
 
         {ready ? (
           <Link
-            href={compareUrl(selection)}
+            href={compareUrl(slugs)}
             className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
           >
             Compare {selected.length}

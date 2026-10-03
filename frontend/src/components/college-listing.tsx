@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 import { CollegeCard } from "@/components/college-card";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 

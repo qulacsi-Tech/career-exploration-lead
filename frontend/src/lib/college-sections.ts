@@ -19,7 +19,7 @@
  * are kept so existing links still resolve.
  */
 
-import type { College } from "@/lib/mock-data";
+import type { CollegeDetail as College } from "@/lib/api";
 
 export type CollegeSection = {
   /** URL segment. The overview's is empty — it is the college's own page. */

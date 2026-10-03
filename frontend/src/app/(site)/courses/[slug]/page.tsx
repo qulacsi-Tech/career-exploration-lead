@@ -4,13 +4,22 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
-import { courses, colleges, exams, specialisations } from "@/lib/mock-data";
+import { ApiError, getColleges, getCourse, getCourseSlugs, getExams } from "@/lib/api";
 
-export function generateStaticParams() {
-  return courses.map((course) => ({ slug: course.slug }));
+export async function generateStaticParams() {
+  const slugs = await getCourseSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
-const getCourse = (slug: string) => courses.find((course) => course.slug === slug);
+/** The course, or null for an unknown slug. Any other failure still throws. */
+async function loadCourse(slug: string) {
+  try {
+    return await getCourse(slug);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
 
 export async function generateMetadata({
   params,
@@ -18,7 +27,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const course = getCourse(slug);
+  const course = await loadCourse(slug);
   if (!course) return { title: "Course not found" };
 
   return {
@@ -34,33 +43,26 @@ export default async function CourseDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const course = getCourse(slug);
+  const course = await loadCourse(slug);
   if (!course) notFound();
 
-  // Colleges that actually offer this course, matched on the course rows of the
-  // record rather than on stream — a management college does not necessarily
-  // run every management programme.
-  const offering = colleges.filter((college) =>
-    college.courses.some(
-      (row) =>
-        row.name.toLowerCase() === course.name.toLowerCase() ||
-        row.name.toLowerCase().startsWith(`${course.name.toLowerCase()} `),
-    ),
-  );
+  // Colleges that actually offer this course. The API matches the course name
+  // or a variant of it ("MBA" vs "MBA (Online)"), so a management college that
+  // runs no management programme of this kind is left out.
+  const offering = await getColleges({ course: course.name, limit: 50 });
 
   // Fall back to the stream so the page is never an empty shell while the
   // directory is still small.
-  const relatedColleges = offering.length
-    ? offering
-    : colleges.filter((college) => college.stream === course.stream).slice(0, 3);
+  const relatedColleges = offering.data.length
+    ? offering.data
+    : (await getColleges({ stream: course.stream, limit: 3 })).data;
 
-  const acceptedExams = exams.filter((exam) =>
+  const examDirectory = await getExams({ limit: 100 });
+  const acceptedExams = examDirectory.data.filter((exam) =>
     course.examsAccepted.some((name) => exam.name.includes(name) || exam.slug === name.toLowerCase()),
   );
 
-  const courseSpecialisations = specialisations.filter(
-    (specialisation) => specialisation.courseSlug === course.slug,
-  );
+  const courseSpecialisations = course.specialisations ?? [];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -93,13 +95,13 @@ export default async function CourseDetailPage({
         <div className="min-w-0 space-y-12">
           <section id="about">
             <h2 className="font-display text-xl font-bold text-ink">About {course.name}</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">{course.about}</p>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">{course.about ?? "—"}</p>
           </section>
 
           <section id="eligibility">
             <h2 className="font-display text-xl font-bold text-ink">Eligibility</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">
-              {course.eligibility}
+              {course.eligibility ?? "—"}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {course.modes.map((mode) => (
@@ -171,7 +173,7 @@ export default async function CourseDetailPage({
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-ink-faint">Average fees</dt>
-                <dd className="font-medium text-ink">{course.averageFees}</dd>
+                <dd className="font-medium text-ink">{course.averageFees ?? "—"}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-ink-faint">Colleges</dt>

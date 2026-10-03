@@ -28,7 +28,7 @@ import {
 } from "@/lib/college-insights";
 import { sectionHref } from "@/lib/college-sections";
 import { getCollege, getCollegeSlugs, getSimilarColleges } from "@/lib/api";
-import type { College } from "@/lib/api";
+import type { College, CollegeDetail } from "@/lib/api";
 
 export async function generateStaticParams() {
   try {
@@ -65,7 +65,7 @@ export default async function CollegeOverviewPage({
 }) {
   const { slug } = await params;
 
-  let college: College;
+  let college: CollegeDetail;
   try {
     college = await getCollege(slug);
   } catch {
