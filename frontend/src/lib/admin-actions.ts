@@ -11,6 +11,7 @@ import {
   adminCreateCollection,
   adminSaveHomepage,
   adminPutContent,
+  adminPutTopExams,
   adminUpdateCollection,
   adminUpdateRanking,
   adminCreateSpecialisation,
@@ -442,6 +443,13 @@ export async function saveHomepageBands(
 /** Saves a whole homepage block: "careers" panels or "highlights" data tiles. */
 export async function saveHomeContent(name: "careers" | "highlights", items: unknown[]): Promise<AdminActionResult> {
   const result = await attempt("/admin/content", (token) => adminPutContent(token, name, items));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Saves the homepage's top exams, in display order. */
+export async function saveTopExams(slugs: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/homepage", (token) => adminPutTopExams(token, slugs));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }

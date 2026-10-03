@@ -803,6 +803,20 @@ export async function adminPutContent(token: string, name: "careers" | "highligh
   return adminRequest<{ message: string }>(token, "PUT", `/admin/content/${name}`, { items });
 }
 
+export type AdminTopExams = {
+  slugs: string[];
+  exams: { slug: string; name: string }[];
+  options: { slug: string; name: string }[];
+};
+
+export async function adminGetTopExams(token: string): Promise<AdminTopExams> {
+  return adminRequest<AdminTopExams>(token, "GET", "/admin/homepage/top-exams");
+}
+
+export async function adminPutTopExams(token: string, slugs: string[]) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage/top-exams", { slugs });
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

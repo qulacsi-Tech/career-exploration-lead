@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  exams,
   locations,
   recommendedPrograms,
   recommendedUniversities,
@@ -9,7 +8,8 @@ import {
 } from "@/lib/mock-data";
 import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
-import type { AdminHomepage } from "@/lib/api";
+import type { AdminHomepage, AdminTopExams } from "@/lib/api";
+import { TopExamsEditor } from "@/components/admin/top-exams-editor";
 import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
 import { TextField } from "@/components/admin/admin-fields";
 
@@ -28,10 +28,12 @@ export function HomepageSectionsAdmin({
   homepage,
   careers,
   highlights,
+  topExams,
 }: {
   homepage: AdminHomepage;
   careers: PanelDraft[];
   highlights: TileDraft[];
+  topExams: AdminTopExams;
 }) {
   return (
     <PageSectionsAdmin
@@ -116,24 +118,7 @@ export function HomepageSectionsAdmin({
         {
           id: "top-exams",
           label: "Top Exams",
-          render: () => (
-            <SectionEditor
-              name="top-exams"
-              heading="Top Exams"
-              subheading="Exams Cherry Picked For You"
-              items={exams.map((exam) => ({
-                id: exam.slug,
-                label: exam.name,
-                meta: `${exam.level} · ${exam.conductingBody} · ${exam.examDate}`,
-              }))}
-              featuring
-              featuringDefault="top"
-              itemsTitle="Featured exams"
-              itemsHint="The pool the featuring mode draws from."
-            >
-              <TextField label="View All link" name="top-exams-cta" defaultValue="/exams" />
-            </SectionEditor>
-          ),
+          render: () => <TopExamsEditor exams={topExams.exams} options={topExams.options} />,
         },
         {
           id: "recommended",
