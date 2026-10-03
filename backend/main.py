@@ -11,6 +11,7 @@ from core.database import engine
 from core.exceptions import AppException
 from routers import health
 from routers import colleges, exams, locations, articles, programs, leads, search, home, auth
+from routers import courses, rankings, admin as admin_router, sitemap as sitemap_router
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -103,6 +104,10 @@ app.include_router(leads.router, prefix=V1)
 app.include_router(search.router, prefix=V1)
 app.include_router(home.router, prefix=V1)
 app.include_router(auth.router, prefix=V1)
+app.include_router(courses.router, prefix=V1)
+app.include_router(rankings.router, prefix=V1)
+app.include_router(admin_router.router, prefix=V1)
+app.include_router(sitemap_router.router, prefix=V1)
 
 
 @app.get("/health")
