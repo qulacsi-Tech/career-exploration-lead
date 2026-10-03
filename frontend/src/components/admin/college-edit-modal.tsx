@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { saveCollege } from "@/lib/admin-actions";
 import type { College } from "@/lib/api";
 import { AdminModal } from "@/components/admin/admin-modal";
 import {
@@ -117,6 +118,8 @@ export function CollegeEditModal({
 }
 
 function CollegeEditForm({ college, onDone }: { college: College; onDone: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<TabId>("basic");
   const [courses, setCourses] = useState(college.courses);
   const [cutoffs, setCutoffs] = useState(college.cutoffs ?? []);
@@ -129,12 +132,28 @@ function CollegeEditForm({ college, onDone }: { college: College; onDone: () => 
     <form
       id="college-edit-form"
       onSubmit={(e) => {
-        // No colleges endpoint yet — see the note in colleges-admin.tsx.
         e.preventDefault();
-        onDone();
+        setError(null);
+        const data = new FormData(e.currentTarget);
+        startTransition(async () => {
+          const result = await saveCollege(college.slug, data);
+          if ("error" in result) setError(result.error);
+          else onDone();
+        });
       }}
       className="flex h-full flex-col"
     >
+      <p className="mb-3 text-xs text-ink-soft">
+        Basic and ranking fields are saved. Placements, cutoffs, reviews, media and SEO are shown
+        but not stored yet.
+      </p>
+      {error && (
+        <p role="alert" className="mb-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {pending && <p className="mb-3 text-xs text-ink-soft">Saving…</p>}
+
       {/* Tab strip. Scrolls sideways rather than wrapping on a narrow screen. */}
       <div role="tablist" aria-label="College fields" className="-mx-5 flex gap-1 overflow-x-auto border-b border-line px-5">
         {tabs.map((t) => (

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { createCollege } from "@/lib/admin-actions";
 import type { College } from "@/lib/api";
 import {
   programs,
@@ -381,18 +382,25 @@ function AddCollegeModal({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 function AddCollegeForm({ onDone }: { onDone: () => void }) {
+  const [state, formAction, pending] = useActionState(createCollege, undefined);
+
+  // Close once the API has accepted the college; a failure stays open with its message.
+  useEffect(() => {
+    if (state && "ok" in state) onDone();
+  }, [state, onDone]);
+
   return (
     <form
       id="add-college-form"
-      onSubmit={(e) => {
-        // Nothing is persisted: there is no colleges endpoint to post to yet.
-        // Wire this when the API exists rather than inventing a request shape
-        // it then has to match.
-        e.preventDefault();
-        onDone();
-      }}
+      action={formAction}
       className="grid grid-cols-1 gap-4 sm:grid-cols-2"
     >
+      {state && "error" in state && (
+        <p role="alert" className="text-sm text-red-700 sm:col-span-2">
+          {state.error}
+        </p>
+      )}
+      {pending && <p className="text-xs text-ink-soft sm:col-span-2">Saving…</p>}
       <NameSlugFields
         nameLabel="College name"
         namePlaceholder="Bengaluru Institute of Management"

@@ -544,6 +544,57 @@ export async function getSitemapSlugs(
 
 // ── Admin API helpers (used from Server Components in /admin) ─────────────
 
+/**
+ * One admin write. The API's error message is passed through; a body that is
+ * not JSON, or a failure with no message, falls back to the status alone.
+ */
+async function adminRequest<T>(
+  token: string,
+  method: "POST" | "PATCH" | "DELETE",
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, {
+    method,
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: T }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    const message = json && json.success === false ? json.error?.message : undefined;
+    throw new ApiError(res.status, message ?? `Admin API ${res.status}`);
+  }
+  return json.data;
+}
+
+/** Admin: create a college. The slug must be new. */
+export async function adminCreateCollege(token: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "POST", "/admin/colleges", body);
+}
+
+/** Admin: partial update of a college. Only the keys present are changed. */
+export async function adminUpdateCollege(token: string, slug: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/colleges/${slug}`, body);
+}
+
+/** Admin: create an exam. The slug must be new. */
+export async function adminCreateExam(token: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "POST", "/admin/exams", body);
+}
+
+/** Admin: partial update of an exam. Only the keys present are changed. */
+export async function adminUpdateExam(token: string, slug: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/exams/${slug}`, body);
+}
+
 /** Admin: list all colleges (requires Authorization header). */
 export async function adminGetColleges(
   token: string,

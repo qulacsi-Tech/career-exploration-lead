@@ -189,11 +189,10 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 ### Admin Gaps
 | Gap | Notes |
 |---|---|
-| Admin mutations are not wired | The edit, add and delete dialogs still update local state only; the API endpoints exist |
-| No admin exam list endpoint | Admin exams page reads the public list |
-| No admin college list with detail fields | Each row is loaded in detail (one request per row, max 200) |
-| No automatic token refresh | Sessions end when the access token expires; the next admin request redirects to login |
-| Logout does not revoke tokens | Stateless JWT, as before; the cookie is cleared |
+| College edit: placements, cutoffs, reviews, media, SEO not stored | Shown in the form with a notice; no backend write path yet |
+| Admin list shows records loaded one by one | Each college row is read in detail (up to 200 requests); an admin list with detail fields would remove this |
+| Logout does not revoke tokens | Stateless JWT; the cookie is cleared, the token stays valid until it expires |
+| Admin courses, specialisations, rankings, leads, collections pages | Still on mock data; the API endpoints for courses, rankings and leads exist |
 
 ### Backend Features Not Yet Built
 | Feature | Notes |

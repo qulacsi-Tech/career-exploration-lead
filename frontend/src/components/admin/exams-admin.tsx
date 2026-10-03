@@ -2,6 +2,7 @@
 
 import type { Exam } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
+import { createExam, saveExam } from "@/lib/admin-actions";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import {
   TextField,
@@ -21,6 +22,8 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
       addLabel="Add exam"
       addDescription="Basic details now; pattern and syllabus on the record afterwards."
       rows={exams}
+      onSave={(exam, data) => saveExam(exam.slug, data)}
+      onAdd={(data) => createExam(undefined, data)}
       getKey={(exam) => exam.slug}
       searchIn={(exam) => [exam.name, exam.conductingBody, exam.level]}
       searchPlaceholder="Search name, body, level"
