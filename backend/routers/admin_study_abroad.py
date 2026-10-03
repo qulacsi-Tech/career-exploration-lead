@@ -132,6 +132,31 @@ async def admin_create_item(
     return SuccessResponse[dict](data={"id": str(item.id), **data})
 
 
+@router.put("/{kind}/order", response_model=SuccessResponse[dict])
+async def admin_reorder_items(kind: Kind, _admin: AdminPayload, db: DbSession, body: dict = Body(...)):
+    """Sets the display order of one kind. `ids` must list every row of that kind, once each.
+
+    Declared before the item route so "order" is not read as an item id.
+    """
+    raw_ids = body.get("ids")
+    if not isinstance(raw_ids, list) or not all(isinstance(i, str) for i in raw_ids):
+        raise ValidationError("ids: must be a list of row ids.")
+    try:
+        ids = [uuid.UUID(i) for i in raw_ids]
+    except ValueError as exc:
+        raise ValidationError("ids: contains an id that is not valid.") from exc
+
+    rows = (await db.execute(select(StudyAbroadItem).where(StudyAbroadItem.kind == kind))).scalars().all()
+    if len(ids) != len(set(ids)) or set(ids) != {r.id for r in rows}:
+        raise ValidationError("ids: must list every row of this kind exactly once.")
+
+    by_id = {r.id: r for r in rows}
+    for position, item_id in enumerate(ids):
+        by_id[item_id].position = position
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Order saved."})
+
+
 @router.put("/{kind}/{item_id}", response_model=SuccessResponse[dict])
 async def admin_update_item(
     kind: Kind,
