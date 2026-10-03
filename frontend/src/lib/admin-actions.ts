@@ -7,6 +7,9 @@ import {
   adminCreateCollege,
   adminCreateExam,
   adminCreateStudyAbroadItem,
+  adminUpdateLeadStatus,
+  LEAD_STATUSES,
+  type LeadStatus,
   adminDeleteStudyAbroadItem,
   adminReorderStudyAbroad,
   adminSetFiguresReviewed,
@@ -178,5 +181,17 @@ export async function reorderStudyAbroadItems(kind: StudyAbroadKind, ids: string
   if (!STUDY_ABROAD_KINDS.has(kind)) return { error: "Unknown content type." };
   const result = await attempt("/admin/study-abroad", (token) => adminReorderStudyAbroad(token, kind, ids));
   if ("ok" in result) revalidatePath("/study-abroad");
+  return result;
+}
+
+// ── Leads ────────────────────────────────────────────────────────────────────
+
+/** Sets a lead's status. Only the four known statuses are accepted. */
+export async function updateLeadStatus(id: string, status: string): Promise<AdminActionResult> {
+  if (!(LEAD_STATUSES as readonly string[]).includes(status)) return { error: "Unknown status." };
+  const result = await attempt("/admin/leads", (token) =>
+    adminUpdateLeadStatus(token, id, status as LeadStatus)
+  );
+  if ("ok" in result) revalidatePath("/admin");
   return result;
 }

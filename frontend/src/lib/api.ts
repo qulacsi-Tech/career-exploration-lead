@@ -44,7 +44,7 @@ export class ApiError extends Error {
 /**
  * Public reads are cached for a minute. Prerendered pages then build from the
  * API, and an edit reaches the public site within a minute. Admin reads bypass
- * this cache (see adminGetColleges and adminGetLeads).
+ * this cache (see adminGetColleges and adminListLeads).
  */
 const PUBLIC_REVALIDATE_SECONDS = 60;
 
@@ -776,22 +776,63 @@ export async function adminGetColleges(
   return { data: json.data, meta: json.meta };
 }
 
-/** Admin: list all leads. */
-export async function adminGetLeads(
+export const LEAD_STATUSES = ["new", "contacted", "converted", "closed"] as const;
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+export type AdminLead = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  collegeSlug: string | null;
+  type: string;
+  status: LeadStatus;
+  createdAt: string | null;
+};
+
+export type AdminDashboard = {
+  totals: { leads: number; newLeads: number; colleges: number; exams: number; articles: number };
+  leadsByDay: { date: string; count: number }[];
+  leadSources: { label: string; count: number }[];
+  recentLeads: {
+    id: string;
+    name: string;
+    type: string;
+    status: LeadStatus;
+    collegeSlug: string | null;
+    createdAt: string | null;
+  }[];
+};
+
+/** Admin: one page of leads, newest first, with pagination metadata. */
+export async function adminListLeads(
   token: string,
-  params?: { page?: number; limit?: number; status?: string }
-): Promise<{ data: unknown[]; total: number }> {
+  params: { page?: number; limit?: number; status?: LeadStatus } = {}
+): Promise<{ data: AdminLead[]; meta: PaginationMeta }> {
   const qs = new URLSearchParams();
-  if (params?.page)   qs.set("page",   String(params.page));
-  if (params?.limit)  qs.set("limit",  String(params.limit));
-  if (params?.status) qs.set("status", params.status);
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.status) qs.set("status", params.status);
   const query = qs.toString() ? `?${qs}` : "";
   const url = `${API_BASE}/admin/leads${query}`;
-  const res = await fetch(url, {
-    cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new ApiError(res.status, `Admin leads API ${res.status}`);
-  const json = await res.json();
-  return { data: json.data, total: json.data?.length ?? 0 };
+  const res = await fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: AdminLead[]; meta: PaginationMeta }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    const message = json && json.success === false ? json.error?.message : undefined;
+    throw new ApiError(res.status, message ?? `Admin leads API ${res.status}`);
+  }
+  return { data: json.data, meta: json.meta };
+}
+
+/** Admin: set a lead's status. */
+export async function adminUpdateLeadStatus(token: string, id: string, status: LeadStatus) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/leads/${id}`, { status });
+}
+
+/** Admin: the figures for the dashboard, computed by the API from the database. */
+export async function adminGetDashboard(token: string): Promise<AdminDashboard> {
+  return adminRequest<AdminDashboard>(token, "GET", "/admin/dashboard");
 }
