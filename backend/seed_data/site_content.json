@@ -214,5 +214,13 @@
         }
       ]
     }
+  ],
+  "home.topExams": [
+    "cat",
+    "xat",
+    "karnataka-pgcet",
+    "nmat",
+    "cmat",
+    "mah-cet"
   ]
 }

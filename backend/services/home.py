@@ -126,6 +126,13 @@ async def _stored(db: AsyncSession, key: str, model):
     return [model.model_validate(item) for item in (row.data if row else [])]
 
 
+async def _stored_list(db: AsyncSession, key: str) -> list:
+    """A stored content block that is a plain list, such as ordered slugs. Missing means empty."""
+    from models.site_content import SiteContent
+    row = (await db.execute(select(SiteContent).where(SiteContent.key == key))).scalar_one_or_none()
+    return list(row.data) if row and isinstance(row.data, list) else []
+
+
 async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     college_svc = CollegeService(db)
     exam_svc = ExamService(db)
@@ -134,7 +141,8 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     program_svc = ProgramService(db)
 
     featured_colleges = await college_svc.get_featured(limit=6)
-    featured_exams = await exam_svc.get_featured(limit=6)
+    top_exam_slugs = await _stored_list(db, "home.topExams")
+    featured_exams = await exam_svc.get_by_slugs(top_exam_slugs[:6])
     locations = await location_svc.list_locations()
     articles = await article_svc.get_recent(limit=3)
     programs = await program_svc.get_recommended(limit=3)
