@@ -53,6 +53,10 @@ class CollectionService:
         ordered = [_to_list_schema(c) for c in ranked + unranked]
         return ordered[:limit] if isinstance(limit, int) else ordered
 
+    async def colleges_for(self, data: dict, limit: Optional[int] = None) -> list:
+        """Colleges a stored collection resolves to, in display order."""
+        return await self._colleges_for(data, limit)
+
     async def homepage_bands(self) -> list[dict]:
         visible = [
             d for d in await self._published()
