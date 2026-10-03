@@ -19,7 +19,7 @@ from core.exceptions import ConflictError, NotFoundError
 from schemas.college import CollegeFilterParams
 from models.college import OwnershipType
 from models.exam import ExamLevel
-from schemas.common import ListResponse, SuccessResponse
+from schemas.common import ListResponse, Meta, SuccessResponse
 from services.college import CollegeService
 from services.exam import ExamService
 from services.article import ArticleService
@@ -341,7 +341,7 @@ class LeadStatusUpdateBody(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-@router.get("/leads", response_model=SuccessResponse[list])
+@router.get("/leads", response_model=ListResponse[dict])
 async def admin_list_leads(
     _admin: AdminPayload,
     db: DbSession,
@@ -366,8 +366,9 @@ async def admin_list_leads(
     offset = (page - 1) * limit
     result = await db.execute(stmt.offset(offset).limit(limit))
     leads = result.scalars().all()
+    pages = max(1, -(-total // limit))
 
-    return SuccessResponse[list](data=[
+    return ListResponse[dict](meta=Meta(total=total, page=page, limit=limit, pages=pages), data=[
         {
             "id": str(lead.id),
             "name": lead.name,
@@ -397,7 +398,12 @@ async def admin_update_lead_status(
         from core.exceptions import ValidationError
         raise ValidationError(f"status must be one of: {', '.join(allowed)}")
 
-    stmt = sql_update(Lead).where(Lead.id == uuid.UUID(lead_id)).values(status=body.status)
+    try:
+        lead_uuid = uuid.UUID(lead_id)
+    except ValueError as exc:
+        from core.exceptions import ValidationError as _ValidationError
+        raise _ValidationError("lead_id: not a valid id.") from exc
+    stmt = sql_update(Lead).where(Lead.id == lead_uuid).values(status=body.status)
     result = await db.execute(stmt)
     await db.commit()
     if result.rowcount == 0:
