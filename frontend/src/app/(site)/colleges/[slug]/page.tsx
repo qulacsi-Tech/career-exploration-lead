@@ -6,14 +6,7 @@ import {
   SidebarLinks,
 } from "@/components/college-listing";
 import { RichText } from "@/components/rich-text";
-import {
-  collectionBySlug,
-  collectionColleges,
-  collectionHref,
-  canonicalFor,
-  describeCollectionScope,
-  publishedCollections,
-} from "@/lib/collections-data";
+import { ApiError, getCollectionPage, getCollectionSlugs } from "@/lib/api";
 import { isRichTextEmpty } from "@/lib/rich-text";
 
 /**
@@ -36,8 +29,19 @@ import { isRichTextEmpty } from "@/lib/rich-text";
  * collection resolving to zero colleges from being published, so the empty
  * state below is a safety net rather than something a visitor should ever see.
  */
-export function generateStaticParams() {
-  return publishedCollections().map((collection) => ({ slug: collection.slug }));
+/** The page payload, or null for a slug that is unknown or unpublished. Other errors still throw. */
+async function loadCollectionPage(slug: string) {
+  try {
+    return await getCollectionPage(slug);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+export async function generateStaticParams() {
+  const slugs = await getCollectionSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({
@@ -46,8 +50,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const collection = collectionBySlug(slug);
-  if (!collection || !collection.isPublished) return { title: "Collection not found" };
+  const payload = await loadCollectionPage(slug);
+  if (!payload) return { title: "Collection not found" };
+  const { collection } = payload;
 
   return {
     title: collection.seo.metaTitle || collection.title,
@@ -58,7 +63,7 @@ export async function generateMetadata({
       colleges, and two URLs competing for one query is how a site cannibalises
       its own ranking. `canonicalFor` points at the original in that case.
     */
-    alternates: { canonical: canonicalFor(collection) },
+    alternates: { canonical: payload.canonical },
   };
 }
 
@@ -68,12 +73,13 @@ export default async function CollectionPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const collection = collectionBySlug(slug);
-  if (!collection || !collection.isPublished) notFound();
+  const payload = await loadCollectionPage(slug);
+  if (!payload) notFound();
+  const { collection } = payload;
 
   // Unlimited: the homepage placement's card count trims a band, not the page
   // the band links to.
-  const rows = collectionColleges(collection, { limit: undefined });
+  const rows = payload.colleges;
 
   /*
     Sibling collections — the other groups a visitor might have meant. Scoped to
@@ -81,11 +87,7 @@ export default async function CollectionPage({
     Colleges in Bangalore", "MBA Colleges in Pune" is a useful next click and
     "Top Engineering Colleges" is not.
   */
-  const related = publishedCollections().filter(
-    (other) =>
-      other.id !== collection.id &&
-      other.scope.programSlug === collection.scope.programSlug,
-  );
+  const related = payload.related;
 
   return (
     <CollegeListing
@@ -97,7 +99,7 @@ export default async function CollectionPage({
       title={collection.title}
       subtitle={
         collection.subheading ||
-        `${rows.length} college${rows.length === 1 ? "" : "s"} · ${describeCollectionScope(collection.scope)}`
+        `${rows.length} college${rows.length === 1 ? "" : "s"}`
       }
       colleges={rows}
       emptyMessage="No colleges match this collection yet."
@@ -108,8 +110,8 @@ export default async function CollectionPage({
             title="Related collections"
             items={related.map((other) => ({
               label: other.title,
-              href: collectionHref(other),
-              meta: String(collectionColleges(other, { limit: undefined }).length),
+              href: `/colleges/${other.slug}`,
+              meta: String(other.count),
             }))}
           />
         </>

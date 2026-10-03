@@ -4,9 +4,7 @@ import { HeroBackdrop } from "./hero-backdrop";
 import { TopExamCard } from "@/components/top-exam-card";
 import { StreamTabs } from "@/components/ui/stream-tabs";
 import { ViewAllButton } from "@/components/ui/view-all-button";
-import { RecommendedProgramCard } from "@/components/recommended-program-card";
 import { CareerPanelCard } from "@/components/career-panel-card";
-import { UniversityCard } from "@/components/university-card";
 import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
 import { StreamGrid } from "@/components/stream-grid";
@@ -14,9 +12,8 @@ import { AutoStoryFrame } from "@/components/ui/auto-story-frame";
 import { CollegeSlider } from "@/components/college-slider";
 import { photoSetLedBy } from "@/lib/college-images";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
-import { homepageCollections, collectionHref } from "@/lib/collections-data";
 import { TopCollegeCard } from "@/components/top-college-card";
-import { getHomeData } from "@/lib/api";
+import { getCollectionBands, getHomeData } from "@/lib/api";
 
 const streamTabs = [
   "Management",
@@ -60,7 +57,7 @@ export default async function Home() {
 
   // ── Collections (college bands) stay on local data until the collections ──
   // ── CMS API ships in a later phase                                        ──
-  const visibleBands  = homepageCollections();
+  const visibleBands  = await getCollectionBands();
 
   // career panels in 3-column layout: left | middle (2 stacked) | right
   const careerColumns = careerPanels.length >= 4
@@ -156,7 +153,7 @@ export default async function Home() {
               </div>
             )}
             <div className="mt-10 text-center">
-              <ViewAllButton href={collectionHref(collection)} />
+              <ViewAllButton href={`/colleges/${collection.slug}`} />
             </div>
           </div>
         </section>

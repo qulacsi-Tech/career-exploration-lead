@@ -7,6 +7,8 @@
  * and build-time failures that occur when Server Components call Route Handlers.)
  */
 
+import type { RichTextDoc } from "@/lib/rich-text";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 // ── Fetch primitives ───────────────────────────────────────────────────────
@@ -417,8 +419,14 @@ export async function registerUser(data: {
 }
 
 /** Full-text search across colleges, exams, locations. */
-export async function search(q: string) {
-  return apiFetch(`/search?q=${encodeURIComponent(q)}`);
+export type SearchResults = {
+  colleges: { slug: string; name: string; city: string; stream: string }[];
+  exams: { slug: string; name: string }[];
+  locations: { slug: string; name: string }[];
+};
+
+export async function search(q: string): Promise<SearchResults> {
+  return apiFetch<SearchResults>(`/search?q=${encodeURIComponent(q)}`);
 }
 
 // ── Course Catalogue types ────────────────────────────────────────────────
@@ -573,6 +581,77 @@ export type StudyAbroadContent = {
 /** The whole study-abroad page. Figures are indicative; the reviewed date is shown with them. */
 export async function getStudyAbroad(): Promise<StudyAbroadContent> {
   return apiFetch<StudyAbroadContent>("/study-abroad");
+}
+
+// ── Collections ───────────────────────────────────────────────────────────
+
+export type CollectionScope = {
+  programSlug?: string;
+  locationSlug?: string;
+  examSlug?: string;
+  courseSlug?: string;
+};
+
+export type CollectionPlacements = {
+  homepage?: { order: number; limit: number; isVisible: boolean };
+  footer?: { column: string; order: number };
+};
+
+export type CollectionSeo = {
+  metaTitle: string;
+  metaDescription: string;
+  canonical?: string;
+  intro: RichTextDoc;
+  faqs: { question: string; answer: string }[];
+};
+
+export type Collection = {
+  id: string;
+  slug: string;
+  title: string;
+  heading: string;
+  subheading: string;
+  scope: CollectionScope;
+  collegeSlugs: string[];
+  rankingListSlug: string;
+  seo: CollectionSeo;
+  placements: CollectionPlacements;
+  isPublished: boolean;
+  updatedAt: string;
+};
+
+export type CollectionBand = { collection: Collection; colleges: College[] };
+
+export type FooterColumn = {
+  title: string;
+  links: { label: string; href: string; order: number }[];
+};
+
+export type CollectionPagePayload = {
+  collection: Collection;
+  colleges: College[];
+  related: { slug: string; title: string; count: number }[];
+  canonical: string;
+};
+
+/** Homepage bands: published, visible, in editor order, each with its colleges. */
+export async function getCollectionBands(): Promise<CollectionBand[]> {
+  return apiFetch<CollectionBand[]>("/collections/homepage");
+}
+
+/** Footer link columns built from the collections placed in them. */
+export async function getFooterColumns(): Promise<FooterColumn[]> {
+  return apiFetch<FooterColumn[]>("/collections/footer");
+}
+
+/** Slugs of published collections, for generateStaticParams. */
+export async function getCollectionSlugs(): Promise<string[]> {
+  return apiFetch<string[]>("/collections/slugs");
+}
+
+/** A published collection's page: its colleges, related collections, and canonical URL. */
+export async function getCollectionPage(slug: string): Promise<CollectionPagePayload> {
+  return apiFetch<CollectionPagePayload>(`/collections/${slug}/page`);
 }
 
 // ── Sitemap ───────────────────────────────────────────────────────────────

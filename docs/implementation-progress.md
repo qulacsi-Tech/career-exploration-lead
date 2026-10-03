@@ -174,16 +174,37 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 
 ---
 
+## 🔄 PHASE 4 — IN PROGRESS
+
+### Done
+| Item | Status |
+|---|---|
+| Collections stored in the database (migration 007, seeded from `seed_data/collections.json`) | ✅ |
+| `GET /collections/homepage`, `/collections/footer`, `/collections/slugs`, `/collections/{slug}/page` | ✅ |
+| Home page bands, site footer columns, `/colleges/[slug]` collection pages read the API | ✅ |
+| Search results page `/search?q=` (colleges, exams, cities) | ✅ |
+| Checked in the running app: home band, footer, search matches, collection page, unknown slug 404 | ✅ |
+
+Note: the collection page subtitle is now "N colleges" (the scope description it had before is not carried over yet).
+
+### Still to do in Phase 4
+| Item |
+|---|
+| Admin collections editor on the API (membership picker, scope, placements, SEO, publishing) |
+| Admin courses, specialisations, rankings, and leads pages on the API (endpoints for courses, rankings, and leads exist) |
+| Admin editor for the collection placements and SEO fields |
+
+---
+
 ## ❌ NOT DONE YET (carried into the next phase)
 
 ### Pages Still on Mock Data
 | Page / Component | Why |
 |---|---|
-| Home college bands, `collections-data.ts`, `rankings-data.ts` | Collections CMS API not built |
-| `college-slider.tsx`, `top-college-card.tsx` | Used by the mock collections above |
+| `collections-data.ts` (admin collections editor only) | Public site reads collections from the API; the admin editor still uses the mock module |
+| `rankings-data.ts` | Still used by the admin collections editor |
 | Practice (`/practice/**`, `/exams/[slug]/practice/**`) | Practice content is local |
 
-| Search results `/search` | Needs results page |
 | Compare verdict copy (`curatedComparisons`) | Editorial text; intentionally kept in code |
 
 ### Admin Gaps

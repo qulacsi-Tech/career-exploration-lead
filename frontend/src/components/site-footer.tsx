@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
-import { footerColumns } from "@/lib/collections-data";
+import { getFooterColumns } from "@/lib/api";
 import { exams } from "@/lib/mock-data";
 
 /**
@@ -30,7 +30,8 @@ const staticColumns = [
   },
 ];
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const dynamicColumns = await getFooterColumns();
   return (
     <footer className="border-t border-line bg-ink text-white">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -64,7 +65,7 @@ export function SiteFooter() {
           here was a string with href="#".
         */}
         <div className="grid grid-cols-2 gap-8 py-10 sm:grid-cols-4">
-          {[...footerColumns(), ...staticColumns].map((col) => (
+          {[...dynamicColumns, ...staticColumns].map((col) => (
             <div key={col.title}>
               <p className="font-display text-sm font-semibold text-white">{col.title}</p>
               <ul className="mt-3 space-y-2 text-sm text-white/60">

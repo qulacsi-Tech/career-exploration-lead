@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 import { collegePhoto } from "@/lib/college-images";
 import { GraduationCap, Tag } from "lucide-react";
 
