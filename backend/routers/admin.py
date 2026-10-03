@@ -12,11 +12,13 @@ from datetime import date
 from typing import Any, Optional
 
 from fastapi import APIRouter, Body, Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.dependencies import AdminPayload, DbSession
-from core.exceptions import NotFoundError
+from core.exceptions import ConflictError, NotFoundError
 from schemas.college import CollegeFilterParams
+from models.college import OwnershipType
+from models.exam import ExamLevel
 from schemas.common import ListResponse, SuccessResponse
 from services.college import CollegeService
 from services.exam import ExamService
@@ -56,14 +58,62 @@ class CollegeUpdateBody(BaseModel):
     name: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
-    ownership: Optional[str] = None
+    ownership: Optional[OwnershipType] = None
     stream: Optional[str] = None
     feesRange: Optional[str] = None
     about: Optional[str] = None
     isFeature: Optional[bool] = None
     rankingRank: Optional[int] = None
     rankingAuthority: Optional[str] = None
+    coursesOffered: Optional[int] = None
+    established: Optional[int] = None
+    examsAccepted: Optional[list[str]] = None
+    tags: Optional[list[str]] = None
+    approvals: Optional[list[str]] = None
     model_config = ConfigDict(populate_by_name=True)
+
+
+class CollegeCreateBody(BaseModel):
+    name: str = Field(min_length=2, max_length=500)
+    slug: str = Field(min_length=2, max_length=200, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
+    city: str = Field(min_length=1, max_length=200)
+    state: str = Field(min_length=1, max_length=200)
+    ownership: OwnershipType
+    stream: str = Field(min_length=1, max_length=100)
+    feesRange: Optional[str] = Field(default=None, max_length=100)
+    about: Optional[str] = None
+    rankingAuthority: Optional[str] = Field(default=None, max_length=100)
+    rankingRank: Optional[int] = Field(default=None, ge=1)
+    established: Optional[int] = Field(default=None, ge=1800, le=2100)
+    model_config = ConfigDict(populate_by_name=True)
+
+
+@router.post("/colleges", response_model=SuccessResponse[MessageResponse], status_code=201)
+async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db: DbSession):
+    """Create a college. The slug must be new: an existing one is a 409, never an overwrite."""
+    from sqlalchemy import select
+    from models.college import College
+
+    existing = (await db.execute(select(College.id).where(College.slug == body.slug))).scalar_one_or_none()
+    if existing is not None:
+        raise ConflictError("COLLEGE_SLUG_TAKEN", f"A college with slug '{body.slug}' already exists.")
+
+    db.add(College(
+        id=uuid.uuid4(),
+        slug=body.slug,
+        name=body.name,
+        city=body.city,
+        state=body.state,
+        ownership=body.ownership,
+        stream=body.stream,
+        fees_range=body.feesRange,
+        about=body.about,
+        ranking_authority=body.rankingAuthority,
+        ranking_rank=body.rankingRank,
+        established=body.established,
+    ))
+    await db.commit()
+    return SuccessResponse[MessageResponse](data=MessageResponse(message=f"College '{body.slug}' created."))
 
 
 @router.patch("/colleges/{slug}", response_model=SuccessResponse[MessageResponse])
@@ -88,6 +138,11 @@ async def admin_update_college(
     if body.isFeature is not None:    values["is_featured"] = body.isFeature
     if body.rankingRank is not None:  values["ranking_rank"] = body.rankingRank
     if body.rankingAuthority is not None: values["ranking_authority"] = body.rankingAuthority
+    if body.coursesOffered is not None:  values["courses_offered"] = body.coursesOffered
+    if body.established is not None:     values["established"] = body.established
+    if body.examsAccepted is not None:   values["exams_accepted"] = body.examsAccepted
+    if body.tags is not None:            values["tags"] = body.tags
+    if body.approvals is not None:       values["approvals"] = body.approvals
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))
@@ -126,6 +181,41 @@ class ExamUpdateBody(BaseModel):
     officialSite: Optional[str] = None
     isFeatured: Optional[bool] = None
     model_config = ConfigDict(populate_by_name=True)
+
+
+class ExamCreateBody(BaseModel):
+    slug: str = Field(min_length=2, max_length=200, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
+    name: str = Field(min_length=2, max_length=500)
+    conductingBody: str = Field(min_length=2, max_length=200)
+    level: ExamLevel
+    description: str = Field(min_length=1)
+    mode: Optional[str] = Field(default=None, max_length=50)
+    examDate: Optional[str] = Field(default=None, max_length=50)
+    model_config = ConfigDict(populate_by_name=True)
+
+
+@router.post("/exams", response_model=SuccessResponse[MessageResponse], status_code=201)
+async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSession):
+    """Create an exam. The slug must be new: an existing one is a 409, never an overwrite."""
+    from sqlalchemy import select
+    from models.exam import Exam
+
+    existing = (await db.execute(select(Exam.id).where(Exam.slug == body.slug))).scalar_one_or_none()
+    if existing is not None:
+        raise ConflictError("EXAM_SLUG_TAKEN", f"An exam with slug '{body.slug}' already exists.")
+
+    db.add(Exam(
+        id=uuid.uuid4(),
+        slug=body.slug,
+        name=body.name,
+        conducting_body=body.conductingBody,
+        level=body.level,
+        description=body.description,
+        mode=body.mode,
+        exam_date=body.examDate,
+    ))
+    await db.commit()
+    return SuccessResponse[MessageResponse](data=MessageResponse(message=f"Exam '{body.slug}' created."))
 
 
 @router.patch("/exams/{slug}", response_model=SuccessResponse[MessageResponse])
