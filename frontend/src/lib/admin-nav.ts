@@ -57,6 +57,7 @@ export const adminNav: AdminNavSection[] = [
       { label: "Specialisations", href: "/admin/specialisations", phase: 1 },
       { label: "Exams", href: "/admin/exams", phase: 1 },
       { label: "Rankings", href: "/admin/rankings", phase: 1 },
+      { label: "Study Abroad", href: "/admin/study-abroad", phase: 1 },
       /*
         Sits under Content rather than Sections because a collection owns a URL.
         It was the "College bands" tab inside Sections → Homepage, which only

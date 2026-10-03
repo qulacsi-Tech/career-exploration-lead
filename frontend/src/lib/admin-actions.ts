@@ -6,8 +6,13 @@ import {
   ApiError,
   adminCreateCollege,
   adminCreateExam,
+  adminCreateStudyAbroadItem,
+  adminDeleteStudyAbroadItem,
+  adminSetFiguresReviewed,
   adminUpdateCollege,
   adminUpdateExam,
+  adminUpdateStudyAbroadItem,
+  type StudyAbroadKind,
 } from "@/lib/api";
 import { requireAdminToken } from "@/lib/admin-session";
 
@@ -106,4 +111,63 @@ export async function createExam(
       slug: text(form, "slug"),
     })
   );
+}
+
+// ── Study abroad content ─────────────────────────────────────────────────────
+
+const STUDY_ABROAD_FIELDS: Record<StudyAbroadKind, string[]> = {
+  destination: ["slug", "country", "tagline", "universities", "tuition", "living", "postStudyWork", "intakes", "popularCourses"],
+  step: ["title", "window", "detail"],
+  test: ["name", "purpose", "validity", "href"],
+  faq: ["question", "answer"],
+};
+
+/** The full row body. Every field is sent, so an update replaces the row. */
+function studyAbroadBody(kind: StudyAbroadKind, form: FormData): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const field of STUDY_ABROAD_FIELDS[kind]) {
+    const value = String(form.get(field) ?? "").trim();
+    if (field === "popularCourses") {
+      out[field] = value.split(",").map((item) => item.trim()).filter(Boolean);
+    } else if (field === "href") {
+      out[field] = value === "" ? null : value;
+    } else {
+      out[field] = value;
+    }
+  }
+  return out;
+}
+
+const STUDY_ABROAD_KINDS: ReadonlySet<string> = new Set(["destination", "step", "test", "faq"]);
+
+/** Creates a row when `id` is null, otherwise replaces the row with that id. */
+export async function saveStudyAbroadItem(
+  kind: StudyAbroadKind,
+  id: string | null,
+  form: FormData
+): Promise<AdminActionResult> {
+  if (!STUDY_ABROAD_KINDS.has(kind)) return { error: "Unknown content type." };
+  const result = await attempt("/admin/study-abroad", (token) =>
+    id === null
+      ? adminCreateStudyAbroadItem(token, kind, studyAbroadBody(kind, form))
+      : adminUpdateStudyAbroadItem(token, kind, id, studyAbroadBody(kind, form))
+  );
+  if ("ok" in result) revalidatePath("/study-abroad");
+  return result;
+}
+
+export async function deleteStudyAbroadItem(kind: StudyAbroadKind, id: string): Promise<AdminActionResult> {
+  if (!STUDY_ABROAD_KINDS.has(kind)) return { error: "Unknown content type." };
+  const result = await attempt("/admin/study-abroad", (token) =>
+    adminDeleteStudyAbroadItem(token, kind, id)
+  );
+  if ("ok" in result) revalidatePath("/study-abroad");
+  return result;
+}
+
+export async function saveFiguresReviewed(form: FormData): Promise<AdminActionResult> {
+  const value = String(form.get("value") ?? "").trim();
+  const result = await attempt("/admin/study-abroad", (token) => adminSetFiguresReviewed(token, value));
+  if ("ok" in result) revalidatePath("/study-abroad");
+  return result;
 }

@@ -592,7 +592,7 @@ export async function getSitemapSlugs(
  */
 async function adminRequest<T>(
   token: string,
-  method: "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown
 ): Promise<T> {
@@ -635,6 +635,42 @@ export async function adminCreateExam(token: string, body: Record<string, unknow
 /** Admin: partial update of an exam. Only the keys present are changed. */
 export async function adminUpdateExam(token: string, slug: string, body: Record<string, unknown>) {
   return adminRequest<{ message: string }>(token, "PATCH", `/admin/exams/${slug}`, body);
+}
+
+export type StudyAbroadKind = "destination" | "step" | "test" | "faq";
+
+/** Admin view of the study-abroad content: every row carries its id. */
+export type StudyAbroadAdminContent = {
+  figuresReviewed: string | null;
+  destinations: (StudyAbroadDestination & { id: string })[];
+  applicationSteps: (StudyAbroadStep & { id: string })[];
+  admissionTests: (StudyAbroadTest & { id: string })[];
+  faqs: (StudyAbroadFaq & { id: string })[];
+};
+
+export async function adminGetStudyAbroad(token: string): Promise<StudyAbroadAdminContent> {
+  return adminRequest<StudyAbroadAdminContent>(token, "GET", "/admin/study-abroad");
+}
+
+export async function adminCreateStudyAbroadItem(token: string, kind: StudyAbroadKind, body: Record<string, unknown>) {
+  return adminRequest<{ id: string }>(token, "POST", `/admin/study-abroad/${kind}`, body);
+}
+
+export async function adminUpdateStudyAbroadItem(
+  token: string,
+  kind: StudyAbroadKind,
+  id: string,
+  body: Record<string, unknown>
+) {
+  return adminRequest<{ id: string }>(token, "PUT", `/admin/study-abroad/${kind}/${id}`, body);
+}
+
+export async function adminDeleteStudyAbroadItem(token: string, kind: StudyAbroadKind, id: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/study-abroad/${kind}/${id}`);
+}
+
+export async function adminSetFiguresReviewed(token: string, value: string) {
+  return adminRequest<{ figuresReviewed: string }>(token, "PUT", "/admin/study-abroad/figures-reviewed", { value });
 }
 
 /** Admin: list all colleges (requires Authorization header). */
