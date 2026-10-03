@@ -737,6 +737,35 @@ export async function adminDeleteRanking(token: string, slug: string) {
   return adminRequest<{ message: string }>(token, "DELETE", `/admin/rankings/${slug}`);
 }
 
+// ── Admin collections ─────────────────────────────────────────────────────
+
+export type CollectionOption = { slug: string; name: string };
+
+export type AdminCollectionOptions = {
+  programs: CollectionOption[];
+  locations: CollectionOption[];
+  exams: CollectionOption[];
+  courses: CollectionOption[];
+  colleges: CollectionOption[];
+  rankings: CollectionOption[];
+};
+
+export async function adminGetCollectionOptions(token: string): Promise<AdminCollectionOptions> {
+  return adminRequest<AdminCollectionOptions>(token, "GET", "/admin/collections/options");
+}
+
+export async function adminGetCollections(token: string): Promise<Collection[]> {
+  return adminRequest<Collection[]>(token, "GET", "/admin/collections");
+}
+
+export async function adminCreateCollection(token: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "POST", "/admin/collections", body);
+}
+
+export async function adminUpdateCollection(token: string, slug: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/collections/${slug}`, body);
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

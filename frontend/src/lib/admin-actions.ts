@@ -8,6 +8,8 @@ import {
   adminCreateExam,
   adminCreateCourse,
   adminCreateRanking,
+  adminCreateCollection,
+  adminUpdateCollection,
   adminUpdateRanking,
   adminCreateSpecialisation,
   adminUpdateCourse,
@@ -334,5 +336,92 @@ export async function createRanking(
     adminCreateRanking(token, { ...body.value, slug: String(form.get("slug") ?? "").trim() })
   );
   if ("ok" in result) revalidateRankings();
+  return result;
+}
+
+// ── Collections ──────────────────────────────────────────────────────────────
+
+/** An optional number field. Non-numeric text is passed through so the API names the field. */
+function numberOrText(value: string): number | string {
+  return /^\d+$/.test(value) ? Number(value) : value;
+}
+
+function collectionBody(form: FormData): { value: Record<string, unknown> } | { error: string } {
+  let colleges: unknown;
+  let faqs: unknown;
+  try {
+    colleges = JSON.parse(String(form.get("colleges") ?? "[]"));
+    faqs = JSON.parse(String(form.get("faqs") ?? "[]"));
+  } catch {
+    return { error: "The college or FAQ list could not be read. Reload the page and try again." };
+  }
+  if (!Array.isArray(colleges) || !Array.isArray(faqs)) {
+    return { error: "The college and FAQ lists must be lists." };
+  }
+
+  const text = (name: string) => String(form.get(name) ?? "").trim();
+  const orNull = (name: string) => (text(name) === "" ? null : text(name));
+
+  const homepageOn = form.has("homepageOn");
+  const footerOn = form.has("footerOn");
+
+  return {
+    value: {
+      title: text("title"),
+      heading: text("heading"),
+      subheading: text("subheading"),
+      scope: {
+        programSlug: orNull("programSlug"),
+        locationSlug: orNull("locationSlug"),
+        examSlug: orNull("examSlug"),
+        courseSlug: orNull("courseSlug"),
+      },
+      rankingListSlug: orNull("rankingListSlug"),
+      collegeSlugs: colleges,
+      homepage: homepageOn
+        ? {
+            order: numberOrText(text("homepageOrder")),
+            limit: numberOrText(text("homepageLimit")),
+            isVisible: form.has("homepageVisible"),
+          }
+        : null,
+      footer: footerOn
+        ? { column: text("footerColumn"), order: numberOrText(text("footerOrder")) }
+        : null,
+      seo: {
+        metaTitle: text("metaTitle"),
+        metaDescription: text("metaDescription"),
+        canonical: orNull("canonical"),
+        intro: String(form.get("intro") ?? "").trim(),
+        faqs,
+      },
+      isPublished: form.has("isPublished"),
+    },
+  };
+}
+
+function revalidateCollections() {
+  revalidatePath("/colleges", "layout");
+  revalidatePath("/", "layout");
+}
+
+export async function saveCollection(slug: string, form: FormData): Promise<AdminActionResult> {
+  const body = collectionBody(form);
+  if ("error" in body) return body;
+  const result = await attempt("/admin/collections", (token) => adminUpdateCollection(token, slug, body.value));
+  if ("ok" in result) revalidateCollections();
+  return result;
+}
+
+export async function createCollection(
+  _prev: AdminActionResult | undefined,
+  form: FormData
+): Promise<AdminActionResult> {
+  const body = collectionBody(form);
+  if ("error" in body) return body;
+  const result = await attempt("/admin/collections", (token) =>
+    adminCreateCollection(token, { ...body.value, slug: String(form.get("slug") ?? "").trim() })
+  );
+  if ("ok" in result) revalidateCollections();
   return result;
 }
