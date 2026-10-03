@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 import {
   programs,
   rankingListsForProgram,
@@ -294,20 +294,27 @@ function ViewCollegeModal({
             </div>
           </AdminSubsection>
 
-          <AdminSubsection title="Placements" description={`Batch of ${college.placement.year}`}>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
-              <Field label="Average" value={college.placement.average} />
-              <Field label="Median" value={college.placement.median} />
-              <Field label="Highest" value={college.placement.highest} />
-            </dl>
-            <p className="mt-2 text-xs text-ink-soft">
-              Top recruiters: {college.placement.topRecruiters.join(", ")}
-            </p>
+          <AdminSubsection
+            title="Placements"
+            description={college.placement ? `Batch of ${college.placement.year}` : "No placement data"}
+          >
+            {college.placement && (
+              <>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                  <Field label="Average" value={college.placement.average} />
+                  <Field label="Median" value={college.placement.median} />
+                  <Field label="Highest" value={college.placement.highest} />
+                </dl>
+                <p className="mt-2 text-xs text-ink-soft">
+                  Top recruiters: {college.placement.topRecruiters.join(", ")}
+                </p>
+              </>
+            )}
           </AdminSubsection>
 
           <AdminSubsection title="Cutoffs">
             <ul className="space-y-1 text-sm text-ink-soft">
-              {college.cutoffs.map((cutoff) => (
+              {(college.cutoffs ?? []).map((cutoff) => (
                 <li key={`${cutoff.exam}-${cutoff.category}`}>
                   <span className="font-medium text-ink">{cutoff.exam}</span> · {cutoff.category} ·{" "}
                   {cutoff.score}

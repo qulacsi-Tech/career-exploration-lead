@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 import { AdminModal } from "@/components/admin/admin-modal";
 import {
   TextField,
@@ -119,7 +119,9 @@ export function CollegeEditModal({
 function CollegeEditForm({ college, onDone }: { college: College; onDone: () => void }) {
   const [tab, setTab] = useState<TabId>("basic");
   const [courses, setCourses] = useState(college.courses);
-  const [cutoffs, setCutoffs] = useState(college.cutoffs);
+  const [cutoffs, setCutoffs] = useState(college.cutoffs ?? []);
+  // Placement is nullable on the API: some colleges have no placement record.
+  const placement = college.placement;
   const tabs = useTabs();
   const activeTab = tabs.find((t) => t.id === tab) ?? tabs[0];
 
@@ -267,21 +269,23 @@ function CollegeEditForm({ college, onDone }: { college: College; onDone: () => 
           </FieldGrid>
         )}
 
-        {tab === "placements" && (
+        {tab === "placements" && (placement ? (
           <FieldGrid>
-            <TextField label="Batch year" name="placementYear" type="number" defaultValue={String(college.placement.year)} />
-            <TextField label="Average package" name="placementAverage" defaultValue={college.placement.average} />
-            <TextField label="Median package" name="placementMedian" defaultValue={college.placement.median} />
-            <TextField label="Highest package" name="placementHighest" defaultValue={college.placement.highest} />
+            <TextField label="Batch year" name="placementYear" type="number" defaultValue={String(placement.year)} />
+            <TextField label="Average package" name="placementAverage" defaultValue={placement.average} />
+            <TextField label="Median package" name="placementMedian" defaultValue={placement.median} />
+            <TextField label="Highest package" name="placementHighest" defaultValue={placement.highest} />
             <TextAreaField
               label="Top recruiters"
               name="topRecruiters"
-              defaultValue={college.placement.topRecruiters.join(", ")}
+              defaultValue={placement.topRecruiters.join(", ")}
               className="sm:col-span-2 lg:col-span-3"
               hint="Comma separated."
             />
           </FieldGrid>
-        )}
+        ) : (
+          <p className="text-sm text-ink-soft">No placement data for this college.</p>
+        ))}
 
         {tab === "cutoffs" && (
           <RepeatableGroup
@@ -312,7 +316,7 @@ function CollegeEditForm({ college, onDone }: { college: College; onDone: () => 
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">Rating breakdown</h3>
               <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {college.ratingBreakdown.map((entry) => (
+                {(college.ratingBreakdown ?? []).map((entry) => (
                   <TextField
                     key={entry.label}
                     label={entry.label}
@@ -325,13 +329,13 @@ function CollegeEditForm({ college, onDone }: { college: College; onDone: () => 
 
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">
-                Submitted reviews ({college.reviews.length})
+                Submitted reviews ({(college.reviews ?? []).length})
               </h3>
               <p className="mt-1 text-xs text-ink-soft">
                 Moderation lands with the reviews module in phase 2 — read-only here.
               </p>
               <ul className="mt-3 space-y-2">
-                {college.reviews.map((review) => (
+                {(college.reviews ?? []).map((review) => (
                   <li key={`${review.author}-${review.date}`} className="rounded-lg border border-line px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                       <span className="font-semibold text-ink">{review.author}</span>

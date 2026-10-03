@@ -1,6 +1,6 @@
 "use client";
 
-import { Exam } from "@/lib/mock-data";
+import type { Exam } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import {

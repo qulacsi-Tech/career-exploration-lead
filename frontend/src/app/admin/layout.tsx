@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { requireAdminToken } from "@/lib/admin-session";
 
 /*
   /admin sits outside the (site) route group, so it inherits only the root
@@ -11,6 +12,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminLayout({ children }: LayoutProps<"/admin">) {
+export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
+  // Every admin route needs a session. Without one, the visitor goes to login.
+  await requireAdminToken();
   return <AdminShell>{children}</AdminShell>;
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { adminNav, findActiveItem, type AdminNavIcon } from "@/lib/admin-nav";
+import { signOut } from "@/lib/auth-actions";
 
 /*
   Stand-in for the signed-in user. There is no auth yet — the backend has no
@@ -139,18 +140,17 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <p className="truncate text-sm font-semibold text-ink">{currentUser.name}</p>
             <p className="truncate text-xs text-ink-faint">{currentUser.role}</p>
           </div>
-          {/*
-            Returns to the login screen. It cannot tear down a session yet —
-            there is none — so this is navigation only until auth exists.
-          */}
-          <Link
-            href="/login"
-            aria-label={`Log out, ${currentUser.name}`}
-            title="Log out"
-            className="shrink-0 rounded-md border border-line p-1.5 text-ink-faint transition hover:border-brand hover:text-brand"
-          >
-            <LogoutIcon className="h-4 w-4" />
-          </Link>
+          {/* Clears the admin session cookie, then returns to the login screen. */}
+          <form action={signOut}>
+            <button
+              type="submit"
+              aria-label={`Log out, ${currentUser.name}`}
+              title="Log out"
+              className="shrink-0 rounded-md border border-line p-1.5 text-ink-faint transition hover:border-brand hover:text-brand"
+            >
+              <LogoutIcon className="h-4 w-4" />
+            </button>
+          </form>
         </div>
       </div>
     </div>

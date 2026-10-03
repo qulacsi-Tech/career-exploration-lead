@@ -1,21 +1,20 @@
 "use client";
 
+import { useActionState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { signIn } from "@/lib/auth-actions";
 
 /**
  * Login form.
  *
- * Submitting navigates to /admin. There is no auth yet — the backend has no
- * user model or session — so this is the demo path through the panel, not a
- * sign-in. It is done in a submit handler rather than by pointing the form at
- * /admin, because a GET form would put the password in the URL, where it lands
- * in history and server logs.
- *
- * When auth arrives: post the credentials, and route on the response instead.
+ * Posts to the signIn Server Action. The action checks the account against the
+ * API, stores the admin session in an httpOnly cookie, and redirects to /admin.
+ * A form action rather than a client-side fetch keeps the password out of the
+ * URL and out of browser-readable storage; a GET form would put it in history
+ * and server logs.
  */
 export function LoginForm() {
-  const router = useRouter();
+  const [state, formAction, pending] = useActionState(signIn, undefined);
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
@@ -24,13 +23,7 @@ export function LoginForm() {
         Save colleges, track applications and pick up where you left off.
       </p>
 
-      <form
-        className="mt-6 space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          router.push("/admin");
-        }}
-      >
+      <form className="mt-6 space-y-4" action={formAction}>
         <div>
           <label htmlFor="email" className="block text-xs font-semibold text-ink">
             Email
@@ -74,11 +67,18 @@ export function LoginForm() {
           Keep me signed in
         </label>
 
+        {state?.error && (
+          <p role="alert" className="text-sm text-red-700">
+            {state.error}
+          </p>
+        )}
+
         <button
           type="submit"
-          className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
+          disabled={pending}
+          className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
         >
-          Log in
+          {pending ? "Logging in…" : "Log in"}
         </button>
       </form>
 
