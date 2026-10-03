@@ -29,6 +29,6 @@ class Lead(Base):
     phone = Column(String(20), nullable=False, index=True)
     email = Column(String(320), nullable=True)
     college_slug = Column(String(200), nullable=True, index=True)
-    type = Column(Enum(LeadType), nullable=False, index=True)
-    status = Column(Enum(LeadStatus), nullable=False, default=LeadStatus.NEW)
+    type = Column(Enum(LeadType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
+    status = Column(Enum(LeadStatus, values_callable=lambda e: [m.value for m in e]), nullable=False, default=LeadStatus.NEW)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)

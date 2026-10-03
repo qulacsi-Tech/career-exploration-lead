@@ -24,7 +24,7 @@ class College(Base):
     name = Column(String(500), nullable=False)
     city = Column(String(200), nullable=False, index=True)
     state = Column(String(200), nullable=False, index=True)
-    ownership = Column(Enum(OwnershipType), nullable=False, index=True)
+    ownership = Column(Enum(OwnershipType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     stream = Column(String(100), nullable=False, index=True)
     ranking_authority = Column(String(100), nullable=True)
     ranking_rank = Column(Integer, nullable=True)

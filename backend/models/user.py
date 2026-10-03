@@ -20,7 +20,7 @@ class User(Base):
     name = Column(String(200), nullable=False)
     email = Column(String(320), nullable=False, unique=True, index=True)
     password_hash = Column(String(72), nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.USER)
+    role = Column(Enum(UserRole, values_callable=lambda e: [m.value for m in e]), nullable=False, default=UserRole.USER)
     phone = Column(String(20), nullable=True)
     is_verified = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
