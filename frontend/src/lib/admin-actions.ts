@@ -9,6 +9,7 @@ import {
   adminCreateCourse,
   adminCreateRanking,
   adminCreateCollection,
+  adminSaveHomepage,
   adminUpdateCollection,
   adminUpdateRanking,
   adminCreateSpecialisation,
@@ -423,5 +424,16 @@ export async function createCollection(
     adminCreateCollection(token, { ...body.value, slug: String(form.get("slug") ?? "").trim() })
   );
   if ("ok" in result) revalidateCollections();
+  return result;
+}
+
+// ── Homepage bands ───────────────────────────────────────────────────────────
+
+/** Saves the whole homepage band set, in display order. */
+export async function saveHomepageBands(
+  bands: { slug: string; limit: number; isVisible: boolean }[]
+): Promise<AdminActionResult> {
+  const result = await attempt("/admin/homepage", (token) => adminSaveHomepage(token, bands));
+  if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }

@@ -766,6 +766,32 @@ export async function adminUpdateCollection(token: string, slug: string, body: R
   return adminRequest<{ message: string }>(token, "PUT", `/admin/collections/${slug}`, body);
 }
 
+// ── Admin homepage bands ──────────────────────────────────────────────────
+
+export type AdminHomepageBand = {
+  slug: string;
+  title: string;
+  heading: string;
+  isPublished: boolean;
+  isVisible: boolean;
+  limit: number;
+  order: number;
+  total: number;
+  preview: { slug: string; name: string }[];
+};
+
+export type AdminHomepageAvailable = { slug: string; title: string; isPublished: boolean };
+
+export type AdminHomepage = { bands: AdminHomepageBand[]; available: AdminHomepageAvailable[] };
+
+export async function adminGetHomepage(token: string): Promise<AdminHomepage> {
+  return adminRequest<AdminHomepage>(token, "GET", "/admin/homepage");
+}
+
+export async function adminSaveHomepage(token: string, bands: { slug: string; limit: number; isVisible: boolean }[]) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage", { bands });
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

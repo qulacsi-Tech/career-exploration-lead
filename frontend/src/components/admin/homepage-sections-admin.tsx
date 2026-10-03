@@ -11,6 +11,7 @@ import {
 } from "@/lib/mock-data";
 import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
+import type { AdminHomepage } from "@/lib/api";
 import { TextField } from "@/components/admin/admin-fields";
 
 /*
@@ -24,7 +25,7 @@ import { TextField } from "@/components/admin/admin-fields";
   as the thing on the page rather than a generic set of names.
 */
 
-export function HomepageSectionsAdmin() {
+export function HomepageSectionsAdmin({ homepage }: { homepage: AdminHomepage }) {
   return (
     <PageSectionsAdmin
       title="Homepage"
@@ -103,7 +104,7 @@ export function HomepageSectionsAdmin() {
           */
           id: "college-bands",
           label: "College bands",
-          render: () => <HomepageCollectionsPicker />,
+          render: () => <HomepageCollectionsPicker data={homepage} />,
         },
         {
           id: "top-exams",
