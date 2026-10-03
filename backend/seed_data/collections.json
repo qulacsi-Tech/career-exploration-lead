@@ -1,0 +1,272 @@
+[
+  {
+    "id": "top-colleges",
+    "slug": "top-management-colleges",
+    "title": "Top Management Colleges in India",
+    "heading": "Top Colleges",
+    "subheading": "Colleges Cherry Picked For You",
+    "scope": {
+      "programSlug": "management"
+    },
+    "rankingListSlug": "management-nirf",
+    "collegeSlugs": [
+      "eastwind-institute-of-management",
+      "bengaluru-institute-of-management-studies",
+      "horizon-school-of-business",
+      "meridian-school-of-business",
+      "ashwattha-business-school",
+      "sahyadri-institute-of-management",
+      "vantage-school-of-management",
+      "greenfield-school-of-management",
+      "kr-mangalam-university",
+      "orchid-institute-of-business-studies"
+    ],
+    "seo": {
+      "metaTitle": "Top Management Colleges in India 2026: Fees, Placements & Rankings",
+      "metaDescription": "NIRF-ranked management colleges in India, compared by fees, placements, accepted exams and reviews.",
+      "faqs": []
+    },
+    "placements": {
+      "homepage": {
+        "order": 0,
+        "limit": 10,
+        "isVisible": true
+      }
+    },
+    "isPublished": true,
+    "updatedAt": "2 Sep 2026"
+  },
+  {
+    "id": "recommended-colleges",
+    "slug": "recommended-engineering-colleges",
+    "title": "Recommended Engineering Colleges",
+    "heading": "Recommended Colleges",
+    "subheading": "Engineering colleges matched to your search",
+    "scope": {
+      "programSlug": "engineering"
+    },
+    "rankingListSlug": "engineering-india",
+    "collegeSlugs": [
+      "kaveri-institute-of-technology",
+      "northgate-college-of-engineering"
+    ],
+    "seo": {
+      "metaTitle": "Recommended Engineering Colleges in India 2026",
+      "metaDescription": "Engineering colleges recommended by our admission counsellors, with fees, placements and cutoffs.",
+      "faqs": []
+    },
+    "placements": {
+      "homepage": {
+        "order": 1,
+        "limit": 6,
+        "isVisible": false
+      }
+    },
+    "isPublished": false,
+    "updatedAt": "5 Sep 2026"
+  },
+  {
+    "id": "popular-colleges",
+    "slug": "popular-medical-colleges",
+    "title": "Popular Medical Colleges",
+    "heading": "Popular Colleges",
+    "subheading": "Most viewed medical colleges this month",
+    "scope": {
+      "programSlug": "medical"
+    },
+    "rankingListSlug": "medical-neet",
+    "collegeSlugs": [
+      "meridian-institute-of-medical-sciences",
+      "sanjeevani-medical-college"
+    ],
+    "seo": {
+      "metaTitle": "Popular Medical Colleges in India 2026",
+      "metaDescription": "The medical colleges students are viewing most, with NEET cutoffs, fees and placement detail.",
+      "faqs": []
+    },
+    "placements": {
+      "homepage": {
+        "order": 2,
+        "limit": 6,
+        "isVisible": false
+      }
+    },
+    "isPublished": false,
+    "updatedAt": "5 Sep 2026"
+  },
+  {
+    "id": "top-mba-colleges",
+    "slug": "top-mba-colleges",
+    "title": "Top MBA Colleges",
+    "heading": "",
+    "subheading": "Ranked MBA programmes across India",
+    "scope": {
+      "programSlug": "management",
+      "courseSlug": "mba"
+    },
+    "rankingListSlug": "management-nirf",
+    "collegeSlugs": [
+      "eastwind-institute-of-management",
+      "bengaluru-institute-of-management-studies",
+      "horizon-school-of-business",
+      "kr-mangalam-university"
+    ],
+    "seo": {
+      "metaTitle": "Top MBA Colleges in India 2026: Fees, Placements & Cutoffs",
+      "metaDescription": "Compare the top MBA colleges in India by fees, average package, accepted exams and NIRF rank.",
+      "faqs": []
+    },
+    "placements": {
+      "footer": {
+        "column": "MBA",
+        "order": 0
+      }
+    },
+    "isPublished": true,
+    "updatedAt": "2 Sep 2026"
+  },
+  {
+    "id": "mba-colleges-bangalore",
+    "slug": "mba-colleges-in-bangalore",
+    "title": "MBA Colleges in Bangalore",
+    "heading": "",
+    "subheading": "Management colleges across Bengaluru",
+    "scope": {
+      "programSlug": "management",
+      "locationSlug": "bangalore"
+    },
+    "rankingListSlug": "management-bengaluru",
+    "collegeSlugs": [
+      "bengaluru-institute-of-management-studies"
+    ],
+    "seo": {
+      "metaTitle": "MBA Colleges in Bangalore 2026: Fees, Placements & Admission",
+      "metaDescription": "Every MBA college in Bangalore compared by fees, placements, accepted exams and student reviews.",
+      "faqs": []
+    },
+    "placements": {
+      "footer": {
+        "column": "MBA",
+        "order": 1
+      }
+    },
+    "isPublished": true,
+    "updatedAt": "19 Aug 2026"
+  },
+  {
+    "id": "mba-colleges-pune",
+    "slug": "mba-colleges-in-pune",
+    "title": "MBA Colleges in Pune",
+    "heading": "",
+    "subheading": "Management colleges across Pune",
+    "scope": {
+      "programSlug": "management",
+      "locationSlug": "pune"
+    },
+    "rankingListSlug": "",
+    "collegeSlugs": [
+      "eastwind-institute-of-management"
+    ],
+    "seo": {
+      "metaTitle": "MBA Colleges in Pune 2026: Fees, Placements & Admission",
+      "metaDescription": "MBA colleges in Pune compared by fees, placements, accepted entrance exams and reviews.",
+      "faqs": []
+    },
+    "placements": {
+      "footer": {
+        "column": "MBA",
+        "order": 2
+      }
+    },
+    "isPublished": true,
+    "updatedAt": "19 Aug 2026"
+  },
+  {
+    "id": "mba-colleges-cat",
+    "slug": "mba-colleges-accepting-cat",
+    "title": "CAT Exam",
+    "heading": "",
+    "subheading": "Colleges accepting the Common Admission Test",
+    "scope": {
+      "programSlug": "management",
+      "examSlug": "cat"
+    },
+    "rankingListSlug": "management-cat",
+    "collegeSlugs": [
+      "bengaluru-institute-of-management-studies",
+      "eastwind-institute-of-management",
+      "horizon-school-of-business",
+      "kr-mangalam-university"
+    ],
+    "seo": {
+      "metaTitle": "MBA Colleges Accepting CAT 2026: Cutoffs, Fees & Placements",
+      "metaDescription": "Colleges that admit through CAT, with sectional cutoffs, total fees and placement records.",
+      "faqs": []
+    },
+    "placements": {
+      "footer": {
+        "column": "MBA",
+        "order": 4
+      }
+    },
+    "isPublished": true,
+    "updatedAt": "28 Aug 2026"
+  },
+  {
+    "id": "top-engineering-colleges",
+    "slug": "top-engineering-colleges",
+    "title": "Top Engineering Colleges",
+    "heading": "",
+    "subheading": "Ranked engineering colleges across India",
+    "scope": {
+      "programSlug": "engineering"
+    },
+    "rankingListSlug": "engineering-india",
+    "collegeSlugs": [
+      "kaveri-institute-of-technology",
+      "northgate-college-of-engineering"
+    ],
+    "seo": {
+      "metaTitle": "Top Engineering Colleges in India 2026: Fees, Placements & Cutoffs",
+      "metaDescription": "The highest-ranked engineering colleges in India, compared by fees, placements and JEE cutoffs.",
+      "faqs": []
+    },
+    "placements": {
+      "footer": {
+        "column": "Engineering",
+        "order": 0
+      }
+    },
+    "isPublished": true,
+    "updatedAt": "1 Sep 2026"
+  },
+  {
+    "id": "btech-colleges",
+    "slug": "btech-colleges",
+    "title": "B.Tech Colleges",
+    "heading": "",
+    "subheading": "Colleges offering the B.Tech degree",
+    "scope": {
+      "programSlug": "engineering",
+      "courseSlug": "b-tech"
+    },
+    "rankingListSlug": "engineering-nirf",
+    "collegeSlugs": [
+      "kaveri-institute-of-technology",
+      "northgate-college-of-engineering"
+    ],
+    "seo": {
+      "metaTitle": "B.Tech Colleges in India 2026: Fees, Placements & Admission",
+      "metaDescription": "B.Tech colleges compared by total fees, placement averages, accepted exams and approvals.",
+      "faqs": []
+    },
+    "placements": {
+      "footer": {
+        "column": "Engineering",
+        "order": 1
+      }
+    },
+    "isPublished": true,
+    "updatedAt": "26 Aug 2026"
+  }
+]

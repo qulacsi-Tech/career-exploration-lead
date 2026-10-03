@@ -32,6 +32,7 @@ from models.specialisation import Specialisation
 from models.ranking import RankingList, RankingEntry
 from models.user import User, UserRole
 from models.study_abroad import StudyAbroadItem
+from models.collection import Collection as CollectionModel
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -655,6 +656,18 @@ async def _seed_study_abroad(session: AsyncSession) -> None:
     print(f"  ✓ {len(rows)} study abroad rows seeded")
 
 
+async def _seed_collections(session: AsyncSession) -> None:
+    """Replace stored collections with seed_data/collections.json (rebuilt every run)."""
+    from sqlalchemy import delete
+
+    print("Seeding collections …")
+    items = json.loads((Path(__file__).parent / "seed_data" / "collections.json").read_text(encoding="utf-8"))
+    await session.execute(delete(CollectionModel))
+    session.add_all([CollectionModel(id=uuid.uuid4(), slug=item["slug"], data=item) for item in items])
+    await session.commit()
+    print(f"  ✓ {len(items)} collections seeded")
+
+
 async def _seed_admin(session: AsyncSession) -> None:
     """Create the ADMIN user from ADMIN_EMAIL / ADMIN_PASSWORD (env only).
 
@@ -696,6 +709,7 @@ async def main() -> None:
         await _seed_courses(session)
         await _seed_rankings(session)
         await _seed_study_abroad(session)
+        await _seed_collections(session)
         await _seed_admin(session)
         await _sync_meilisearch(session)
     await engine.dispose()
