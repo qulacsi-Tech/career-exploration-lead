@@ -6,6 +6,7 @@ import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section"
 import { TextField, TextAreaField } from "@/components/admin/admin-fields";
 import {
   deleteStudyAbroadItem,
+  reorderStudyAbroadItems,
   saveFiguresReviewed,
   saveStudyAbroadItem,
 } from "@/lib/admin-actions";
@@ -188,6 +189,21 @@ function SectionEditor({
   const [editing, setEditing] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
+  // Swaps the row with its neighbour and saves the whole order, so the server
+  // always receives every id of this kind exactly once.
+  const move = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= rows.length) return;
+    const ids = rows.map((row) => row.id);
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    onMessage(null);
+    startTransition(async () => {
+      const result = await reorderStudyAbroadItems(section.kind, ids);
+      if ("error" in result) onMessage(result.error);
+      else router.refresh();
+    });
+  };
+
   const remove = (row: Row) => {
     if (!window.confirm(`Delete this ${section.itemLabel}? This cannot be undone.`)) return;
     onMessage(null);
@@ -221,7 +237,7 @@ function SectionEditor({
       )}
 
       <ul className="space-y-3">
-        {rows.map((row) => (
+        {rows.map((row, index) => (
           <li key={row.id} className="rounded-xl border border-line bg-surface p-4">
             {editing === row.id ? (
               <ItemForm kind={section.kind} section={section} row={row} onDone={() => setEditing(null)} />
@@ -229,6 +245,24 @@ function SectionEditor({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="min-w-0 truncate font-medium text-ink">{String(row[section.titleField] ?? "")}</p>
                 <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    aria-label={`Move ${String(row[section.titleField] ?? "")} up`}
+                    disabled={index === 0}
+                    onClick={() => move(index, -1)}
+                    className="rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand disabled:opacity-40"
+                  >
+                    Up
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Move ${String(row[section.titleField] ?? "")} down`}
+                    disabled={index === rows.length - 1}
+                    onClick={() => move(index, 1)}
+                    className="rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand disabled:opacity-40"
+                  >
+                    Down
+                  </button>
                   <button
                     type="button"
                     onClick={() => setEditing(row.id)}

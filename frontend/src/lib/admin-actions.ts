@@ -8,6 +8,7 @@ import {
   adminCreateExam,
   adminCreateStudyAbroadItem,
   adminDeleteStudyAbroadItem,
+  adminReorderStudyAbroad,
   adminSetFiguresReviewed,
   adminUpdateCollege,
   adminUpdateExam,
@@ -168,6 +169,14 @@ export async function deleteStudyAbroadItem(kind: StudyAbroadKind, id: string): 
 export async function saveFiguresReviewed(form: FormData): Promise<AdminActionResult> {
   const value = String(form.get("value") ?? "").trim();
   const result = await attempt("/admin/study-abroad", (token) => adminSetFiguresReviewed(token, value));
+  if ("ok" in result) revalidatePath("/study-abroad");
+  return result;
+}
+
+/** Sets the order of one kind. `ids` lists every row of that kind, in the new order. */
+export async function reorderStudyAbroadItems(kind: StudyAbroadKind, ids: string[]): Promise<AdminActionResult> {
+  if (!STUDY_ABROAD_KINDS.has(kind)) return { error: "Unknown content type." };
+  const result = await attempt("/admin/study-abroad", (token) => adminReorderStudyAbroad(token, kind, ids));
   if ("ok" in result) revalidatePath("/study-abroad");
   return result;
 }

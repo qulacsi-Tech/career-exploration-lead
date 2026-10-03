@@ -665,6 +665,10 @@ export async function adminUpdateStudyAbroadItem(
   return adminRequest<{ id: string }>(token, "PUT", `/admin/study-abroad/${kind}/${id}`, body);
 }
 
+export async function adminReorderStudyAbroad(token: string, kind: StudyAbroadKind, ids: string[]) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/study-abroad/${kind}/order`, { ids });
+}
+
 export async function adminDeleteStudyAbroadItem(token: string, kind: StudyAbroadKind, id: string) {
   return adminRequest<{ message: string }>(token, "DELETE", `/admin/study-abroad/${kind}/${id}`);
 }
