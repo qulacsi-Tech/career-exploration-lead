@@ -8,8 +8,10 @@ Usage (from backend/ directory, with DB running):
 """
 
 import asyncio
+import json
 import os
 import uuid
+from pathlib import Path
 from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -29,6 +31,7 @@ from models.course_catalogue import CourseCatalogue
 from models.specialisation import Specialisation
 from models.ranking import RankingList, RankingEntry
 from models.user import User, UserRole
+from models.study_abroad import StudyAbroadItem
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -625,6 +628,33 @@ async def _sync_meilisearch(session: AsyncSession) -> None:
         print(f"  ⚠  Meilisearch sync skipped ({e})")
 
 
+async def _seed_study_abroad(session: AsyncSession) -> None:
+    """Replace the study-abroad content with seed_data/study_abroad.json.
+
+    Rebuilt on every run, so the file is the source of truth for these rows.
+    """
+    from sqlalchemy import delete
+
+    print("Seeding study abroad content …")
+    content = json.loads((Path(__file__).parent / "seed_data" / "study_abroad.json").read_text(encoding="utf-8"))
+
+    rows: list[StudyAbroadItem] = [StudyAbroadItem(id=uuid.uuid4(), kind="meta", key="figures_reviewed", position=0,
+                                                   data={"value": content["figuresReviewed"]})]
+    for kind, field, key_of in [
+        ("destination", "destinations", lambda item: item["slug"]),
+        ("step", "applicationSteps", lambda item: item["title"]),
+        ("test", "admissionTests", lambda item: item["name"]),
+        ("faq", "faqs", lambda item: item["question"]),
+    ]:
+        for position, item in enumerate(content[field]):
+            rows.append(StudyAbroadItem(id=uuid.uuid4(), kind=kind, key=key_of(item), position=position, data=item))
+
+    await session.execute(delete(StudyAbroadItem))
+    session.add_all(rows)
+    await session.commit()
+    print(f"  ✓ {len(rows)} study abroad rows seeded")
+
+
 async def _seed_admin(session: AsyncSession) -> None:
     """Create the ADMIN user from ADMIN_EMAIL / ADMIN_PASSWORD (env only).
 
@@ -665,6 +695,7 @@ async def main() -> None:
         await _seed_programs(session)
         await _seed_courses(session)
         await _seed_rankings(session)
+        await _seed_study_abroad(session)
         await _seed_admin(session)
         await _sync_meilisearch(session)
     await engine.dispose()

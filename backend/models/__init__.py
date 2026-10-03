@@ -16,3 +16,4 @@ from models.newsletter import NewsletterSubscriber  # noqa: F401
 from models.course_catalogue import CourseCatalogue  # noqa: F401
 from models.specialisation import Specialisation  # noqa: F401
 from models.ranking import RankingList, RankingEntry  # noqa: F401
+from models.study_abroad import StudyAbroadItem  # noqa: F401
