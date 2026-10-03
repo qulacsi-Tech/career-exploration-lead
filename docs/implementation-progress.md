@@ -186,6 +186,7 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 | Admin dashboard figures from `GET /admin/dashboard` (no sample data) | ✅ |
 | Admin rankings: list, create, replace (details and ordered entries), delete refused while a collection uses the list; colleges must exist, appear once, and have unique ranks | ✅ |
 | Saves no longer clear fields on editor tabs that are not on screen | ✅ |
+| Explore Careers panels and Data tiles: stored in `site_content` (seeded from the former constants), edited on the API; the public homepage reads them from storage. Links must be site paths | ✅ |
 | Admin homepage bands: choose, order, cards and visibility; saved as one set; only published collections can be placed; the preview is resolved the same way the public page is | ✅ |
 | Admin collections: list, create, edit (scope, ordered colleges, ranking, placements, search copy, FAQs, publish). Every reference is checked; publishing needs a college and meta title and description | ✅ |
 | Admin courses and specialisations: list, create, edit (stored fields only), parent-course change; name and stream copied to specialisations; cached course pages revalidated | ✅ |
@@ -221,7 +222,7 @@ Note: the collection page subtitle is now "N colleges" (the scope description it
 | Admin list shows records loaded one by one | Each college row is read in detail (up to 200 requests); an admin list with detail fields would remove this |
 | Known issue | Five collections order by ranking slugs that are not in the database (`management-bengaluru`, `engineering-india`, `medical-neet`, `management-cat`); those collections fall back to the editor's order |
 | Logout does not revoke tokens | Stateless JWT; the cookie is cleared, the token stays valid until it expires |
-| Homepage sections: other sections (top exams, streams, careers, universities, highlights) | Still on mock data; the college-band picker now uses the database |
+| Homepage sections: top exams, recommended programs, recommended universities, streams, hero, location and fields | Still on mock data (or computed) with no admin write path yet |
 
 ### Backend Features Not Yet Built
 | Feature | Notes |

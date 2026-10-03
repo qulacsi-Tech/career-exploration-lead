@@ -792,6 +792,17 @@ export async function adminSaveHomepage(token: string, bands: { slug: string; li
   return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage", { bands });
 }
 
+// ── Admin homepage content ────────────────────────────────────────────────
+
+/** A stored homepage block (careers panels or data tiles), as the admin editor sees it. */
+export async function adminGetContent(token: string, name: "careers" | "highlights"): Promise<{ items: unknown[] }> {
+  return adminRequest<{ items: unknown[] }>(token, "GET", `/admin/content/${name}`);
+}
+
+export async function adminPutContent(token: string, name: "careers" | "highlights", items: unknown[]) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/content/${name}`, { items });
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

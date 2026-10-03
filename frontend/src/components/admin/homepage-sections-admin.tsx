@@ -5,13 +5,12 @@ import {
   locations,
   recommendedPrograms,
   recommendedUniversities,
-  careerPanels,
-  dataHighlights,
   homeStreams,
 } from "@/lib/mock-data";
 import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
 import type { AdminHomepage } from "@/lib/api";
+import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
 import { TextField } from "@/components/admin/admin-fields";
 
 /*
@@ -25,7 +24,15 @@ import { TextField } from "@/components/admin/admin-fields";
   as the thing on the page rather than a generic set of names.
 */
 
-export function HomepageSectionsAdmin({ homepage }: { homepage: AdminHomepage }) {
+export function HomepageSectionsAdmin({
+  homepage,
+  careers,
+  highlights,
+}: {
+  homepage: AdminHomepage;
+  careers: PanelDraft[];
+  highlights: TileDraft[];
+}) {
   return (
     <PageSectionsAdmin
       title="Homepage"
@@ -150,28 +157,7 @@ export function HomepageSectionsAdmin({ homepage }: { homepage: AdminHomepage })
         {
           id: "careers",
           label: "Explore Careers",
-          render: () => (
-            <SectionEditor
-              name="careers"
-              heading="Explore Careers"
-              subheading="Explore your preferred streams to learn about the relevant colleges, exams and more!"
-              items={careerPanels.map((panel) => ({
-                id: panel.title.toLowerCase().replace(/\s+/g, "-"),
-                label: panel.title,
-                meta: panel.links.map((link) => link.label).join(", "),
-              }))}
-              itemsTitle="Panels"
-              itemsHint="Three columns; the middle one stacks two panels."
-            >
-              <TextField
-                label="Promo banner text"
-                name="careers-banner-text"
-                defaultValue="Browse through our list of popular programs and universities"
-                className="sm:col-span-2"
-              />
-              <TextField label="Promo banner CTA" name="careers-banner-cta" defaultValue="Discover More" />
-            </SectionEditor>
-          ),
+          render: () => <CareerPanelsEditor panels={careers} />,
         },
         {
           id: "university",
@@ -194,20 +180,7 @@ export function HomepageSectionsAdmin({ homepage }: { homepage: AdminHomepage })
         {
           id: "data",
           label: "Data",
-          render: () => (
-            <SectionEditor
-              name="data"
-              heading="Data"
-              subheading="We simplify information for you on over 30,000 colleges, 500 exams and 500 courses across domains and regions all over India"
-              items={dataHighlights.map((highlight) => ({
-                id: highlight.slug,
-                label: highlight.title,
-                meta: highlight.description,
-              }))}
-              itemsTitle="Data tiles"
-              itemsHint="Two-by-two grid. Order runs left to right, top to bottom."
-            />
-          ),
+          render: () => <DataTilesEditor tiles={highlights} />,
         },
       ]}
     />

@@ -10,6 +10,7 @@ import {
   adminCreateRanking,
   adminCreateCollection,
   adminSaveHomepage,
+  adminPutContent,
   adminUpdateCollection,
   adminUpdateRanking,
   adminCreateSpecialisation,
@@ -434,6 +435,13 @@ export async function saveHomepageBands(
   bands: { slug: string; limit: number; isVisible: boolean }[]
 ): Promise<AdminActionResult> {
   const result = await attempt("/admin/homepage", (token) => adminSaveHomepage(token, bands));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Saves a whole homepage block: "careers" panels or "highlights" data tiles. */
+export async function saveHomeContent(name: "careers" | "highlights", items: unknown[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/content", (token) => adminPutContent(token, name, items));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }
