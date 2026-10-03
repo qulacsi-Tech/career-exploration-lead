@@ -533,6 +533,48 @@ export async function refreshToken(token: string): Promise<string> {
   return json.data.accessToken;
 }
 
+// ── Study abroad ─────────────────────────────────────────────────────────
+
+export type StudyAbroadDestination = {
+  slug: string;
+  country: string;
+  tagline: string;
+  /** Rough count of institutions that admit international students. */
+  universities: string;
+  /** Annual tuition, indicative range, in INR. */
+  tuition: string;
+  /** Annual living costs, indicative range, in INR. */
+  living: string;
+  postStudyWork: string;
+  intakes: string;
+  popularCourses: string[];
+};
+
+export type StudyAbroadStep = { title: string; window: string; detail: string };
+
+export type StudyAbroadTest = {
+  name: string;
+  purpose: string;
+  validity: string;
+  /** Internal exam page where one exists, otherwise null. */
+  href: string | null;
+};
+
+export type StudyAbroadFaq = { question: string; answer: string };
+
+export type StudyAbroadContent = {
+  figuresReviewed: string;
+  destinations: StudyAbroadDestination[];
+  applicationSteps: StudyAbroadStep[];
+  admissionTests: StudyAbroadTest[];
+  faqs: StudyAbroadFaq[];
+};
+
+/** The whole study-abroad page. Figures are indicative; the reviewed date is shown with them. */
+export async function getStudyAbroad(): Promise<StudyAbroadContent> {
+  return apiFetch<StudyAbroadContent>("/study-abroad");
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

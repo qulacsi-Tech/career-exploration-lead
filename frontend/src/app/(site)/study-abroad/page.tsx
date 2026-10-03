@@ -2,13 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import {
-  destinations,
-  applicationSteps,
-  admissionTests,
-  faqs,
-  FIGURES_REVIEWED,
-} from "@/lib/study-abroad-data";
+import { getStudyAbroad } from "@/lib/api";
 import { ArrowUpRight, Building2, Calendar, Clock, Wallet } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -29,7 +23,10 @@ export const metadata: Metadata = {
  * Server-rendered and static: it is reference content, and nothing on it
  * depends on the visitor.
  */
-export default function StudyAbroadPage() {
+export default async function StudyAbroadPage() {
+  const { destinations, applicationSteps, admissionTests, faqs, figuresReviewed } =
+    await getStudyAbroad();
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Study Abroad" }]} />
@@ -53,7 +50,7 @@ export default function StudyAbroadPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="font-display text-2xl font-bold text-ink">Where students go</h2>
           <p className="text-xs text-ink-faint">
-            Figures are indicative, reviewed {FIGURES_REVIEWED}
+            Figures are indicative, reviewed {figuresReviewed}
           </p>
         </div>
 

@@ -182,8 +182,8 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 | Home college bands, `collections-data.ts`, `rankings-data.ts` | Collections CMS API not built |
 | `college-slider.tsx`, `top-college-card.tsx` | Used by the mock collections above |
 | Practice (`/practice/**`, `/exams/[slug]/practice/**`) | Practice content is local |
+| Study abroad content editing | Read from `study_abroad_items` (seeded from `backend/seed_data/study_abroad.json`); no admin editor yet, so changes go through the seed file |
 | Search results `/search` | Needs results page |
-| Study Abroad `/study-abroad` | Static content |
 | Compare verdict copy (`curatedComparisons`) | Editorial text; intentionally kept in code |
 
 ### Admin Gaps
