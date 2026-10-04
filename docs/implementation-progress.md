@@ -191,6 +191,7 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 | Top exams row: an ordered list of up to six exams (`home.topExams`), replacing the unordered featured flag the homepage used. The exams admin's featured flag still drives the exam listing filter | ✅ |
 | Explore Careers panels and Data tiles: stored in `site_content` (seeded from the former constants), edited on the API; the public homepage reads them from storage. Links must be site paths | ✅ |
 | Admin homepage bands: choose, order, cards and visibility; saved as one set; only published collections can be placed; the preview is resolved the same way the public page is | ✅ |
+| Delete from the edit form: programmes (refused while in the homepage row) and collections (drafts only, not on the homepage; published collections must be unpublished first) | ✅ |
 | Admin collections: list, create, edit (scope, ordered colleges, ranking, placements, search copy, FAQs, publish). Every reference is checked; publishing needs a college and meta title and description | ✅ |
 | Admin courses and specialisations: list, create, edit (stored fields only), parent-course change; name and stream copied to specialisations; cached course pages revalidated | ✅ |
 | Admin leads inbox `/admin/leads`: status filter, pagination, status change (the nav link previously led to a missing page) | ✅ |

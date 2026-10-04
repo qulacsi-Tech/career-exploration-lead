@@ -876,6 +876,14 @@ export async function adminSetUniversities(token: string, slugs: string[]) {
   return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage/universities", { slugs });
 }
 
+export async function adminDeleteCollection(token: string, slug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/collections/${slug}`);
+}
+
+export async function adminDeleteProgram(token: string, slug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/programs/${slug}`);
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

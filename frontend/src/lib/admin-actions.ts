@@ -17,6 +17,8 @@ import {
   adminUpdateProgram,
   adminSetRecommendedPrograms,
   adminSetUniversities,
+  adminDeleteCollection,
+  adminDeleteProgram,
   adminUpdateCollection,
   adminUpdateRanking,
   adminCreateSpecialisation,
@@ -518,3 +520,16 @@ export async function saveRecommendedUniversities(slugs: string[]): Promise<Admi
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }
+
+/** Deletes a draft collection. Published or homepage collections are refused by the API. */
+export async function deleteCollection(slug: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/collections", (token) => adminDeleteCollection(token, slug));
+  if ("ok" in result) revalidateCollections();
+  return result;
+}
+
+/** Deletes a programme. A programme in the homepage row is refused by the API. */
+export async function deleteProgram(slug: string): Promise<AdminActionResult> {
+  return attempt("/admin/programs", (token) => adminDeleteProgram(token, slug));
+}
+

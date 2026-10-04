@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { AdminActionResult } from "@/lib/admin-actions";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
@@ -47,6 +48,7 @@ export function ResourceAdmin<T>({
   renderAddForm,
   onSave,
   onAdd,
+  onDelete,
 }: {
   title: string;
   description: string;
@@ -63,6 +65,8 @@ export function ResourceAdmin<T>({
   renderAddForm: () => ReactNode;
   /** Persists an edit. Without it the edit form closes without saving. */
   onSave?: (row: T, data: FormData) => Promise<AdminActionResult>;
+  /** Deletes a record from its edit form. The server decides whether it is allowed. */
+  onDelete?: (row: T) => Promise<AdminActionResult>;
   /** Persists a new record. Without it the add form closes without saving. */
   onAdd?: (data: FormData) => Promise<AdminActionResult>;
 }) {
@@ -70,6 +74,9 @@ export function ResourceAdmin<T>({
   const [viewing, setViewing] = useState<T | null>(null);
   const [editing, setEditing] = useState<T | null>(null);
   const [adding, setAdding] = useState(false);
+  const router = useRouter();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, startDelete] = useTransition();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -93,6 +100,11 @@ export function ResourceAdmin<T>({
         }
       />
 
+      {deleteError && (
+        <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {deleteError}
+        </p>
+      )}
       <AdminSection
         title={`All ${title.toLowerCase()}`}
         description={`${filtered.length} of ${rows.length} shown`}
@@ -200,6 +212,28 @@ export function ResourceAdmin<T>({
         title={editing ? `Edit — ${searchIn(editing)[0]}` : ""}
         footer={
           <>
+            {onDelete && editing && (
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  if (!window.confirm(`Delete “${searchIn(editing)[0]}”? This cannot be undone.`)) return;
+                  setDeleteError(null);
+                  startDelete(async () => {
+                    const result = await onDelete(editing);
+                    if ("error" in result) {
+                      setDeleteError(result.error);
+                    } else {
+                      setEditing(null);
+                      router.refresh();
+                    }
+                  });
+                }}
+                className="mr-auto rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-red-700 hover:text-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setEditing(null)}

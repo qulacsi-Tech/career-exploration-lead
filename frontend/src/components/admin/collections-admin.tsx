@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createCollection, saveCollection } from "@/lib/admin-actions";
+import { createCollection, deleteCollection, saveCollection } from "@/lib/admin-actions";
 import type { AdminCollectionOptions, Collection, CollectionOption } from "@/lib/api";
 import type { RichTextDoc } from "@/lib/rich-text";
 import { AdminSubsection } from "@/components/admin/admin-section";
@@ -320,6 +320,7 @@ export function CollectionsAdmin({
       ]}
       onSave={(c, data) => saveCollection(c.slug, data)}
       onAdd={(data) => createCollection(undefined, data)}
+      onDelete={(c) => deleteCollection(c.slug)}
       renderAddForm={() => (
         <>
           <NameSlugFields nameLabel="Title" nameFieldName="title" namePlaceholder="MBA Colleges in Pune" slugPlaceholder="mba-colleges-in-pune" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { createProgram, saveProgram } from "@/lib/admin-actions";
+import { createProgram, deleteProgram, saveProgram } from "@/lib/admin-actions";
 import type { AdminProgram } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
@@ -70,6 +70,7 @@ export function ProgramsAdmin({ programs, recommendedSlugs }: { programs: AdminP
       editTabs={[{ id: "programme", label: "Programme", render: (p) => <ProgramFields program={p} /> }]}
       onSave={(p, data) => saveProgram(p.slug, data)}
       onAdd={(data) => createProgram(undefined, data)}
+      onDelete={(p) => deleteProgram(p.slug)}
       renderAddForm={() => (
         <>
           <NameSlugFields nameLabel="Programme name" nameFieldName="name" namePlaceholder="MS in Data Analytics" slugPlaceholder="ms-data-analytics" />
