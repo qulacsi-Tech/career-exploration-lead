@@ -74,6 +74,9 @@ main() {
       "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/ping',timeout=3).status==200 else 1)" \
       >/dev/null 2>&1; then
       echo "healthy after ${i} check(s)"
+      # Create the admin from ADMIN_EMAIL / ADMIN_PASSWORD in backend.env. Idempotent:
+      # skipped if unset, left unchanged if the account exists. Never fails a deploy.
+      $COMPOSE exec -T backend python seed.py --admin-only || echo "admin seed failed (non-fatal)"
       printf '%s  %s  deployed\n' "$(date -u +%FT%TZ)" "${NEW:0:7}" > "$STATUS"
       docker image prune -f >/dev/null 2>&1 || true
       return 0

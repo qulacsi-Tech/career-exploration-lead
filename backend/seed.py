@@ -10,6 +10,7 @@ Usage (from backend/ directory, with DB running):
 import asyncio
 import json
 import os
+import sys
 import uuid
 from pathlib import Path
 from datetime import date
@@ -735,6 +736,13 @@ async def _seed_admin(session: AsyncSession) -> None:
 
 
 async def main() -> None:
+    if "--admin-only" in sys.argv:
+        # Safe to run on every deploy: touches nothing but the admin account.
+        async with SessionLocal() as session:
+            await _seed_admin(session)
+        await engine.dispose()
+        return
+
     async with SessionLocal() as session:
         await _seed_colleges(session)
         await _seed_exams(session)
