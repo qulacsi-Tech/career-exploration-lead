@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Self-contained server output for the Docker image (frontend/Dockerfile).
-  output: "standalone",
+  // Self-contained server output for the Docker image (frontend/Dockerfile only).
+  // Left off elsewhere: Vercel manages its own output and fails the build with it on.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
 
   // Hides the floating Next.js dev badge in the bottom-left corner. Compile and
   // runtime errors are still surfaced. Dev-only — it never shipped to prod.
