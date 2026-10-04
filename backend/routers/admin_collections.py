@@ -241,3 +241,20 @@ async def admin_update_collection(slug: str, _admin: AdminPayload, db: DbSession
     row.data = _stored(row.data["id"], slug, data)
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Collection '{slug}' saved."})
+
+
+@router.delete("/{slug}", response_model=SuccessResponse[dict])
+async def admin_delete_collection(slug: str, _admin: AdminPayload, db: DbSession):
+    """Deletes a collection. Only a draft that is not on the homepage can be deleted,
+    so no live page or homepage band loses its target."""
+    row = (await db.execute(select(Collection).where(Collection.slug == slug))).scalar_one_or_none()
+    if row is None:
+        raise NotFoundError("Collection")
+    if row.data.get("isPublished"):
+        raise ConflictError("COLLECTION_PUBLISHED", "Unpublish this collection before deleting it.")
+    if (row.data.get("placements") or {}).get("homepage"):
+        raise ConflictError("COLLECTION_ON_HOMEPAGE", "Remove this collection from the homepage before deleting it.")
+    await db.delete(row)
+    await db.commit()
+    return SuccessResponse[dict](data={"message": f"Collection '{slug}' deleted."})
+
