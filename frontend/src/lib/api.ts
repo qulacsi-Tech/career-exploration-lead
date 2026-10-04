@@ -829,6 +829,37 @@ export async function adminPutHomeCopy(token: string, part: keyof HomeCopy, valu
   return adminRequest<{ message: string }>(token, "PUT", `/admin/home-copy/${part}`, value);
 }
 
+// ── Admin programmes ──────────────────────────────────────────────────────
+
+export type AdminProgram = {
+  id: string;
+  slug: string;
+  name: string;
+  universityName: string;
+  universitySlug: string;
+  onlineDuration: string | null;
+  onlineFees: string | null;
+  onlineFeesNote: string | null;
+  onCampusDuration: string | null;
+  onCampusFees: string | null;
+};
+
+export async function adminListPrograms(token: string): Promise<{ programs: AdminProgram[]; recommended: string[] }> {
+  return adminRequest<{ programs: AdminProgram[]; recommended: string[] }>(token, "GET", "/admin/programs");
+}
+
+export async function adminCreateProgram(token: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "POST", "/admin/programs", body);
+}
+
+export async function adminUpdateProgram(token: string, slug: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/programs/${slug}`, body);
+}
+
+export async function adminSetRecommendedPrograms(token: string, slugs: string[]) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/programs/recommended", { slugs });
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

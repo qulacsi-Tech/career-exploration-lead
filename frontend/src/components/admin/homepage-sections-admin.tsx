@@ -1,12 +1,13 @@
 "use client";
 
-import { recommendedPrograms, recommendedUniversities } from "@/lib/mock-data";
+import { recommendedUniversities } from "@/lib/mock-data";
 import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
-import type { AdminHomepage, AdminTopExams } from "@/lib/api";
+import type { AdminHomepage, AdminProgram, AdminTopExams } from "@/lib/api";
 import type { HomeCopy } from "@/lib/home-copy";
 import { HeroCopyEditor, SectionCopyEditor } from "@/components/admin/home-copy-editor";
-import { TopExamsEditor } from "@/components/admin/top-exams-editor";
+import { OrderedListEditor } from "@/components/admin/ordered-list-editor";
+import { saveRecommendedPrograms, saveTopExams } from "@/lib/admin-actions";
 import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
 
 /*
@@ -26,12 +27,14 @@ export function HomepageSectionsAdmin({
   highlights,
   topExams,
   copy,
+  programs,
 }: {
   homepage: AdminHomepage;
   careers: PanelDraft[];
   highlights: TileDraft[];
   topExams: AdminTopExams;
   copy: HomeCopy;
+  programs: { programs: AdminProgram[]; recommended: string[] };
 }) {
   return (
     <PageSectionsAdmin
@@ -83,24 +86,34 @@ export function HomepageSectionsAdmin({
         {
           id: "top-exams",
           label: "Top Exams",
-          render: () => <TopExamsEditor exams={topExams.exams} options={topExams.options} />,
+          render: () => (
+            <OrderedListEditor
+              title="Top exams"
+              description="The exams in the homepage row, left to right."
+              addLabel="Add to row"
+              emptyText="No exams chosen. The row will not show on the homepage."
+              max={6}
+              noun="exam"
+              chosen={topExams.exams}
+              options={topExams.options}
+              onSave={saveTopExams}
+            />
+          ),
         },
         {
           id: "recommended",
           label: "Recommended",
           render: () => (
-            <SectionEditor
-              name="recommended"
-              heading="Recommended Colleges"
-              subheading=""
-              subheadingLabel="Supporting text (optional)"
-              items={recommendedPrograms.map((program) => ({
-                id: program.slug,
-                label: program.name,
-                meta: `${program.university} · ${program.online.duration} online · ${program.online.fees}`,
-              }))}
-              itemsTitle="Recommended programmes"
-              itemsHint="The brand-coloured band. Usually paid or priority placements."
+            <OrderedListEditor
+              title="Recommended programmes"
+              description="The brand-coloured row on the homepage, left to right. Edit the programme details on the Programmes page."
+              addLabel="Add to row"
+              emptyText="No programmes chosen. The row will not show on the homepage."
+              max={3}
+              noun="programme"
+              chosen={programs.recommended.map((slug) => ({ slug, name: programs.programs.find((p) => p.slug === slug)?.name ?? slug })).filter((c) => programs.programs.some((p) => p.slug === c.slug))}
+              options={programs.programs.map((p) => ({ slug: p.slug, name: p.name }))}
+              onSave={saveRecommendedPrograms}
             />
           ),
         },

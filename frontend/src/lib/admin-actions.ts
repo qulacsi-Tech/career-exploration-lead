@@ -13,6 +13,9 @@ import {
   adminPutContent,
   adminPutTopExams,
   adminPutHomeCopy,
+  adminCreateProgram,
+  adminUpdateProgram,
+  adminSetRecommendedPrograms,
   adminUpdateCollection,
   adminUpdateRanking,
   adminCreateSpecialisation,
@@ -463,6 +466,47 @@ export async function saveHomeCopy(
 ): Promise<AdminActionResult> {
   if (part !== "hero" && part !== "locations" && part !== "streams") return { error: "Unknown section." };
   const result = await attempt("/admin/home-copy", (token) => adminPutHomeCopy(token, part, value));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+// ── Programmes ───────────────────────────────────────────────────────────────
+
+/** Reads a programme form. Empty optional text is null; the API validates the rest. */
+function programBody(form: FormData): Record<string, unknown> {
+  const text = (name: string) => String(form.get(name) ?? "").trim();
+  const orNull = (name: string) => (text(name) === "" ? null : text(name));
+  return {
+    name: text("name"),
+    universityName: text("universityName"),
+    universitySlug: text("universitySlug"),
+    onlineDuration: orNull("onlineDuration"),
+    onlineFees: orNull("onlineFees"),
+    onlineFeesNote: orNull("onlineFeesNote"),
+    onCampusDuration: orNull("onCampusDuration"),
+    onCampusFees: orNull("onCampusFees"),
+  };
+}
+
+export async function saveProgram(slug: string, form: FormData): Promise<AdminActionResult> {
+  const result = await attempt("/admin/programs", (token) => adminUpdateProgram(token, slug, programBody(form)));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function createProgram(
+  _prev: AdminActionResult | undefined,
+  form: FormData
+): Promise<AdminActionResult> {
+  const result = await attempt("/admin/programs", (token) =>
+    adminCreateProgram(token, { ...programBody(form), slug: String(form.get("slug") ?? "").trim() })
+  );
+  return result;
+}
+
+/** Saves the homepage's recommended programmes, in display order. */
+export async function saveRecommendedPrograms(slugs: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/programs", (token) => adminSetRecommendedPrograms(token, slugs));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }

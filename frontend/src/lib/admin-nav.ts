@@ -54,6 +54,7 @@ export const adminNav: AdminNavSection[] = [
     items: [
       { label: "Colleges", href: "/admin/colleges", phase: 1 },
       { label: "Courses", href: "/admin/courses", phase: 1 },
+      { label: "Programmes", href: "/admin/programs", phase: 1 },
       { label: "Specialisations", href: "/admin/specialisations", phase: 1 },
       { label: "Exams", href: "/admin/exams", phase: 1 },
       { label: "Rankings", href: "/admin/rankings", phase: 1 },
