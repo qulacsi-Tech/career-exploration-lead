@@ -242,5 +242,10 @@
       "accent": "Shape Your Tomorrow.",
       "subheading": "Pick a stream to see its colleges, entrance exams, fees and placement records."
     }
-  }
+  },
+  "home.recommendedPrograms": [
+    "ms-data-analytics",
+    "ms-business-analytics",
+    "pg-diploma-management"
+  ]
 }
