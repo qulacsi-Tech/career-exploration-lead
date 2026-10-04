@@ -12,6 +12,7 @@ import {
   adminSaveHomepage,
   adminPutContent,
   adminPutTopExams,
+  adminPutHomeCopy,
   adminUpdateCollection,
   adminUpdateRanking,
   adminCreateSpecialisation,
@@ -30,6 +31,7 @@ import {
   type StudyAbroadKind,
 } from "@/lib/api";
 import { requireAdminToken } from "@/lib/admin-session";
+import type { HomeCopy } from "@/lib/home-copy";
 
 /**
  * Admin writes, run as Server Actions so the session token stays on the server.
@@ -450,6 +452,17 @@ export async function saveHomeContent(name: "careers" | "highlights", items: unk
 /** Saves the homepage's top exams, in display order. */
 export async function saveTopExams(slugs: string[]): Promise<AdminActionResult> {
   const result = await attempt("/admin/homepage", (token) => adminPutTopExams(token, slugs));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Saves one homepage section's copy: hero, locations or streams. */
+export async function saveHomeCopy(
+  part: keyof HomeCopy,
+  value: Record<string, string>
+): Promise<AdminActionResult> {
+  if (part !== "hero" && part !== "locations" && part !== "streams") return { error: "Unknown section." };
+  const result = await attempt("/admin/home-copy", (token) => adminPutHomeCopy(token, part, value));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }

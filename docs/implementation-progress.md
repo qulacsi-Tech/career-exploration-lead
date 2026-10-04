@@ -186,6 +186,7 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 | Admin dashboard figures from `GET /admin/dashboard` (no sample data) | ✅ |
 | Admin rankings: list, create, replace (details and ordered entries), delete refused while a collection uses the list; colleges must exist, appear once, and have unique ranks | ✅ |
 | Saves no longer clear fields on editor tabs that are not on screen | ✅ |
+| Homepage hero, locations heading and streams heading: stored copy (`home.copy`), edited per section; the public page reads it, with the defaults as the fallback when the API is down | ✅ |
 | Top exams row: an ordered list of up to six exams (`home.topExams`), replacing the unordered featured flag the homepage used. The exams admin's featured flag still drives the exam listing filter | ✅ |
 | Explore Careers panels and Data tiles: stored in `site_content` (seeded from the former constants), edited on the API; the public homepage reads them from storage. Links must be site paths | ✅ |
 | Admin homepage bands: choose, order, cards and visibility; saved as one set; only published collections can be placed; the preview is resolved the same way the public page is | ✅ |
@@ -223,7 +224,8 @@ Note: the collection page subtitle is now "N colleges" (the scope description it
 | Admin list shows records loaded one by one | Each college row is read in detail (up to 200 requests); an admin list with detail fields would remove this |
 | Known issue | Five collections order by ranking slugs that are not in the database (`management-bengaluru`, `engineering-india`, `medical-neet`, `management-cat`); those collections fall back to the editor's order |
 | Logout does not revoke tokens | Stateless JWT; the cookie is cleared, the token stays valid until it expires |
-| Homepage sections: recommended programs, recommended universities, streams, hero, location and fields | Still on mock data or computed, with no admin write path yet |
+| Homepage sections: recommended programmes and recommended universities | Recommended programmes come from a three-row table with no editor yet; recommended universities are computed from the directory |
+| City and stream lists on the homepage | Derived from the directory; their order is not editable |
 
 ### Backend Features Not Yet Built
 | Feature | Notes |

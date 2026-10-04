@@ -1,17 +1,13 @@
 "use client";
 
-import {
-  locations,
-  recommendedPrograms,
-  recommendedUniversities,
-  homeStreams,
-} from "@/lib/mock-data";
+import { recommendedPrograms, recommendedUniversities } from "@/lib/mock-data";
 import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
 import type { AdminHomepage, AdminTopExams } from "@/lib/api";
+import type { HomeCopy } from "@/lib/home-copy";
+import { HeroCopyEditor, SectionCopyEditor } from "@/components/admin/home-copy-editor";
 import { TopExamsEditor } from "@/components/admin/top-exams-editor";
 import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
-import { TextField } from "@/components/admin/admin-fields";
 
 /*
   Defaults mirror what app/(site)/page.tsx renders today, so this screen opens
@@ -29,11 +25,13 @@ export function HomepageSectionsAdmin({
   careers,
   highlights,
   topExams,
+  copy,
 }: {
   homepage: AdminHomepage;
   careers: PanelDraft[];
   highlights: TileDraft[];
   topExams: AdminTopExams;
+  copy: HomeCopy;
 }) {
   return (
     <PageSectionsAdmin
@@ -43,44 +41,17 @@ export function HomepageSectionsAdmin({
         {
           id: "hero",
           label: "Hero",
-          render: () => (
-            <SectionEditor
-              name="hero"
-              headingLabel="Headline"
-              heading="Find Colleges, Courses & Exams That Are Best For You"
-              subheadingLabel="Sub-headline"
-              subheading="Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts."
-            >
-              <TextField
-                label="Search placeholder"
-                name="hero-search-placeholder"
-                defaultValue="Search by college, course or exam"
-              />
-              <TextField label="Search button label" name="hero-search-cta" defaultValue="Search" />
-              <TextField
-                label="Default stream filter"
-                name="hero-default-stream"
-                defaultValue="All streams"
-              />
-            </SectionEditor>
-          ),
+          render: () => <HeroCopyEditor copy={copy.hero} />,
         },
         {
           id: "location",
           label: "Location",
           render: () => (
-            <SectionEditor
-              name="location"
-              heading="Browse By Location"
-              subheading=""
-              subheadingLabel="Supporting text (optional)"
-              items={locations.map((location) => ({
-                id: location.slug,
-                label: location.name,
-                meta: `${location.collegeCount} colleges`,
-              }))}
-              itemsTitle="Cities in the carousel"
-              itemsHint="Order sets the carousel order, left to right."
+            <SectionCopyEditor
+              part="locations"
+              title="Browse by location"
+              description="The heading above the city carousel. The cities and their order come from the directory."
+              copy={copy.locations}
             />
           ),
         },
@@ -88,17 +59,11 @@ export function HomepageSectionsAdmin({
           id: "fields",
           label: "Fields",
           render: () => (
-            <SectionEditor
-              name="fields"
-              heading="Explore Your Future"
-              subheading="Select a stream to see colleges cherry-picked for you"
-              items={homeStreams.map((stream) => ({
-                id: stream.slug,
-                label: stream.name,
-                meta: `${stream.count.toLocaleString()} colleges`,
-              }))}
-              itemsTitle="Streams shown"
-              itemsHint="The red band on the homepage. Order runs left to right, top to bottom."
+            <SectionCopyEditor
+              part="streams"
+              title="Explore your future"
+              description="The heading above the stream grid. The streams and their order come from the directory."
+              copy={copy.streams}
             />
           ),
         },

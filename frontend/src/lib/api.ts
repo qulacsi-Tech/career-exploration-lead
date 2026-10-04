@@ -8,6 +8,7 @@
  */
 
 import type { RichTextDoc } from "@/lib/rich-text";
+import type { HomeCopy } from "@/lib/home-copy";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -195,6 +196,7 @@ export type RecommendedUniversity = {
 export type StreamCount = { slug: string; name: string; count: number };
 
 export type HomeData = {
+  homeCopy: HomeCopy;
   featuredColleges: College[];
   featuredExams: Exam[];
   locations: Location[];
@@ -815,6 +817,16 @@ export async function adminGetTopExams(token: string): Promise<AdminTopExams> {
 
 export async function adminPutTopExams(token: string, slugs: string[]) {
   return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage/top-exams", { slugs });
+}
+
+// ── Admin homepage copy ───────────────────────────────────────────────────
+
+export async function adminGetHomeCopy(token: string): Promise<HomeCopy> {
+  return adminRequest<HomeCopy>(token, "GET", "/admin/home-copy");
+}
+
+export async function adminPutHomeCopy(token: string, part: keyof HomeCopy, value: Record<string, string>) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/home-copy/${part}`, value);
 }
 
 // ── Sitemap ───────────────────────────────────────────────────────────────
