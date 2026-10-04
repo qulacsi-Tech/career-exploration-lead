@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, Pause, Play } from "lucide-react";
 
@@ -44,7 +45,13 @@ const TURN = 1150;
  * rules, a drop cap, a double rule under the masthead. The brand appears only
  * in the kicker and the links, roughly where a real masthead spends its colour.
  */
-export function NewspaperDispatch({ articles }: { articles: Article[] }) {
+export function NewspaperDispatch({
+  articles,
+  copy = DEFAULT_HOME_COPY.articles,
+}: {
+  articles: Article[];
+  copy?: SectionCopy;
+}) {
   const sectionRef = useRef<HTMLElement>(null);
   // No `once`: the press stops while the section is off screen.
   const inView = useInView(sectionRef, { amount: 0.25 });
@@ -106,7 +113,8 @@ export function NewspaperDispatch({ articles }: { articles: Article[] }) {
               Off the press
             </span>
             <h2 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-              Latest News &amp; <span className="italic text-brand">Updates</span>
+              {copy.heading}{" "}
+              {copy.accent && <span className="italic text-brand">{copy.accent}</span>}
             </h2>
           </div>
 

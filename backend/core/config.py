@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000"
     MEILISEARCH_URL: str = "http://localhost:7700"
     MEILISEARCH_API_KEY: str = ""
+    # Where admin-uploaded images are kept. Point this at any disk or mounted
+    # volume (a bind mount on an on-prem server, a Docker volume on EC2). Files
+    # are served from /api/uploads, and only that relative path is stored.
+    UPLOAD_DIR: str = "uploads"
 
     @property
     def cors_origin_list(self) -> List[str]:

@@ -4,7 +4,7 @@ import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
 import type { AdminHomepage, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
 import type { HomeCopy } from "@/lib/home-copy";
-import { HeroCopyEditor, SectionCopyEditor } from "@/components/admin/home-copy-editor";
+import { HeroCopyEditor, PromoBannerEditor, SectionCopyEditor, StoryCopyEditor } from "@/components/admin/home-copy-editor";
 import { OrderedListEditor } from "@/components/admin/ordered-list-editor";
 import { saveRecommendedPrograms, saveRecommendedUniversities, saveTopExams } from "@/lib/admin-actions";
 import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
@@ -88,62 +88,125 @@ export function HomepageSectionsAdmin({
           id: "top-exams",
           label: "Top Exams",
           render: () => (
-            <OrderedListEditor
-              title="Top exams"
-              description="The exams in the homepage row, left to right."
-              addLabel="Add to row"
-              emptyText="No exams chosen. The row will not show on the homepage."
-              max={6}
-              noun="exam"
-              chosen={topExams.exams}
-              options={topExams.options}
-              onSave={saveTopExams}
-            />
+            <div className="space-y-6">
+              <SectionCopyEditor
+                part="topExams"
+                title="Top exams heading"
+                description="The heading above the exams row."
+                copy={copy.topExams}
+                show={["heading", "accent", "subheading"]}
+              />
+              <OrderedListEditor
+                title="Top exams"
+                description="The exams in the homepage row, left to right."
+                addLabel="Add to row"
+                emptyText="No exams chosen. The row will not show on the homepage."
+                max={6}
+                noun="exam"
+                chosen={topExams.exams}
+                options={topExams.options}
+                onSave={saveTopExams}
+              />
+            </div>
           ),
         },
         {
           id: "recommended",
           label: "Recommended",
           render: () => (
-            <OrderedListEditor
-              title="Recommended programmes"
-              description="The brand-coloured row on the homepage, left to right. Edit the programme details on the Programmes page."
-              addLabel="Add to row"
-              emptyText="No programmes chosen. The row will not show on the homepage."
-              max={3}
-              noun="programme"
-              chosen={programs.recommended.map((slug) => ({ slug, name: programs.programs.find((p) => p.slug === slug)?.name ?? slug })).filter((c) => programs.programs.some((p) => p.slug === c.slug))}
-              options={programs.programs.map((p) => ({ slug: p.slug, name: p.name }))}
-              onSave={saveRecommendedPrograms}
-            />
+            <div className="space-y-6">
+              <StoryCopyEditor
+                part="programs"
+                title="Recommended programmes heading"
+                description="The heading and labels on the brand-coloured programmes row."
+                copy={copy.programs}
+                extra="itemEyebrow"
+              />
+              <OrderedListEditor
+                title="Recommended programmes"
+                description="The brand-coloured row on the homepage, left to right. Edit the programme details on the Programmes page."
+                addLabel="Add to row"
+                emptyText="No programmes chosen. The row will not show on the homepage."
+                max={3}
+                noun="programme"
+                chosen={programs.recommended.map((slug) => ({ slug, name: programs.programs.find((p) => p.slug === slug)?.name ?? slug })).filter((c) => programs.programs.some((p) => p.slug === c.slug))}
+                options={programs.programs.map((p) => ({ slug: p.slug, name: p.name }))}
+                onSave={saveRecommendedPrograms}
+              />
+            </div>
           ),
         },
         {
           id: "careers",
           label: "Explore Careers",
-          render: () => <CareerPanelsEditor panels={careers} />,
+          render: () => (
+            <div className="space-y-6">
+              <SectionCopyEditor
+                part="careers"
+                title="Explore careers heading"
+                description="The heading above the career panels."
+                copy={copy.careers}
+                show={["heading", "accent", "subheading"]}
+              />
+              <CareerPanelsEditor panels={careers} />
+              <PromoBannerEditor copy={copy.promoBanner} />
+            </div>
+          ),
         },
         {
           id: "university",
           label: "Recommended University",
           render: () => (
-            <OrderedListEditor
-              title="Recommended colleges"
-              description="The recommended colleges row on the homepage, left to right."
-              addLabel="Add to row"
-              emptyText="No colleges chosen. The row will not show on the homepage."
-              max={3}
-              noun="college"
-              chosen={universities.colleges}
-              options={universities.options}
-              onSave={saveRecommendedUniversities}
-            />
+            <div className="space-y-6">
+              <StoryCopyEditor
+                part="universities"
+                title="Recommended colleges heading"
+                description="The heading and labels on the recommended colleges row."
+                copy={copy.universities}
+                extra="itemSubline"
+              />
+              <OrderedListEditor
+                title="Recommended colleges"
+                description="The recommended colleges row on the homepage, left to right."
+                addLabel="Add to row"
+                emptyText="No colleges chosen. The row will not show on the homepage."
+                max={3}
+                noun="college"
+                chosen={universities.colleges}
+                options={universities.options}
+                onSave={saveRecommendedUniversities}
+              />
+            </div>
           ),
         },
         {
           id: "data",
           label: "Data",
-          render: () => <DataTilesEditor tiles={highlights} />,
+          render: () => (
+            <div className="space-y-6">
+              <SectionCopyEditor
+                part="data"
+                title="Data heading"
+                description="The heading and intro above the data tiles."
+                copy={copy.data}
+                show={["heading", "accent", "subheading"]}
+              />
+              <DataTilesEditor tiles={highlights} />
+            </div>
+          ),
+        },
+        {
+          id: "articles",
+          label: "Articles",
+          render: () => (
+            <SectionCopyEditor
+              part="articles"
+              title="Latest news heading"
+              description="The heading above the news spread. It shows the three most recent articles."
+              copy={copy.articles}
+              show={["heading", "accent"]}
+            />
+          ),
         },
       ]}
     />

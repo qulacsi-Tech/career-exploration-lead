@@ -30,6 +30,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Admin-uploaded images. A named volume survives rebuilds. On an on-prem host,
+    # replace "uploads" with a bind mount (e.g. /data/career/uploads:/app/uploads).
+    volumes:
+      - uploads:/app/uploads
     # Internal only: Caddy is the sole client. No "ports:" here.
     expose:
       - "8000"
@@ -71,5 +75,6 @@ services:
 
 volumes:
   pgdata:
+  uploads:
   caddy_data:
   caddy_config:

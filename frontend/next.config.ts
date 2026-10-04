@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
   // runtime errors are still surfaced. Dev-only — it never shipped to prod.
   devIndicators: false,
 
+  experimental: {
+    // Admin image uploads go through a Server Action. The default 1 MB cap is
+    // below the 4 MB the API accepts. Vercel itself caps a request body at 4.5 MB.
+    serverActions: { bodySizeLimit: "5mb" },
+  },
+
   images: {
     /*
       The card art under /public/images is authored in this repo and served

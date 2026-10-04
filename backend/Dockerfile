@@ -14,7 +14,8 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # Runs as an unprivileged user.
-RUN useradd --create-home --uid 10001 app && chown -R app /app
+# /app/uploads is created here so a fresh volume mounted on it is writable by "app".
+RUN useradd --create-home --uid 10001 app && mkdir -p /app/uploads && chown -R app /app
 USER app
 
 EXPOSE 8000

@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveHomeCopy } from "@/lib/admin-actions";
-import type { HomeCopy, SectionCopy } from "@/lib/home-copy";
+import type { HomeCopy, HomeCopyPart, SectionCopy, StoryCopy } from "@/lib/home-copy";
 import { AdminSection } from "@/components/admin/admin-section";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 
 type Message = { kind: "ok" | "error"; text: string } | null;
 
@@ -39,11 +40,15 @@ function Field({
   );
 }
 
+type FieldSpec<K extends string> =
+  | { key: K; label: string; multiline?: boolean; hint?: string }
+  | { key: K; image: "hero" | "banner"; fallbackNote: string };
+
 /**
- * One homepage section's copy. Each tab saves only its own part, so editing the
- * hero never rewrites the locations or streams wording.
+ * One homepage section's copy. Each part saves on its own, so editing the hero
+ * never rewrites the wording of any other section.
  */
-function CopyForm<P extends keyof HomeCopy>({
+function CopyForm<P extends HomeCopyPart>({
   part,
   title,
   description,
@@ -54,7 +59,7 @@ function CopyForm<P extends keyof HomeCopy>({
   title: string;
   description: string;
   initial: HomeCopy[P];
-  fields: { key: keyof HomeCopy[P] & string; label: string; multiline?: boolean; hint?: string; optional?: boolean }[];
+  fields: FieldSpec<keyof HomeCopy[P] & string>[];
 }) {
   const router = useRouter();
   const [value, setValue] = useState<HomeCopy[P]>(initial);
@@ -86,17 +91,28 @@ function CopyForm<P extends keyof HomeCopy>({
     <AdminSection title={title} description={description}>
       <div className="space-y-4">
         <FieldGrid>
-          {fields.map((f) => (
-            <Field
-              key={f.key}
-              id={`${part}-${f.key}`}
-              label={f.label}
-              multiline={f.multiline}
-              hint={f.hint}
-              value={String((value as Record<string, unknown>)[f.key] ?? "")}
-              onChange={(v) => set(f.key, v)}
-            />
-          ))}
+          {fields.map((f) => {
+            const current = String((value as Record<string, unknown>)[f.key] ?? "");
+            return "image" in f ? (
+              <ImageUploadField
+                key={f.key}
+                kind={f.image}
+                value={current}
+                fallbackNote={f.fallbackNote}
+                onChange={(v) => set(f.key, v)}
+              />
+            ) : (
+              <Field
+                key={f.key}
+                id={`${part}-${f.key}`}
+                label={f.label}
+                multiline={f.multiline}
+                hint={f.hint}
+                value={current}
+                onChange={(v) => set(f.key, v)}
+              />
+            );
+          })}
         </FieldGrid>
 
         {message && (
@@ -125,28 +141,75 @@ export function HeroCopyEditor({ copy }: { copy: HomeCopy["hero"] }) {
     <CopyForm
       part="hero"
       title="Hero"
-      description="The headline and search box at the top of the homepage."
+      description="The picture, headline and search box at the top of the homepage."
       initial={copy}
       fields={[
         { key: "headline", label: "Headline", hint: "5 to 150 characters." },
         { key: "subheadline", label: "Sub-headline", multiline: true, hint: "5 to 300 characters." },
         { key: "searchPlaceholder", label: "Search placeholder" },
         { key: "searchButton", label: "Search button label" },
+        {
+          key: "image",
+          image: "hero",
+          fallbackNote: "No image chosen. The site shows the built-in campus illustration.",
+        },
+        {
+          key: "imageAlt",
+          label: "Image description",
+          hint: "Read aloud by screen readers. Leave empty if the picture is only decoration.",
+        },
       ]}
     />
   );
 }
 
+type SectionField = "eyebrow" | "heading" | "accent" | "subheading";
+
+const SECTION_FIELDS: Record<SectionField, { label: string; multiline?: boolean; hint?: string }> = {
+  eyebrow: { label: "Small label above the heading", hint: "Optional." },
+  heading: { label: "Heading" },
+  accent: { label: "Emphasised words", hint: "Shown in the brand colour after the heading. Optional." },
+  subheading: { label: "Supporting text", multiline: true, hint: "Optional." },
+};
+
+/** The fields a section's page actually shows. A field the page ignores is not offered. */
 export function SectionCopyEditor({
   part,
   title,
   description,
   copy,
+  show = ["eyebrow", "heading", "accent", "subheading"],
 }: {
-  part: "locations" | "streams";
+  part: "locations" | "streams" | "topExams" | "careers" | "data" | "articles";
   title: string;
   description: string;
   copy: SectionCopy;
+  show?: SectionField[];
+}) {
+  return (
+    <CopyForm
+      part={part}
+      title={title}
+      description={description}
+      initial={copy}
+      fields={show.map((key) => ({ key, ...SECTION_FIELDS[key] }))}
+    />
+  );
+}
+
+/** Heading and labels for the two rotating-card rows. */
+export function StoryCopyEditor({
+  part,
+  title,
+  description,
+  copy,
+  extra,
+}: {
+  part: "programs" | "universities";
+  title: string;
+  description: string;
+  copy: StoryCopy;
+  extra: "itemEyebrow" | "itemSubline";
 }) {
   return (
     <CopyForm
@@ -155,10 +218,38 @@ export function SectionCopyEditor({
       description={description}
       initial={copy}
       fields={[
-        { key: "eyebrow", label: "Small label above the heading", hint: "Optional." },
         { key: "heading", label: "Heading" },
         { key: "accent", label: "Emphasised words", hint: "Shown in the brand colour after the heading. Optional." },
-        { key: "subheading", label: "Supporting text", multiline: true, hint: "Optional." },
+        extra === "itemEyebrow"
+          ? { key: "itemEyebrow", label: "Small line above each card's title", hint: "Optional." }
+          : { key: "itemSubline", label: "Line under each card's title", multiline: true, hint: "Optional." },
+        { key: "buttonLabel", label: "Card button label" },
+      ]}
+    />
+  );
+}
+
+export function PromoBannerEditor({ copy }: { copy: HomeCopy["promoBanner"] }) {
+  return (
+    <CopyForm
+      part="promoBanner"
+      title="Promo banner"
+      description="The brand-coloured banner under the careers panels."
+      initial={copy}
+      fields={[
+        { key: "heading", label: "Heading", multiline: true, hint: "5 to 120 characters." },
+        { key: "buttonLabel", label: "Button label" },
+        { key: "buttonHref", label: "Button link", hint: "A path on this site, starting with /, such as /colleges." },
+        {
+          key: "image",
+          image: "banner",
+          fallbackNote: "No picture chosen. The site shows the built-in campus picture.",
+        },
+        {
+          key: "imageAlt",
+          label: "Picture description",
+          hint: "Read aloud by screen readers. Leave empty if the picture is only decoration.",
+        },
       ]}
     />
   );

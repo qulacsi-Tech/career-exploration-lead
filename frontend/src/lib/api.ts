@@ -831,6 +831,33 @@ export async function adminPutHomeCopy(token: string, part: keyof HomeCopy, valu
   return adminRequest<{ message: string }>(token, "PUT", `/admin/home-copy/${part}`, value);
 }
 
+/**
+ * Admin: upload one image for a homepage slot. The API checks the file's real
+ * type, size and pixel dimensions and returns the relative path to store.
+ */
+export async function adminUploadImage(token: string, kind: "hero" | "banner", file: File) {
+  const form = new FormData();
+  form.append("kind", kind);
+  form.append("file", file);
+  const url = `${API_BASE}/admin/uploads`;
+  // No Content-Type: fetch sets the multipart boundary itself.
+  const res = await fetch(url, {
+    method: "POST",
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: { url: string; width: number; height: number } }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    const message = json && json.success === false ? json.error?.message : undefined;
+    throw new ApiError(res.status, message ?? `Upload failed (${res.status}).`);
+  }
+  return json.data;
+}
+
 // ── Admin programmes ──────────────────────────────────────────────────────
 
 export type AdminProgram = {

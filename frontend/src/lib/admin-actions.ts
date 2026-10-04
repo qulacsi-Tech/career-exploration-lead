@@ -13,6 +13,7 @@ import {
   adminPutContent,
   adminPutTopExams,
   adminPutHomeCopy,
+  adminUploadImage,
   adminCreateProgram,
   adminUpdateProgram,
   adminSetRecommendedPrograms,
@@ -37,7 +38,7 @@ import {
   type StudyAbroadKind,
 } from "@/lib/api";
 import { requireAdminToken } from "@/lib/admin-session";
-import type { HomeCopy } from "@/lib/home-copy";
+import { DEFAULT_HOME_COPY, type HomeCopy } from "@/lib/home-copy";
 
 /**
  * Admin writes, run as Server Actions so the session token stays on the server.
@@ -462,15 +463,36 @@ export async function saveTopExams(slugs: string[]): Promise<AdminActionResult> 
   return result;
 }
 
-/** Saves one homepage section's copy: hero, locations or streams. */
+/** Saves one homepage section's copy: the hero, a section heading or the promo banner. */
 export async function saveHomeCopy(
   part: keyof HomeCopy,
   value: Record<string, string>
 ): Promise<AdminActionResult> {
-  if (part !== "hero" && part !== "locations" && part !== "streams") return { error: "Unknown section." };
+  if (!(part in DEFAULT_HOME_COPY)) return { error: "Unknown section." };
   const result = await attempt("/admin/home-copy", (token) => adminPutHomeCopy(token, part, value));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
+}
+
+export type UploadResult = { url: string; width: number; height: number } | { error: string };
+
+/**
+ * Uploads a homepage image and returns its stored path. Nothing is saved to the
+ * page until the section's own Save runs, so an upload alone changes nothing public.
+ */
+export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
+  const kind = form.get("kind");
+  const file = form.get("file");
+  if (kind !== "hero" && kind !== "banner") return { error: "Unknown image slot." };
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
+  const token = await requireAdminToken();
+  try {
+    return await adminUploadImage(token, kind, file);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not upload the image. Try again." };
+  }
 }
 
 // ── Programmes ───────────────────────────────────────────────────────────────

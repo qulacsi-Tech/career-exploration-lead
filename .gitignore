@@ -81,3 +81,6 @@ desktop.ini
 
 # Server-written deploy status
 deploy/last-deploy.txt
+
+# Admin-uploaded images (local dev)
+backend/uploads/

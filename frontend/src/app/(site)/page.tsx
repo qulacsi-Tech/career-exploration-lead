@@ -1,4 +1,5 @@
-import { DEFAULT_HOME_COPY } from "@/lib/home-copy";
+import { mergeHomeCopy } from "@/lib/home-copy";
+import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import Image from "next/image";
 import { HeroBackdrop } from "./hero-backdrop";
@@ -46,7 +47,7 @@ export default async function Home() {
     home = null;
   }
 
-  const copy          = home?.homeCopy           ?? DEFAULT_HOME_COPY;
+  const copy          = mergeHomeCopy(home?.homeCopy);
   const topExams      = home?.featuredExams      ?? [];
   const locations     = home?.locations          ?? [];
   const articles      = home?.articles           ?? [];
@@ -70,7 +71,17 @@ export default async function Home() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden bg-brand-ink">
-        <HeroBackdrop />
+        {copy.hero.image ? (
+          // The picture comes from the API's own uploads, so it is a plain img rather than next/image.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={mediaUrl(copy.hero.image)}
+            alt={copy.hero.imageAlt}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <HeroBackdrop />
+        )}
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/55 to-black/40"
@@ -165,8 +176,13 @@ export default async function Home() {
       <section className="relative overflow-hidden border-b border-line bg-bg-alt">
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="font-display text-3xl font-bold text-ink">Top Exams</h2>
-            <p className="mt-2 text-sm text-ink-soft">Exams Cherry Picked For You</p>
+            <h2 className="font-display text-3xl font-bold text-ink">
+              {copy.topExams.heading}{" "}
+              {copy.topExams.accent && <span className="italic text-brand">{copy.topExams.accent}</span>}
+            </h2>
+            {copy.topExams.subheading && (
+              <p className="mt-2 text-sm text-ink-soft">{copy.topExams.subheading}</p>
+            )}
           </div>
           <StreamTabs
             streams={streamTabs}
@@ -188,11 +204,11 @@ export default async function Home() {
       {programs.length > 0 && (
         <AutoStoryFrame
           tone="brand"
-          title="Recommended"
-          highlight="Colleges"
+          title={copy.programs.heading}
+          highlight={copy.programs.accent}
           items={programs.map((program) => ({
             key: program.slug,
-            eyebrow: "Online & On-campus",
+            eyebrow: copy.programs.itemEyebrow,
             headline: program.name,
             subline: `Offered at ${program.university}`,
             images: photoSetLedBy(`/images/programs/${program.slug}.jpg`, program.slug, 2),
@@ -204,7 +220,7 @@ export default async function Home() {
               { label: "On-campus fees",  value: program.onCampus.fees },
             ],
             href: `/courses/${program.slug}`,
-            cta: "Explore this program",
+            cta: copy.programs.buttonLabel,
           }))}
         />
       )}
@@ -214,10 +230,13 @@ export default async function Home() {
         <section className="relative overflow-hidden border-b border-line bg-bg">
           <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="text-center">
-              <h2 className="font-display text-3xl font-bold text-ink">Explore Careers</h2>
-              <p className="mt-2 text-sm text-ink-soft">
-                Explore your preferred streams to learn about the relevant colleges, exams and more!
-              </p>
+              <h2 className="font-display text-3xl font-bold text-ink">
+                {copy.careers.heading}{" "}
+                {copy.careers.accent && <span className="italic text-brand">{copy.careers.accent}</span>}
+              </h2>
+              {copy.careers.subheading && (
+                <p className="mt-2 text-sm text-ink-soft">{copy.careers.subheading}</p>
+              )}
             </div>
             <StreamTabs
               streams={streamTabs}
@@ -233,23 +252,33 @@ export default async function Home() {
             <div className="relative mt-12 overflow-hidden rounded-2xl bg-brand px-8 py-10 sm:px-12">
               <div className="relative z-10 max-w-md">
                 <p className="font-display text-lg font-bold text-white">
-                  Browse through our list of popular programs and universities
+                  {copy.promoBanner.heading}
                 </p>
                 <Link
-                  href="/colleges"
+                  href={copy.promoBanner.buttonHref}
                   className="mt-6 inline-block rounded-full bg-white px-5 py-2 text-xs font-semibold text-brand transition hover:bg-brand-soft"
                 >
-                  Discover More
+                  {copy.promoBanner.buttonLabel}
                 </Link>
               </div>
               <div aria-hidden className="absolute inset-y-0 right-0 hidden w-1/2 lg:block">
-                <Image
-                  src="/images/banners/promo-banner-campus.jpg"
-                  alt=""
-                  fill
-                  sizes="(min-width: 1024px) 640px, 1px"
-                  className="object-cover"
-                />
+                {copy.promoBanner.image ? (
+                  // Uploaded picture: plain img, as in the hero.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={mediaUrl(copy.promoBanner.image)}
+                    alt={copy.promoBanner.imageAlt}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src="/images/banners/promo-banner-campus.jpg"
+                    alt=""
+                    fill
+                    sizes="(min-width: 1024px) 640px, 1px"
+                    className="object-cover"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-r from-brand via-brand/55 to-brand/20" />
               </div>
             </div>
@@ -260,13 +289,13 @@ export default async function Home() {
       {/* Recommended Universities — live from API */}
       {universities.length > 0 && (
         <AutoStoryFrame
-          title="Recommended"
-          highlight="Colleges"
+          title={copy.universities.heading}
+          highlight={copy.universities.accent}
           items={universities.map((university) => ({
             key: university.slug,
             eyebrow: `${university.city}, ${university.state}`,
             headline: university.name,
-            subline: "Accredited programs, verified placement records and open intakes.",
+            subline: copy.universities.itemSubline,
             images: photoSetLedBy(`/images/universities/${university.slug}.jpg`, university.slug, 2),
             imageAlt: `${university.name} campus`,
             facts: [
@@ -274,7 +303,7 @@ export default async function Home() {
               { label: "State", value: university.state },
             ],
             href: `/college/${university.slug}`,
-            cta: "Know more",
+            cta: copy.universities.buttonLabel,
           }))}
         />
       )}
@@ -284,11 +313,15 @@ export default async function Home() {
         <section className="relative overflow-hidden border-b border-line bg-bg-tint">
           <div className="relative z-10 mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="text-center">
-              <h2 className="font-display text-4xl font-extrabold text-ink sm:text-5xl">Data</h2>
-              <p className="mx-auto mt-4 max-w-2xl text-sm font-semibold text-ink">
-                We simplify information for you on over 30,000 colleges, 500 exams and 500 courses across
-                domains and regions all over India
-              </p>
+              <h2 className="font-display text-4xl font-extrabold text-ink sm:text-5xl">
+                {copy.data.heading}{" "}
+                {copy.data.accent && <span className="italic text-brand">{copy.data.accent}</span>}
+              </h2>
+              {copy.data.subheading && (
+                <p className="mx-auto mt-4 max-w-2xl text-sm font-semibold text-ink">
+                  {copy.data.subheading}
+                </p>
+              )}
             </div>
             <div className="mt-10 grid sm:grid-cols-2">
               {highlights.map((highlight, i) => (
@@ -305,7 +338,7 @@ export default async function Home() {
       )}
 
       {/* Articles — live from API */}
-      {articles.length > 0 && <NewspaperDispatch articles={articles} />}
+      {articles.length > 0 && <NewspaperDispatch articles={articles} copy={copy.articles} />}
     </>
   );
 }
