@@ -1,0 +1,32 @@
+# Public entry point. Caddy obtains and renews the TLS certificate itself.
+# Only ports 80 and 443 are published; the app containers are reachable only on
+# the internal Docker network.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The API lives under /api (v1 routes, /api/ping, /api/docs).
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else is the website and the admin panel.
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

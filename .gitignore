@@ -10,6 +10,11 @@
 *.key
 *.p12
 
+# Server-side secrets and backups (deploy/)
+*.env
+!*.env.example
+backups/
+
 # --- Dependencies -----------------------------------------------------------
 node_modules/
 .pnp
