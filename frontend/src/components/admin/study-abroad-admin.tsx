@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { useRouter } from "next/navigation";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { TextField, TextAreaField } from "@/components/admin/admin-fields";
@@ -99,11 +100,14 @@ function ItemForm({
   section,
   row,
   onDone,
+  onSaved,
 }: {
   kind: StudyAbroadKind;
   section: (typeof SECTIONS)[number];
   row: Row | null;
   onDone: () => void;
+  /** Called after the API accepted the save. `onDone` alone is also the Cancel button. */
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +125,7 @@ function ItemForm({
           if ("error" in result) {
             setError(result.error);
           } else {
+            onSaved?.();
             onDone();
             router.refresh();
           }
@@ -179,10 +184,12 @@ function SectionEditor({
   section,
   rows,
   onMessage,
+  onSaved,
 }: {
   section: (typeof SECTIONS)[number];
   rows: Row[];
   onMessage: (message: string | null) => void;
+  onSaved: (message: string) => void;
 }) {
   const router = useRouter();
   // "new" for the add form, a row id for editing one row, null when closed.
@@ -200,7 +207,10 @@ function SectionEditor({
     startTransition(async () => {
       const result = await reorderStudyAbroadItems(section.kind, ids);
       if ("error" in result) onMessage(result.error);
-      else router.refresh();
+      else {
+        onSaved(`Order saved in ${section.title.toLowerCase()}.`);
+        router.refresh();
+      }
     });
   };
 
@@ -210,7 +220,10 @@ function SectionEditor({
     startTransition(async () => {
       const result = await deleteStudyAbroadItem(section.kind, row.id);
       if ("error" in result) onMessage(result.error);
-      else router.refresh();
+      else {
+        onSaved(`The ${section.itemLabel} was deleted.`);
+        router.refresh();
+      }
     });
   };
 
@@ -229,7 +242,13 @@ function SectionEditor({
       }
     >
       {editing === "new" && (
-        <ItemForm kind={section.kind} section={section} row={null} onDone={() => setEditing(null)} />
+        <ItemForm
+          kind={section.kind}
+          section={section}
+          row={null}
+          onDone={() => setEditing(null)}
+          onSaved={() => onSaved(`New ${section.itemLabel} added.`)}
+        />
       )}
 
       {rows.length === 0 && editing !== "new" && (
@@ -240,7 +259,13 @@ function SectionEditor({
         {rows.map((row, index) => (
           <li key={row.id} className="rounded-xl border border-line bg-surface p-4">
             {editing === row.id ? (
-              <ItemForm kind={section.kind} section={section} row={row} onDone={() => setEditing(null)} />
+              <ItemForm
+                kind={section.kind}
+                section={section}
+                row={row}
+                onDone={() => setEditing(null)}
+                onSaved={() => onSaved(`The ${section.itemLabel} was saved.`)}
+              />
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="min-w-0 truncate font-medium text-ink">{String(row[section.titleField] ?? "")}</p>
@@ -289,8 +314,10 @@ function SectionEditor({
 
 export function StudyAbroadAdmin({ content }: { content: StudyAbroadAdminContent }) {
   const router = useRouter();
-  const [message, setMessage] = useState<string | null>(null);
+  const [flash, showFlash, clearFlash] = useFlash();
   const [pending, startTransition] = useTransition();
+  // The editors report errors as text and `null` to clear.
+  const setMessage = (text: string | null) => (text === null ? clearFlash() : showFlash("error", text));
 
   const rowsFor: Record<StudyAbroadKind, Row[]> = {
     destination: content.destinations,
@@ -306,11 +333,7 @@ export function StudyAbroadAdmin({ content }: { content: StudyAbroadAdminContent
         description="The destinations, costs, steps, tests and FAQs on the public study-abroad page."
       />
 
-      {message && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {message}
-        </p>
-      )}
+      <StatusMessage flash={flash} />
 
       <AdminSection
         title="Figures reviewed"
@@ -325,7 +348,10 @@ export function StudyAbroadAdmin({ content }: { content: StudyAbroadAdminContent
             startTransition(async () => {
               const result = await saveFiguresReviewed(data);
               if ("error" in result) setMessage(result.error);
-              else router.refresh();
+              else {
+                showFlash("ok", "Review date saved.");
+                router.refresh();
+              }
             });
           }}
         >
@@ -348,6 +374,7 @@ export function StudyAbroadAdmin({ content }: { content: StudyAbroadAdminContent
           section={section}
           rows={rowsFor[section.kind]}
           onMessage={setMessage}
+          onSaved={(text) => showFlash("ok", text)}
         />
       ))}
     </div>

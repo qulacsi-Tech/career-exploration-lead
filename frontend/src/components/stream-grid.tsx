@@ -1,64 +1,8 @@
 import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
 import Link from "next/link";
-import {
-  Briefcase,
-  Cpu,
-  Stethoscope,
-  Palette,
-  BarChart3,
-  Scale,
-  ArrowUpRight,
-  Award,
-  BookOpen,
-} from "lucide-react";
-
-interface StreamItem {
-  slug: string;
-  name: string;
-  count: number;
-}
-
-const streamEnhancements: Record<
-  string,
-  { icon: React.ElementType; tagline: string; salaryRange: string; badge: string }
-> = {
-  management: {
-    icon: Briefcase,
-    tagline: "Leadership & Global Enterprise",
-    salaryRange: "₹9 - 32 LPA",
-    badge: "Top Placement ROI",
-  },
-  engineering: {
-    icon: Cpu,
-    tagline: "Next-Gen Tech, AI & Systems",
-    salaryRange: "₹8 - 38 LPA",
-    badge: "Highest Demand",
-  },
-  medical: {
-    icon: Stethoscope,
-    tagline: "Clinical Healthcare & Biotech",
-    salaryRange: "₹10 - 45 LPA",
-    badge: "Vital Impact",
-  },
-  arts: {
-    icon: Palette,
-    tagline: "Media, Design & Humanities",
-    salaryRange: "₹6 - 20 LPA",
-    badge: "Fastest Emerging",
-  },
-  commerce: {
-    icon: BarChart3,
-    tagline: "Banking, Markets & Capital",
-    salaryRange: "₹7 - 24 LPA",
-    badge: "Market Drivers",
-  },
-  law: {
-    icon: Scale,
-    tagline: "Litigation, IP & Policy",
-    salaryRange: "₹8 - 26 LPA",
-    badge: "High Prestige",
-  },
-};
+import { ArrowUpRight, Award } from "lucide-react";
+import type { HomeField } from "@/lib/api";
+import { fieldIcon } from "@/lib/field-icons";
 
 /**
  * The streams, as discs that turn over on hover.
@@ -115,12 +59,15 @@ const streamEnhancements: Record<
  * juggling: there is only ever one focusable thing per stream.
  */
 export function StreamGrid({
-  streams,
+  fields,
   copy = DEFAULT_HOME_COPY.streams,
 }: {
-  streams: StreamItem[];
+  fields: HomeField[];
   copy?: SectionCopy;
 }) {
+  // Nothing is shown that the admin has not set up.
+  if (fields.length === 0) return null;
+
   return (
     <section className="border-b border-line bg-bg-alt py-14 lg:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -137,20 +84,14 @@ export function StreamGrid({
           role="list"
           className="mx-auto mt-10 grid grid-cols-3 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-6"
         >
-          {streams.map((stream) => {
-            const data = streamEnhancements[stream.slug] || {
-              icon: BookOpen,
-              tagline: "Specialized Degree Programs",
-              salaryRange: "₹6 - 22 LPA",
-              badge: "Verified Curriculum",
-            };
-            const Icon = data.icon;
+          {fields.map((stream) => {
+            const Icon = fieldIcon(stream.icon);
 
             return (
               <li key={stream.slug} className="flex flex-col items-center">
                 <Link
                   href={`/${stream.slug}/colleges`}
-                  aria-label={`${stream.name} — ${data.tagline}. Average CTC ${data.salaryRange}.`}
+                  aria-label={[stream.name, stream.tagline, stream.avgCtc && `Average CTC ${stream.avgCtc}`].filter(Boolean).join(". ")}
                   className="stream-coin block w-full max-w-[150px] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg-alt"
                 >
                   <div className="stream-coin-inner">
@@ -170,10 +111,12 @@ export function StreamGrid({
                         room for. Both are flavour rather than information; the
                         number people actually compare on is under the disc. */}
                     <span className="stream-coin-face--back stream-coin-face gap-1 border border-brand/30 bg-brand px-3.5 text-center text-white shadow-[0_16px_34px_-24px_rgba(28,33,40,0.6)]">
-                      <span className="text-[8px] font-medium uppercase tracking-[0.14em] text-white/75">
-                        {data.badge}
-                      </span>
-                      <span className="text-[11px] font-normal leading-snug">{data.tagline}</span>
+                      {stream.badge && (
+                        <span className="text-[8px] font-medium uppercase tracking-[0.14em] text-white/75">
+                          {stream.badge}
+                        </span>
+                      )}
+                      {stream.tagline && <span className="text-[11px] font-normal leading-snug">{stream.tagline}</span>}
                       <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider">
                         Explore <ArrowUpRight className="h-2.5 w-2.5" />
                       </span>
@@ -181,14 +124,16 @@ export function StreamGrid({
                   </div>
                 </Link>
 
-                <p className="mt-2.5 flex flex-col items-center text-center leading-tight">
-                  <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-ink-soft">
-                    Avg CTC
-                  </span>
-                  <span className="mt-0.5 text-[11px] font-medium text-ink-soft">
-                    {data.salaryRange}
-                  </span>
-                </p>
+                {stream.avgCtc && (
+                  <p className="mt-2.5 flex flex-col items-center text-center leading-tight">
+                    <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-ink-soft">
+                      Avg CTC
+                    </span>
+                    <span className="mt-0.5 text-[11px] font-medium text-ink-soft">
+                      {stream.avgCtc}
+                    </span>
+                  </p>
+                )}
               </li>
             );
           })}

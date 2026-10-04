@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { AdminActionResult } from "@/lib/admin-actions";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { StatusMessage, useFlash } from "@/components/admin/status-message";
 
 /**
  * The shared shell for a CMS module: header, search, table, and the add / view /
@@ -75,7 +76,7 @@ export function ResourceAdmin<T>({
   const [editing, setEditing] = useState<T | null>(null);
   const [adding, setAdding] = useState(false);
   const router = useRouter();
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [flash, showFlash, clearFlash] = useFlash();
   const [deleting, startDelete] = useTransition();
 
   const filtered = useMemo(() => {
@@ -100,11 +101,7 @@ export function ResourceAdmin<T>({
         }
       />
 
-      {deleteError && (
-        <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {deleteError}
-        </p>
-      )}
+      <StatusMessage flash={flash} />
       <AdminSection
         title={`All ${title.toLowerCase()}`}
         description={`${filtered.length} of ${rows.length} shown`}
@@ -218,12 +215,13 @@ export function ResourceAdmin<T>({
                 disabled={deleting}
                 onClick={() => {
                   if (!window.confirm(`Delete “${searchIn(editing)[0]}”? This cannot be undone.`)) return;
-                  setDeleteError(null);
+                  clearFlash();
                   startDelete(async () => {
                     const result = await onDelete(editing);
                     if ("error" in result) {
-                      setDeleteError(result.error);
+                      showFlash("error", result.error);
                     } else {
+                      showFlash("ok", `${searchIn(editing)[0]} deleted.`);
                       setEditing(null);
                       router.refresh();
                     }
@@ -256,7 +254,10 @@ export function ResourceAdmin<T>({
             id="resource-edit-form"
             tabs={editTabs}
             row={editing}
-            onDone={() => setEditing(null)}
+            onDone={(saved) => {
+              if (saved) showFlash("ok", `${searchIn(editing)[0]} saved.`);
+              setEditing(null);
+            }}
             onSave={onSave ? (data) => onSave(editing, data) : undefined}
           />
         )}
@@ -289,7 +290,10 @@ export function ResourceAdmin<T>({
         <AddForm
           renderAddForm={renderAddForm}
           onAdd={onAdd}
-          onDone={() => setAdding(false)}
+          onDone={(saved) => {
+            if (saved) showFlash("ok", `Added to ${title.toLowerCase()}.`);
+            setAdding(false);
+          }}
         />
       </AdminModal>
     </div>
@@ -303,7 +307,8 @@ function AddForm({
 }: {
   renderAddForm: () => ReactNode;
   onAdd?: (data: FormData) => Promise<AdminActionResult>;
-  onDone: () => void;
+  /** `saved` is false when the form closed without a save handler. */
+  onDone: (saved: boolean) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -314,7 +319,7 @@ function AddForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!onAdd) {
-          onDone();
+          onDone(false);
           return;
         }
         setError(null);
@@ -322,7 +327,7 @@ function AddForm({
         startTransition(async () => {
           const result = await onAdd(data);
           if ("error" in result) setError(result.error);
-          else onDone();
+          else onDone(true);
         });
       }}
       className="grid grid-cols-1 gap-4 sm:grid-cols-2"
@@ -348,7 +353,8 @@ function TabbedForm<T>({
   id: string;
   tabs: ResourceEditTab<T>[];
   row: T;
-  onDone: () => void;
+  /** `saved` is false when the form closed without a save handler. */
+  onDone: (saved: boolean) => void;
   onSave?: (data: FormData) => Promise<AdminActionResult>;
 }) {
   const [active, setActive] = useState(tabs[0].id);
@@ -362,7 +368,7 @@ function TabbedForm<T>({
       onSubmit={(e) => {
         e.preventDefault();
         if (!onSave) {
-          onDone();
+          onDone(false);
           return;
         }
         setError(null);
@@ -370,7 +376,7 @@ function TabbedForm<T>({
         startTransition(async () => {
           const result = await onSave(data);
           if ("error" in result) setError(result.error);
-          else onDone();
+          else onDone(true);
         });
       }}
       className="flex h-full flex-col"

@@ -17,18 +17,6 @@ import { NewspaperDispatch } from "@/components/newspaper-dispatch";
 import { TopCollegeCard } from "@/components/top-college-card";
 import { getCollectionBands, getHomeData } from "@/lib/api";
 
-const streamTabs = [
-  "Management",
-  "Engineering",
-  "Medical",
-  "Science",
-  "Arts",
-  "Commerce",
-  "Pharmacy",
-  "Law",
-  "Paramedical",
-];
-
 function ChevronDownIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
@@ -49,14 +37,16 @@ export default async function Home() {
 
   const copy          = mergeHomeCopy(home?.homeCopy);
   const topExams      = home?.featuredExams      ?? [];
-  const locations     = home?.locations          ?? [];
+  const locations     = home?.homeLocations      ?? [];
   const articles      = home?.articles           ?? [];
   const programs      = home?.recommendedPrograms ?? [];
   const careerPanels  = home?.careerPanels        ?? [];
   const universities  = home?.recommendedUniversities ?? [];
   const highlights    = home?.dataHighlights      ?? [];
-  // homeStreams from API has {slug, name, count} — same shape as mock-data.ts homeStreams
-  const homeStreams    = home?.streams            ?? [];
+  // The Fields grid and every stream link below come from the admin's list, nothing hard-coded.
+  const fields        = home?.fields             ?? [];
+  const streamTabs    = fields.map((f) => f.name);
+  const slugOfStream  = new Map(fields.map((f) => [f.name, f.slug]));
 
   // ── Collections (college bands) stay on local data until the collections ──
   // ── CMS API ships in a later phase                                        ──
@@ -106,8 +96,8 @@ export default async function Home() {
                 className="w-full cursor-pointer appearance-none rounded-full bg-transparent py-2.5 pl-4 pr-9 text-sm font-medium text-ink focus:outline-none sm:w-auto"
               >
                 <option value="">All streams</option>
-                {streamTabs.map((stream) => (
-                  <option key={stream} value={stream.toLowerCase()}>{stream}</option>
+                {fields.map((field) => (
+                  <option key={field.slug} value={field.slug}>{field.name}</option>
                 ))}
               </select>
               <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
@@ -129,10 +119,10 @@ export default async function Home() {
       </section>
 
       {/* Browse by location */}
-      <LocationCarousel locations={locations} copy={copy.locations} />
+      <LocationCarousel locations={locations} copy={copy.locations} card={copy.locationCard} />
 
       {/* Explore Your Future — stream grid */}
-      <StreamGrid streams={homeStreams} copy={copy.streams} />
+      <StreamGrid fields={fields} copy={copy.streams} />
 
       {/* College bands (from collections, backed by mock-data until CMS API) */}
       {visibleBands.map(({ collection, colleges: bandRows }, index) => (
@@ -152,8 +142,8 @@ export default async function Home() {
             {index === 0 && (
               <StreamTabs
                 streams={streamTabs}
-                active="Management"
-                hrefFor={(stream) => `/${stream.toLowerCase()}/colleges`}
+                active={streamTabs[0] ?? ""}
+                hrefFor={(stream) => `/${slugOfStream.get(stream)}/colleges`}
               />
             )}
             {bandRows.length > 3 ? (
@@ -186,8 +176,8 @@ export default async function Home() {
           </div>
           <StreamTabs
             streams={streamTabs}
-            active="Management"
-            hrefFor={(stream) => `/${stream.toLowerCase()}/exams`}
+            active={streamTabs[0] ?? ""}
+            hrefFor={(stream) => `/${slugOfStream.get(stream)}/exams`}
           />
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {topExams.map((exam) => (
@@ -240,8 +230,8 @@ export default async function Home() {
             </div>
             <StreamTabs
               streams={streamTabs}
-              active="Management"
-              hrefFor={(stream) => `/${stream.toLowerCase()}/careers`}
+              active={streamTabs[0] ?? ""}
+              hrefFor={(stream) => `/${slugOfStream.get(stream)}/careers`}
             />
             <div className="mt-10 grid items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
               {careerColumns.map((panels, idx) => (

@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from schemas.college import CollegeListSchema
 from schemas.exam import ExamSchema
-from schemas.location import LocationSchema
+from schemas.location import HomeLocationSchema, LocationSchema
 from schemas.article import ArticleListSchema
 from schemas.program import ProgramSchema
 
@@ -58,6 +58,19 @@ class RecommendedUniversitySchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class HomeFieldSchema(BaseModel):
+    """One disc in the homepage Fields grid."""
+
+    slug: str
+    name: str
+    icon: str
+    tagline: str = ""
+    badge: str = ""
+    avgCtc: str = ""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class HeroCopySchema(BaseModel):
     headline: str = "Find Colleges, Courses & Exams That Are Best For You"
     subheadline: str = "Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts."
@@ -94,6 +107,16 @@ class StoryCopySchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class LocationCardCopySchema(BaseModel):
+    """The fixed labels on each location card."""
+
+    institutionsLabel: str = "Ranked Institutions"
+    ctcLabel: str = "Average CTC"
+    buttonLabel: str = "Explore Colleges"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class PromoBannerSchema(BaseModel):
     """The brand-coloured banner under the Explore Careers panels."""
 
@@ -110,6 +133,7 @@ class HomeCopySchema(BaseModel):
     hero: HeroCopySchema = HeroCopySchema()
     locations: SectionCopySchema = SectionCopySchema(eyebrow="Destination hubs", heading="Where Ambition Meets", accent="Opportunity")
     streams: SectionCopySchema = SectionCopySchema(heading="Chart Your Discipline.", accent="Shape Your Tomorrow.", subheading="Pick a stream to see its colleges, entrance exams, fees and placement records.")
+    locationCard: LocationCardCopySchema = LocationCardCopySchema()
     topExams: SectionCopySchema = SectionCopySchema(heading="Top Exams", subheading="Exams Cherry Picked For You")
     programs: StoryCopySchema = StoryCopySchema(itemEyebrow="Online & On-campus", buttonLabel="Explore this program")
     careers: SectionCopySchema = SectionCopySchema(heading="Explore Careers", subheading="Explore your preferred streams to learn about the relevant colleges, exams and more!")
@@ -126,11 +150,14 @@ class HomeDataSchema(BaseModel):
     featuredColleges: List[CollegeListSchema]
     featuredExams: List[ExamSchema]
     locations: List[LocationSchema]
+    homeLocations: List[HomeLocationSchema] = []
     articles: List[ArticleListSchema]
     recommendedPrograms: List[ProgramSchema]
     careerPanels: List[CareerPanelSchema]
     recommendedUniversities: List[RecommendedUniversitySchema]
     dataHighlights: List[DataHighlightSchema]
     streams: List[StreamCountSchema]
+    # The Fields grid, in the admin's order. Separate from `streams`, which lists real college streams.
+    fields: List[HomeFieldSchema] = []
 
     model_config = ConfigDict(populate_by_name=True)

@@ -2,7 +2,9 @@
 
 import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
-import type { AdminHomepage, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
+import type { AdminField, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
+import { HomeLocationsEditor } from "@/components/admin/home-locations-editor";
+import { HomeFieldsEditor } from "@/components/admin/home-fields-editor";
 import type { HomeCopy } from "@/lib/home-copy";
 import { HeroCopyEditor, PromoBannerEditor, SectionCopyEditor, StoryCopyEditor } from "@/components/admin/home-copy-editor";
 import { OrderedListEditor } from "@/components/admin/ordered-list-editor";
@@ -28,6 +30,10 @@ export function HomepageSectionsAdmin({
   copy,
   programs,
   universities,
+  locations,
+  geo,
+  locationLabels,
+  fieldList,
 }: {
   homepage: AdminHomepage;
   careers: PanelDraft[];
@@ -36,6 +42,10 @@ export function HomepageSectionsAdmin({
   copy: HomeCopy;
   programs: { programs: AdminProgram[]; recommended: string[] };
   universities: AdminUniversities;
+  locations: AdminHomeLocation[];
+  geo: IndiaGeo;
+  locationLabels: AdminLocationLabel[];
+  fieldList: AdminField[];
 }) {
   return (
     <PageSectionsAdmin
@@ -51,24 +61,31 @@ export function HomepageSectionsAdmin({
           id: "location",
           label: "Location",
           render: () => (
-            <SectionCopyEditor
-              part="locations"
-              title="Browse by location"
-              description="The heading above the city carousel. The cities and their order come from the directory."
-              copy={copy.locations}
-            />
+            <div className="space-y-6">
+              <SectionCopyEditor
+                part="locations"
+                title="Browse by location"
+                description="The heading above the city carousel."
+                copy={copy.locations}
+              />
+              <HomeLocationsEditor locations={locations} geo={geo} labelPool={locationLabels} wording={copy.locationCard} />
+            </div>
           ),
         },
         {
           id: "fields",
           label: "Fields",
           render: () => (
-            <SectionCopyEditor
-              part="streams"
-              title="Explore your future"
-              description="The heading above the stream grid. The streams and their order come from the directory."
-              copy={copy.streams}
-            />
+            <div className="space-y-6">
+              <SectionCopyEditor
+                part="streams"
+                title="Explore your future"
+                description="The heading above the fields grid."
+                copy={copy.streams}
+                show={["heading", "accent", "subheading"]}
+              />
+              <HomeFieldsEditor fields={fieldList} />
+            </div>
           ),
         },
         {

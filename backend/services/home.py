@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from schemas.home import (
     HomeCopySchema,
+    HomeFieldSchema,
     CareerPanelLinkSchema,
     CareerPanelSchema,
     DataHighlightLinkSchema,
@@ -134,6 +135,20 @@ async def _stored_value(db: AsyncSession, key: str):
     return row.data if row else None
 
 
+async def _home_fields(db: AsyncSession) -> list[HomeFieldSchema]:
+    """The fields ticked for the homepage, in the admin's order."""
+    from models.home_field import HomeField
+    rows = (
+        await db.execute(
+            select(HomeField).where(HomeField.show_on_home.is_(True)).order_by(HomeField.home_order, HomeField.name)
+        )
+    ).scalars().all()
+    return [
+        HomeFieldSchema(slug=r.slug, name=r.name, icon=r.icon, tagline=r.tagline, badge=r.badge, avgCtc=r.avg_ctc)
+        for r in rows
+    ]
+
+
 async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     college_svc = CollegeService(db)
     exam_svc = ExamService(db)
@@ -146,6 +161,7 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     top_exam_slugs = top_exam_slugs if isinstance(top_exam_slugs, list) else []
     featured_exams = await exam_svc.get_by_slugs(top_exam_slugs[:6])
     locations = await location_svc.list_locations()
+    home_locations = await location_svc.list_home_locations()
     articles = await article_svc.get_recent(limit=3)
     programs = await program_svc.get_recommended(limit=3)
     stream_counts = await college_svc.get_stream_counts()
@@ -159,6 +175,7 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
         featuredColleges=featured_colleges,
         featuredExams=featured_exams,
         locations=locations,
+        homeLocations=home_locations,
         articles=articles,
         recommendedPrograms=programs,
         careerPanels=await _stored(db, "home.careerPanels", CareerPanelSchema),
@@ -166,6 +183,7 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
             RecommendedUniversitySchema(**u) for u in universities_raw
         ],
         dataHighlights=await _stored(db, "home.dataHighlights", DataHighlightSchema),
+        fields=await _home_fields(db),
         streams=[
             StreamCountSchema(
                 slug=s["name"].lower().replace(" ", "-"),

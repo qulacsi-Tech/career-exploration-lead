@@ -24,7 +24,8 @@ from models.college import College, OwnershipType
 from models.course import Course
 from models.cutoff import Cutoff
 from models.exam import Exam, ExamLevel
-from models.location import Location
+from models.location import Location, LocationLabel, LocationLabelLink
+from models.home_field import HomeField
 from models.placement import Placement
 from models.program import Program
 from models.review import Review
@@ -435,13 +436,46 @@ EXAMS = [
 # LOCATIONS
 # ─────────────────────────────────────────────────────────────────────────────
 
+# tagline / highlight / description / avg_package / image fill the homepage
+# carousel card; home_order keeps most-colleges-first. Admin edits them later.
 LOCATIONS = [
-    {"slug": "bangalore", "name": "Bangalore", "state": "Karnataka", "college_count": 214},
-    {"slug": "hyderabad", "name": "Hyderabad", "state": "Telangana", "college_count": 156},
-    {"slug": "pune", "name": "Pune", "state": "Maharashtra", "college_count": 189},
-    {"slug": "mumbai", "name": "Mumbai", "state": "Maharashtra", "college_count": 241},
-    {"slug": "delhi-ncr", "name": "Delhi NCR", "state": "Delhi", "college_count": 302},
-    {"slug": "chennai", "name": "Chennai", "state": "Tamil Nadu", "college_count": 167},
+    {"slug": "bangalore", "name": "Bangalore", "state": "Karnataka", "college_count": 214, "home_order": 2,
+     "tagline": "Silicon Valley of India", "highlight": "Top Startup Ecosystem",
+     "description": "Global epicenter for IT, Artificial Intelligence, Product Startups & Tech Giants.",
+     "avg_package": "₹8.5 - 24 LPA", "image": "/images/locations/bangalore.jpg"},
+    {"slug": "hyderabad", "name": "Hyderabad", "state": "Telangana", "district": "Hyderabad", "college_count": 156, "home_order": 5,
+     "tagline": "Cyber City & Biotech", "highlight": "Highest Growth Index",
+     "description": "Rapidly expanding IT corridor, pharmaceutical research & Fortune 500 campuses.",
+     "avg_package": "₹7.5 - 20 LPA", "image": "/images/locations/hyderabad.jpg"},
+    {"slug": "pune", "name": "Pune", "state": "Maharashtra", "district": "Pune", "college_count": 189, "home_order": 3,
+     "tagline": "Oxford of the East", "highlight": "Student Capital",
+     "description": "Academic heritage, premier automotive design, research & manufacturing hubs.",
+     "avg_package": "₹7.0 - 18 LPA", "image": "/images/locations/pune.jpg"},
+    {"slug": "mumbai", "name": "Mumbai", "state": "Maharashtra", "college_count": 241, "home_order": 1,
+     "tagline": "Financial Capital", "highlight": "Finance & Corporate HQ",
+     "description": "Headquarters of India's major investment banks, consulting & media powerhouses.",
+     "avg_package": "₹9.0 - 28 LPA", "image": "/images/locations/mumbai.jpg"},
+    {"slug": "delhi-ncr", "name": "Delhi NCR", "state": "Delhi", "college_count": 302, "home_order": 0,
+     "tagline": "National Corporate Hub", "highlight": "Leadership & Policy Hub",
+     "description": "Center of policy, diplomacy, FMCG giants & fast-growing tech conglomerates.",
+     "avg_package": "₹8.0 - 25 LPA", "image": "/images/locations/delhi-ncr.jpg"},
+    {"slug": "chennai", "name": "Chennai", "state": "Tamil Nadu", "district": "Chennai", "college_count": 167, "home_order": 4,
+     "tagline": "Industrial & IT Powerhouse", "highlight": "Core Tech & Research",
+     "description": "Renowned research institutions, health-tech revolution & automotive manufacturing.",
+     "avg_package": "₹6.8 - 18 LPA", "image": "/images/locations/chennai.jpg"},
+]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HOMEPAGE FIELDS  (the discs in the "Fields" grid; icon is an admin picker key).
+# Only streams the seeded colleges carry, so every disc links to a real page.
+# ─────────────────────────────────────────────────────────────────────────────
+
+FIELDS = [
+    {"slug": "management", "name": "Management", "icon": "briefcase", "tagline": "Leadership & Global Enterprise", "badge": "Top Placement ROI", "avg_ctc": "₹9 - 32 LPA"},
+    {"slug": "engineering", "name": "Engineering", "icon": "cpu", "tagline": "Next-Gen Tech, AI & Systems", "badge": "Highest Demand", "avg_ctc": "₹8 - 38 LPA"},
+    {"slug": "medical", "name": "Medical", "icon": "stethoscope", "tagline": "Clinical Healthcare & Biotech", "badge": "Vital Impact", "avg_ctc": "₹10 - 45 LPA"},
+    {"slug": "commerce", "name": "Commerce", "icon": "bar-chart", "tagline": "Banking, Markets & Capital", "badge": "Market Drivers", "avg_ctc": "₹7 - 24 LPA"},
 ]
 
 
@@ -579,10 +613,29 @@ async def _seed_exams(session: AsyncSession) -> None:
 
 async def _seed_locations(session: AsyncSession) -> None:
     print("Seeding locations …")
+    labels: dict[str, LocationLabel] = {}
     for data in LOCATIONS:
-        session.add(Location(id=uuid.uuid4(), **data))
+        data = dict(data)
+        tags = list(dict.fromkeys([data.pop("tagline"), data.pop("highlight")]))
+        location = Location(id=uuid.uuid4(), **data)
+        session.add(location)
+        for text in tags:
+            if text not in labels:
+                labels[text] = LocationLabel(id=uuid.uuid4(), text=text, position=len(labels))
+                session.add(labels[text])
+        await session.flush()
+        for text in tags:
+            session.add(LocationLabelLink(label_id=labels[text].id, location_id=location.id))
     await session.commit()
-    print(f"  ✓ {len(LOCATIONS)} locations seeded")
+    print(f"  ✓ {len(LOCATIONS)} locations and {len(labels)} labels seeded")
+
+
+async def _seed_fields(session: AsyncSession) -> None:
+    print("Seeding homepage fields …")
+    for index, data in enumerate(FIELDS):
+        session.add(HomeField(id=uuid.uuid4(), home_order=index, **data))
+    await session.commit()
+    print(f"  ✓ {len(FIELDS)} fields seeded")
 
 
 async def _seed_articles(session: AsyncSession) -> None:
@@ -747,6 +800,7 @@ async def main() -> None:
         await _seed_colleges(session)
         await _seed_exams(session)
         await _seed_locations(session)
+        await _seed_fields(session)
         await _seed_articles(session)
         await _seed_programs(session)
         await _seed_courses(session)

@@ -58,6 +58,13 @@ class StoryBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class LocationCardBody(BaseModel):
+    institutionsLabel: str = Field(min_length=1, max_length=40)
+    ctcLabel: str = Field(min_length=1, max_length=40)
+    buttonLabel: str = Field(min_length=1, max_length=30)
+    model_config = ConfigDict(extra="forbid")
+
+
 class PromoBannerBody(BaseModel):
     heading: str = Field(min_length=5, max_length=120)
     buttonLabel: str = Field(min_length=1, max_length=30)
@@ -81,6 +88,7 @@ PARTS = {
     "hero": HeroBody,
     "locations": SectionBody,
     "streams": SectionBody,
+    "locationCard": LocationCardBody,
     "topExams": SectionBody,
     "programs": StoryBody,
     "careers": SectionBody,
@@ -89,7 +97,7 @@ PARTS = {
     "data": SectionBody,
     "articles": SectionBody,
 }
-Part = Literal["hero", "locations", "streams", "topExams", "programs", "careers", "promoBanner", "universities", "data", "articles"]
+Part = Literal["hero", "locations", "streams", "locationCard", "topExams", "programs", "careers", "promoBanner", "universities", "data", "articles"]
 
 
 async def _current(db) -> dict:

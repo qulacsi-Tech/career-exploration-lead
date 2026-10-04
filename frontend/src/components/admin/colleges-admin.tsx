@@ -12,6 +12,7 @@ import {
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { CollegeEditModal } from "@/components/admin/college-edit-modal";
+import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
 
 /**
@@ -29,6 +30,7 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
   const [viewing, setViewing] = useState<College | null>(null);
   const [editing, setEditing] = useState<College | null>(null);
   const [adding, setAdding] = useState(false);
+  const [flash, showFlash] = useFlash();
 
   // Ranking lists belong to a program, so the second selector only has options
   // once the first is set — and a stale ranking from a previous program must
@@ -90,6 +92,8 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
           </button>
         }
       />
+
+      <StatusMessage flash={flash} />
 
       <AdminSection
         title="All colleges"
@@ -212,8 +216,16 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
           setEditing(c);
         }}
       />
-      <CollegeEditModal college={editing} onClose={() => setEditing(null)} />
-      <AddCollegeModal open={adding} onClose={() => setAdding(false)} />
+      <CollegeEditModal
+        college={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(c) => showFlash("ok", `${c.name} saved.`)}
+      />
+      <AddCollegeModal
+        open={adding}
+        onClose={() => setAdding(false)}
+        onSaved={() => showFlash("ok", "College added.")}
+      />
     </div>
   );
 }
@@ -348,7 +360,7 @@ function ViewCollegeModal({
   );
 }
 
-function AddCollegeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function AddCollegeModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
   return (
     <AdminModal
       open={open}
@@ -376,7 +388,12 @@ function AddCollegeModal({ open, onClose }: { open: boolean; onClose: () => void
     >
       {/* A child of the modal, so its state is discarded when the modal closes
           rather than persisting into the next opening. */}
-      <AddCollegeForm onDone={onClose} />
+      <AddCollegeForm
+        onDone={() => {
+          onSaved();
+          onClose();
+        }}
+      />
     </AdminModal>
   );
 }

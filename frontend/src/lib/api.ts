@@ -148,6 +148,26 @@ export type Location = {
   collegeCount: number;
 };
 
+/** One disc in the homepage Fields grid. `icon` is a key from lib/field-icons. */
+export type HomeField = {
+  slug: string;
+  name: string;
+  icon: string;
+  tagline: string;
+  badge: string;
+  avgCtc: string;
+};
+
+/** A homepage carousel card: the directory entry plus what the card shows. */
+export type HomeLocation = Location & {
+  /** Tags on the card, in label order. */
+  labels: string[];
+  description: string;
+  avgPackage: string;
+  /** /images/... (shipped with the site) or /api/uploads/... (uploaded in the admin). Empty: no photo. */
+  image: string;
+};
+
 export type Article = {
   slug: string;
   title: string;
@@ -202,12 +222,16 @@ export type HomeData = {
   featuredColleges: College[];
   featuredExams: Exam[];
   locations: Location[];
+  /** The cards the carousel shows, in order. Absent from an API older than the card editor. */
+  homeLocations?: HomeLocation[];
   articles: Article[];
   recommendedPrograms: RecommendedProgram[];
   careerPanels: CareerPanel[];
   recommendedUniversities: RecommendedUniversity[];
   dataHighlights: DataHighlight[];
   streams: StreamCount[];
+  /** The Fields grid, in the admin's order. Absent from an API older than the field editor. */
+  fields?: HomeField[];
 };
 
 // ── Home ──────────────────────────────────────────────────────────────────
@@ -831,11 +855,101 @@ export async function adminPutHomeCopy(token: string, part: keyof HomeCopy, valu
   return adminRequest<{ message: string }>(token, "PUT", `/admin/home-copy/${part}`, value);
 }
 
+/** One location in the admin's carousel editor. `show` is the checkbox. */
+export type AdminHomeLocation = HomeLocation & { show: boolean; district: string };
+
+export async function adminGetHomeLocations(token: string): Promise<AdminHomeLocation[]> {
+  const data = await adminRequest<{ locations: AdminHomeLocation[] }>(token, "GET", "/admin/homepage/locations");
+  return data.locations;
+}
+
+/** Admin: save which locations show and their order (the array order). Card content is saved per location. */
+export async function adminPutHomeLocations(token: string, locations: { slug: string; show: boolean }[]) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage/locations", { locations });
+}
+
+/** What the Manage locations form sends. The slug is made from the name on create and never changes. */
+export type LocationInput = {
+  name: string;
+  state: string;
+  district: string;
+  collegeCount: number;
+  description: string;
+  avgPackage: string;
+  image: string;
+  /** The pool labels this card shows, by text. A text not yet in the pool is added to it. */
+  labels: string[];
+  /** On the homepage carousel. */
+  show: boolean;
+};
+
+/** A reusable card tag and the locations that show it. `id` is null until the label is first saved. */
+export type AdminLocationLabel = { id: string | null; text: string; slugs: string[] };
+
+export async function adminGetLocationLabels(token: string): Promise<AdminLocationLabel[]> {
+  const data = await adminRequest<{ labels: AdminLocationLabel[] }>(token, "GET", "/admin/locations/labels");
+  return data.labels;
+}
+
+/** A field in the admin list. `collegeCount` is how many colleges its page would list; 0 means the link shows "not found". */
+export type AdminField = HomeField & { show: boolean; collegeCount: number };
+
+/** What the field form sends. The slug is made from the name on create and never changes. */
+export type FieldInput = {
+  name: string;
+  icon: string;
+  tagline: string;
+  badge: string;
+  avgCtc: string;
+  show: boolean;
+};
+
+export async function adminGetFields(token: string): Promise<AdminField[]> {
+  const data = await adminRequest<{ fields: AdminField[] }>(token, "GET", "/admin/fields");
+  return data.fields;
+}
+
+export async function adminPutFieldOrder(token: string, fields: { slug: string; show: boolean }[]) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/fields/order", { fields });
+}
+
+export async function adminCreateField(token: string, body: FieldInput) {
+  return adminRequest<AdminField>(token, "POST", "/admin/fields", body);
+}
+
+export async function adminUpdateField(token: string, slug: string, body: FieldInput) {
+  return adminRequest<AdminField>(token, "PATCH", `/admin/fields/${encodeURIComponent(slug)}`, body);
+}
+
+export async function adminDeleteField(token: string, slug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/fields/${encodeURIComponent(slug)}`);
+}
+
+/** Every state or union territory with its districts, for the location form's dropdowns. */
+export type IndiaGeo = Record<string, string[]>;
+
+export async function adminGetGeo(token: string): Promise<IndiaGeo> {
+  const data = await adminRequest<{ states: IndiaGeo }>(token, "GET", "/admin/locations/geo");
+  return data.states;
+}
+
+export async function adminCreateLocation(token: string, body: LocationInput) {
+  return adminRequest<AdminHomeLocation>(token, "POST", "/admin/locations", body);
+}
+
+export async function adminUpdateLocation(token: string, slug: string, body: LocationInput) {
+  return adminRequest<AdminHomeLocation>(token, "PATCH", `/admin/locations/${encodeURIComponent(slug)}`, body);
+}
+
+export async function adminDeleteLocation(token: string, slug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/locations/${encodeURIComponent(slug)}`);
+}
+
 /**
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);

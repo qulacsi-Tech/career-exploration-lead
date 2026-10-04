@@ -24,6 +24,15 @@ export type StoryCopy = {
   buttonLabel: string;
 };
 
+/** The fixed labels on each location card. */
+export type LocationCardCopy = {
+  /** Text after the college count, e.g. "Ranked Institutions". */
+  institutionsLabel: string;
+  /** Label above the average package. */
+  ctcLabel: string;
+  buttonLabel: string;
+};
+
 export type PromoBannerCopy = {
   heading: string;
   buttonLabel: string;
@@ -45,6 +54,7 @@ export type HomeCopy = {
   };
   locations: SectionCopy;
   streams: SectionCopy;
+  locationCard: LocationCardCopy;
   topExams: SectionCopy;
   programs: StoryCopy;
   careers: SectionCopy;
@@ -72,6 +82,7 @@ export const DEFAULT_HOME_COPY: HomeCopy = {
     accent: "Shape Your Tomorrow.",
     subheading: "Pick a stream to see its colleges, entrance exams, fees and placement records.",
   },
+  locationCard: { institutionsLabel: "Ranked Institutions", ctcLabel: "Average CTC", buttonLabel: "Explore Colleges" },
   topExams: { eyebrow: "", heading: "Top Exams", accent: "", subheading: "Exams Cherry Picked For You" },
   programs: {
     heading: "Recommended",

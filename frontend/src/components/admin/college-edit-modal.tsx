@@ -82,9 +82,12 @@ type TabId = string;
 export function CollegeEditModal({
   college,
   onClose,
+  onSaved,
 }: {
   college: College | null;
   onClose: () => void;
+  /** Called after the API accepted the save, just before the form closes. */
+  onSaved?: (college: College) => void;
 }) {
   return (
     <AdminModal
@@ -112,7 +115,15 @@ export function CollegeEditModal({
         </>
       }
     >
-      {college && <CollegeEditForm college={college} onDone={onClose} />}
+      {college && (
+        <CollegeEditForm
+          college={college}
+          onDone={() => {
+            onSaved?.(college);
+            onClose();
+          }}
+        />
+      )}
     </AdminModal>
   );
 }

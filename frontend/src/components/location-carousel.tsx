@@ -1,59 +1,13 @@
 "use client";
 
-import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
+import { DEFAULT_HOME_COPY, type LocationCardCopy, type SectionCopy } from "@/lib/home-copy";
+import type { HomeLocation } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { MapPin, Building2, ArrowUpRight, ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
-
-interface Location {
-  slug: string;
-  name: string;
-  collegeCount: number;
-}
-
-const locationMeta: Record<
-  string,
-  { tag: string; description: string; avgPkg: string; highlight: string }
-> = {
-  bangalore: {
-    tag: "Silicon Valley of India",
-    description: "Global epicenter for IT, Artificial Intelligence, Product Startups & Tech Giants.",
-    avgPkg: "₹8.5 - 24 LPA",
-    highlight: "Top Startup Ecosystem",
-  },
-  hyderabad: {
-    tag: "Cyber City & Biotech",
-    description: "Rapidly expanding IT corridor, pharmaceutical research & Fortune 500 campuses.",
-    avgPkg: "₹7.5 - 20 LPA",
-    highlight: "Highest Growth Index",
-  },
-  pune: {
-    tag: "Oxford of the East",
-    description: "Academic heritage, premier automotive design, research & manufacturing hubs.",
-    avgPkg: "₹7.0 - 18 LPA",
-    highlight: "Student Capital",
-  },
-  mumbai: {
-    tag: "Financial Capital",
-    description: "Headquarters of India's major investment banks, consulting & media powerhouses.",
-    avgPkg: "₹9.0 - 28 LPA",
-    highlight: "Finance & Corporate HQ",
-  },
-  "delhi-ncr": {
-    tag: "National Corporate Hub",
-    description: "Center of policy, diplomacy, FMCG giants & fast-growing tech conglomerates.",
-    avgPkg: "₹8.0 - 25 LPA",
-    highlight: "Leadership & Policy Hub",
-  },
-  chennai: {
-    tag: "Industrial & IT Powerhouse",
-    description: "Renowned research institutions, health-tech revolution & automotive manufacturing.",
-    avgPkg: "₹6.8 - 18 LPA",
-    highlight: "Core Tech & Research",
-  },
-};
 
 /**
  * Where each card flies in from when its turn comes. Fixed per position rather
@@ -92,9 +46,11 @@ const DWELL = 4500;
 export function LocationCarousel({
   locations,
   copy = DEFAULT_HOME_COPY.locations,
+  card = DEFAULT_HOME_COPY.locationCard,
 }: {
-  locations: Location[];
+  locations: HomeLocation[];
   copy?: SectionCopy;
+  card?: LocationCardCopy;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
   // No `once`: the timer stops when the frame is scrolled away.
@@ -120,6 +76,9 @@ export function LocationCarousel({
   }, [active, running, total]);
 
   const current = locations[active];
+
+  // Nothing ticked in the admin: no empty frame.
+  if (total === 0) return null;
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden bg-bg py-16 lg:py-20">
@@ -209,6 +168,7 @@ export function LocationCarousel({
                 index={index}
                 active={active}
                 reduceMotion={!!reduceMotion}
+                card={card}
               />
             ))}
           </div>
@@ -235,19 +195,14 @@ function DeckCard({
   index,
   active,
   reduceMotion,
+  card,
 }: {
-  location: Location;
+  location: HomeLocation;
   index: number;
   active: number;
   reduceMotion: boolean;
+  card: LocationCardCopy;
 }) {
-  const meta = locationMeta[location.slug] || {
-    tag: "Educational Hub",
-    description: "Premier universities, high placement records & vibrant campus life",
-    avgPkg: "₹7.5 - 20 LPA",
-    highlight: "Top Academic Ecosystem",
-  };
-
   const offset = index - active;
   const depth = Math.abs(offset);
   const vector = ENTRY_VECTORS[index % ENTRY_VECTORS.length];
@@ -282,15 +237,25 @@ function DeckCard({
         className="group relative flex h-full w-full flex-col justify-end overflow-hidden rounded-[28px] border border-white/70 shadow-[0_30px_70px_-25px_rgba(28,33,40,0.55)]"
       >
         {/* City photography */}
-        <div className="absolute inset-0 overflow-hidden rounded-[28px]">
-          <Image
-            src={`/images/locations/${location.slug}.jpg`}
-            alt={`${location.name} campus destination`}
-            fill
-            sizes="(max-width: 1024px) 90vw, 1400px"
-            className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
-            priority={index < 2}
-          />
+        <div className="absolute inset-0 overflow-hidden rounded-[28px] bg-brand-ink">
+          {location.image.startsWith("/api/") ? (
+            // Uploaded in the admin: served by the API, so a plain img rather than next/image.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mediaUrl(location.image)}
+              alt={`${location.name} campus destination`}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
+            />
+          ) : location.image ? (
+            <Image
+              src={location.image}
+              alt={`${location.name} campus destination`}
+              fill
+              sizes="(max-width: 1024px) 90vw, 1400px"
+              className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
+              priority={index < 2}
+            />
+          ) : null}
           {/* Legibility scrim: darkest at the bottom, a soft veil up top */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/25" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
@@ -299,13 +264,19 @@ function DeckCard({
         {/* Top row */}
         <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-6 sm:p-7">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
-              <MapPin className="h-3.5 w-3.5" />
-              {meta.tag}
-            </span>
-            <span className="hidden rounded-full border border-white/12 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/65 backdrop-blur-md sm:inline-flex">
-              {meta.highlight}
-            </span>
+            {location.labels.map((label, i) => (
+              <span
+                key={label}
+                className={
+                  i === 0
+                    ? "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md"
+                    : "hidden rounded-full border border-white/12 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/65 backdrop-blur-md sm:inline-flex"
+                }
+              >
+                {i === 0 && <MapPin className="h-3.5 w-3.5" />}
+                {label}
+              </span>
+            ))}
           </div>
 
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-md transition-all duration-300 group-hover:border-transparent group-hover:bg-white group-hover:text-black">
@@ -318,7 +289,7 @@ function DeckCard({
           <div className="flex items-center gap-2 text-white/55">
             <Building2 className="h-3.5 w-3.5" />
             <span className="text-[11px] font-medium uppercase tracking-[0.14em]">
-              {location.collegeCount}+ Ranked Institutions
+              {location.collegeCount}+ {card.institutionsLabel}
             </span>
           </div>
 
@@ -326,20 +297,26 @@ function DeckCard({
             {location.name}
           </h3>
 
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
-            {meta.description}
-          </p>
+          {location.description && (
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
+              {location.description}
+            </p>
+          )}
 
           <div className="mt-6 flex flex-wrap items-end justify-between gap-4 border-t border-white/15 pt-5">
-            <div>
-              <span className="block text-[10px] uppercase tracking-[0.16em] text-white/45">
-                Average CTC
-              </span>
-              <span className="text-lg font-semibold text-white">{meta.avgPkg}</span>
-            </div>
+            {location.avgPackage ? (
+              <div>
+                <span className="block text-[10px] uppercase tracking-[0.16em] text-white/45">
+                  {card.ctcLabel}
+                </span>
+                <span className="text-lg font-semibold text-white">{location.avgPackage}</span>
+              </div>
+            ) : (
+              <span />
+            )}
 
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition-colors group-hover:bg-white group-hover:text-black">
-              Explore Colleges
+              {card.buttonLabel}
               <ArrowUpRight className="h-4 w-4" />
             </span>
           </div>

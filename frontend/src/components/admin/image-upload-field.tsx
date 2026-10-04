@@ -18,13 +18,15 @@ import { mediaUrl } from "@/lib/media";
 */
 
 type Slot = {
-  kind: "hero" | "banner";
+  kind: "hero" | "banner" | "location";
   label: string;
   recommended: [number, number];
   minimum: [number, number];
   previewClass: string;
   notes: string[];
 };
+
+const MAX_MB = 4;
 
 const SLOTS: Record<Slot["kind"], Slot> = {
   hero: {
@@ -37,6 +39,18 @@ const SLOTS: Record<Slot["kind"], Slot> = {
       "The headline and search box sit in the centre, with a dark overlay so the white text stays readable. Keep the middle of the picture simple.",
       "Do not put text or logos in the picture. It would sit under the headline and be cropped on phones.",
       "On phones the left and right edges are trimmed, so keep the subject away from the sides.",
+    ],
+  },
+  location: {
+    kind: "location",
+    label: "Card photo",
+    recommended: [1600, 600],
+    minimum: [1200, 450],
+    previewClass: "aspect-[8/3]",
+    notes: [
+      "The photo fills the whole card behind the text. A dark fade covers the bottom and the left edge, where the name, description and package sit, so keep the subject in the upper middle.",
+      "Do not put text or logos in the picture. They would sit under the card's own text.",
+      "On phones the card is taller than it is wide, so the left and right are cropped. Keep the subject in the centre.",
     ],
   },
   banner: {
@@ -52,7 +66,7 @@ const SLOTS: Record<Slot["kind"], Slot> = {
   },
 };
 
-const MAX_MB = 4;
+
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
 type Note = { kind: "ok" | "warn" | "error"; text: string };

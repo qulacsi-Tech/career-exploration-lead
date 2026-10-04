@@ -14,6 +14,16 @@ import {
   adminPutTopExams,
   adminPutHomeCopy,
   adminUploadImage,
+  adminPutHomeLocations,
+  adminCreateLocation,
+  adminPutFieldOrder,
+  adminCreateField,
+  adminUpdateField,
+  adminDeleteField,
+  type FieldInput,
+  adminUpdateLocation,
+  adminDeleteLocation,
+  type LocationInput,
   adminCreateProgram,
   adminUpdateProgram,
   adminSetRecommendedPrograms,
@@ -474,6 +484,60 @@ export async function saveHomeCopy(
   return result;
 }
 
+/** Saves the carousel: which locations show and their order. */
+export async function saveHomeLocations(
+  locations: { slug: string; show: boolean }[]
+): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminPutHomeLocations(token, locations));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Saves which fields show in the homepage grid and their order. */
+export async function saveFieldOrder(fields: { slug: string; show: boolean }[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminPutFieldOrder(token, fields));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Adds a field to the homepage grid. It starts ticked, last in the grid. */
+export async function createField(input: FieldInput): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminCreateField(token, input));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function updateField(slug: string, input: FieldInput): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminUpdateField(token, slug, input));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function deleteField(slug: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminDeleteField(token, slug));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Adds a location to the directory. It starts ticked, last in the carousel. */
+export async function createLocation(input: LocationInput): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminCreateLocation(token, input));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function updateLocation(slug: string, input: LocationInput): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminUpdateLocation(token, slug, input));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function deleteLocation(slug: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminDeleteLocation(token, slug));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
 export type UploadResult = { url: string; width: number; height: number } | { error: string };
 
 /**
@@ -483,7 +547,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner") return { error: "Unknown image slot." };
+  if (kind !== "hero" && kind !== "banner" && kind !== "location") return { error: "Unknown image slot." };
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
   const token = await requireAdminToken();
   try {

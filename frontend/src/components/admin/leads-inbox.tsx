@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { updateLeadStatus } from "@/lib/admin-actions";
+import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { LEAD_STATUSES, type AdminLead, type LeadStatus, type PaginationMeta } from "@/lib/api";
 import {
   LEAD_STATUS_LABEL,
@@ -26,7 +27,15 @@ function inboxHref(status: LeadStatus | undefined, page: number) {
   return query ? `/admin/leads?${query}` : "/admin/leads";
 }
 
-function StatusControl({ lead, onError }: { lead: AdminLead; onError: (message: string) => void }) {
+function StatusControl({
+  lead,
+  onError,
+  onSaved,
+}: {
+  lead: AdminLead;
+  onError: (message: string) => void;
+  onSaved: (message: string) => void;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -46,7 +55,10 @@ function StatusControl({ lead, onError }: { lead: AdminLead; onError: (message: 
           startTransition(async () => {
             const result = await updateLeadStatus(lead.id, next);
             if ("error" in result) onError(result.error);
-            else router.refresh();
+            else {
+              onSaved(`${lead.name} marked ${LEAD_STATUS_LABEL[next as LeadStatus]}.`);
+              router.refresh();
+            }
           });
         }}
         className="rounded-lg border border-line bg-bg px-2 py-1 text-xs text-ink focus:border-brand focus:outline-none disabled:opacity-60"
@@ -70,7 +82,7 @@ export function LeadsInbox({
   meta: PaginationMeta;
   status: LeadStatus | undefined;
 }) {
-  const [message, setMessage] = useState<string | null>(null);
+  const [flash, showFlash] = useFlash();
 
   return (
     <div className="space-y-6">
@@ -97,11 +109,7 @@ export function LeadsInbox({
         })}
       </nav>
 
-      {message && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {message}
-        </p>
-      )}
+      <StatusMessage flash={flash} />
 
       <AdminSection
         title={`${meta.total.toLocaleString("en-IN")} ${meta.total === 1 ? "lead" : "leads"}`}
@@ -133,7 +141,11 @@ export function LeadsInbox({
                     <td className="py-3 pr-3 text-ink-soft">{LEAD_TYPE_LABEL[lead.type] ?? lead.type}</td>
                     <td className="py-3 pr-3 text-ink-faint">{formatReceived(lead.createdAt)}</td>
                     <td className="py-3">
-                      <StatusControl lead={lead} onError={setMessage} />
+                      <StatusControl
+                        lead={lead}
+                        onError={(text) => showFlash("error", text)}
+                        onSaved={(text) => showFlash("ok", text)}
+                      />
                     </td>
                   </tr>
                 ))}

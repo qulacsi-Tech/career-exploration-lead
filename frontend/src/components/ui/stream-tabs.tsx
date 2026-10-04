@@ -14,6 +14,8 @@ export function StreamTabs({
   active: string;
   hrefFor: (stream: string) => string;
 }) {
+  if (streams.length === 0) return null;
+
   return (
     <div className="mt-7 flex flex-wrap justify-center gap-3">
       {streams.map((stream) => (

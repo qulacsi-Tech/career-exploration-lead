@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
 
@@ -204,3 +204,83 @@ async def admin_set_universities(_admin: AdminPayload, db: DbSession, body: dict
         row.data = data.slugs
     await db.commit()
     return SuccessResponse[dict](data={"message": "Recommended colleges saved."})
+
+
+# ── Homepage location carousel ───────────────────────────────────────────────
+
+
+def _location_image(value: str) -> str:
+    """Empty, an upload, or one of the photos shipped with the site. Never an external address."""
+    value = value.strip()
+    allowed = value.startswith("/api/uploads/") or value.startswith("/images/locations/")
+    if value and (not allowed or ".." in value):
+        raise ValueError("must be an image uploaded through the admin")
+    return value
+
+
+class LocationTickBody(BaseModel):
+    slug: str = Field(min_length=1, max_length=200)
+    show: bool
+    model_config = ConfigDict(extra="forbid")
+
+
+class LocationTicksBody(BaseModel):
+    locations: list[LocationTickBody] = Field(max_length=200)
+    model_config = ConfigDict(extra="forbid")
+
+
+def _card(loc, labels: list[str] | None = None) -> dict[str, Any]:
+    return {
+        "slug": loc.slug,
+        "name": loc.name,
+        "state": loc.state,
+        "district": loc.district,
+        "show": loc.show_on_home,
+        "collegeCount": loc.college_count,
+        "labels": labels or [],
+        "description": loc.description,
+        "avgPackage": loc.avg_package,
+        "image": loc.image,
+    }
+
+
+@router.get("/locations", response_model=SuccessResponse[dict])
+async def admin_get_home_locations(_admin: AdminPayload, db: DbSession):
+    """Every location, in homepage order. Ticked or not, a location keeps its place."""
+    from models.location import Location
+    from repositories.location import LocationRepository
+    rows = (await db.execute(select(Location))).scalars().all()
+    rows = sorted(rows, key=lambda r: (r.home_order, -r.college_count, r.name))
+    labels = await LocationRepository(db).labels_for([r.id for r in rows])
+    return SuccessResponse[dict](data={"locations": [_card(r, labels.get(r.id, [])) for r in rows]})
+
+
+@router.put("/locations", response_model=SuccessResponse[dict])
+async def admin_put_home_locations(_admin: AdminPayload, db: DbSession, body: dict):
+    """Saves which locations show and their order (the list order).
+
+    Card content is edited per location in admin_locations.py, so this never
+    overwrites it.
+    """
+    from models.location import Location
+    try:
+        data = LocationTicksBody.model_validate(body)
+    except PydanticValidationError as exc:
+        first = exc.errors()[0]
+        field = ".".join(str(p) for p in first["loc"])
+        raise ValidationError(f"{field}: {first['msg']}") from exc
+
+    slugs = [c.slug for c in data.locations]
+    if len(set(slugs)) != len(slugs):
+        raise ValidationError("locations: a location appears more than once.")
+    rows = {r.slug: r for r in (await db.execute(select(Location).where(Location.slug.in_(slugs)))).scalars().all()}
+    missing = [s for s in slugs if s not in rows]
+    if missing:
+        raise ValidationError(f"locations: unknown location '{missing[0]}'.")
+
+    for index, tick in enumerate(data.locations):
+        row = rows[tick.slug]
+        row.show_on_home = tick.show
+        row.home_order = index
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Locations saved."})
