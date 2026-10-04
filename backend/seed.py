@@ -34,6 +34,7 @@ from models.user import User, UserRole
 from models.study_abroad import StudyAbroadItem
 from models.collection import Collection as CollectionModel
 from models.site_content import SiteContent
+from models.practice import PracticeItem
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -681,6 +682,26 @@ async def _seed_site_content(session: AsyncSession) -> None:
     print(f"  ✓ {len(blocks)} content blocks seeded")
 
 
+async def _seed_practice(session: AsyncSession) -> None:
+    """Replace the practice content with seed_data/practice.json (rebuilt every run)."""
+    from sqlalchemy import delete
+
+    print("Seeding practice content …")
+    content = json.loads((Path(__file__).parent / "seed_data" / "practice.json").read_text(encoding="utf-8"))
+    rows = []
+    for kind, field, key_of in [
+        ("stimulus", "stimuli", lambda x: x["id"]),
+        ("question", "questions", lambda x: x["id"]),
+        ("test", "tests", lambda x: x["slug"]),
+    ]:
+        for position, item in enumerate(content[field]):
+            rows.append(PracticeItem(id=uuid.uuid4(), kind=kind, key=key_of(item), position=position, data=item))
+    await session.execute(delete(PracticeItem))
+    session.add_all(rows)
+    await session.commit()
+    print(f"  ✓ {len(rows)} practice items seeded")
+
+
 async def _seed_admin(session: AsyncSession) -> None:
     """Create the ADMIN user from ADMIN_EMAIL / ADMIN_PASSWORD (env only).
 
@@ -724,6 +745,7 @@ async def main() -> None:
         await _seed_study_abroad(session)
         await _seed_collections(session)
         await _seed_site_content(session)
+        await _seed_practice(session)
         await _seed_admin(session)
         await _sync_meilisearch(session)
     await engine.dispose()
