@@ -41,7 +41,11 @@ export async function resolveComparison(
 ): Promise<{ curated: CuratedComparison | null; colleges: CollegeDetail[] } | null> {
   const curated = curatedBySlug(slug);
   if (curated) {
-    return { curated, colleges: await collegesBySlugs(curated.collegeSlugs) };
+    const colleges = await collegesBySlugs(curated.collegeSlugs);
+    // A curated pair whose colleges are not in the API (e.g. not seeded yet, or the
+    // API unreachable during a build) is a 404, not a page with nothing to compare.
+    if (colleges.length !== curated.collegeSlugs.length) return null;
+    return { curated, colleges };
   }
 
   const parts = slug.split("-vs-");
