@@ -222,5 +222,25 @@
     "nmat",
     "cmat",
     "mah-cet"
-  ]
+  ],
+  "home.copy": {
+    "hero": {
+      "headline": "Find Colleges, Courses & Exams That Are Best For You",
+      "subheadline": "Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts.",
+      "searchPlaceholder": "Search by college, course or exam",
+      "searchButton": "Search"
+    },
+    "locations": {
+      "eyebrow": "Destination hubs",
+      "heading": "Where Ambition Meets",
+      "accent": "Opportunity",
+      "subheading": ""
+    },
+    "streams": {
+      "eyebrow": "",
+      "heading": "Chart Your Discipline.",
+      "accent": "Shape Your Tomorrow.",
+      "subheading": "Pick a stream to see its colleges, entrance exams, fees and placement records."
+    }
+  }
 }

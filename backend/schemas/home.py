@@ -58,7 +58,34 @@ class RecommendedUniversitySchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class HeroCopySchema(BaseModel):
+    headline: str = "Find Colleges, Courses & Exams That Are Best For You"
+    subheadline: str = "Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts."
+    searchPlaceholder: str = "Search by college, course or exam"
+    searchButton: str = "Search"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class SectionCopySchema(BaseModel):
+    eyebrow: str = ""
+    heading: str
+    accent: str = ""
+    subheading: str = ""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class HomeCopySchema(BaseModel):
+    hero: HeroCopySchema = HeroCopySchema()
+    locations: SectionCopySchema = SectionCopySchema(eyebrow="Destination hubs", heading="Where Ambition Meets", accent="Opportunity")
+    streams: SectionCopySchema = SectionCopySchema(heading="Chart Your Discipline.", accent="Shape Your Tomorrow.", subheading="Pick a stream to see its colleges, entrance exams, fees and placement records.")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class HomeDataSchema(BaseModel):
+    homeCopy: HomeCopySchema = HomeCopySchema()
     featuredColleges: List[CollegeListSchema]
     featuredExams: List[ExamSchema]
     locations: List[LocationSchema]
