@@ -51,6 +51,17 @@ class ExamService:
             raise NotFoundError("Exam")
         return _to_schema(exam)
 
+    async def get_by_slugs(self, slugs: List[str]) -> List[ExamSchema]:
+        """Exams for the given slugs, in that order. Unknown slugs are skipped."""
+        from sqlalchemy import select
+        from models.exam import Exam
+
+        if not slugs:
+            return []
+        rows = (await self.repo.db.execute(select(Exam).where(Exam.slug.in_(slugs)))).scalars().all()
+        by_slug = {e.slug: e for e in rows}
+        return [_to_schema(by_slug[s]) for s in slugs if s in by_slug]
+
     async def get_featured(self, limit: int = 6) -> List[ExamSchema]:
         exams = await self.repo.get_featured(limit=limit)
         return [_to_schema(e) for e in exams]

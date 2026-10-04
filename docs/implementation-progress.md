@@ -109,35 +109,143 @@ Global error handlers (AppException, ValidationError, 500), CORS, structured log
 
 ---
 
-## ❌ NOT DONE YET (Phase 3 scope)
+## ✅ PHASE 3 — COMPLETE
 
-### Pages Not Yet Wired
-| Page | Route | Notes |
+### Backend Additions
+
+| Item | Status |
+|---|---|
+| Migration `004_courses_specialisations.py` — `course_catalogue`, `specialisations` | ✅ |
+| Migration `005_rankings.py` — `ranking_lists`, `ranking_entries` | ✅ |
+| Courses API: `GET /courses` (paged, `stream`, `level`), `GET /courses/slugs`, `GET /courses/{slug}` (with specialisations) | ✅ |
+| Rankings API: `GET /rankings`, `GET /rankings/{slug}` | ✅ |
+| Colleges: `course` filter on `GET /colleges` (was accepted but ignored) | ✅ |
+| Auth: `POST /auth/login`, `POST /auth/refresh` | ✅ |
+| Admin API (ADMIN role required): `GET /admin/colleges`, `PATCH`/`DELETE /admin/colleges/{slug}`, `PATCH /admin/exams/{slug}`, `POST`/`PATCH`/`DELETE /admin/articles`, `GET`/`PATCH /admin/leads` | ✅ |
+| Sitemap source: `GET /sitemap/{colleges,exams,articles,courses}` (slug lists) | ✅ |
+| Seed: course catalogue (6 courses with specialisations), 3 ranking lists, optional admin user from env | ✅ |
+
+### Fixes found while running the backend for the first time in this phase
+
+| Issue | Fix |
+|---|---|
+| Migrations 001 and 004: JSONB `server_default="'[]'"` rendered as a doubly quoted literal (invalid JSON), so a fresh database could not migrate | `sa.text("'[]'")` |
+| Enum columns persisted member names (`PRIVATE`) while the database stores values (`Private`) | `values_callable` on the 5 enum columns |
+| `seed.py`: the entry point ran before the course and ranking helpers were defined | Entry point moved to the end of the file |
+| `colleges?course=` returned every college | Filter added to the repository (`EXISTS` subquery) |
+
+### Frontend Integration
+
+| Page / File | Was | Now |
 |---|---|---|
-| Collections listing | `/colleges/[slug]` | Needs collections CMS API |
-| Compare | `/compare`, `/compare/[slug]` | Needs compare session/storage |
-| Courses | `/courses`, `/courses/[slug]` | Needs courses API |
-| Study Abroad | `/study-abroad` | Static for now |
-| Search results | `/search` | Needs search results page |
-| Auth screens | `/login`, `/register`, `/forgot-password` | UI exists; backend auth wired |
-| Admin panel | `/admin/**` | UI exists; needs admin CRUD APIs |
-| College sections | `/college/[slug]/[section]` | Needs section-specific endpoints |
-| Practice | `/practice/**`, `/exams/[slug]/practice` | Practice data is local |
-| Enquiry page | `/enquiry` | Form exists; route handler wired |
+| `src/lib/api.ts` | Phase 2 client | + `ApiError` (carries status), `getCourses`, `getCourse`, `getCourseSlugs`, `getRankings`, `getRanking`, `getCollegeOrNull`, `loginUser`, `refreshToken`, `getSitemapSlugs`; `CollegeDetail` type (nullable placement); public reads revalidate every 60s |
+| `(site)/courses/page.tsx` | mock `courses[]` | `getCourses()` + `getHomeData()` for streams |
+| `(site)/courses/[slug]/page.tsx` | mock `courses[]`, `colleges[]`, `exams[]`, `specialisations[]` | `getCourse()` + `getColleges({course})` + `getExams()`; 404 only for a 404 |
+| `(site)/compare/page.tsx` | mock colleges | colleges resolved via API; curated copy stays in `comparison-data.ts` |
+| `(site)/compare/[slug]/page.tsx` | mock colleges | `resolveComparison()` (API) + `getSimilarColleges()` + `getColleges()` for the picker |
+| `lib/comparison-resolve.ts` (new) | — | Server-side resolution, kept out of client bundles |
+| `components/compare-tray.tsx` | validated slugs against mock directory | stores `{slug, name}` entries; no directory lookup |
+| `(site)/[stream]/colleges/page.tsx` | mock streams, courses, locations fallback | `getHomeData()` (memoised) + `getCourses({stream})` + `getLocations()`; errors reach the error boundary |
+| `(site)/location/[slug]/page.tsx` | mock fallbacks | API only; 404 only for a 404 |
+| `(site)/college/[slug]/[section]/page.tsx` | mock colleges (static params + lookups) | `getCollegeSlugs()` + `getCollegeOrNull()`; placement empty state |
+| `app/sitemap.ts` (new) | — | Route-level sitemap from the backend slug endpoints; base URL from `NEXT_PUBLIC_SITE_URL` |
+| `(auth)/login` | stub: routed to `/admin` with no check | Server Action `signIn`: checks the ADMIN role, sets an httpOnly session cookie |
+| `app/admin/layout.tsx` | no guard | Redirects to `/login` without a session cookie |
+| `app/admin/colleges/page.tsx` | mock colleges | Admin API with session token; each row loaded in detail |
+| `app/admin/exams/page.tsx` | mock exams | `getExams()` (public list) |
+| `admin-sidebar.tsx` logout | link to `/login` | Clears the session cookie |
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `alembic upgrade head` on a fresh database | ✅ (5 revisions) |
+| `python seed.py` | ✅ 16 colleges, 10 exams, 6 courses, 3 ranking lists; admin user created from env |
+| API smoke tests (courses, rankings, college filters, sitemap, admin 401 without a token, login, wrong password, refresh) | ✅ |
+| `tsc --noEmit` on source | ✅ |
+| `next build` | ✅ (317 pages, sitemap included) |
+| `eslint` on every touched file | ✅ |
+| Running app: `/courses`, `/courses/mba`, `/compare`, `/compare/[a]-vs-[b]`, `/[stream]/colleges`, `/location/[slug]`, `/college/[slug]/[section]`, `/exams/[slug]`, `/sitemap.xml` | ✅ 200, and 404 for unknown slugs |
+| `/admin/*` without a session | ✅ redirects to `/login` |
+| `/admin/*` with a valid admin token | ✅ renders seeded data |
+| `/admin/*` with an invalid token | ✅ redirects to `/login` |
+| Browser test of the login form and sign-out | ❌ not run (no browser in this environment) |
+| Backend automated test suite | ❌ none exists in the repo yet |
+
+---
+
+## 🔄 PHASE 4 — IN PROGRESS
+
+### Done
+| Item | Status |
+|---|---|
+| Collections stored in the database (migration 007, seeded from `seed_data/collections.json`) | ✅ |
+| `GET /collections/homepage`, `/collections/footer`, `/collections/slugs`, `/collections/{slug}/page` | ✅ |
+| Home page bands, site footer columns, `/colleges/[slug]` collection pages read the API | ✅ |
+| Search results page `/search?q=` (colleges, exams, cities) | ✅ |
+| Admin dashboard figures from `GET /admin/dashboard` (no sample data) | ✅ |
+| Admin rankings: list, create, replace (details and ordered entries), delete refused while a collection uses the list; colleges must exist, appear once, and have unique ranks | ✅ |
+| Saves no longer clear fields on editor tabs that are not on screen | ✅ |
+| Homepage hero, locations heading and streams heading: stored copy (`home.copy`), edited per section; the public page reads it, with the defaults as the fallback when the API is down | ✅ |
+| Recommended programmes row (three, ordered, `home.recommendedPrograms`) and the programme records (`/admin/programs`): create, edit; a programme in the row cannot be deleted | ✅ |
+| Top exams row: an ordered list of up to six exams (`home.topExams`), replacing the unordered featured flag the homepage used. The exams admin's featured flag still drives the exam listing filter | ✅ |
+| Explore Careers panels and Data tiles: stored in `site_content` (seeded from the former constants), edited on the API; the public homepage reads them from storage. Links must be site paths | ✅ |
+| Admin homepage bands: choose, order, cards and visibility; saved as one set; only published collections can be placed; the preview is resolved the same way the public page is | ✅ |
+| Delete from the edit form: programmes (refused while in the homepage row); collections (not on the homepage; a live collection needs its slug typed to confirm, and its URL then returns 404) | ✅ |
+| Admin collections: list, create, edit (scope, ordered colleges, ranking, placements, search copy, FAQs, publish). Every reference is checked; publishing needs a college and meta title and description | ✅ |
+| Admin courses and specialisations: list, create, edit (stored fields only), parent-course change; name and stream copied to specialisations; cached course pages revalidated | ✅ |
+| Admin leads inbox `/admin/leads`: status filter, pagination, status change (the nav link previously led to a missing page) | ✅ |
+| Lead update returns 400 for a malformed id, 404 for an unknown one (previously a server error) | ✅ |
+| Checked in the running app: home band, footer, search matches, collection page, unknown slug 404 | ✅ |
+
+Note: the collection page subtitle is now "N colleges" (the scope description it had before is not carried over yet).
+
+### Still to do in Phase 4
+| Item |
+|---|
+| Admin collections editor on the API (membership picker, scope, placements, SEO, publishing) |
+| Admin editor for the collection placements and SEO fields |
+
+---
+
+## ❌ NOT DONE YET (carried into the next phase)
+
+### Pages Still on Mock Data
+| Page / Component | Why |
+|---|---|
+| `collections-data.ts` (admin collections editor only) | Public site reads collections from the API; the admin editor still uses the mock module |
+| `rankings-data.ts` | Still used by the admin collections editor |
+| Practice (`/practice/**`, `/exams/[slug]/practice/**`) | Practice content is local |
+
+| Compare verdict copy (`curatedComparisons`) | Editorial text; intentionally kept in code |
+
+### Admin Gaps
+| Gap | Notes |
+|---|---|
+| College edit: placements, cutoffs, reviews, media, SEO not stored | Shown in the form with a notice; no backend write path yet |
+| Admin list shows records loaded one by one | Each college row is read in detail (up to 200 requests); an admin list with detail fields would remove this |
+| Known issue | Five collections order by ranking slugs that are not in the database (`management-bengaluru`, `engineering-india`, `medical-neet`, `management-cat`); those collections fall back to the editor's order |
+| Logout does not revoke tokens | Stateless JWT; the cookie is cleared, the token stays valid until it expires |
+| Recommended colleges row on the homepage | Now an ordered list (`home.recommendedUniversities`, at most three), seeded with today's three. This replaces the rating-based pick, so the editor decides the order |
+| City and stream lists on the homepage | Derived from the directory; their order is not editable |
 
 ### Backend Features Not Yet Built
 | Feature | Notes |
 |---|---|
-| Admin CRUD APIs | Role-gated create/update/delete for all entities |
-| Token refresh | `POST /auth/refresh` |
 | OTP verification | `POST /auth/otp/send` + `/verify` |
 | Review submission | `POST /colleges/:slug/reviews` |
 | Collections API | `GET /collections`, `GET /collections/:slug` |
-| Courses catalogue API | `GET /courses`, `GET /courses/:slug` |
-| Shortlist / compare | Requires user accounts |
+| Shortlist for students | Requires student sessions in the frontend |
 | WhatsApp/CRM lead integration | Third-party |
-| Sitemaps / IndexNow | SEO infrastructure |
+| IndexNow | SEO infrastructure |
 | College predictor | Phase 3 per client proposal |
+
+### Known Issues
+| Issue | Notes |
+|---|---|
+| Meilisearch sync skipped in the local seed | `meilisearch` Python package not installed in this environment |
+| College `course` filter matches by name | Exact name or a variant; renaming a course in the catalogue breaks the link |
+| Public pages fetch through `apiFetch` with a 60s revalidation | Pages are prerendered where they have `generateStaticParams`; others render per request |
 
 ---
 
@@ -183,4 +291,13 @@ MEILISEARCH_API_KEY=change_this_master_key_in_production
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ENQUIRY_FORWARD_URL=http://localhost:8000/api/v1/leads
 REGISTER_FORWARD_URL=http://localhost:8000/api/v1/auth/register
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
+
+**Admin sign-in account** (optional, read by `seed.py` only; never hardcoded):
+```
+ADMIN_EMAIL=<admin email>
+ADMIN_PASSWORD=<admin password>
+ADMIN_NAME=Admin
+```
+Set these for the seed run, then clear them from the shell. The account is created only when the email does not already exist.

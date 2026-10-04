@@ -15,10 +15,8 @@
  */
 
 import {
-  type CorrectAnswer,
   type MockTest,
   type Question,
-  questionById,
   questionsForTest,
 } from "@/lib/practice-data";
 
@@ -271,24 +269,6 @@ export type QuestionResult = {
   secondsSpent: number;
 };
 
-function isCorrect(correct: CorrectAnswer, saved: Response["saved"]): boolean {
-  if (!saved) return false;
-
-  if (correct.kind === "options") {
-    if (!("optionIds" in saved)) return false;
-    // Exact set match — a partially right multi-select is not right.
-    const given = new Set(saved.optionIds);
-    return (
-      given.size === correct.optionIds.length && correct.optionIds.every((id) => given.has(id))
-    );
-  }
-
-  if (!("value" in saved)) return false;
-  const parsed = Number.parseFloat(saved.value.trim());
-  if (!Number.isFinite(parsed)) return false;
-  return Math.abs(parsed - correct.value) <= correct.tolerance;
-}
-
 export type AttemptResult = {
   test: MockTest;
   results: QuestionResult[];
@@ -314,90 +294,6 @@ export type AttemptResult = {
   topics: { topic: string; correct: number; total: number; secondsSpent: number }[];
 };
 
-export function scoreAttempt(test: MockTest, attempt: Attempt): AttemptResult {
-  const results: QuestionResult[] = flatQuestions(test).map((question) => {
-    const response = attempt.responses[question.id] ?? { status: "not-visited", secondsSpent: 0 };
-
-    /*
-      A question marked for review without a saved answer scores nothing, and
-      that is not a bug in the scoring — it is the consequence the real paper
-      applies too. Only "answered" and "answered & marked" carry a response.
-    */
-    const hasAnswer = Boolean(response.saved);
-    const right = hasAnswer && isCorrect(question.correct, response.saved);
-
-    const outcome: QuestionResult["outcome"] = !hasAnswer
-      ? "skipped"
-      : right
-        ? "correct"
-        : "incorrect";
-
-    return {
-      question,
-      status: response.status,
-      saved: response.saved,
-      outcome,
-      marksAwarded: outcome === "correct" ? question.marks : outcome === "incorrect" ? -question.negativeMarks : 0,
-      secondsSpent: response.secondsSpent,
-    };
-  });
-
-  const correct = results.filter((r) => r.outcome === "correct").length;
-  const incorrect = results.filter((r) => r.outcome === "incorrect").length;
-  const skipped = results.filter((r) => r.outcome === "skipped").length;
-  const attempted = correct + incorrect;
-
-  /*
-    Sliced by position, not filtered on `Question.sectionId`.
-
-    A test section owns an ordered list of question ids; a question carries the
-    id of the section it was written for. Those coincide in a normal paper and
-    diverge the moment a paper reuses questions — a mixed sample set drawing
-    from three source sections into one, say — at which point a filter on
-    sectionId matches nothing and every section reports as empty.
-  */
-  let cursor = 0;
-  const sections = test.sections.map((section) => {
-    const rows = results.slice(cursor, cursor + section.questionIds.length);
-    cursor += section.questionIds.length;
-    return {
-      id: section.id,
-      label: section.label,
-      score: rows.reduce((t, r) => t + r.marksAwarded, 0),
-      maxScore: rows.reduce((t, r) => t + r.question.marks, 0),
-      correct: rows.filter((r) => r.outcome === "correct").length,
-      incorrect: rows.filter((r) => r.outcome === "incorrect").length,
-      skipped: rows.filter((r) => r.outcome === "skipped").length,
-      secondsSpent: rows.reduce((t, r) => t + r.secondsSpent, 0),
-    };
-  });
-
-  const topicMap = new Map<string, { correct: number; total: number; secondsSpent: number }>();
-  for (const row of results) {
-    const entry = topicMap.get(row.question.topic) ?? { correct: 0, total: 0, secondsSpent: 0 };
-    entry.total += 1;
-    entry.secondsSpent += row.secondsSpent;
-    if (row.outcome === "correct") entry.correct += 1;
-    topicMap.set(row.question.topic, entry);
-  }
-
-  return {
-    test,
-    results,
-    score: results.reduce((t, r) => t + r.marksAwarded, 0),
-    maxScore: results.reduce((t, r) => t + r.question.marks, 0),
-    attempted,
-    correct,
-    incorrect,
-    skipped,
-    accuracy: attempted === 0 ? 0 : (correct / attempted) * 100,
-    totalSeconds: results.reduce((t, r) => t + r.secondsSpent, 0),
-    sections,
-    topics: [...topicMap.entries()]
-      .map(([topic, v]) => ({ topic, ...v }))
-      .sort((a, b) => a.correct / a.total - b.correct / b.total),
-  };
-}
 
 /* ------------------------------------------------------------------ *
    Persistence
@@ -470,4 +366,30 @@ export function formatDuration(seconds: number): string {
   return `${Math.floor(safe / 60)}m ${safe % 60}s`;
 }
 
-export { questionById };
+/* ------------------------------------------------------------------ *
+   The result of a submitted attempt
+
+   The server scores the attempt and returns the result. It is kept in
+   sessionStorage so the result screen can show it after the navigation.
+ * ------------------------------------------------------------------ */
+
+const resultKeyFor = (testSlug: string) => `tcp.practice.result.${testSlug}`;
+
+export function storeResult(testSlug: string, result: AttemptResult): void {
+  try {
+    sessionStorage.setItem(resultKeyFor(testSlug), JSON.stringify(result));
+  } catch {
+    /* Storage unavailable: the result screen will say there is nothing to show. */
+  }
+}
+
+export function loadResult(testSlug: string): AttemptResult | null {
+  try {
+    const raw = sessionStorage.getItem(resultKeyFor(testSlug));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AttemptResult;
+    return parsed.test?.slug === testSlug ? parsed : null;
+  } catch {
+    return null;
+  }
+}

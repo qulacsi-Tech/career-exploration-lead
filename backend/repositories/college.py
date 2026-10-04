@@ -32,6 +32,17 @@ def _apply_filters(stmt, params: CollegeFilterParams):
         stmt = stmt.where(College.approvals.contains([params.approval]))
     if params.exam:
         stmt = stmt.where(College.exams_accepted.contains([params.exam]))
+    if params.course:
+        # Matches the course name itself or a variant ("MBA" vs "MBA (Online)").
+        # EXISTS keeps one row per college, unlike a join.
+        stmt = stmt.where(
+            College.courses.any(
+                or_(
+                    Course.name.ilike(params.course),
+                    Course.name.ilike(f"{params.course} %"),
+                )
+            )
+        )
     if params.ranking_max:
         stmt = stmt.where(College.ranking_rank <= params.ranking_max)
     if params.q:

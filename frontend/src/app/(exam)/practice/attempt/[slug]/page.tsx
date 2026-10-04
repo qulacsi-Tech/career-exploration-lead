@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { testBySlug } from "@/lib/practice-data";
+import { getPracticeTest } from "@/lib/api";
 import { TestPlayerMount } from "@/components/practice/test-player-mount";
 
 export async function generateMetadata({
@@ -9,7 +9,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const test = testBySlug(slug);
+  const test = await getPracticeTest(slug);
   return { title: test ? `${test.title} — in progress` : "Test not found" };
 }
 
@@ -31,7 +31,7 @@ export default async function AttemptPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const test = testBySlug(slug);
+  const test = await getPracticeTest(slug);
   if (!test || !test.isPublished) notFound();
 
   /*

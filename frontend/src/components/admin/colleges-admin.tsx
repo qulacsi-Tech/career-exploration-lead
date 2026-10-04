@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { College } from "@/lib/mock-data";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { createCollege } from "@/lib/admin-actions";
+import type { College } from "@/lib/api";
 import {
   programs,
   rankingListsForProgram,
@@ -10,7 +11,6 @@ import {
 } from "@/lib/rankings-data";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
-import { auditCollege } from "@/lib/college-audit";
 import { CollegeEditModal } from "@/components/admin/college-edit-modal";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
 
@@ -149,7 +149,6 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
                 <th scope="col" className="py-2 pr-3 font-semibold">Stream</th>
                 <th scope="col" className="py-2 pr-3 font-semibold">Courses</th>
                 <th scope="col" className="py-2 pr-3 font-semibold">Rating</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">Checks</th>
                 <th scope="col" className="py-2 pl-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -169,9 +168,6 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
                   <td className="py-3 pr-3 text-ink-soft">
                     {college.rating}
                     <span className="text-ink-faint"> ({college.reviewCount})</span>
-                  </td>
-                  <td className="py-3 pr-3">
-                    <CheckBadge college={college} />
                   </td>
                   <td className="py-3 pl-3">
                     <div className="flex justify-end gap-2">
@@ -196,7 +192,7 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-sm text-ink-soft">
+                  <td colSpan={7} className="py-10 text-center text-sm text-ink-soft">
                     {query
                       ? `No colleges match “${query}”.`
                       : "No colleges match the selected filters."}
@@ -299,20 +295,27 @@ function ViewCollegeModal({
             </div>
           </AdminSubsection>
 
-          <AdminSubsection title="Placements" description={`Batch of ${college.placement.year}`}>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
-              <Field label="Average" value={college.placement.average} />
-              <Field label="Median" value={college.placement.median} />
-              <Field label="Highest" value={college.placement.highest} />
-            </dl>
-            <p className="mt-2 text-xs text-ink-soft">
-              Top recruiters: {college.placement.topRecruiters.join(", ")}
-            </p>
+          <AdminSubsection
+            title="Placements"
+            description={college.placement ? `Batch of ${college.placement.year}` : "No placement data"}
+          >
+            {college.placement && (
+              <>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                  <Field label="Average" value={college.placement.average} />
+                  <Field label="Median" value={college.placement.median} />
+                  <Field label="Highest" value={college.placement.highest} />
+                </dl>
+                <p className="mt-2 text-xs text-ink-soft">
+                  Top recruiters: {college.placement.topRecruiters.join(", ")}
+                </p>
+              </>
+            )}
           </AdminSubsection>
 
           <AdminSubsection title="Cutoffs">
             <ul className="space-y-1 text-sm text-ink-soft">
-              {college.cutoffs.map((cutoff) => (
+              {(college.cutoffs ?? []).map((cutoff) => (
                 <li key={`${cutoff.exam}-${cutoff.category}`}>
                   <span className="font-medium text-ink">{cutoff.exam}</span> · {cutoff.category} ·{" "}
                   {cutoff.score}
@@ -334,11 +337,10 @@ function ViewCollegeModal({
             </div>
           </AdminSubsection>
 
-          <AdminSubsection title="SEO" description="Title and meta description.">
-            <dl className="grid grid-cols-1 gap-y-3 text-sm">
-              <Field label="Meta title" value={college.seo?.metaTitle || "— generated"} />
-              <Field label="Meta description" value={college.seo?.metaDescription || "— uses About"} />
-            </dl>
+          <AdminSubsection title="SEO" description="Title, meta description, canonical and schema.">
+            <p className="rounded-lg border border-dashed border-line bg-bg-alt px-4 py-5 text-center text-xs text-ink-soft">
+              No SEO fields on the record yet — they arrive with the colleges API.
+            </p>
           </AdminSubsection>
         </div>
       )}
@@ -380,18 +382,25 @@ function AddCollegeModal({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 function AddCollegeForm({ onDone }: { onDone: () => void }) {
+  const [state, formAction, pending] = useActionState(createCollege, undefined);
+
+  // Close once the API has accepted the college; a failure stays open with its message.
+  useEffect(() => {
+    if (state && "ok" in state) onDone();
+  }, [state, onDone]);
+
   return (
     <form
       id="add-college-form"
-      onSubmit={(e) => {
-        // Nothing is persisted: there is no colleges endpoint to post to yet.
-        // Wire this when the API exists rather than inventing a request shape
-        // it then has to match.
-        e.preventDefault();
-        onDone();
-      }}
+      action={formAction}
       className="grid grid-cols-1 gap-4 sm:grid-cols-2"
     >
+      {state && "error" in state && (
+        <p role="alert" className="text-sm text-red-700 sm:col-span-2">
+          {state.error}
+        </p>
+      )}
+      {pending && <p className="text-xs text-ink-soft sm:col-span-2">Saving…</p>}
       <NameSlugFields
         nameLabel="College name"
         namePlaceholder="Bengaluru Institute of Management"
@@ -424,26 +433,5 @@ function AddCollegeForm({ onDone }: { onDone: () => void }) {
         />
       </div>
     </form>
-  );
-}
-
-/**
- * Mismatch count from the consistency checks — where this record contradicts
- * itself on the public page. Fallback gaps are left to the editor's panel:
- * nearly every seed record has some, and a column of them would hide the
- * records with real contradictions.
- */
-function CheckBadge({ college }: { college: College }) {
-  const mismatches = auditCollege(college).filter((issue) => issue.kind === "mismatch");
-  if (mismatches.length === 0) {
-    return <span className="text-xs text-ink-faint">OK</span>;
-  }
-  return (
-    <span
-      title={mismatches.map((issue) => issue.message).join(" · ")}
-      className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand-ink"
-    >
-      {mismatches.length} mismatch{mismatches.length > 1 ? "es" : ""}
-    </span>
   );
 }

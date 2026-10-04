@@ -314,7 +314,7 @@ export function CollegeMasthead({
             </button>
             <button
               type="button"
-              onClick={() => toggle(slug)}
+              onClick={() => toggle({ slug, name })}
               disabled={compareDisabled}
               aria-pressed={comparing}
               title={compareDisabled ? "The compare tray is full" : undefined}

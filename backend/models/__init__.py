@@ -13,3 +13,10 @@ from models.article import Article  # noqa: F401
 from models.program import Program  # noqa: F401
 from models.lead import Lead, LeadType, LeadStatus  # noqa: F401
 from models.newsletter import NewsletterSubscriber  # noqa: F401
+from models.course_catalogue import CourseCatalogue  # noqa: F401
+from models.specialisation import Specialisation  # noqa: F401
+from models.ranking import RankingList, RankingEntry  # noqa: F401
+from models.study_abroad import StudyAbroadItem  # noqa: F401
+from models.collection import Collection  # noqa: F401
+from models.site_content import SiteContent  # noqa: F401
+from models.practice import PracticeItem  # noqa: F401

@@ -1,0 +1,1917 @@
+{
+  "stimuli": [
+    {
+      "id": "cat-rc-1",
+      "kind": "passage",
+      "label": "Passage 1",
+      "body": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The distinction between a craft and a profession is usually drawn at the point where a body of knowledge becomes formal enough to be taught rather than absorbed. A craftsman learns by proximity — by watching someone competent and repeating what they did until the hands know it. A professional learns by instruction, from material that has been abstracted away from any particular workshop and written down."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "This abstraction is what makes a profession portable. A surgeon trained in one hospital can operate in another; a joiner trained in one workshop may find that the next one does everything differently. But portability is bought at a price that is rarely counted. What is written down is what can be written down, and a great deal of what makes a craftsman good resists the page entirely — the judgement of when a rule does not apply, the recognition that a job has gone wrong before anything visibly has."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Where a field professionalises quickly, this tacit remainder tends to be dismissed rather than preserved, because the people doing the formalising are the ones who have already decided that what matters can be formalised. The result is a discipline that is confident, teachable, and quietly poorer than the craft it replaced. Whether that trade is worth making depends almost entirely on how much of the original craft was tacit — a question that, by construction, the formalisers are the least equipped to answer."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "cat-dilr-1",
+      "kind": "caselet",
+      "label": "Caselet: regional airline routes",
+      "body": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A regional airline operates between five cities — Ahmedabad, Bhopal, Cochin, Durgapur and Erode. The bar chart below shows the number of passengers (in thousands) carried on each route during the last quarter."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "/images/practice/dilr-route-passengers.svg",
+              "alt": "Bar chart of quarterly passengers in thousands on six airline routes, with values labelled above each bar.",
+              "width": 640,
+              "height": 380
+            }
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "No route was operated in both directions by the same aircraft, and every route listed was operated on every day of the quarter."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "cat-varc-1",
+      "examSlug": "cat",
+      "sectionId": "varc",
+      "stimulusId": "cat-rc-1",
+      "topic": "Reading Comprehension",
+      "difficulty": "medium",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Which of the following best captures the central argument of the passage?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Professions are superior to crafts because their knowledge can be taught systematically."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Formalising a craft makes its knowledge portable but discards the part of it that resists being written down."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Craftsmen are better practitioners than professionals because they learn by watching rather than by instruction."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The distinction between crafts and professions is arbitrary and reflects social status rather than knowledge."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "b"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The passage grants professionalisation a real benefit — portability — and then argues it is bought at an uncounted cost, the tacit knowledge that cannot be written down. (B) carries both halves."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "(A) and (C) each take only one side and turn it into a ranking the passage never makes. (D) contradicts the passage, which treats the distinction as substantive and locates it precisely."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 1,
+      "expectedSeconds": 90
+    },
+    {
+      "id": "cat-varc-2",
+      "examSlug": "cat",
+      "sectionId": "varc",
+      "stimulusId": "cat-rc-1",
+      "topic": "Reading Comprehension",
+      "difficulty": "hard",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The author's remark that the formalisers are 'the least equipped to answer' the closing question is best explained by which of the following?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "They lack the technical training needed to evaluate a craft objectively."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "They have a financial interest in the outcome of the comparison."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Their premise — that what matters can be written down — is precisely what the question asks them to assess."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "They were never practitioners of the craft they formalised."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "c"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The word doing the work is 'by construction'. The formalisers were defined earlier as those who have already decided that what matters can be formalised. Asking them how much was tacit asks them to weigh evidence their starting assumption rules out — a circularity, not a shortage of skill, money or experience."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 1,
+      "expectedSeconds": 110
+    },
+    {
+      "id": "cat-varc-3",
+      "examSlug": "cat",
+      "sectionId": "varc",
+      "stimulusId": "cat-rc-1",
+      "topic": "Reading Comprehension",
+      "difficulty": "medium",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "According to the passage, what makes a profession portable?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Formal certification recognised across institutions."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Knowledge abstracted away from any particular workshop and written down."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "The prestige that attaches to professional titles."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Longer and more rigorous periods of training."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "b"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Stated directly in the second paragraph: abstraction from any particular workshop is what allows a surgeon trained in one hospital to operate in another. Certification, prestige and training length are never mentioned."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 1,
+      "expectedSeconds": 70
+    },
+    {
+      "id": "cat-dilr-1",
+      "examSlug": "cat",
+      "sectionId": "dilr",
+      "stimulusId": "cat-dilr-1",
+      "topic": "Data Interpretation",
+      "difficulty": "easy",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Which route carried the greatest number of passengers during the quarter?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Ahmedabad – Bhopal"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Bhopal – Cochin"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Cochin – Durgapur"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Durgapur – Erode"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "c"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Cochin – Durgapur is the tallest bar at 62 thousand, ahead of Ahmedabad – Bhopal at 54 thousand."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 1,
+      "expectedSeconds": 45
+    },
+    {
+      "id": "cat-dilr-2",
+      "examSlug": "cat",
+      "sectionId": "dilr",
+      "stimulusId": "cat-dilr-1",
+      "topic": "Data Interpretation",
+      "difficulty": "medium",
+      "type": "tita",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "What was the total number of passengers, in thousands, carried on all six routes during the quarter?"
+              }
+            ]
+          }
+        ]
+      },
+      "correct": {
+        "kind": "value",
+        "value": 248,
+        "tolerance": 0
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Reading the six bars: 54 + 38 + 62 + 29 + 41 + 24 = 248 thousand."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A TITA question carries no negative marking, so there is no reason to leave an arithmetic question like this blank once the chart has been read."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 0,
+      "expectedSeconds": 75
+    },
+    {
+      "id": "cat-qa-1",
+      "examSlug": "cat",
+      "sectionId": "qa",
+      "topic": "Arithmetic",
+      "difficulty": "easy",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A shopkeeper marks an item 40% above cost and then offers a discount of 25% on the marked price. What is the profit percentage?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "5%"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "10%"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "15%"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "20%"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "a"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Take the cost as 100. Marked price is 140; a 25% discount gives a selling price of 140 × 0.75 = 105. Profit is 5 on 100, so 5%."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 1,
+      "expectedSeconds": 60
+    },
+    {
+      "id": "cat-qa-2",
+      "examSlug": "cat",
+      "sectionId": "qa",
+      "topic": "Geometry",
+      "difficulty": "hard",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "In triangle ABC below, AD is drawn to BC such that BD : DC = 2 : 3. If the area of triangle ABD is 24 square units, what is the area of triangle ABC?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "/images/practice/geometry-cevian.svg",
+              "alt": "Triangle ABC with vertex A at the top and base BC horizontal. A line segment AD is drawn from A to a point D on BC, dividing the base into segments BD and DC.",
+              "width": 520,
+              "height": 360
+            }
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "40 square units"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "50 square units"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "60 square units"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "72 square units"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "c"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Triangles ABD and ADC share the apex A and therefore the same height above BC. Two triangles of equal height have areas in the ratio of their bases, so [ABD] : [ADC] = BD : DC = 2 : 3."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "With [ABD] = 24, one part is 12, so [ADC] = 36 and [ABC] = 24 + 36 = 60 square units."
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "/images/practice/geometry-cevian-solution.svg",
+              "alt": "The same triangle with the shared perpendicular height from A to BC marked, and the two sub-triangles shaded to show their 2 to 3 area ratio.",
+              "width": 520,
+              "height": 360
+            }
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 1,
+      "expectedSeconds": 120
+    },
+    {
+      "id": "cat-qa-3",
+      "examSlug": "cat",
+      "sectionId": "qa",
+      "topic": "Algebra",
+      "difficulty": "medium",
+      "type": "tita",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "If x + 2y = 14 and 3x − y = 7, what is the value of x + y?"
+              }
+            ]
+          }
+        ]
+      },
+      "correct": {
+        "kind": "value",
+        "value": 9,
+        "tolerance": 0
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "From the second equation, y = 3x − 7. Substituting into the first: x + 2(3x − 7) = 14, so 7x = 28 and x = 4. Then y = 5, and x + y = 9."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 0,
+      "expectedSeconds": 90
+    },
+    {
+      "id": "cat-qa-4",
+      "examSlug": "cat",
+      "sectionId": "qa",
+      "topic": "Number Systems",
+      "difficulty": "medium",
+      "type": "mcq-multi",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Which of the following statements are true for every prime number p greater than 3? Select all that apply."
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "p is odd."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "p² − 1 is divisible by 24."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "p + 1 is divisible by 6."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "p is of the form 6k ± 1 for some integer k."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "a",
+          "b",
+          "d"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "(A) holds because any even number above 2 has a factor of 2. (D) holds because a prime above 3 cannot be 6k, 6k ± 2 (even) or 6k + 3 (divisible by 3). (B) follows from (D): p² − 1 = (p − 1)(p + 1), a product of two consecutive even numbers around a multiple of 6, which is always divisible by 24."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "(C) fails at p = 5, where p + 1 = 6 works, but at p = 7, p + 1 = 8 is not divisible by 6."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 3,
+      "negativeMarks": 1,
+      "expectedSeconds": 140
+    },
+    {
+      "id": "mahcet-ar-1",
+      "examSlug": "mah-cet",
+      "sectionId": "abstract-reasoning",
+      "topic": "Abstract Reasoning",
+      "difficulty": "medium",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Study the sequence below. Which figure comes next?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "/images/practice/ar-sequence-1.svg",
+              "alt": "A sequence of three figures. Each shows a square containing a small filled circle, and from figure to figure the circle moves one corner clockwise.",
+              "width": 640,
+              "height": 180
+            }
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "image",
+                "attrs": {
+                  "src": "/images/practice/ar-option-1a.svg",
+                  "alt": "A square with a filled circle in the top-left corner.",
+                  "width": 160,
+                  "height": 160
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "image",
+                "attrs": {
+                  "src": "/images/practice/ar-option-1b.svg",
+                  "alt": "A square with a filled circle in the bottom-left corner.",
+                  "width": 160,
+                  "height": 160
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "image",
+                "attrs": {
+                  "src": "/images/practice/ar-option-1c.svg",
+                  "alt": "A square with a filled circle in the bottom-right corner.",
+                  "width": 160,
+                  "height": 160
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "image",
+                "attrs": {
+                  "src": "/images/practice/ar-option-1d.svg",
+                  "alt": "A square with a filled circle in the centre.",
+                  "width": 160,
+                  "height": 160
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "b"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The circle advances one corner clockwise in each step: top-left, top-right, bottom-right. The next position is bottom-left, which is option (B)."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 2,
+      "negativeMarks": 0.5,
+      "expectedSeconds": 50
+    },
+    {
+      "id": "mahcet-ar-2",
+      "examSlug": "mah-cet",
+      "sectionId": "abstract-reasoning",
+      "topic": "Abstract Reasoning",
+      "difficulty": "easy",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Which figure does not belong with the others?"
+              }
+            ]
+          },
+          {
+            "type": "image",
+            "attrs": {
+              "src": "/images/practice/ar-odd-one-out.svg",
+              "alt": "Four labelled figures side by side. Three are regular polygons with an even number of sides; one is a five-sided polygon.",
+              "width": 640,
+              "height": 180
+            }
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Figure 1"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Figure 2"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Figure 3"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Figure 4"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "c"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Figures 1, 2 and 4 are regular polygons with an even number of sides — a square, a hexagon and an octagon. Figure 3 is a regular pentagon, the only one with an odd number of sides."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 2,
+      "negativeMarks": 0.5,
+      "expectedSeconds": 40
+    },
+    {
+      "id": "nmat-qs-1",
+      "examSlug": "nmat",
+      "sectionId": "quantitative-skills",
+      "topic": "Arithmetic",
+      "difficulty": "easy",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A train travelling at 60 km/h covers a certain distance in 3 hours. At what speed must it travel to cover the same distance in 2 hours?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "75 km/h"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "80 km/h"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "90 km/h"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "120 km/h"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "c"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The distance is 60 × 3 = 180 km. Covering 180 km in 2 hours needs 90 km/h."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "NMAT carries no negative marking, so there is never a reason to leave a question blank."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 1,
+      "negativeMarks": 0,
+      "expectedSeconds": 55
+    },
+    {
+      "id": "nmat-qs-2",
+      "examSlug": "nmat",
+      "sectionId": "quantitative-skills",
+      "topic": "Percentages",
+      "difficulty": "medium",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The price of a commodity rose by 20% and then fell by 20%. What is the net change from the original price?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "No change"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A 4% decrease"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A 4% increase"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "A 2% decrease"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "b"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Take the price as 100. After a 20% rise it is 120; a 20% fall on 120 removes 24, leaving 96. That is a 4% decrease — the second percentage acts on a larger base than the first, which is why successive equal rises and falls never cancel."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 1,
+      "negativeMarks": 0,
+      "expectedSeconds": 60
+    },
+    {
+      "id": "nmat-ls-1",
+      "examSlug": "nmat",
+      "sectionId": "language-skills",
+      "topic": "Vocabulary",
+      "difficulty": "medium",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Choose the word most nearly opposite in meaning to CANDID as it is used in: 'She gave a candid assessment of the proposal.'"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Guarded"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Hostile"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Detailed"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Hasty"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "a"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Candid here means frank and unreserved, so its opposite is guarded — withholding rather than volunteering. 'Hostile' opposes warmth rather than openness; 'detailed' and 'hasty' address length and speed, neither of which is what candid means."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 1,
+      "negativeMarks": 0,
+      "expectedSeconds": 45
+    },
+    {
+      "id": "nmat-lr-1",
+      "examSlug": "nmat",
+      "sectionId": "logical-reasoning",
+      "topic": "Deductions",
+      "difficulty": "medium",
+      "type": "mcq-single",
+      "stem": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "All accountants in the firm are members of the institute. Some members of the institute are not partners. Which conclusion necessarily follows?"
+              }
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "a",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Some accountants in the firm are not partners."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "b",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "No accountant in the firm is a partner."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "All partners are members of the institute."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "body": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "None of the above necessarily follows."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "correct": {
+        "kind": "options",
+        "optionIds": [
+          "d"
+        ]
+      },
+      "solution": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "The members who are not partners need not be accountants — they could be any other members. So (A) does not follow. (B) overstates it further, and (C) reverses a relationship the premises never state. Nothing necessarily follows."
+              }
+            ]
+          }
+        ]
+      },
+      "marks": 1,
+      "negativeMarks": 0,
+      "expectedSeconds": 80
+    }
+  ],
+  "tests": [
+    {
+      "slug": "cat-mini-mock-1",
+      "examSlug": "cat",
+      "title": "CAT Mini Mock 1",
+      "kind": "full-mock",
+      "summary": "All three CAT sections in miniature, with the section lock the real paper uses. The closest thing here to exam-day conditions.",
+      "totalMinutes": 30,
+      "sectionLock": true,
+      "sections": [
+        {
+          "id": "varc",
+          "label": "VARC",
+          "questionIds": [
+            "cat-varc-1",
+            "cat-varc-2",
+            "cat-varc-3"
+          ],
+          "durationMinutes": 10
+        },
+        {
+          "id": "dilr",
+          "label": "DILR",
+          "questionIds": [
+            "cat-dilr-1",
+            "cat-dilr-2"
+          ],
+          "durationMinutes": 8
+        },
+        {
+          "id": "qa",
+          "label": "QA",
+          "questionIds": [
+            "cat-qa-1",
+            "cat-qa-2",
+            "cat-qa-3",
+            "cat-qa-4"
+          ],
+          "durationMinutes": 12
+        }
+      ],
+      "languages": [
+        "English"
+      ],
+      "attemptsAllowed": null,
+      "isFree": false,
+      "isPublished": true
+    },
+    {
+      "slug": "cat-qa-sectional-1",
+      "examSlug": "cat",
+      "title": "CAT Quantitative Aptitude — Sectional 1",
+      "kind": "sectional",
+      "summary": "Arithmetic, geometry, algebra and number systems, including one type-in-the-answer question. No section lock.",
+      "totalMinutes": 15,
+      "sectionLock": false,
+      "sections": [
+        {
+          "id": "qa",
+          "label": "QA",
+          "questionIds": [
+            "cat-qa-1",
+            "cat-qa-2",
+            "cat-qa-3",
+            "cat-qa-4"
+          ]
+        }
+      ],
+      "languages": [
+        "English"
+      ],
+      "attemptsAllowed": null,
+      "isFree": false,
+      "isPublished": true
+    },
+    {
+      "slug": "cat-sample-set",
+      "examSlug": "cat",
+      "title": "CAT — Free Sample Set",
+      "kind": "sample",
+      "summary": "Three questions, untimed, no account needed. A look at the test player before you sign up.",
+      "totalMinutes": 0,
+      "sectionLock": false,
+      "sections": [
+        {
+          "id": "mixed",
+          "label": "Mixed",
+          "questionIds": [
+            "cat-qa-1",
+            "cat-varc-3",
+            "cat-dilr-1"
+          ]
+        }
+      ],
+      "languages": [
+        "English"
+      ],
+      "attemptsAllowed": null,
+      "isFree": true,
+      "isPublished": true
+    },
+    {
+      "slug": "nmat-mini-mock-1",
+      "examSlug": "nmat",
+      "title": "NMAT Mini Mock 1",
+      "kind": "full-mock",
+      "summary": "All three NMAT sections with no negative marking and no section lock — move between sections freely, as the real test allows.",
+      "totalMinutes": 20,
+      "sectionLock": false,
+      "sections": [
+        {
+          "id": "language-skills",
+          "label": "Language Skills",
+          "questionIds": [
+            "nmat-ls-1"
+          ]
+        },
+        {
+          "id": "quantitative-skills",
+          "label": "Quantitative Skills",
+          "questionIds": [
+            "nmat-qs-1",
+            "nmat-qs-2"
+          ]
+        },
+        {
+          "id": "logical-reasoning",
+          "label": "Logical Reasoning",
+          "questionIds": [
+            "nmat-lr-1"
+          ]
+        }
+      ],
+      "languages": [
+        "English"
+      ],
+      "attemptsAllowed": null,
+      "isFree": false,
+      "isPublished": true
+    },
+    {
+      "slug": "mah-cet-abstract-reasoning-drill",
+      "examSlug": "mah-cet",
+      "title": "MAH CET Abstract Reasoning — Drill 1",
+      "kind": "sectional",
+      "summary": "Figure sequences and odd-one-out, with answer options that are diagrams rather than text.",
+      "totalMinutes": 8,
+      "sectionLock": false,
+      "sections": [
+        {
+          "id": "abstract-reasoning",
+          "label": "Abstract Reasoning",
+          "questionIds": [
+            "mahcet-ar-1",
+            "mahcet-ar-2"
+          ]
+        }
+      ],
+      "languages": [
+        "English"
+      ],
+      "attemptsAllowed": null,
+      "isFree": true,
+      "isPublished": true
+    }
+  ]
+}

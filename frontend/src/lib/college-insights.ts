@@ -12,7 +12,7 @@
  * from those same fields.
  */
 
-import type { College } from "@/lib/mock-data";
+import type { CollegeDetail as College } from "@/lib/api";
 import { colleges } from "@/lib/mock-data";
 
 /**
@@ -108,12 +108,14 @@ export function faqsFor(college: College): Faq[] {
     });
   }
 
-  faqs.push({
-    question: `How are placements at ${college.name}?`,
-    answer: `In ${college.placement.year}, the average package was ${college.placement.average}, the median ${college.placement.median} and the highest ${college.placement.highest}. Top recruiters include ${college.placement.topRecruiters
-      .slice(0, 4)
-      .join(", ")}.`,
-  });
+  if (college.placement) {
+    faqs.push({
+      question: `How are placements at ${college.name}?`,
+      answer: `In ${college.placement.year}, the average package was ${college.placement.average}, the median ${college.placement.median} and the highest ${college.placement.highest}. Top recruiters include ${college.placement.topRecruiters
+        .slice(0, 4)
+        .join(", ")}.`,
+    });
+  }
 
   if (college.cutoffs.length > 0) {
     const first = college.cutoffs[0];
@@ -152,13 +154,23 @@ export function faqsFor(college: College): Faq[] {
    fields directly, so "admin value or fallback" is decided in one place.
  * ------------------------------------------------------------------ */
 
+/**
+ * Editor-set fields the colleges API does not carry yet. The resolvers below
+ * read them when present and fall back to values derived from the record.
+ */
+type EditorFields = {
+  shortName?: string;
+  seo?: { h1Tagline?: string };
+  faqs?: Faq[];
+};
+
 /** "BIMS Bengaluru" — the editor's short name, else initials and city. */
-export function shortNameOf(college: College): string {
+export function shortNameOf(college: College & EditorFields): string {
   return college.shortName?.trim() || `${monogram(college.name)} ${college.city}`;
 }
 
 /** The H1 after the short name. `intake` is the coming admission year. */
-export function taglineOf(college: College, intake: number): string {
+export function taglineOf(college: College & EditorFields, intake: number): string {
   return (
     college.seo?.h1Tagline?.trim() ||
     `Courses, Fees, Admission ${intake}, Placements, Ranking, Scholarships`
@@ -170,28 +182,15 @@ export function taglineOf(college: College, intake: number): string {
  * answers generated from the record. Generated ones whose question an editor
  * has already written are dropped, so the list never asks the same thing twice.
  */
-export function faqsOf(college: College): Faq[] {
-  const written = (college.faqs ?? []).filter((faq) => faq.question.trim() && faq.answer.trim());
-  const asked = new Set(written.map((faq) => faq.question.trim().toLowerCase()));
+export function faqsOf(college: College & EditorFields): Faq[] {
+  const written = (college.faqs ?? []).filter((faq: Faq) => faq.question.trim() && faq.answer.trim());
+  const asked = new Set(written.map((faq: Faq) => faq.question.trim().toLowerCase()));
   return [...written, ...faqsFor(college).filter((faq) => !asked.has(faq.question.toLowerCase()))];
 }
 
-/**
- * Similar colleges: the editor's pinned picks in their order, then the nearest
- * same-stream colleges by rank, then anyone else, up to `limit`.
- */
-export function similarOf(college: College, limit = 8): College[] {
-  const picked = (college.similarSlugs ?? [])
-    .map((slug) => colleges.find((entry) => entry.slug === slug))
-    .filter((entry): entry is College => entry !== undefined && entry.slug !== college.slug);
-  const seen = new Set([college.slug, ...picked.map((entry) => entry.slug)]);
-  const byRank = colleges
-    .filter((entry) => !seen.has(entry.slug))
-    .sort(
-      (a, b) =>
-        Number(b.stream === college.stream) - Number(a.stream === college.stream) ||
-        Math.abs(a.ranking.rank - college.ranking.rank) -
-          Math.abs(b.ranking.rank - college.ranking.rank),
-    );
-  return [...picked, ...byRank].slice(0, limit);
+/** Mean of the category scores — the overall the reviews page leads with. */
+export function overallScore(college: College): number {
+  const rows = college.ratingBreakdown ?? [];
+  if (rows.length === 0) return college.rating;
+  return rows.reduce((total, row) => total + row.score, 0) / rows.length;
 }

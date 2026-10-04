@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Exam } from "@/lib/mock-data";
+import type { Exam } from "@/lib/api";
 import { KeyRound, Target } from "lucide-react";
 
 /**

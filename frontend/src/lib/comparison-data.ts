@@ -21,7 +21,7 @@
  * manual action rather than traffic.
  */
 
-import { colleges, type College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 
 /** The maximum a comparison table stays readable at. */
 export const MAX_COMPARE = 3;
@@ -96,19 +96,19 @@ export const compareRows: CompareRow[] = [
   {
     key: "placement-average",
     label: "Average package",
-    value: (c) => c.placement.average,
-    better: highestWins((c) => lpa(c.placement.average)),
+    value: (c) => c.placement?.average ?? "—",
+    better: highestWins((c) => lpa(c.placement?.average ?? "")),
   },
   {
     key: "placement-highest",
     label: "Highest package",
-    value: (c) => c.placement.highest,
-    better: highestWins((c) => lpa(c.placement.highest)),
+    value: (c) => c.placement?.highest ?? "—",
+    better: highestWins((c) => lpa(c.placement?.highest ?? "")),
   },
   {
     key: "recruiters",
     label: "Top recruiters",
-    value: (c) => c.placement.topRecruiters.slice(0, 4).join(", "),
+    value: (c) => (c.placement?.topRecruiters ?? []).slice(0, 4).join(", ") || "—",
   },
   {
     key: "courses",
@@ -124,8 +124,8 @@ export const compareRows: CompareRow[] = [
     key: "cutoffs",
     label: "Cutoffs",
     value: (c) =>
-      c.cutoffs.length
-        ? c.cutoffs.map((cut) => `${cut.exam} ${cut.category}: ${cut.score}`).join(" · ")
+      c.cutoffs?.length
+        ? (c.cutoffs ?? []).map((cut) => `${cut.exam} ${cut.category}: ${cut.score}`).join(" · ")
         : "—",
   },
   {
@@ -194,11 +194,6 @@ export const curatedComparisons: CuratedComparison[] = [
   },
 ];
 
-export const collegesBySlugs = (slugs: string[]) =>
-  slugs
-    .map((slug) => colleges.find((college) => college.slug === slug))
-    .filter((college): college is College => college !== undefined);
-
 export const curatedBySlug = (slug: string) =>
   curatedComparisons.find((comparison) => comparison.slug === slug);
 
@@ -210,21 +205,6 @@ export const comparisonsFeaturing = (collegeSlug: string) =>
   curatedComparisons.filter((c) => c.collegeSlugs.includes(collegeSlug));
 
 /**
- * Suggested opponents for a college with no curated pair: same program, nearest
- * by rank. Someone comparing is choosing between peers, and a college fifty
- * places away is not a peer.
- */
-export const similarColleges = (college: College, limit = 3) =>
-  colleges
-    .filter((c) => c.slug !== college.slug && c.stream === college.stream)
-    .sort(
-      (a, b) =>
-        Math.abs(a.ranking.rank - college.ranking.rank) -
-        Math.abs(b.ranking.rank - college.ranking.rank),
-    )
-    .slice(0, limit);
-
-/**
  * Builds the canonical URL for an ad-hoc comparison.
  *
  * Slugs are sorted so that picking A then B and picking B then A produce the
@@ -234,29 +214,3 @@ export const similarColleges = (college: College, limit = 3) =>
  */
 export const compareUrl = (slugs: string[]) =>
   `/compare/${[...slugs].sort().join("-vs-")}`;
-
-/**
- * Resolves a `/compare/[slug]` path back to colleges.
- *
- * Curated pages win over the generated form, so an editor can take over a URL
- * that was previously auto-resolving without breaking the link.
- *
- * The generated form splits on "-vs-", which is unambiguous only because no
- * college slug contains it — worth knowing if slugs ever become free text.
- */
-export const resolveComparison = (slug: string) => {
-  const curated = curatedBySlug(slug);
-  if (curated) {
-    return { curated, colleges: collegesBySlugs(curated.collegeSlugs) };
-  }
-
-  const parts = slug.split("-vs-");
-  if (parts.length < 2 || parts.length > MAX_COMPARE) return null;
-
-  const found = collegesBySlugs(parts);
-  // Every part must resolve: a URL naming a college that does not exist is a
-  // 404, not a comparison with a gap in it.
-  if (found.length !== parts.length) return null;
-
-  return { curated: null, colleges: found };
-};

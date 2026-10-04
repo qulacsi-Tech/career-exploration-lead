@@ -60,12 +60,15 @@ export function SelectField({
   options,
   defaultValue,
   className,
+  labelFor,
 }: {
   label: string;
   name: string;
   options: string[];
   defaultValue?: string;
   className?: string;
+  /** Text shown for an option whose value is a key, such as a course slug. */
+  labelFor?: (option: string) => string;
 }) {
   return (
     <div className={className}>
@@ -80,7 +83,7 @@ export function SelectField({
       >
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {labelFor ? labelFor(option) : option}
           </option>
         ))}
       </select>

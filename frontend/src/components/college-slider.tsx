@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 import { TopCollegeCard } from "@/components/top-college-card";
 
 /**

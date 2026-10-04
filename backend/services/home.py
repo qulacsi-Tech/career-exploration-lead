@@ -1,8 +1,10 @@
+from sqlalchemy import select
 """Home service — assembles the single aggregated home-page response."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from schemas.home import (
+    HomeCopySchema,
     CareerPanelLinkSchema,
     CareerPanelSchema,
     DataHighlightLinkSchema,
@@ -118,6 +120,20 @@ _DATA_HIGHLIGHTS = [
 ]
 
 
+async def _stored(db: AsyncSession, key: str, model):
+    """A stored content block as typed models. Missing content is an empty section, not an error."""
+    from models.site_content import SiteContent
+    row = (await db.execute(select(SiteContent).where(SiteContent.key == key))).scalar_one_or_none()
+    return [model.model_validate(item) for item in (row.data if row else [])]
+
+
+async def _stored_value(db: AsyncSession, key: str):
+    """A stored content block: a list (such as ordered slugs), or an object. Missing means None."""
+    from models.site_content import SiteContent
+    row = (await db.execute(select(SiteContent).where(SiteContent.key == key))).scalar_one_or_none()
+    return row.data if row else None
+
+
 async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     college_svc = CollegeService(db)
     exam_svc = ExamService(db)
@@ -126,24 +142,30 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     program_svc = ProgramService(db)
 
     featured_colleges = await college_svc.get_featured(limit=6)
-    featured_exams = await exam_svc.get_featured(limit=6)
+    top_exam_slugs = await _stored_value(db, "home.topExams")
+    top_exam_slugs = top_exam_slugs if isinstance(top_exam_slugs, list) else []
+    featured_exams = await exam_svc.get_by_slugs(top_exam_slugs[:6])
     locations = await location_svc.list_locations()
     articles = await article_svc.get_recent(limit=3)
     programs = await program_svc.get_recommended(limit=3)
     stream_counts = await college_svc.get_stream_counts()
     universities_raw = await college_svc.get_recommended_universities(limit=3)
 
+    copy_row = await _stored_value(db, "home.copy")
+    home_copy = HomeCopySchema.model_validate(copy_row) if isinstance(copy_row, dict) else HomeCopySchema()
+
     return HomeDataSchema(
+        homeCopy=home_copy,
         featuredColleges=featured_colleges,
         featuredExams=featured_exams,
         locations=locations,
         articles=articles,
         recommendedPrograms=programs,
-        careerPanels=_CAREER_PANELS,
+        careerPanels=await _stored(db, "home.careerPanels", CareerPanelSchema),
         recommendedUniversities=[
             RecommendedUniversitySchema(**u) for u in universities_raw
         ],
-        dataHighlights=_DATA_HIGHLIGHTS,
+        dataHighlights=await _stored(db, "home.dataHighlights", DataHighlightSchema),
         streams=[
             StreamCountSchema(
                 slug=s["name"].lower().replace(" ", "-"),

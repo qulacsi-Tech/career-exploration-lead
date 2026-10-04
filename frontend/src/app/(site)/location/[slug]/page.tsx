@@ -5,17 +5,11 @@ import {
   CounsellingCard,
   SidebarLinks,
 } from "@/components/college-listing";
-import { homeStreams, locations } from "@/lib/mock-data";
-import { getColleges, getLocation, getLocations } from "@/lib/api";
+import { ApiError, getColleges, getHomeData, getLocation, getLocations } from "@/lib/api";
 
 export async function generateStaticParams() {
-  try {
-    const locs = await getLocations();
-    return locs.map((loc) => ({ slug: loc.slug }));
-  } catch {
-    // Fallback to mock slugs so the build never hard-fails
-    return locations.map((loc) => ({ slug: loc.slug }));
-  }
+  const locs = await getLocations();
+  return locs.map((loc) => ({ slug: loc.slug }));
 }
 
 export async function generateMetadata({
@@ -46,29 +40,20 @@ export default async function LocationPage({
   let location: Awaited<ReturnType<typeof getLocation>>;
   try {
     location = await getLocation(slug);
-  } catch {
-    notFound();
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) notFound();
+    throw err;
   }
 
-  // Colleges in this city from live API
-  let inCity: Awaited<ReturnType<typeof getColleges>>["data"] = [];
-  try {
-    const res = await getColleges({ city: location.name, limit: 50 });
-    inCity = res.data;
-  } catch {
-    inCity = [];
-  }
+  // Colleges in this city from the live API. Errors are not caught: they reach
+  // the route's error boundary rather than rendering an empty city.
+  const { data: inCity } = await getColleges({ city: location.name, limit: 50 });
 
-  // All locations for "Other cities" sidebar — from API with mock fallback
-  let allLocations: Awaited<ReturnType<typeof getLocations>> = [];
-  try {
-    allLocations = await getLocations();
-  } catch {
-    allLocations = locations;
-  }
+  // All locations for the "Other cities" sidebar
+  const allLocations = await getLocations();
 
   // Streams that have at least one college in this city
-  const streamsHere = homeStreams.filter((stream) =>
+  const streamsHere = (await getHomeData()).streams.filter((stream) =>
     inCity.some((college) => college.stream === stream.name),
   );
 

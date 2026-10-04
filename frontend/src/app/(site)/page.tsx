@@ -1,12 +1,11 @@
+import { DEFAULT_HOME_COPY } from "@/lib/home-copy";
 import Link from "next/link";
 import Image from "next/image";
 import { HeroBackdrop } from "./hero-backdrop";
 import { TopExamCard } from "@/components/top-exam-card";
 import { StreamTabs } from "@/components/ui/stream-tabs";
 import { ViewAllButton } from "@/components/ui/view-all-button";
-import { RecommendedProgramCard } from "@/components/recommended-program-card";
 import { CareerPanelCard } from "@/components/career-panel-card";
-import { UniversityCard } from "@/components/university-card";
 import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
 import { StreamGrid } from "@/components/stream-grid";
@@ -14,9 +13,8 @@ import { AutoStoryFrame } from "@/components/ui/auto-story-frame";
 import { CollegeSlider } from "@/components/college-slider";
 import { photoSetLedBy } from "@/lib/college-images";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
-import { homepageCollections, collectionHref } from "@/lib/collections-data";
 import { TopCollegeCard } from "@/components/top-college-card";
-import { getHomeData } from "@/lib/api";
+import { getCollectionBands, getHomeData } from "@/lib/api";
 
 const streamTabs = [
   "Management",
@@ -48,6 +46,7 @@ export default async function Home() {
     home = null;
   }
 
+  const copy          = home?.homeCopy           ?? DEFAULT_HOME_COPY;
   const topExams      = home?.featuredExams      ?? [];
   const locations     = home?.locations          ?? [];
   const articles      = home?.articles           ?? [];
@@ -60,7 +59,7 @@ export default async function Home() {
 
   // ── Collections (college bands) stay on local data until the collections ──
   // ── CMS API ships in a later phase                                        ──
-  const visibleBands  = homepageCollections();
+  const visibleBands  = await getCollectionBands();
 
   // career panels in 3-column layout: left | middle (2 stacked) | right
   const careerColumns = careerPanels.length >= 4
@@ -78,10 +77,10 @@ export default async function Home() {
         />
         <div className="relative mx-auto max-w-3xl px-4 py-24 text-center sm:px-6 lg:px-8">
           <h1 className="font-display balance text-4xl font-extrabold tracking-tight text-white drop-shadow-sm sm:text-5xl">
-            Find Colleges, Courses &amp; Exams That Are Best For You
+            {copy.hero.headline}
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-white/90">
-            Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts.
+            {copy.hero.subheadline}
           </p>
           <form
             action="/search"
@@ -105,24 +104,24 @@ export default async function Home() {
             <input
               type="search"
               name="q"
-              placeholder="Search by college, course or exam"
+              placeholder={copy.hero.searchPlaceholder}
               className="w-full bg-transparent px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:outline-none"
             />
             <button
               type="submit"
               className="shrink-0 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
             >
-              Search
+              {copy.hero.searchButton}
             </button>
           </form>
         </div>
       </section>
 
       {/* Browse by location */}
-      <LocationCarousel locations={locations} />
+      <LocationCarousel locations={locations} copy={copy.locations} />
 
       {/* Explore Your Future — stream grid */}
-      <StreamGrid streams={homeStreams} />
+      <StreamGrid streams={homeStreams} copy={copy.streams} />
 
       {/* College bands (from collections, backed by mock-data until CMS API) */}
       {visibleBands.map(({ collection, colleges: bandRows }, index) => (
@@ -156,7 +155,7 @@ export default async function Home() {
               </div>
             )}
             <div className="mt-10 text-center">
-              <ViewAllButton href={collectionHref(collection)} />
+              <ViewAllButton href={`/colleges/${collection.slug}`} />
             </div>
           </div>
         </section>

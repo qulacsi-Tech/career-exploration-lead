@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -88,7 +89,13 @@ const DWELL = 4500;
  * It pauses on hover, so reading a card never fights the rotation, and stops
  * altogether while the section is off screen.
  */
-export function LocationCarousel({ locations }: { locations: Location[] }) {
+export function LocationCarousel({
+  locations,
+  copy = DEFAULT_HOME_COPY.locations,
+}: {
+  locations: Location[];
+  copy?: SectionCopy;
+}) {
   const sectionRef = useRef<HTMLElement>(null);
   // No `once`: the timer stops when the frame is scrolled away.
   const inView = useInView(sectionRef, { amount: 0.35 });
@@ -137,11 +144,14 @@ export function LocationCarousel({ locations }: { locations: Location[] }) {
           {/* Top rail */}
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line px-6 py-5 sm:px-10">
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-faint">
-                Destination hubs
-              </span>
+              {copy.eyebrow && (
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-faint">
+                  {copy.eyebrow}
+                </span>
+              )}
               <h2 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                Where Ambition Meets <span className="italic text-brand">Opportunity</span>
+                {copy.heading}{" "}
+                {copy.accent && <span className="italic text-brand">{copy.accent}</span>}
               </h2>
             </div>
 

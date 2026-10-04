@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import type { College } from "@/lib/mock-data";
+import type { CollegeDetail as College } from "@/lib/api";
 import { collegeSections, sectionHref } from "@/lib/college-sections";
 
 /**

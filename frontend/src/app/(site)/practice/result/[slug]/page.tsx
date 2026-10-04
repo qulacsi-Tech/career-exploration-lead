@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { testBySlug } from "@/lib/practice-data";
+import { getPracticeTest } from "@/lib/api";
 import { exams, colleges } from "@/lib/mock-data";
 import { ResultViewMount } from "@/components/practice/result-view-mount";
 
@@ -11,7 +11,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const test = testBySlug(slug);
+  const test = await getPracticeTest(slug);
   return {
     title: test ? `${test.title} — your result` : "Result not found",
     // Per-attempt. Nothing to rank for, and indexing it would be indexing
@@ -36,7 +36,7 @@ export default async function ResultPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const test = testBySlug(slug);
+  const test = await getPracticeTest(slug);
   if (!test || !test.isPublished) notFound();
 
   const exam = exams.find((e) => e.slug === test.examSlug);

@@ -9,8 +9,7 @@ import {
   type QuestionResult,
   discardAttempt,
   formatDuration,
-  loadAttempt,
-  scoreAttempt,
+  loadResult,
 } from "@/lib/practice-attempt";
 import { QuestionContent } from "@/components/practice/question-content";
 import { SectionScoresChart } from "@/components/practice/section-scores-chart";
@@ -31,11 +30,8 @@ export function ResultView({
   test: MockTest;
   acceptingColleges: { slug: string; name: string; city: string; feesRange: string }[];
 }) {
-  const result = useMemo(() => {
-    const attempt = loadAttempt(test.slug);
-    if (!attempt || !attempt.submittedAt) return null;
-    return scoreAttempt(test, attempt);
-  }, [test]);
+  // Scored by the server when the paper was submitted. Nothing is scored here.
+  const result = useMemo(() => loadResult(test.slug), [test.slug]);
 
   if (!result) {
     return (
@@ -338,10 +334,12 @@ function SolutionCard({ row, number }: { row: QuestionResult; number: number }) 
   const [open, setOpen] = useState(false);
   const { question } = row;
 
-  const correctText =
-    question.correct.kind === "value"
-      ? String(question.correct.value)
-      : question.correct.optionIds
+  const correct = question.correct;
+  const correctText = !correct
+    ? "—"
+    : correct.kind === "value"
+      ? String(correct.value)
+      : correct.optionIds
           .map((id) => `(${(question.options ?? []).findIndex((o) => o.id === id) + 1})`)
           .join(", ");
 
@@ -393,7 +391,11 @@ function SolutionCard({ row, number }: { row: QuestionResult; number: number }) 
             <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
               Solution
             </p>
-            <QuestionContent doc={question.solution} className="text-sm" />
+            {question.solution ? (
+              <QuestionContent doc={question.solution} className="text-sm" />
+            ) : (
+              <p className="text-sm text-ink-soft">No solution has been written for this question yet.</p>
+            )}
           </div>
         </div>
       )}

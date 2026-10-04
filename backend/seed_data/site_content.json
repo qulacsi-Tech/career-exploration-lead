@@ -1,0 +1,256 @@
+{
+  "home.careerPanels": [
+    {
+      "title": "Featured Classes",
+      "viewAllHref": "/classes",
+      "links": [
+        {
+          "label": "Paul University",
+          "href": "/college/paul-university"
+        },
+        {
+          "label": "K. R. Mangalam University",
+          "href": "/college/kr-mangalam-university"
+        },
+        {
+          "label": "Swarnam Startup and Innovation University",
+          "href": "/college/swarnam-university"
+        },
+        {
+          "label": "Science",
+          "href": "/science/colleges"
+        },
+        {
+          "label": "Arts",
+          "href": "/arts/colleges"
+        },
+        {
+          "label": "Commerce",
+          "href": "/commerce/colleges"
+        },
+        {
+          "label": "Pharmacy",
+          "href": "/pharmacy/colleges"
+        },
+        {
+          "label": "Law",
+          "href": "/law/colleges"
+        },
+        {
+          "label": "Paramedical",
+          "href": "/paramedical/colleges"
+        }
+      ]
+    },
+    {
+      "title": "Important Exams",
+      "viewAllHref": "/exams",
+      "links": [
+        {
+          "label": "JEE Main",
+          "href": "/exams/jee-main"
+        },
+        {
+          "label": "JEE Advanced",
+          "href": "/exams/jee-advanced"
+        },
+        {
+          "label": "TS EAMCET",
+          "href": "/exams/ts-eamcet"
+        },
+        {
+          "label": "WBJEE",
+          "href": "/exams/wbjee"
+        },
+        {
+          "label": "VITEEE",
+          "href": "/exams/viteee"
+        }
+      ]
+    },
+    {
+      "title": "Top Cities",
+      "viewAllHref": "/locations",
+      "links": [
+        {
+          "label": "Maharashtra",
+          "href": "/location/maharashtra"
+        },
+        {
+          "label": "Tamil Nadu",
+          "href": "/location/tamil-nadu"
+        },
+        {
+          "label": "Uttar Pradesh",
+          "href": "/location/uttar-pradesh"
+        },
+        {
+          "label": "Karnataka",
+          "href": "/location/karnataka"
+        },
+        {
+          "label": "Rajasthan",
+          "href": "/location/rajasthan"
+        }
+      ]
+    },
+    {
+      "title": "Related Courses",
+      "viewAllHref": "/courses",
+      "links": [
+        {
+          "label": "B. Tech",
+          "href": "/courses/b-tech"
+        },
+        {
+          "label": "M. Tech",
+          "href": "/courses/m-tech"
+        },
+        {
+          "label": "Bachelor of Engineering",
+          "href": "/courses/be"
+        },
+        {
+          "label": "Civil Engineering",
+          "href": "/courses/civil-engineering"
+        },
+        {
+          "label": "Mechanical Engineering",
+          "href": "/courses/mechanical-engineering"
+        }
+      ]
+    }
+  ],
+  "home.dataHighlights": [
+    {
+      "slug": "college-by-ranking",
+      "title": "College By Ranking",
+      "description": "Compare institutes side by side on NIRF rank, accreditation and placement record before you shortlist.",
+      "links": [
+        {
+          "label": "Top Engineering Colleges",
+          "href": "/engineering/colleges"
+        },
+        {
+          "label": "Top Medicine Colleges",
+          "href": "/medical/colleges"
+        },
+        {
+          "label": "Top Law Colleges",
+          "href": "/law/colleges"
+        },
+        {
+          "label": "see more",
+          "href": "/colleges"
+        }
+      ]
+    },
+    {
+      "slug": "exam",
+      "title": "Exam",
+      "description": "Track registration windows, exam dates, cutoffs and answer keys for every entrance test in one place.",
+      "links": [
+        {
+          "label": "Top Engineering Exams",
+          "href": "/engineering/exams"
+        },
+        {
+          "label": "Top Medicine Exams",
+          "href": "/medical/exams"
+        },
+        {
+          "label": "Top Law Exams",
+          "href": "/law/exams"
+        },
+        {
+          "label": "see more",
+          "href": "/exams"
+        }
+      ]
+    },
+    {
+      "slug": "college-predictors",
+      "title": "College Predictors",
+      "description": "Enter your score and category to see the colleges realistically within reach this admission cycle.",
+      "links": [
+        {
+          "label": "Top Engineering Colleges",
+          "href": "/engineering/colleges"
+        },
+        {
+          "label": "Top Medicine Colleges",
+          "href": "/medical/colleges"
+        },
+        {
+          "label": "Top Law Colleges",
+          "href": "/law/colleges"
+        },
+        {
+          "label": "see more",
+          "href": "/predictors"
+        }
+      ]
+    },
+    {
+      "slug": "rank-predictors",
+      "title": "Rank Predictors",
+      "description": "Turn a raw or percentile score into an expected rank using past years' normalisation data.",
+      "links": [
+        {
+          "label": "Top Engineering Colleges",
+          "href": "/engineering/colleges"
+        },
+        {
+          "label": "Top Medicine Colleges",
+          "href": "/medical/colleges"
+        },
+        {
+          "label": "Top Law Colleges",
+          "href": "/law/colleges"
+        },
+        {
+          "label": "see more",
+          "href": "/predictors"
+        }
+      ]
+    }
+  ],
+  "home.topExams": [
+    "cat",
+    "xat",
+    "karnataka-pgcet",
+    "nmat",
+    "cmat",
+    "mah-cet"
+  ],
+  "home.copy": {
+    "hero": {
+      "headline": "Find Colleges, Courses & Exams That Are Best For You",
+      "subheadline": "Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts.",
+      "searchPlaceholder": "Search by college, course or exam",
+      "searchButton": "Search"
+    },
+    "locations": {
+      "eyebrow": "Destination hubs",
+      "heading": "Where Ambition Meets",
+      "accent": "Opportunity",
+      "subheading": ""
+    },
+    "streams": {
+      "eyebrow": "",
+      "heading": "Chart Your Discipline.",
+      "accent": "Shape Your Tomorrow.",
+      "subheading": "Pick a stream to see its colleges, entrance exams, fees and placement records."
+    }
+  },
+  "home.recommendedPrograms": [
+    "ms-data-analytics",
+    "ms-business-analytics",
+    "pg-diploma-management"
+  ],
+  "home.recommendedUniversities": [
+    "eastwind-institute-of-management",
+    "sanjeevani-medical-college",
+    "meridian-school-of-business"
+  ]
+}

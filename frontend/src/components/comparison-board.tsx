@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTransition } from "react";
-import type { College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 import { compareRows, compareUrl, MAX_COMPARE } from "@/lib/comparison-data";
-import { useCompare } from "@/components/compare-tray";
+import { useCompare, type CompareEntry } from "@/components/compare-tray";
 import { Chip } from "@/components/ui/chip";
 import { Plus, X } from "lucide-react";
 
@@ -54,16 +54,22 @@ export function ComparisonBoard({
     (_, i) => colleges[i] ?? null
   );
 
-  const goTo = (next: string[]) => {
+  const onBoard = (): CompareEntry[] => colleges.map((c) => ({ slug: c.slug, name: c.name }));
+
+  const goTo = (next: CompareEntry[]) => {
     set(next);
     startTransition(() => {
-      router.push(next.length >= 2 ? compareUrl(next) : "/compare");
+      router.push(next.length >= 2 ? compareUrl(next.map((e) => e.slug)) : "/compare");
     });
   };
 
-  const addCollege = (slug: string) => goTo([...colleges.map((c) => c.slug), slug]);
+  const addCollege = (slug: string) => {
+    const option = options.find((o) => o.slug === slug);
+    if (!option) return;
+    goTo([...onBoard(), { slug: option.slug, name: option.name }]);
+  };
   const removeCollege = (slug: string) =>
-    goTo(colleges.filter((c) => c.slug !== slug).map((c) => c.slug));
+    goTo(onBoard().filter((e) => e.slug !== slug));
 
   // Colleges not already on the board, for the empty slot's picker.
   const available = options.filter((o) => !colleges.some((c) => c.slug === o.slug));

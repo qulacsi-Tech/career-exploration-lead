@@ -1,3 +1,4 @@
+import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
 import Link from "next/link";
 import {
   Briefcase,
@@ -113,17 +114,23 @@ const streamEnhancements: Record<
  * is also why keyboard focus reaches the back face without any tabindex
  * juggling: there is only ever one focusable thing per stream.
  */
-export function StreamGrid({ streams }: { streams: StreamItem[] }) {
+export function StreamGrid({
+  streams,
+  copy = DEFAULT_HOME_COPY.streams,
+}: {
+  streams: StreamItem[];
+  copy?: SectionCopy;
+}) {
   return (
     <section className="border-b border-line bg-bg-alt py-14 lg:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-            Chart Your Discipline. <span className="italic text-brand">Shape Your Tomorrow.</span>
+            {copy.heading} {copy.accent && <span className="italic text-brand">{copy.accent}</span>}
           </h2>
-          <p className="mt-3 text-base text-ink-soft">
-            Pick a stream to see its colleges, entrance exams, fees and placement records.
-          </p>
+          {copy.subheading && (
+            <p className="mt-3 text-base text-ink-soft">{copy.subheading}</p>
+          )}
         </div>
 
         <ul

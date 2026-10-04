@@ -8,12 +8,16 @@ Usage (from backend/ directory, with DB running):
 """
 
 import asyncio
+import json
+import os
 import uuid
+from pathlib import Path
 from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.config import settings
+from core.security import hash_password
 from models.article import Article
 from models.college import College, OwnershipType
 from models.course import Course
@@ -23,7 +27,14 @@ from models.location import Location
 from models.placement import Placement
 from models.program import Program
 from models.review import Review
+from models.course_catalogue import CourseCatalogue
+from models.specialisation import Specialisation
+from models.ranking import RankingList, RankingEntry
 from models.user import User, UserRole
+from models.study_abroad import StudyAbroadItem
+from models.collection import Collection as CollectionModel
+from models.site_content import SiteContent
+from models.practice import PracticeItem
 from core.security import hash_password
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False)
@@ -640,6 +651,108 @@ async def _sync_meilisearch(session: AsyncSession) -> None:
         print(f"  ⚠  Meilisearch sync skipped ({e})")
 
 
+async def _seed_study_abroad(session: AsyncSession) -> None:
+    """Replace the study-abroad content with seed_data/study_abroad.json.
+
+    Rebuilt on every run, so the file is the source of truth for these rows.
+    """
+    from sqlalchemy import delete
+
+    print("Seeding study abroad content …")
+    content = json.loads((Path(__file__).parent / "seed_data" / "study_abroad.json").read_text(encoding="utf-8"))
+
+    rows: list[StudyAbroadItem] = [StudyAbroadItem(id=uuid.uuid4(), kind="meta", key="figures_reviewed", position=0,
+                                                   data={"value": content["figuresReviewed"]})]
+    for kind, field, key_of in [
+        ("destination", "destinations", lambda item: item["slug"]),
+        ("step", "applicationSteps", lambda item: item["title"]),
+        ("test", "admissionTests", lambda item: item["name"]),
+        ("faq", "faqs", lambda item: item["question"]),
+    ]:
+        for position, item in enumerate(content[field]):
+            rows.append(StudyAbroadItem(id=uuid.uuid4(), kind=kind, key=key_of(item), position=position, data=item))
+
+    await session.execute(delete(StudyAbroadItem))
+    session.add_all(rows)
+    await session.commit()
+    print(f"  ✓ {len(rows)} study abroad rows seeded")
+
+
+async def _seed_collections(session: AsyncSession) -> None:
+    """Replace stored collections with seed_data/collections.json (rebuilt every run)."""
+    from sqlalchemy import delete
+
+    print("Seeding collections …")
+    items = json.loads((Path(__file__).parent / "seed_data" / "collections.json").read_text(encoding="utf-8"))
+    await session.execute(delete(CollectionModel))
+    session.add_all([CollectionModel(id=uuid.uuid4(), slug=item["slug"], data=item) for item in items])
+    await session.commit()
+    print(f"  ✓ {len(items)} collections seeded")
+
+
+async def _seed_site_content(session: AsyncSession) -> None:
+    """Writes the default homepage content from seed_data/site_content.json (rebuilt every run)."""
+    from sqlalchemy import delete
+
+    print("Seeding site content …")
+    blocks = json.loads((Path(__file__).parent / "seed_data" / "site_content.json").read_text(encoding="utf-8"))
+    await session.execute(delete(SiteContent))
+    session.add_all([SiteContent(key=key, data=value) for key, value in blocks.items()])
+    await session.commit()
+    print(f"  ✓ {len(blocks)} content blocks seeded")
+
+
+async def _seed_practice(session: AsyncSession) -> None:
+    """Replace the practice content with seed_data/practice.json (rebuilt every run)."""
+    from sqlalchemy import delete
+
+    print("Seeding practice content …")
+    content = json.loads((Path(__file__).parent / "seed_data" / "practice.json").read_text(encoding="utf-8"))
+    rows = []
+    for kind, field, key_of in [
+        ("stimulus", "stimuli", lambda x: x["id"]),
+        ("question", "questions", lambda x: x["id"]),
+        ("test", "tests", lambda x: x["slug"]),
+    ]:
+        for position, item in enumerate(content[field]):
+            rows.append(PracticeItem(id=uuid.uuid4(), kind=kind, key=key_of(item), position=position, data=item))
+    await session.execute(delete(PracticeItem))
+    session.add_all(rows)
+    await session.commit()
+    print(f"  ✓ {len(rows)} practice items seeded")
+
+
+async def _seed_admin(session: AsyncSession) -> None:
+    """Create the ADMIN user from ADMIN_EMAIL / ADMIN_PASSWORD (env only).
+
+    Credentials are never hardcoded. Skipped when either variable is unset, and
+    an existing account with the same email is left untouched.
+    """
+    email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    password = os.environ.get("ADMIN_PASSWORD", "")
+    if not email or not password:
+        print("Admin user: skipped (set ADMIN_EMAIL and ADMIN_PASSWORD to create one)")
+        return
+
+    from sqlalchemy import select
+
+    existing = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    if existing:
+        print(f"Admin user: {email} already exists, left unchanged")
+        return
+
+    session.add(User(
+        id=uuid.uuid4(),
+        name=os.environ.get("ADMIN_NAME", "Admin"),
+        email=email,
+        password_hash=hash_password(password),
+        role=UserRole.ADMIN,
+        is_verified=True,
+    ))
+    await session.commit()
+    print(f"  ✓ admin user {email} created")
+
+
 async def main() -> None:
     async with SessionLocal() as session:
         await _seed_admin(session)
@@ -648,9 +761,212 @@ async def main() -> None:
         await _seed_locations(session)
         await _seed_articles(session)
         await _seed_programs(session)
+        await _seed_courses(session)
+        await _seed_rankings(session)
+        await _seed_study_abroad(session)
+        await _seed_collections(session)
+        await _seed_site_content(session)
+        await _seed_practice(session)
+        await _seed_admin(session)
         await _sync_meilisearch(session)
     await engine.dispose()
     print("\nSeed complete.")
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COURSE CATALOGUE  (from frontend/src/lib/mock-data.ts courses[])
+# ─────────────────────────────────────────────────────────────────────────────
+
+COURSES_CATALOGUE = [
+    {
+        "slug": "mba",
+        "name": "MBA",
+        "full_name": "Master of Business Administration",
+        "level": "PG",
+        "stream": "Management",
+        "duration": "24 Months",
+        "modes": ["Full Time", "Part Time", "Online", "Distance"],
+        "eligibility": "Bachelor's degree with 50% aggregate (45% for reserved categories).",
+        "average_fees": "₹4L - 25L",
+        "exams_accepted": ["CAT", "XAT", "CMAT", "NMAT", "MAH MBA CET"],
+        "college_count": 4172,
+        "about": "A two-year postgraduate management degree covering finance, marketing, operations and strategy, with specialisation electives in the second year.",
+        "specialisations": [
+            {"slug": "mba-finance", "name": "Finance", "duration": "24 Months", "average_fees": "₹6L - 24L", "college_count": 1840, "about": "Corporate finance, investment banking, valuation and financial modelling."},
+            {"slug": "mba-marketing", "name": "Marketing", "duration": "24 Months", "average_fees": "₹5.5L - 22L", "college_count": 1795, "about": "Brand management, consumer behaviour, digital marketing and sales strategy."},
+            {"slug": "mba-business-analytics", "name": "Business Analytics", "duration": "24 Months", "average_fees": "₹6L - 22L", "college_count": 1240, "about": "Data analytics, business intelligence and quantitative decision-making applied to management."},
+            {"slug": "mba-hr", "name": "Human Resources", "duration": "24 Months", "average_fees": "₹5L - 20L", "college_count": 1580, "about": "Talent acquisition, performance management, labour relations and organisational behaviour."},
+        ],
+    },
+    {
+        "slug": "bba",
+        "name": "BBA",
+        "full_name": "Bachelor of Business Administration",
+        "level": "UG",
+        "stream": "Management",
+        "duration": "36 Months",
+        "modes": ["Full Time", "Online"],
+        "eligibility": "10+2 in any stream with 50% aggregate.",
+        "average_fees": "₹1.5L - 8L",
+        "exams_accepted": ["IPMAT", "SET", "NPAT"],
+        "college_count": 2860,
+        "about": "An undergraduate management degree covering business fundamentals, commonly taken before an MBA or a role in operations and sales.",
+        "specialisations": [],
+    },
+    {
+        "slug": "b-tech",
+        "name": "B.Tech",
+        "full_name": "Bachelor of Technology",
+        "level": "UG",
+        "stream": "Engineering",
+        "duration": "48 Months",
+        "modes": ["Full Time"],
+        "eligibility": "10+2 with Physics, Chemistry and Mathematics, 60% aggregate.",
+        "average_fees": "₹3L - 16L",
+        "exams_accepted": ["JEE Main", "JEE Advanced", "BITSAT", "VITEEE"],
+        "college_count": 3860,
+        "about": "A four-year engineering degree with branch specialisation from the first or second year, and a mandatory final-year project.",
+        "specialisations": [
+            {"slug": "b-tech-computer-science", "name": "Computer Science", "duration": "48 Months", "average_fees": "₹4L - 16L", "college_count": 2840, "about": "Algorithms, data structures, operating systems, networks and software engineering."},
+            {"slug": "b-tech-electronics", "name": "Electronics & Communication", "duration": "48 Months", "average_fees": "₹3L - 14L", "college_count": 2210, "about": "Analog and digital circuits, signal processing, VLSI design and embedded systems."},
+            {"slug": "b-tech-mechanical", "name": "Mechanical Engineering", "duration": "48 Months", "average_fees": "₹3L - 12L", "college_count": 2640, "about": "Thermodynamics, fluid mechanics, design, manufacturing and automotive systems."},
+        ],
+    },
+    {
+        "slug": "m-tech",
+        "name": "M.Tech",
+        "full_name": "Master of Technology",
+        "level": "PG",
+        "stream": "Engineering",
+        "duration": "24 Months",
+        "modes": ["Full Time", "Part Time"],
+        "eligibility": "B.Tech or B.E. with 60% aggregate and a valid GATE score.",
+        "average_fees": "₹2L - 9L",
+        "exams_accepted": ["GATE", "Karnataka PGCET"],
+        "college_count": 1420,
+        "about": "A two-year postgraduate engineering degree focused on research and advanced specialisation within a branch.",
+        "specialisations": [],
+    },
+    {
+        "slug": "mbbs",
+        "name": "MBBS",
+        "full_name": "Bachelor of Medicine, Bachelor of Surgery",
+        "level": "UG",
+        "stream": "Medical",
+        "duration": "66 Months",
+        "modes": ["Full Time"],
+        "eligibility": "10+2 with Physics, Chemistry and Biology, 50% aggregate.",
+        "average_fees": "₹5L - 60L",
+        "exams_accepted": ["NEET UG"],
+        "college_count": 706,
+        "about": "India's primary undergraduate medical degree, including a compulsory rotating internship in the final year.",
+        "specialisations": [],
+    },
+    {
+        "slug": "llb",
+        "name": "LLB",
+        "full_name": "Bachelor of Laws",
+        "level": "UG",
+        "stream": "Law",
+        "duration": "36 Months",
+        "modes": ["Full Time"],
+        "eligibility": "Bachelor's degree in any discipline with 45% aggregate.",
+        "average_fees": "₹1L - 12L",
+        "exams_accepted": ["CLAT", "AILET", "LSAT India"],
+        "college_count": 640,
+        "about": "A three-year law degree for graduates, leading to enrolment with a state bar council on completion.",
+        "specialisations": [],
+    },
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RANKING LISTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+RANKING_LISTS = [
+    {
+        "slug": "management-nirf",
+        "name": "NIRF Management Rankings 2026",
+        "authority": "NIRF",
+        "year": 2026,
+        "stream": "Management",
+        "entries": [
+            {"college_slug": "eastwind-institute-of-management", "rank": 1, "score": "72.4"},
+            {"college_slug": "meridian-school-of-business", "rank": 2, "score": "69.1"},
+            {"college_slug": "bengaluru-institute-of-management-studies", "rank": 3, "score": "65.8"},
+            {"college_slug": "ashwattha-business-school", "rank": 4, "score": "62.3"},
+            {"college_slug": "vantage-school-of-management", "rank": 5, "score": "60.7"},
+            {"college_slug": "sahyadri-institute-of-management", "rank": 6, "score": "58.9"},
+            {"college_slug": "horizon-school-of-business", "rank": 7, "score": "56.2"},
+            {"college_slug": "kr-mangalam-university", "rank": 8, "score": "53.4"},
+        ],
+    },
+    {
+        "slug": "engineering-nirf",
+        "name": "NIRF Engineering Rankings 2026",
+        "authority": "NIRF",
+        "year": 2026,
+        "stream": "Engineering",
+        "entries": [
+            {"college_slug": "kaveri-institute-of-technology", "rank": 1, "score": "68.9"},
+            {"college_slug": "cascade-institute-of-technology", "rank": 2, "score": "64.2"},
+            {"college_slug": "northgate-college-of-engineering", "rank": 3, "score": "61.5"},
+        ],
+    },
+    {
+        "slug": "medical-nirf",
+        "name": "NIRF Medical Rankings 2026",
+        "authority": "NIRF",
+        "year": 2026,
+        "stream": "Medical",
+        "entries": [
+            {"college_slug": "sanjeevani-medical-college", "rank": 1, "score": "74.1"},
+            {"college_slug": "meridian-institute-of-medical-sciences", "rank": 2, "score": "69.8"},
+        ],
+    },
+]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Seed helpers — courses + rankings
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def _seed_courses(session: AsyncSession) -> None:
+    print("Seeding course catalogue …")
+    for data in COURSES_CATALOGUE:
+        specs_data = data.pop("specialisations", [])
+        course = CourseCatalogue(id=uuid.uuid4(), **data)
+        session.add(course)
+        await session.flush()
+
+        for s in specs_data:
+            session.add(Specialisation(
+                id=uuid.uuid4(),
+                course_id=course.id,
+                course_slug=course.slug,
+                course_name=course.name,
+                stream=course.stream,
+                **s,
+            ))
+
+    await session.commit()
+    print(f"  ✓ {len(COURSES_CATALOGUE)} courses seeded")
+
+
+async def _seed_rankings(session: AsyncSession) -> None:
+    print("Seeding ranking lists …")
+    for data in RANKING_LISTS:
+        entries_data = data.pop("entries", [])
+        ranking = RankingList(id=uuid.uuid4(), **data)
+        session.add(ranking)
+        await session.flush()
+
+        for e in entries_data:
+            session.add(RankingEntry(id=uuid.uuid4(), ranking_list_id=ranking.id, **e))
+
+    await session.commit()
+    print(f"  ✓ {len(RANKING_LISTS)} ranking lists seeded")
 
 
 if __name__ == "__main__":

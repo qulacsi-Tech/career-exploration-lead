@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { College } from "@/lib/mock-data";
+import type { College } from "@/lib/api";
 import { Chip } from "@/components/ui/chip";
 import { RatingPill } from "@/components/ui/rating";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
@@ -100,7 +100,7 @@ export function CollegeCard({ college }: { college: College }) {
             <RatingPill score={college.rating} label={`(${college.reviewCount})`} />
           </div>
 
-          <CompareToggle slug={college.slug} className="@2xl:order-last" />
+          <CompareToggle slug={college.slug} name={college.name} className="@2xl:order-last" />
 
           <Link
             href={`/college/${college.slug}`}

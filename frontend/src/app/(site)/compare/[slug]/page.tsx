@@ -4,13 +4,9 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ComparisonBoard } from "@/components/comparison-board";
 import { CollegeCard } from "@/components/college-card";
-import { colleges as allColleges } from "@/lib/mock-data";
-import {
-  curatedComparisons,
-  resolveComparison,
-  similarColleges,
-  compareUrl,
-} from "@/lib/comparison-data";
+import { getColleges } from "@/lib/api";
+import { curatedComparisons, compareUrl } from "@/lib/comparison-data";
+import { resolveComparison, similarColleges } from "@/lib/comparison-resolve";
 
 /**
  * A comparison page.
@@ -33,7 +29,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const resolved = resolveComparison(slug);
+  const resolved = await resolveComparison(slug);
   if (!resolved) return { title: "Comparison not found" };
 
   const { curated, colleges } = resolved;
@@ -58,7 +54,7 @@ export default async function ComparePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const resolved = resolveComparison(slug);
+  const resolved = await resolveComparison(slug);
   if (!resolved) notFound();
 
   const { curated, colleges } = resolved;
@@ -66,9 +62,13 @@ export default async function ComparePage({
 
   // Peers of the first college that are not already in the table — the natural
   // next comparison for someone who has read this one.
-  const alsoConsider = similarColleges(colleges[0], 4).filter(
+  const peers = await similarColleges(colleges[0], 4);
+  const alsoConsider = peers.filter(
     (c) => !colleges.some((inTable) => inTable.slug === c.slug),
   );
+
+  // The picker's options come from the live directory, slimmed to what it shows.
+  const directory = await getColleges({ limit: 100 });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -94,7 +94,7 @@ export default async function ComparePage({
             whole College for the ones actually being compared. */}
         <ComparisonBoard
           colleges={colleges}
-          options={allColleges.map(({ slug, name, city, state }) => ({
+          options={directory.data.map(({ slug, name, city, state }) => ({
             slug,
             name,
             city,

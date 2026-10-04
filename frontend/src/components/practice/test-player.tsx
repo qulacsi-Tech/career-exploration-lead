@@ -7,6 +7,7 @@ import {
   type MockTest,
   stimulusById,
 } from "@/lib/practice-data";
+import { submitPractice } from "@/lib/api";
 import {
   type Attempt,
   type Working,
@@ -20,6 +21,7 @@ import {
   persistAttempt,
   saveResponse,
   sectionIdAt,
+  storeResult,
   visit,
   countStatuses,
 } from "@/lib/practice-attempt";
@@ -170,10 +172,32 @@ export function TestPlayer({
     return () => window.clearInterval(id);
   }, [attempt.submittedAt, untimed, questions, test]);
 
-  /* A submitted attempt — by button or by the clock — goes to its result. */
+  /*
+    A submitted attempt — by button or by the clock — is scored by the server,
+    then shown. Scoring is not done here: the server holds the correct answers.
+
+    If the request fails the candidate stays on the paper with the answers still
+    in front of them and a retry. Nothing is thrown away on a failed submit.
+  */
+  const [submitState, setSubmitState] = useState<"idle" | "sending" | "failed">("idle");
+  const submittingRef = useRef(false);
+  const sendSubmit = useCallback(async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitState("sending");
+    try {
+      const result = await submitPractice(test.slug, attempt.responses);
+      storeResult(test.slug, result);
+      router.push(`/practice/result/${test.slug}`);
+    } catch {
+      submittingRef.current = false;
+      setSubmitState("failed");
+    }
+  }, [attempt.responses, router, test.slug]);
+
   useEffect(() => {
-    if (attempt.submittedAt) router.push(`/practice/result/${test.slug}`);
-  }, [attempt.submittedAt, router, test.slug]);
+    if (attempt.submittedAt && !submittingRef.current) void sendSubmit();
+  }, [attempt.submittedAt, sendSubmit]);
 
   /* -------------------------------------------------- Navigation */
 
@@ -240,7 +264,7 @@ export function TestPlayer({
   }
 
   const activeSection = test.sections.find((s) => s.id === attempt.currentSectionId);
-  const stimulus = stimulusById(current.stimulusId);
+  const stimulus = stimulusById(test, current.stimulusId);
   const atSectionEnd =
     test.sectionLock && sectionIdAt(test, attempt.currentIndex + 1) !== attempt.currentSectionId;
 
@@ -261,6 +285,29 @@ export function TestPlayer({
       shell is permanently a little taller than the screen.
     */
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-bg">
+      {attempt.submittedAt && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-center gap-3 border-b border-line bg-surface px-4 py-3 text-sm text-ink"
+        >
+          {submitState === "failed" ? (
+            <>
+              <span className="text-red-700">
+                We could not score your paper. Your answers are still here.
+              </span>
+              <button
+                type="button"
+                onClick={() => void sendSubmit()}
+                className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"
+              >
+                Try again
+              </button>
+            </>
+          ) : (
+            <span>Scoring your paper…</span>
+          )}
+        </div>
+      )}
       <PlayerHeader
         test={test}
         candidateName={candidateName}

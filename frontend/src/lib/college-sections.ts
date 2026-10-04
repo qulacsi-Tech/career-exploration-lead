@@ -19,7 +19,7 @@
  * are kept so existing links still resolve.
  */
 
-import type { College } from "@/lib/mock-data";
+import type { CollegeDetail as College } from "@/lib/api";
 import { tabTemplates } from "@/lib/college-content";
 
 /**

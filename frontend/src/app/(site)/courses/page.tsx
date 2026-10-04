@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
-import { courses, homeStreams } from "@/lib/mock-data";
+import { getCourses, getHomeData } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Courses: Degrees, Eligibility & Fees",
@@ -17,8 +17,15 @@ export const metadata: Metadata = {
  * actually made: nobody is deciding between an MBA and an MBBS, so a list that
  * interleaves them makes the reader do the sorting the page should have done.
  */
-export default function CoursesIndexPage() {
-  const byStream = homeStreams
+export default async function CoursesIndexPage() {
+  // The catalogue is small, so one page at the API's maximum covers it. Streams
+  // come from the home payload, which is the source of stream names and slugs.
+  const [{ data: courses, meta }, home] = await Promise.all([
+    getCourses({ limit: 200 }),
+    getHomeData(),
+  ]);
+
+  const byStream = home.streams
     .map((stream) => ({
       stream,
       items: courses.filter((course) => course.stream === stream.name),
@@ -28,7 +35,7 @@ export default function CoursesIndexPage() {
     .filter((group) => group.items.length > 0);
 
   const ungrouped = courses.filter(
-    (course) => !homeStreams.some((stream) => stream.name === course.stream),
+    (course) => !home.streams.some((stream) => stream.name === course.stream),
   );
 
   return (
@@ -39,7 +46,7 @@ export default function CoursesIndexPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">Courses</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            {courses.length} programmes across {byStream.length} streams
+            {meta.total} programmes across {byStream.length} streams
           </p>
         </div>
         <Link

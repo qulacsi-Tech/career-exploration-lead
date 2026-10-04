@@ -1,17 +1,13 @@
 "use client";
 
-import {
-  exams,
-  locations,
-  recommendedPrograms,
-  recommendedUniversities,
-  careerPanels,
-  dataHighlights,
-  homeStreams,
-} from "@/lib/mock-data";
-import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
+import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
-import { TextField } from "@/components/admin/admin-fields";
+import type { AdminHomepage, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
+import type { HomeCopy } from "@/lib/home-copy";
+import { HeroCopyEditor, SectionCopyEditor } from "@/components/admin/home-copy-editor";
+import { OrderedListEditor } from "@/components/admin/ordered-list-editor";
+import { saveRecommendedPrograms, saveRecommendedUniversities, saveTopExams } from "@/lib/admin-actions";
+import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
 
 /*
   Defaults mirror what app/(site)/page.tsx renders today, so this screen opens
@@ -24,7 +20,23 @@ import { TextField } from "@/components/admin/admin-fields";
   as the thing on the page rather than a generic set of names.
 */
 
-export function HomepageSectionsAdmin() {
+export function HomepageSectionsAdmin({
+  homepage,
+  careers,
+  highlights,
+  topExams,
+  copy,
+  programs,
+  universities,
+}: {
+  homepage: AdminHomepage;
+  careers: PanelDraft[];
+  highlights: TileDraft[];
+  topExams: AdminTopExams;
+  copy: HomeCopy;
+  programs: { programs: AdminProgram[]; recommended: string[] };
+  universities: AdminUniversities;
+}) {
   return (
     <PageSectionsAdmin
       title="Homepage"
@@ -33,44 +45,17 @@ export function HomepageSectionsAdmin() {
         {
           id: "hero",
           label: "Hero",
-          render: () => (
-            <SectionEditor
-              name="hero"
-              headingLabel="Headline"
-              heading="Find Colleges, Courses & Exams That Are Best For You"
-              subheadingLabel="Sub-headline"
-              subheading="Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts."
-            >
-              <TextField
-                label="Search placeholder"
-                name="hero-search-placeholder"
-                defaultValue="Search by college, course or exam"
-              />
-              <TextField label="Search button label" name="hero-search-cta" defaultValue="Search" />
-              <TextField
-                label="Default stream filter"
-                name="hero-default-stream"
-                defaultValue="All streams"
-              />
-            </SectionEditor>
-          ),
+          render: () => <HeroCopyEditor copy={copy.hero} />,
         },
         {
           id: "location",
           label: "Location",
           render: () => (
-            <SectionEditor
-              name="location"
-              heading="Browse By Location"
-              subheading=""
-              subheadingLabel="Supporting text (optional)"
-              items={locations.map((location) => ({
-                id: location.slug,
-                label: location.name,
-                meta: `${location.collegeCount} colleges`,
-              }))}
-              itemsTitle="Cities in the carousel"
-              itemsHint="Order sets the carousel order, left to right."
+            <SectionCopyEditor
+              part="locations"
+              title="Browse by location"
+              description="The heading above the city carousel. The cities and their order come from the directory."
+              copy={copy.locations}
             />
           ),
         },
@@ -78,17 +63,11 @@ export function HomepageSectionsAdmin() {
           id: "fields",
           label: "Fields",
           render: () => (
-            <SectionEditor
-              name="fields"
-              heading="Explore Your Future"
-              subheading="Select a stream to see colleges cherry-picked for you"
-              items={homeStreams.map((stream) => ({
-                id: stream.slug,
-                label: stream.name,
-                meta: `${stream.count.toLocaleString()} colleges`,
-              }))}
-              itemsTitle="Streams shown"
-              itemsHint="The red band on the homepage. Order runs left to right, top to bottom."
+            <SectionCopyEditor
+              part="streams"
+              title="Explore your future"
+              description="The heading above the stream grid. The streams and their order come from the directory."
+              copy={copy.streams}
             />
           ),
         },
@@ -103,110 +82,68 @@ export function HomepageSectionsAdmin() {
           */
           id: "college-bands",
           label: "College bands",
-          render: () => <HomepageCollectionsPicker />,
+          render: () => <HomepageCollectionsPicker data={homepage} />,
         },
         {
           id: "top-exams",
           label: "Top Exams",
           render: () => (
-            <SectionEditor
-              name="top-exams"
-              heading="Top Exams"
-              subheading="Exams Cherry Picked For You"
-              items={exams.map((exam) => ({
-                id: exam.slug,
-                label: exam.name,
-                meta: `${exam.level} · ${exam.conductingBody} · ${exam.examDate}`,
-              }))}
-              featuring
-              featuringDefault="top"
-              itemsTitle="Featured exams"
-              itemsHint="The pool the featuring mode draws from."
-            >
-              <TextField label="View All link" name="top-exams-cta" defaultValue="/exams" />
-            </SectionEditor>
+            <OrderedListEditor
+              title="Top exams"
+              description="The exams in the homepage row, left to right."
+              addLabel="Add to row"
+              emptyText="No exams chosen. The row will not show on the homepage."
+              max={6}
+              noun="exam"
+              chosen={topExams.exams}
+              options={topExams.options}
+              onSave={saveTopExams}
+            />
           ),
         },
         {
           id: "recommended",
           label: "Recommended",
           render: () => (
-            <SectionEditor
-              name="recommended"
-              heading="Recommended Colleges"
-              subheading=""
-              subheadingLabel="Supporting text (optional)"
-              items={recommendedPrograms.map((program) => ({
-                id: program.slug,
-                label: program.name,
-                meta: `${program.university} · ${program.online.duration} online · ${program.online.fees}`,
-              }))}
-              itemsTitle="Recommended programmes"
-              itemsHint="The brand-coloured band. Usually paid or priority placements."
+            <OrderedListEditor
+              title="Recommended programmes"
+              description="The brand-coloured row on the homepage, left to right. Edit the programme details on the Programmes page."
+              addLabel="Add to row"
+              emptyText="No programmes chosen. The row will not show on the homepage."
+              max={3}
+              noun="programme"
+              chosen={programs.recommended.map((slug) => ({ slug, name: programs.programs.find((p) => p.slug === slug)?.name ?? slug })).filter((c) => programs.programs.some((p) => p.slug === c.slug))}
+              options={programs.programs.map((p) => ({ slug: p.slug, name: p.name }))}
+              onSave={saveRecommendedPrograms}
             />
           ),
         },
         {
           id: "careers",
           label: "Explore Careers",
-          render: () => (
-            <SectionEditor
-              name="careers"
-              heading="Explore Careers"
-              subheading="Explore your preferred streams to learn about the relevant colleges, exams and more!"
-              items={careerPanels.map((panel) => ({
-                id: panel.title.toLowerCase().replace(/\s+/g, "-"),
-                label: panel.title,
-                meta: panel.links.map((link) => link.label).join(", "),
-              }))}
-              itemsTitle="Panels"
-              itemsHint="Three columns; the middle one stacks two panels."
-            >
-              <TextField
-                label="Promo banner text"
-                name="careers-banner-text"
-                defaultValue="Browse through our list of popular programs and universities"
-                className="sm:col-span-2"
-              />
-              <TextField label="Promo banner CTA" name="careers-banner-cta" defaultValue="Discover More" />
-            </SectionEditor>
-          ),
+          render: () => <CareerPanelsEditor panels={careers} />,
         },
         {
           id: "university",
           label: "Recommended University",
           render: () => (
-            <SectionEditor
-              name="university"
-              heading="Recommended University"
-              subheading=""
-              subheadingLabel="Supporting text (optional)"
-              items={recommendedUniversities.map((university) => ({
-                id: university.slug,
-                label: university.name,
-                meta: `${university.city}, ${university.state}`,
-              }))}
-              itemsTitle="Universities"
+            <OrderedListEditor
+              title="Recommended colleges"
+              description="The recommended colleges row on the homepage, left to right."
+              addLabel="Add to row"
+              emptyText="No colleges chosen. The row will not show on the homepage."
+              max={3}
+              noun="college"
+              chosen={universities.colleges}
+              options={universities.options}
+              onSave={saveRecommendedUniversities}
             />
           ),
         },
         {
           id: "data",
           label: "Data",
-          render: () => (
-            <SectionEditor
-              name="data"
-              heading="Data"
-              subheading="We simplify information for you on over 30,000 colleges, 500 exams and 500 courses across domains and regions all over India"
-              items={dataHighlights.map((highlight) => ({
-                id: highlight.slug,
-                label: highlight.title,
-                meta: highlight.description,
-              }))}
-              itemsTitle="Data tiles"
-              itemsHint="Two-by-two grid. Order runs left to right, top to bottom."
-            />
-          ),
+          render: () => <DataTilesEditor tiles={highlights} />,
         },
       ]}
     />

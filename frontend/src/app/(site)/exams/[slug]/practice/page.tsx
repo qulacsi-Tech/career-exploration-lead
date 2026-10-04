@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { exams } from "@/lib/mock-data";
-import { testsForExam } from "@/lib/practice-data";
+import { getPracticeTests } from "@/lib/api";
 import { TestCard } from "@/components/practice/test-card";
 
 export function generateStaticParams() {
@@ -42,7 +42,7 @@ export default async function ExamPracticePage({
   const exam = exams.find((e) => e.slug === slug);
   if (!exam) notFound();
 
-  const tests = testsForExam(slug);
+  const tests = await getPracticeTests(slug);
   const short = exam.name.match(/\(([^)]+)\)/)?.[1] ?? exam.name;
 
   return (
