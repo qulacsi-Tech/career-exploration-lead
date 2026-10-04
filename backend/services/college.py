@@ -166,10 +166,21 @@ class CollegeService:
         return await self.repo.stream_counts()
 
     async def get_recommended_universities(self, limit: int = 3):
-        colleges = await self.repo.get_recommended_universities(limit=limit)
+        """The homepage's recommended colleges, in the order the admin set. Unknown slugs are skipped."""
+        from sqlalchemy import select
+        from models.site_content import SiteContent
+
+        row = (await self.repo.db.execute(
+            select(SiteContent).where(SiteContent.key == "home.recommendedUniversities")
+        )).scalar_one_or_none()
+        slugs = list(row.data)[:limit] if row and isinstance(row.data, list) else []
+        if not slugs:
+            return []
+        rows = (await self.repo.db.execute(select(College).where(College.slug.in_(slugs)))).scalars().all()
+        by_slug = {c.slug: c for c in rows}
         return [
             {"slug": c.slug, "name": c.name, "city": c.city, "state": c.state}
-            for c in colleges
+            for c in (by_slug[s] for s in slugs if s in by_slug)
         ]
 
     async def increment_views(self, slug: str) -> None:

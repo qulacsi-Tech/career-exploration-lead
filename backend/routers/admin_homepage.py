@@ -159,3 +159,48 @@ def _validate_top(body: dict) -> TopExamsBody:
         first = exc.errors()[0]
         field = ".".join(str(p) for p in first["loc"])
         raise ValidationError(f"{field}: {first['msg']}") from exc
+
+
+class UniversitiesBody(BaseModel):
+    slugs: list[str] = Field(default_factory=list, max_length=3)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.get("/universities", response_model=SuccessResponse[dict])
+async def admin_get_universities(_admin: AdminPayload, db: DbSession):
+    from models.college import College
+    from models.site_content import SiteContent
+    row = (await db.execute(select(SiteContent).where(SiteContent.key == "home.recommendedUniversities"))).scalar_one_or_none()
+    slugs = list(row.data) if row and isinstance(row.data, list) else []
+    colleges = dict((await db.execute(select(College.slug, College.name))).all())
+    return SuccessResponse[dict](data={
+        "slugs": slugs,
+        "colleges": [{"slug": s, "name": colleges[s]} for s in slugs if s in colleges],
+        "options": [{"slug": s, "name": n} for s, n in sorted(colleges.items(), key=lambda kv: kv[1])],
+    })
+
+
+@router.put("/universities", response_model=SuccessResponse[dict])
+async def admin_set_universities(_admin: AdminPayload, db: DbSession, body: dict):
+    from models.college import College
+    from models.site_content import SiteContent
+    try:
+        data = UniversitiesBody.model_validate(body)
+    except PydanticValidationError as exc:
+        first = exc.errors()[0]
+        field = ".".join(str(p) for p in first["loc"])
+        raise ValidationError(f"{field}: {first['msg']}") from exc
+    if len(set(data.slugs)) != len(data.slugs):
+        raise ValidationError("slugs: a college appears more than once.")
+    known = set((await db.execute(select(College.slug).where(College.slug.in_(data.slugs)))).scalars().all())
+    missing = [s for s in data.slugs if s not in known]
+    if missing:
+        raise ValidationError(f"slugs: unknown college '{missing[0]}'.")
+
+    row = (await db.execute(select(SiteContent).where(SiteContent.key == "home.recommendedUniversities"))).scalar_one_or_none()
+    if row is None:
+        db.add(SiteContent(key="home.recommendedUniversities", data=data.slugs))
+    else:
+        row.data = data.slugs
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Recommended colleges saved."})

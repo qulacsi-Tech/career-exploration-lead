@@ -247,5 +247,10 @@
     "ms-data-analytics",
     "ms-business-analytics",
     "pg-diploma-management"
+  ],
+  "home.recommendedUniversities": [
+    "eastwind-institute-of-management",
+    "sanjeevani-medical-college",
+    "meridian-school-of-business"
   ]
 }
