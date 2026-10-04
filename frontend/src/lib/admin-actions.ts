@@ -521,9 +521,12 @@ export async function saveRecommendedUniversities(slugs: string[]): Promise<Admi
   return result;
 }
 
-/** Deletes a draft collection. Published or homepage collections are refused by the API. */
-export async function deleteCollection(slug: string): Promise<AdminActionResult> {
-  const result = await attempt("/admin/collections", (token) => adminDeleteCollection(token, slug));
+/**
+ * Deletes a collection. A live collection needs `confirm` set to its slug, and a
+ * collection on the homepage is refused by the API.
+ */
+export async function deleteCollection(slug: string, confirm?: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/collections", (token) => adminDeleteCollection(token, slug, confirm));
   if ("ok" in result) revalidateCollections();
   return result;
 }

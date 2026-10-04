@@ -876,8 +876,9 @@ export async function adminSetUniversities(token: string, slugs: string[]) {
   return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage/universities", { slugs });
 }
 
-export async function adminDeleteCollection(token: string, slug: string) {
-  return adminRequest<{ message: string }>(token, "DELETE", `/admin/collections/${slug}`);
+export async function adminDeleteCollection(token: string, slug: string, confirm?: string) {
+  const query = confirm ? `?confirm=${encodeURIComponent(confirm)}` : "";
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/collections/${slug}${query}`);
 }
 
 export async function adminDeleteProgram(token: string, slug: string) {

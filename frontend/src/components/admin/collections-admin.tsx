@@ -320,7 +320,16 @@ export function CollectionsAdmin({
       ]}
       onSave={(c, data) => saveCollection(c.slug, data)}
       onAdd={(data) => createCollection(undefined, data)}
-      onDelete={(c) => deleteCollection(c.slug)}
+      onDelete={async (c) => {
+        if (!c.isPublished) return deleteCollection(c.slug);
+        // A live page: the visitor must type its slug, so one click cannot remove it.
+        const typed = window.prompt(
+          `"${c.title}" is live at /colleges/${c.slug}. Its page will return 404 after deletion. Type the slug (${c.slug}) to confirm.`,
+        );
+        if (typed === null) return { error: "Deletion cancelled." };
+        if (typed.trim() !== c.slug) return { error: "The slug did not match. Nothing was deleted." };
+        return deleteCollection(c.slug, c.slug);
+      }}
       renderAddForm={() => (
         <>
           <NameSlugFields nameLabel="Title" nameFieldName="title" namePlaceholder="MBA Colleges in Pune" slugPlaceholder="mba-colleges-in-pune" />
