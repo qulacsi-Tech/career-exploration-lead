@@ -600,25 +600,6 @@ async def _seed_programs(session: AsyncSession) -> None:
     print(f"  ✓ {len(PROGRAMS)} programs seeded")
 
 
-ADMIN_EMAIL = "admin@example.com"
-ADMIN_PASSWORD = "Admin@12345"
-
-
-async def _seed_admin(session: AsyncSession) -> None:
-    from sqlalchemy import select
-
-    existing = (await session.execute(select(User).where(User.email == ADMIN_EMAIL))).scalar_one_or_none()
-    if existing:
-        print("  - Admin user already exists")
-        return
-    session.add(User(
-        id=uuid.uuid4(), name="Admin", email=ADMIN_EMAIL,
-        password_hash=hash_password(ADMIN_PASSWORD), role=UserRole.ADMIN, is_verified=True,
-    ))
-    await session.commit()
-    print(f"  + Admin user created: {ADMIN_EMAIL} / {ADMIN_PASSWORD} (dev only)")
-
-
 async def _sync_meilisearch(session: AsyncSession) -> None:
     try:
         import meilisearch  # type: ignore
@@ -755,7 +736,6 @@ async def _seed_admin(session: AsyncSession) -> None:
 
 async def main() -> None:
     async with SessionLocal() as session:
-        await _seed_admin(session)
         await _seed_colleges(session)
         await _seed_exams(session)
         await _seed_locations(session)
