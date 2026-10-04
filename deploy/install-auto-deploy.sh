@@ -8,7 +8,10 @@ set -euo pipefail
 REPO=/opt/career-platform
 RUN_AS=ubuntu
 
-chmod +x "$REPO/deploy/auto-deploy.sh"
+# Ignore file-mode changes: a mode-only difference counts as a local edit and
+# would make the auto-deploy's git merge abort. The service runs the script
+# through bash, so it needs no executable bit.
+sudo -u "$RUN_AS" git -C "$REPO" config core.fileMode false
 
 cat > /etc/systemd/system/career-deploy.service <<EOF
 [Unit]
@@ -20,7 +23,7 @@ Wants=network-online.target
 Type=oneshot
 User=$RUN_AS
 WorkingDirectory=$REPO
-ExecStart=$REPO/deploy/auto-deploy.sh
+ExecStart=/bin/bash $REPO/deploy/auto-deploy.sh
 EOF
 
 cat > /etc/systemd/system/career-deploy.timer <<EOF
