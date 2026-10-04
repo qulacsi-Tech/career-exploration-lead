@@ -44,6 +44,7 @@ def _to_list_schema(college: College) -> CollegeListSchema:
         examsAccepted=college.exams_accepted or [],
         tags=college.tags or [],
         approvals=college.approvals or [],
+        image=college.image or "",
         courses=[
             CourseSchema(
                 name=c.name,

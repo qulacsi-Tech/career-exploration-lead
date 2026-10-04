@@ -16,6 +16,11 @@ import {
   adminUploadImage,
   adminPutHomeLocations,
   adminCreateLocation,
+  adminGetBandColleges,
+  adminPutBandColleges,
+  type BandColleges,
+  type CollegeCardInput,
+  type ExamInput,
   adminPutFieldOrder,
   adminCreateField,
   adminUpdateField,
@@ -459,6 +464,70 @@ export async function saveHomepageBands(
   return result;
 }
 
+/** The band's colleges and the colleges that could be added, read for the Manage colleges dialog. */
+export async function loadBandColleges(slug: string): Promise<BandColleges | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminGetBandColleges(token, slug);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not load the colleges. Try again." };
+  }
+}
+
+/** Saves a band's colleges, in the order given. */
+export async function saveBandColleges(slug: string, slugs: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminPutBandColleges(token, slug, slugs));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** The college's page address: lowercase words joined by hyphens. */
+function collegeSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Creates a college from the band dialog. Returns its slug so the dialog can add it to the band. */
+export async function createBandCollege(input: CollegeCardInput): Promise<{ slug: string } | { error: string }> {
+  const slug = collegeSlug(input.name);
+  if (slug.length < 2) return { error: "name: use letters or numbers." };
+  const result = await attempt("/admin/sections/homepage", (token) =>
+    adminCreateCollege(token, {
+      slug,
+      name: input.name.trim(),
+      city: input.city.trim(),
+      state: input.state,
+      ownership: input.ownership,
+      stream: input.stream,
+      feesRange: input.feesRange.trim() || null,
+      image: input.image,
+    })
+  );
+  if ("error" in result) return result;
+  revalidatePath("/", "layout");
+  return { slug };
+}
+
+export async function updateBandCollege(slug: string, input: CollegeCardInput): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) =>
+    adminUpdateCollege(token, slug, {
+      name: input.name.trim(),
+      city: input.city.trim(),
+      state: input.state,
+      ownership: input.ownership,
+      stream: input.stream,
+      feesRange: input.feesRange.trim(),
+      image: input.image,
+    })
+  );
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
 /** Saves a whole homepage block: "careers" panels or "highlights" data tiles. */
 export async function saveHomeContent(name: "careers" | "highlights", items: unknown[]): Promise<AdminActionResult> {
   const result = await attempt("/admin/content", (token) => adminPutContent(token, name, items));
@@ -469,6 +538,51 @@ export async function saveHomeContent(name: "careers" | "highlights", items: unk
 /** Saves the homepage's top exams, in display order. */
 export async function saveTopExams(slugs: string[]): Promise<AdminActionResult> {
   const result = await attempt("/admin/homepage", (token) => adminPutTopExams(token, slugs));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** The exam's page address: lowercase words joined by hyphens. */
+function examSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** The fields the API takes for an exam, with blank optional text sent as empty. */
+function examBody(input: ExamInput) {
+  return {
+    name: input.name.trim(),
+    conductingBody: input.conductingBody.trim(),
+    level: input.level,
+    description: input.description.trim(),
+    mode: input.mode,
+    registrationCloses: input.registrationCloses.trim(),
+    examDate: input.examDate.trim(),
+    applicationFee: input.applicationFee.trim(),
+    frequency: input.frequency.trim(),
+    officialSite: input.officialSite.trim(),
+    durationMinutes: input.durationMinutes,
+    sections: input.sections,
+    image: input.image,
+  };
+}
+
+/** Creates an exam from the Top Exams dialog. Returns its slug so the dialog can add it to the row. */
+export async function createExamCard(input: ExamInput): Promise<{ slug: string } | { error: string }> {
+  const slug = examSlug(input.name);
+  if (slug.length < 2) return { error: "name: use letters or numbers." };
+  const result = await attempt("/admin/sections/homepage", (token) =>
+    adminCreateExam(token, { slug, ...examBody(input) })
+  );
+  if ("error" in result) return result;
+  revalidatePath("/", "layout");
+  return { slug };
+}
+
+export async function updateExamCard(slug: string, input: ExamInput): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminUpdateExam(token, slug, examBody(input)));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }
@@ -547,7 +661,9 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location") return { error: "Unknown image slot." };
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam") {
+    return { error: "Unknown image slot." };
+  }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
   const token = await requireAdminToken();
   try {

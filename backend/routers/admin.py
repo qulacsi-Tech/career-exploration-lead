@@ -12,7 +12,7 @@ from datetime import date
 from typing import Any, Optional
 
 from fastapi import APIRouter, Body, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.dependencies import AdminPayload, DbSession
 from core.exceptions import ConflictError, NotFoundError
@@ -54,6 +54,17 @@ async def admin_list_colleges(
     return ListResponse[Any](data=colleges, meta=meta)
 
 
+def _card_photo(value):
+    """Empty, an upload, or a photo shipped with the site. Never an external address."""
+    if value is None:
+        return value
+    value = value.strip()
+    allowed = value.startswith("/api/uploads/") or value.startswith("/images/")
+    if value and (not allowed or ".." in value):
+        raise ValueError("must be an image uploaded through the admin")
+    return value
+
+
 class CollegeUpdateBody(BaseModel):
     name: Optional[str] = None
     city: Optional[str] = None
@@ -70,7 +81,10 @@ class CollegeUpdateBody(BaseModel):
     examsAccepted: Optional[list[str]] = None
     tags: Optional[list[str]] = None
     approvals: Optional[list[str]] = None
+    image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(populate_by_name=True)
+
+    _image = field_validator("image")(_card_photo)
 
 
 class CollegeCreateBody(BaseModel):
@@ -85,7 +99,10 @@ class CollegeCreateBody(BaseModel):
     rankingAuthority: Optional[str] = Field(default=None, max_length=100)
     rankingRank: Optional[int] = Field(default=None, ge=1)
     established: Optional[int] = Field(default=None, ge=1800, le=2100)
+    image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(populate_by_name=True)
+
+    _image = field_validator("image")(_card_photo)
 
 
 @router.post("/colleges", response_model=SuccessResponse[MessageResponse], status_code=201)
@@ -111,6 +128,7 @@ async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db
         ranking_authority=body.rankingAuthority,
         ranking_rank=body.rankingRank,
         established=body.established,
+        image=body.image or "",
     ))
     await db.commit()
     return SuccessResponse[MessageResponse](data=MessageResponse(message=f"College '{body.slug}' created."))
@@ -143,6 +161,7 @@ async def admin_update_college(
     if body.examsAccepted is not None:   values["exams_accepted"] = body.examsAccepted
     if body.tags is not None:            values["tags"] = body.tags
     if body.approvals is not None:       values["approvals"] = body.approvals
+    if body.image is not None:           values["image"] = body.image
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))
@@ -180,7 +199,13 @@ class ExamUpdateBody(BaseModel):
     applicationFee: Optional[str] = None
     officialSite: Optional[str] = None
     isFeatured: Optional[bool] = None
+    level: Optional[ExamLevel] = None
+    durationMinutes: Optional[int] = Field(default=None, ge=0, le=1440)
+    sections: Optional[list[str]] = Field(default=None, max_length=30)
+    image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(populate_by_name=True)
+
+    _image = field_validator("image")(_card_photo)
 
 
 class ExamCreateBody(BaseModel):
@@ -191,7 +216,16 @@ class ExamCreateBody(BaseModel):
     description: str = Field(min_length=1)
     mode: Optional[str] = Field(default=None, max_length=50)
     examDate: Optional[str] = Field(default=None, max_length=50)
+    registrationCloses: Optional[str] = Field(default=None, max_length=50)
+    frequency: Optional[str] = Field(default=None, max_length=100)
+    applicationFee: Optional[str] = Field(default=None, max_length=100)
+    officialSite: Optional[str] = Field(default=None, max_length=300)
+    durationMinutes: Optional[int] = Field(default=None, ge=0, le=1440)
+    sections: Optional[list[str]] = Field(default=None, max_length=30)
+    image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(populate_by_name=True)
+
+    _image = field_validator("image")(_card_photo)
 
 
 @router.post("/exams", response_model=SuccessResponse[MessageResponse], status_code=201)
@@ -213,6 +247,13 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
         description=body.description,
         mode=body.mode,
         exam_date=body.examDate,
+        registration_closes=body.registrationCloses,
+        frequency=body.frequency,
+        application_fee=body.applicationFee,
+        official_site=body.officialSite,
+        duration_minutes=body.durationMinutes,
+        sections=body.sections,
+        image=body.image or "",
     ))
     await db.commit()
     return SuccessResponse[MessageResponse](data=MessageResponse(message=f"Exam '{body.slug}' created."))
@@ -225,6 +266,7 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
 
     values: dict = {}
     if body.name is not None:                values["name"] = body.name
+    if body.level is not None:               values["level"] = body.level
     if body.conductingBody is not None:      values["conducting_body"] = body.conductingBody
     if body.description is not None:         values["description"] = body.description
     if body.registrationCloses is not None:  values["registration_closes"] = body.registrationCloses
@@ -234,6 +276,9 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
     if body.applicationFee is not None:      values["application_fee"] = body.applicationFee
     if body.officialSite is not None:        values["official_site"] = body.officialSite
     if body.isFeatured is not None:          values["is_featured"] = body.isFeatured
+    if body.durationMinutes is not None:     values["duration_minutes"] = body.durationMinutes
+    if body.sections is not None:            values["sections"] = body.sections
+    if body.image is not None:               values["image"] = body.image
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))

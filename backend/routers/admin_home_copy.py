@@ -65,6 +65,20 @@ class LocationCardBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class CollegeCardBody(BaseModel):
+    buttonLabel: str = Field(min_length=1, max_length=30)
+    viewAllLabel: str = Field(min_length=1, max_length=30)
+    model_config = ConfigDict(extra="forbid")
+
+
+class ExamCardBody(BaseModel):
+    cutoffLabel: str = Field(min_length=1, max_length=30)
+    answerKeyLabel: str = Field(min_length=1, max_length=30)
+    buttonLabel: str = Field(min_length=1, max_length=30)
+    viewAllLabel: str = Field(min_length=1, max_length=30)
+    model_config = ConfigDict(extra="forbid")
+
+
 class PromoBannerBody(BaseModel):
     heading: str = Field(min_length=5, max_length=120)
     buttonLabel: str = Field(min_length=1, max_length=30)
@@ -89,6 +103,8 @@ PARTS = {
     "locations": SectionBody,
     "streams": SectionBody,
     "locationCard": LocationCardBody,
+    "collegeCard": CollegeCardBody,
+    "examCard": ExamCardBody,
     "topExams": SectionBody,
     "programs": StoryBody,
     "careers": SectionBody,
@@ -97,7 +113,7 @@ PARTS = {
     "data": SectionBody,
     "articles": SectionBody,
 }
-Part = Literal["hero", "locations", "streams", "locationCard", "topExams", "programs", "careers", "promoBanner", "universities", "data", "articles"]
+Part = Literal["hero", "locations", "streams", "locationCard", "collegeCard", "examCard", "topExams", "programs", "careers", "promoBanner", "universities", "data", "articles"]
 
 
 async def _current(db) -> dict:

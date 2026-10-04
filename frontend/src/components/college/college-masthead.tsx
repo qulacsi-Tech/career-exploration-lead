@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
+import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -206,14 +207,20 @@ export function CollegeMasthead({
           className="relative"
         >
           <div className="relative aspect-[16/9] overflow-hidden rounded-t-3xl bg-bg-alt sm:aspect-[21/7]">
-            <Image
-              src={photo}
-              alt={`${name} campus`}
-              fill
-              priority
-              sizes="(max-width: 1280px) 100vw, 1280px"
-              className="object-cover"
-            />
+            {photo.startsWith("/api/") ? (
+              // Uploaded in the admin: served by the API, so a plain img rather than next/image.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={mediaUrl(photo)} alt={`${name} campus`} className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <Image
+                src={photo}
+                alt={`${name} campus`}
+                fill
+                priority
+                sizes="(max-width: 1280px) 100vw, 1280px"
+                className="object-cover"
+              />
+            )}
             <div
               aria-hidden
               className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent"

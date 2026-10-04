@@ -117,17 +117,39 @@ class TopExamsBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def _exam_card(e, show: bool) -> dict:
+    return {
+        "slug": e.slug,
+        "name": e.name,
+        "conductingBody": e.conducting_body,
+        "level": e.level.value if hasattr(e.level, "value") else str(e.level),
+        "mode": e.mode or "",
+        "description": e.description,
+        "registrationCloses": e.registration_closes or "",
+        "examDate": e.exam_date or "",
+        "applicationFee": e.application_fee or "",
+        "frequency": e.frequency or "",
+        "officialSite": e.official_site or "",
+        "durationMinutes": e.duration_minutes,
+        "sections": e.sections or [],
+        "image": e.image or "",
+        "show": show,
+    }
+
+
 @router.get("/top-exams", response_model=SuccessResponse[dict])
 async def admin_get_top_exams(_admin: AdminPayload, db: DbSession):
+    """Every exam. The ones in the homepage row come first, in their order; the rest by name."""
     from models.exam import Exam
     from models.site_content import SiteContent
     row = (await db.execute(select(SiteContent).where(SiteContent.key == "home.topExams"))).scalar_one_or_none()
     slugs = list(row.data) if row and isinstance(row.data, list) else []
-    names = dict((await db.execute(select(Exam.slug, Exam.name))).all())
+    exams = {e.slug: e for e in (await db.execute(select(Exam).order_by(Exam.name))).scalars().all()}
+    chosen = [s for s in slugs if s in exams]
+    rest = [s for s in exams if s not in chosen]
     return SuccessResponse[dict](data={
-        "slugs": slugs,
-        "exams": [{"slug": s, "name": names[s]} for s in slugs if s in names],
-        "options": [{"slug": s, "name": n} for s, n in sorted(names.items(), key=lambda kv: kv[1])],
+        "slugs": chosen,
+        "exams": [_exam_card(exams[s], True) for s in chosen] + [_exam_card(exams[s], False) for s in rest],
     })
 
 

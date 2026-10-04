@@ -86,6 +86,8 @@ class CollegeListSchema(BaseModel):
     approvals: List[str]
     # First course for TopCollegeCard footer band
     courses: List[CourseSchema] = []
+    # Card and hero photo. Empty: the card shows no photo.
+    image: str = ""
 
     model_config = ConfigDict(populate_by_name=True)
 

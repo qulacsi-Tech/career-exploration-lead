@@ -33,8 +33,11 @@ import { TopCollegeCard } from "@/components/top-college-card";
 export function CollegeSlider({
   colleges,
   label,
+  buttonLabel,
 }: {
   colleges: College[];
+  /** The card button's text, from the homepage's card wording. */
+  buttonLabel: string;
   /** Names the region for screen readers, e.g. the band's heading. */
   label: string;
 }) {
@@ -125,7 +128,7 @@ export function CollegeSlider({
               className="w-full shrink-0 snap-start sm:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]"
               aria-label={`${index + 1} of ${colleges.length}`}
             >
-              <TopCollegeCard college={college} />
+              <TopCollegeCard college={college} buttonLabel={buttonLabel} />
             </li>
           ))}
         </ul>

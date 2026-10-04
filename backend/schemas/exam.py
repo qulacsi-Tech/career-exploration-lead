@@ -17,5 +17,7 @@ class ExamSchema(BaseModel):
     officialSite: Optional[str] = None
     durationMinutes: Optional[int] = None
     sections: Optional[List[str]] = None
+    # Card photo. Empty: the card shows no photo.
+    image: str = ""
 
     model_config = ConfigDict(populate_by_name=True)

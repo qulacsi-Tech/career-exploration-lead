@@ -117,6 +117,26 @@ class LocationCardCopySchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class CollegeCardCopySchema(BaseModel):
+    """The fixed words on the Top Colleges cards and their View all button."""
+
+    buttonLabel: str = "Courses & fees"
+    viewAllLabel: str = "View All"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExamCardCopySchema(BaseModel):
+    """The fixed words on the Top Exams cards and their View all button."""
+
+    cutoffLabel: str = "Cutoff"
+    answerKeyLabel: str = "Answer key"
+    buttonLabel: str = "Read more"
+    viewAllLabel: str = "View All"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class PromoBannerSchema(BaseModel):
     """The brand-coloured banner under the Explore Careers panels."""
 
@@ -134,6 +154,8 @@ class HomeCopySchema(BaseModel):
     locations: SectionCopySchema = SectionCopySchema(eyebrow="Destination hubs", heading="Where Ambition Meets", accent="Opportunity")
     streams: SectionCopySchema = SectionCopySchema(heading="Chart Your Discipline.", accent="Shape Your Tomorrow.", subheading="Pick a stream to see its colleges, entrance exams, fees and placement records.")
     locationCard: LocationCardCopySchema = LocationCardCopySchema()
+    collegeCard: CollegeCardCopySchema = CollegeCardCopySchema()
+    examCard: ExamCardCopySchema = ExamCardCopySchema()
     topExams: SectionCopySchema = SectionCopySchema(heading="Top Exams", subheading="Exams Cherry Picked For You")
     programs: StoryCopySchema = StoryCopySchema(itemEyebrow="Online & On-campus", buttonLabel="Explore this program")
     careers: SectionCopySchema = SectionCopySchema(heading="Explore Careers", subheading="Explore your preferred streams to learn about the relevant colleges, exams and more!")

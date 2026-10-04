@@ -39,6 +39,8 @@ class College(Base):
     about = Column(Text, nullable=True)
     is_featured = Column(Boolean, nullable=False, default=False, index=True)
     view_count = Column(Integer, nullable=False, default=0)
+    # Card and hero photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).
+    image = Column(String(200), nullable=False, default="", server_default="")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()

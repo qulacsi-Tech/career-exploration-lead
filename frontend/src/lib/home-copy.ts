@@ -33,6 +33,20 @@ export type LocationCardCopy = {
   buttonLabel: string;
 };
 
+/** The fixed words on the Top Colleges cards and their View all button. */
+export type CollegeCardCopy = {
+  buttonLabel: string;
+  viewAllLabel: string;
+};
+
+/** The fixed words on the Top Exams cards and their View all button. */
+export type ExamCardCopy = {
+  cutoffLabel: string;
+  answerKeyLabel: string;
+  buttonLabel: string;
+  viewAllLabel: string;
+};
+
 export type PromoBannerCopy = {
   heading: string;
   buttonLabel: string;
@@ -55,6 +69,8 @@ export type HomeCopy = {
   locations: SectionCopy;
   streams: SectionCopy;
   locationCard: LocationCardCopy;
+  collegeCard: CollegeCardCopy;
+  examCard: ExamCardCopy;
   topExams: SectionCopy;
   programs: StoryCopy;
   careers: SectionCopy;
@@ -83,6 +99,8 @@ export const DEFAULT_HOME_COPY: HomeCopy = {
     subheading: "Pick a stream to see its colleges, entrance exams, fees and placement records.",
   },
   locationCard: { institutionsLabel: "Ranked Institutions", ctcLabel: "Average CTC", buttonLabel: "Explore Colleges" },
+  collegeCard: { buttonLabel: "Courses & fees", viewAllLabel: "View All" },
+  examCard: { cutoffLabel: "Cutoff", answerKeyLabel: "Answer key", buttonLabel: "Read more", viewAllLabel: "View All" },
   topExams: { eyebrow: "", heading: "Top Exams", accent: "", subheading: "Exams Cherry Picked For You" },
   programs: {
     heading: "Recommended",

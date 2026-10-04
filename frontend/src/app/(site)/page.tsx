@@ -147,16 +147,20 @@ export default async function Home() {
               />
             )}
             {bandRows.length > 3 ? (
-              <CollegeSlider colleges={bandRows} label={collection.heading || collection.title} />
+              <CollegeSlider
+                colleges={bandRows}
+                label={collection.heading || collection.title}
+                buttonLabel={copy.collegeCard.buttonLabel}
+              />
             ) : (
               <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {bandRows.map((college) => (
-                  <TopCollegeCard key={college.slug} college={college} />
+                  <TopCollegeCard key={college.slug} college={college} buttonLabel={copy.collegeCard.buttonLabel} />
                 ))}
               </div>
             )}
             <div className="mt-10 text-center">
-              <ViewAllButton href={`/colleges/${collection.slug}`} />
+              <ViewAllButton href={`/colleges/${collection.slug}`}>{copy.collegeCard.viewAllLabel}</ViewAllButton>
             </div>
           </div>
         </section>
@@ -181,11 +185,11 @@ export default async function Home() {
           />
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {topExams.map((exam) => (
-              <TopExamCard key={exam.slug} exam={exam} />
+              <TopExamCard key={exam.slug} exam={exam} labels={copy.examCard} />
             ))}
           </div>
           <div className="mt-10 text-center">
-            <ViewAllButton href="/exams" />
+            <ViewAllButton href="/exams">{copy.examCard.viewAllLabel}</ViewAllButton>
           </div>
         </div>
       </section>

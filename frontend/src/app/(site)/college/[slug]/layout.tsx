@@ -66,7 +66,7 @@ export default async function CollegeLayout({
         reviewCount={college.reviewCount}
         averagePackage={college.placement.average}
         qnaCount={faqsOf(college).length}
-        photo={college.coverImage || collegePhoto(college.slug)}
+        photo={college.image || college.coverImage || collegePhoto(college.slug)}
         logo={college.logo}
         monogram={monogram(college.name)}
         brochureHref={college.brochureUrl || "/enquiry"}

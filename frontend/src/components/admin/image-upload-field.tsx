@@ -18,7 +18,7 @@ import { mediaUrl } from "@/lib/media";
 */
 
 type Slot = {
-  kind: "hero" | "banner" | "location";
+  kind: "hero" | "banner" | "location" | "college" | "exam";
   label: string;
   recommended: [number, number];
   minimum: [number, number];
@@ -51,6 +51,29 @@ const SLOTS: Record<Slot["kind"], Slot> = {
       "The photo fills the whole card behind the text. A dark fade covers the bottom and the left edge, where the name, description and package sit, so keep the subject in the upper middle.",
       "Do not put text or logos in the picture. They would sit under the card's own text.",
       "On phones the card is taller than it is wide, so the left and right are cropped. Keep the subject in the centre.",
+    ],
+  },
+  college: {
+    kind: "college",
+    label: "College photo",
+    recommended: [1200, 800],
+    minimum: [800, 520],
+    previewClass: "aspect-[3/2]",
+    notes: [
+      "The photo fills the top of the card, about 380 by 230 px. When someone points at the card it grows to fill the whole card behind the text, so keep the subject in the middle.",
+      "Do not put text or logos in the picture. They would be cropped and sit under the card's own text.",
+      "It is also the wide banner at the top of the college's own page, where it is cropped to the middle, so keep the subject centred.",
+    ],
+  },
+  exam: {
+    kind: "exam",
+    label: "Exam photo",
+    recommended: [1200, 800],
+    minimum: [800, 520],
+    previewClass: "aspect-[3/2]",
+    notes: [
+      "The photo fills the top of the card, about 380 by 230 px. When someone points at the card it grows to fill the whole card behind the text, so keep the subject in the middle.",
+      "Do not put text or logos in the picture. They would be cropped and sit under the card's own text.",
     ],
   },
   banner: {

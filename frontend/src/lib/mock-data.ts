@@ -64,6 +64,8 @@ export type College = {
   /** Uploaded image paths. */
   logo?: string;
   coverImage?: string;
+  /** Photo set in the admin: /images/... or /api/uploads/... Used by cards and the page banner. */
+  image?: string;
   /** Uploaded brochure PDF. The Brochure button falls back to the enquiry form. */
   brochureUrl?: string;
   /** When an editor last saved the record — "30 Jul 2026". */

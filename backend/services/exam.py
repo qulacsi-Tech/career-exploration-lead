@@ -25,6 +25,7 @@ def _to_schema(exam: Exam) -> ExamSchema:
         officialSite=exam.official_site,
         durationMinutes=exam.duration_minutes,
         sections=exam.sections,
+        image=exam.image or "",
     )
 
 

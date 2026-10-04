@@ -1,14 +1,15 @@
 "use client";
 
 import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
-import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
+import { TopCollegesEditor } from "@/components/admin/top-colleges-editor";
+import { TopExamsEditor } from "@/components/admin/top-exams-editor";
 import type { AdminField, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
 import { HomeLocationsEditor } from "@/components/admin/home-locations-editor";
 import { HomeFieldsEditor } from "@/components/admin/home-fields-editor";
 import type { HomeCopy } from "@/lib/home-copy";
 import { HeroCopyEditor, PromoBannerEditor, SectionCopyEditor, StoryCopyEditor } from "@/components/admin/home-copy-editor";
 import { OrderedListEditor } from "@/components/admin/ordered-list-editor";
-import { saveRecommendedPrograms, saveRecommendedUniversities, saveTopExams } from "@/lib/admin-actions";
+import { saveRecommendedPrograms, saveRecommendedUniversities } from "@/lib/admin-actions";
 import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
 
 /*
@@ -98,8 +99,15 @@ export function HomepageSectionsAdmin({
             collections appear, in what order, at how many cards.
           */
           id: "college-bands",
-          label: "College bands",
-          render: () => <HomepageCollectionsPicker data={homepage} />,
+          label: "Top Colleges",
+          render: () => (
+            <TopCollegesEditor
+              data={homepage}
+              geo={geo}
+              streams={fieldList.map((f) => f.name)}
+              wording={copy.collegeCard}
+            />
+          ),
         },
         {
           id: "top-exams",
@@ -113,17 +121,7 @@ export function HomepageSectionsAdmin({
                 copy={copy.topExams}
                 show={["heading", "accent", "subheading"]}
               />
-              <OrderedListEditor
-                title="Top exams"
-                description="The exams in the homepage row, left to right."
-                addLabel="Add to row"
-                emptyText="No exams chosen. The row will not show on the homepage."
-                max={6}
-                noun="exam"
-                chosen={topExams.exams}
-                options={topExams.options}
-                onSave={saveTopExams}
-              />
+              <TopExamsEditor topExams={topExams} wording={copy.examCard} />
             </div>
           ),
         },

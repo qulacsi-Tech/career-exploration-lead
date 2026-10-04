@@ -122,6 +122,8 @@ export type College = {
   placement?: Placement | null;
   cutoffs?: Cutoff[];
   reviews?: Review[];
+  /** Card and hero photo: /images/... or /api/uploads/... Empty: no photo. */
+  image?: string;
 };
 
 export type Exam = {
@@ -139,6 +141,8 @@ export type Exam = {
   officialSite?: string;
   durationMinutes?: number;
   sections?: string[];
+  /** Card photo: /images/... or /api/uploads/... Empty: no photo. */
+  image?: string;
 };
 
 export type Location = {
@@ -820,6 +824,46 @@ export async function adminSaveHomepage(token: string, bands: { slug: string; li
   return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage", { bands });
 }
 
+/** A college as the band editor lists it: just what a card and the picker need. */
+export type BandCollege = {
+  slug: string;
+  name: string;
+  city: string;
+  state: string;
+  ownership: "Private" | "Government" | "Deemed";
+  stream: string;
+  feesRange: string;
+  image: string;
+};
+
+export type BandColleges = {
+  /** The band's colleges in the editor's order. */
+  colleges: BandCollege[];
+  /** Every other college, for "add existing". */
+  options: BandCollege[];
+  /** True when a ranking list decides the order shown on the site. */
+  rankingBound: boolean;
+};
+
+export async function adminGetBandColleges(token: string, slug: string): Promise<BandColleges> {
+  return adminRequest<BandColleges>(token, "GET", `/admin/collections/${encodeURIComponent(slug)}/colleges`);
+}
+
+export async function adminPutBandColleges(token: string, slug: string, slugs: string[]) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/collections/${encodeURIComponent(slug)}/colleges`, { slugs });
+}
+
+/** What the college form sends. The slug is made from the name when a college is created. */
+export type CollegeCardInput = {
+  name: string;
+  city: string;
+  state: string;
+  ownership: "Private" | "Government" | "Deemed";
+  stream: string;
+  feesRange: string;
+  image: string;
+};
+
 // ── Admin homepage content ────────────────────────────────────────────────
 
 /** A stored homepage block (careers panels or data tiles), as the admin editor sees it. */
@@ -831,10 +875,46 @@ export async function adminPutContent(token: string, name: "careers" | "highligh
   return adminRequest<{ message: string }>(token, "PUT", `/admin/content/${name}`, { items });
 }
 
+/** An exam as the Top Exams editor lists it. `show` is whether it is in the homepage row. */
+export type AdminExam = {
+  slug: string;
+  name: string;
+  conductingBody: string;
+  level: "National" | "State";
+  mode: string;
+  description: string;
+  registrationCloses: string;
+  examDate: string;
+  applicationFee: string;
+  frequency: string;
+  officialSite: string;
+  durationMinutes: number | null;
+  sections: string[];
+  image: string;
+  show: boolean;
+};
+
+/** Every exam, the homepage ones first in their order. `slugs` is the homepage row. */
 export type AdminTopExams = {
   slugs: string[];
-  exams: { slug: string; name: string }[];
-  options: { slug: string; name: string }[];
+  exams: AdminExam[];
+};
+
+/** What the exam form sends. The slug is made from the name when an exam is created. */
+export type ExamInput = {
+  name: string;
+  conductingBody: string;
+  level: "National" | "State";
+  mode: string;
+  description: string;
+  registrationCloses: string;
+  examDate: string;
+  applicationFee: string;
+  frequency: string;
+  officialSite: string;
+  durationMinutes: number | null;
+  sections: string[];
+  image: string;
 };
 
 export async function adminGetTopExams(token: string): Promise<AdminTopExams> {
@@ -949,7 +1029,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { College } from "@/lib/api";
-import { collegePhoto } from "@/lib/college-images";
+import { mediaUrl } from "@/lib/media";
 import { GraduationCap, Tag } from "lucide-react";
 
 /**
@@ -21,24 +21,34 @@ import { GraduationCap, Tag } from "lucide-react";
  * through its two links, and the hover-only version left those users reading
  * dark type over a photograph.
  */
-export function TopCollegeCard({ college }: { college: College }) {
+export function TopCollegeCard({ college, buttonLabel }: { college: College; buttonLabel: string }) {
+  // A college added in the admin has no courses until its record is filled in.
   const featured = college.courses[0];
-  /* Shared with the college page's hero, so a card and the page it opens show
-     the same campus. The local map this replaced covered three slugs and sent
-     everything else to the Bengaluru photo. */
-  const imgSrc = collegePhoto(college.slug);
+  const fees = featured?.fees || college.feesRange;
+  // The photo is the college's own, set in the admin. Without one the card shows no picture.
+  const photo = college.image ?? "";
 
   return (
     <article className="group relative flex h-[440px] flex-col overflow-hidden rounded-[28px] border border-white/70 bg-surface/70 p-3 shadow-sm backdrop-blur-xl transition-shadow duration-300 hover:shadow-xl focus-within:shadow-xl">
       {/* The photo: 228px at rest, the whole card inset on hover */}
       <div className="absolute inset-x-3 top-3 h-[228px] overflow-hidden rounded-[22px] bg-bg-alt transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:h-[calc(100%-1.5rem)] group-focus-within:h-[calc(100%-1.5rem)]">
-        <Image
-          src={imgSrc}
-          alt={`${college.name} campus photo`}
-          fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover transition-transform duration-700 group-hover:scale-105 group-focus-within:scale-105"
-        />
+        {photo.startsWith("/api/") ? (
+          // Uploaded in the admin: served by the API, so a plain img rather than next/image.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={mediaUrl(photo)}
+            alt={`${college.name} campus photo`}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 group-focus-within:scale-105"
+          />
+        ) : photo ? (
+          <Image
+            src={photo}
+            alt={`${college.name} campus photo`}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover transition-transform duration-700 group-hover:scale-105 group-focus-within:scale-105"
+          />
+        ) : null}
         {/* Legibility scrim, only needed once the photo is behind the copy */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-within:opacity-100" />
       </div>
@@ -66,27 +76,31 @@ export function TopCollegeCard({ college }: { college: College }) {
         </p>
 
         <dl className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <dt className="sr-only">Featured course</dt>
-            <GraduationCap className="h-4 w-4 shrink-0 text-brand" />
-            <dd className="truncate font-semibold text-ink transition-colors duration-500 group-hover:text-white group-focus-within:text-white">
-              {featured.name}
-            </dd>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <dt className="sr-only">Fees</dt>
-            <Tag className="h-4 w-4 shrink-0 text-brand" />
-            <dd className="text-ink-soft transition-colors duration-500 group-hover:text-white/80 group-focus-within:text-white/80">
-              {featured.fees}
-            </dd>
-          </div>
+          {featured && (
+            <div className="flex min-w-0 items-center gap-1.5">
+              <dt className="sr-only">Featured course</dt>
+              <GraduationCap className="h-4 w-4 shrink-0 text-brand" />
+              <dd className="truncate font-semibold text-ink transition-colors duration-500 group-hover:text-white group-focus-within:text-white">
+                {featured.name}
+              </dd>
+            </div>
+          )}
+          {fees && (
+            <div className="flex items-center gap-1.5">
+              <dt className="sr-only">Fees</dt>
+              <Tag className="h-4 w-4 shrink-0 text-brand" />
+              <dd className="text-ink-soft transition-colors duration-500 group-hover:text-white/80 group-focus-within:text-white/80">
+                {fees}
+              </dd>
+            </div>
+          )}
         </dl>
 
         <Link
           href={`/college/${college.slug}`}
           className="mt-auto block rounded-full bg-ink px-5 py-3 text-center text-sm font-semibold text-white transition-colors duration-500 hover:bg-brand group-hover:bg-white group-hover:text-ink group-hover:hover:bg-brand group-hover:hover:text-white group-focus-within:bg-white group-focus-within:text-ink"
         >
-          Courses &amp; fees
+          {buttonLabel}
         </Link>
       </div>
     </article>

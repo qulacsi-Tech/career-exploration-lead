@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Exam } from "@/lib/api";
+import type { ExamCardCopy } from "@/lib/home-copy";
+import { mediaUrl } from "@/lib/media";
 import { KeyRound, Target } from "lucide-react";
 
 /**
@@ -12,18 +14,31 @@ import { KeyRound, Target } from "lucide-react";
  * folded into the card — they are the two things a candidate most often wants
  * without opening the exam page first.
  */
-export function TopExamCard({ exam }: { exam: Exam }) {
+export function TopExamCard({ exam, labels }: { exam: Exam; labels: ExamCardCopy }) {
+  // The photo is the exam's own, set in the admin. Without one the card shows no picture.
+  const photo = exam.image ?? "";
+
   return (
     <article className="group relative flex h-[440px] flex-col overflow-hidden rounded-[28px] border border-white/70 bg-surface/70 p-3 shadow-sm backdrop-blur-xl transition-shadow duration-300 hover:shadow-xl focus-within:shadow-xl">
       {/* The photo: 228px at rest, the whole card inset on hover */}
       <div className="absolute inset-x-3 top-3 h-[228px] overflow-hidden rounded-[22px] bg-bg-alt transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:h-[calc(100%-1.5rem)] group-focus-within:h-[calc(100%-1.5rem)]">
-        <Image
-          src={`/images/exams/${exam.slug}.jpg`}
-          alt={`${exam.name} exam`}
-          fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover transition-transform duration-700 group-hover:scale-105 group-focus-within:scale-105"
-        />
+        {photo.startsWith("/api/") ? (
+          // Uploaded in the admin: served by the API, so a plain img rather than next/image.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={mediaUrl(photo)}
+            alt={`${exam.name} exam`}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 group-focus-within:scale-105"
+          />
+        ) : photo ? (
+          <Image
+            src={photo}
+            alt={`${exam.name} exam`}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover transition-transform duration-700 group-hover:scale-105 group-focus-within:scale-105"
+          />
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-within:opacity-100" />
       </div>
 
@@ -55,14 +70,14 @@ export function TopExamCard({ exam }: { exam: Exam }) {
             className="flex items-center gap-1.5 font-semibold text-ink transition-colors duration-500 hover:text-brand group-hover:text-white group-hover:hover:text-brand group-focus-within:text-white"
           >
             <Target className="h-4 w-4 shrink-0 text-brand" />
-            Cutoff
+            {labels.cutoffLabel}
           </Link>
           <Link
             href={`/exams/${exam.slug}/answer-key`}
             className="flex items-center gap-1.5 font-semibold text-ink transition-colors duration-500 hover:text-brand group-hover:text-white group-hover:hover:text-brand group-focus-within:text-white"
           >
             <KeyRound className="h-4 w-4 shrink-0 text-brand" />
-            Answer key
+            {labels.answerKeyLabel}
           </Link>
         </div>
 
@@ -70,7 +85,7 @@ export function TopExamCard({ exam }: { exam: Exam }) {
           href={`/exams/${exam.slug}`}
           className="mt-auto block rounded-full bg-ink px-5 py-3 text-center text-sm font-semibold text-white transition-colors duration-500 hover:bg-brand group-hover:bg-white group-hover:text-ink group-hover:hover:bg-brand group-hover:hover:text-white group-focus-within:bg-white group-focus-within:text-ink"
         >
-          Read more
+          {labels.buttonLabel}
         </Link>
       </div>
     </article>

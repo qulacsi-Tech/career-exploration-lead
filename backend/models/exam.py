@@ -32,6 +32,8 @@ class Exam(Base):
     official_site = Column(String(300), nullable=True)
     duration_minutes = Column(Integer, nullable=True)
     sections = Column(JSONB, nullable=True)            # ["VARC", "DILR", "QA"]
+    # Card photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).
+    image = Column(String(200), nullable=False, default="", server_default="")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()

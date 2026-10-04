@@ -576,6 +576,37 @@ PROGRAMS = [
 # Seed helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+# The photos the site used to choose by itself. Only seed data uses this now; the
+# admin sets a college's photo from then on.
+_COLLEGE_POOL = [
+    "/images/colleges/bengaluru-institute-of-management-studies.jpg",
+    "/images/colleges/horizon-school-of-business.jpg",
+    "/images/colleges/eastwind-institute-of-management.jpg",
+    "/images/universities/kr-mangalam-university.jpg",
+    "/images/universities/clark-university.jpg",
+    "/images/universities/swarnam-university.jpg",
+    "/images/banners/promo-banner-campus.jpg",
+]
+_COLLEGE_OWN_PHOTO = {
+    "bengaluru-institute-of-management-studies": _COLLEGE_POOL[0],
+    "horizon-school-of-business": _COLLEGE_POOL[1],
+    "eastwind-institute-of-management": _COLLEGE_POOL[2],
+    "kr-mangalam-university": _COLLEGE_POOL[3],
+}
+_EXAM_PHOTOS = {"cat", "cmat", "karnataka-pgcet", "mah-cet", "nmat", "xat"}
+
+
+def _college_photo(slug: str) -> str:
+    if slug in _COLLEGE_OWN_PHOTO:
+        return _COLLEGE_OWN_PHOTO[slug]
+    h = 5381
+    for ch in slug:
+        h = (h * 33 + ord(ch)) & 0xFFFFFFFF
+        if h >= 0x80000000:
+            h -= 0x100000000
+    return _COLLEGE_POOL[abs(h) % len(_COLLEGE_POOL)]
+
+
 async def _seed_colleges(session: AsyncSession) -> None:
     print("Seeding colleges …")
     for data in COLLEGES:
@@ -584,7 +615,7 @@ async def _seed_colleges(session: AsyncSession) -> None:
         cutoffs_data = data.pop("cutoffs")
         reviews_data = data.pop("reviews")
 
-        college = College(id=uuid.uuid4(), **data)
+        college = College(id=uuid.uuid4(), image=_college_photo(data["slug"]), **data)
         session.add(college)
         await session.flush()
 
@@ -606,7 +637,8 @@ async def _seed_colleges(session: AsyncSession) -> None:
 async def _seed_exams(session: AsyncSession) -> None:
     print("Seeding exams …")
     for data in EXAMS:
-        session.add(Exam(id=uuid.uuid4(), **data))
+        image = f"/images/exams/{data['slug']}.jpg" if data["slug"] in _EXAM_PHOTOS else ""
+        session.add(Exam(id=uuid.uuid4(), image=image, **data))
     await session.commit()
     print(f"  ✓ {len(EXAMS)} exams seeded")
 
