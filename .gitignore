@@ -78,3 +78,6 @@ desktop.ini
 
 # --- Deploy -----------------------------------------------------------------
 .vercel
+
+# Server-written deploy status
+deploy/last-deploy.txt
