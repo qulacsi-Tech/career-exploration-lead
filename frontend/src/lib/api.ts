@@ -9,6 +9,8 @@
 
 import type { RichTextDoc } from "@/lib/rich-text";
 import type { HomeCopy } from "@/lib/home-copy";
+import type { MockTest, TestSummary } from "@/lib/practice-data";
+import type { AttemptResult } from "@/lib/practice-attempt";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -883,6 +885,51 @@ export async function adminDeleteCollection(token: string, slug: string, confirm
 
 export async function adminDeleteProgram(token: string, slug: string) {
   return adminRequest<{ message: string }>(token, "DELETE", `/admin/programs/${slug}`);
+}
+
+// ── Practice tests ───────────────────────────────────────────────────────
+
+/** The practice test cards for an exam, free sample sets first. */
+export async function getPracticeTests(exam?: string): Promise<TestSummary[]> {
+  const query = exam ? `?exam=${encodeURIComponent(exam)}` : "";
+  return apiFetch<TestSummary[]>(`/practice/tests${query}`);
+}
+
+/** One published test with its questions and stimuli, as a candidate sees it. Null when unknown. */
+export async function getPracticeTest(slug: string): Promise<MockTest | null> {
+  try {
+    return await apiFetch<MockTest>(`/practice/tests/${encodeURIComponent(slug)}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Scores a sitting on the server. The server returns the score and each
+ * question's correct answer and solution; nothing about the answers is known
+ * before this call.
+ */
+export async function submitPractice(
+  slug: string,
+  responses: Record<string, { status: string; saved?: unknown; secondsSpent: number }>
+): Promise<AttemptResult> {
+  const url = `${API_BASE}/practice/tests/${encodeURIComponent(slug)}/submit`;
+  const res = await fetch(url, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ responses }),
+  });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: AttemptResult }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    const message = json && json.success === false ? json.error?.message : undefined;
+    throw new ApiError(res.status, message ?? `Practice submit failed (${res.status})`);
+  }
+  return json.data;
 }
 
 // ── Sitemap ───────────────────────────────────────────────────────────────

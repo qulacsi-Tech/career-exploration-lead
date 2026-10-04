@@ -4,9 +4,8 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
-import { testsForExam } from "@/lib/practice-data";
 import { TestCard } from "@/components/practice/test-card";
-import { getExam, getExamSlugs, getColleges } from "@/lib/api";
+import { getExam, getExamSlugs, getColleges, getPracticeTests } from "@/lib/api";
 
 export async function generateStaticParams() {
   try {
@@ -52,8 +51,8 @@ export default async function ExamDetailPage({
   // Short name: "Common Admission Test (CAT)" → "CAT"
   const shortName = exam.name.replace(/\s*\(.*\)\s*/, "").trim();
 
-  // Practice tests (still from local data — practice API is Phase 3)
-  const practiceTests = testsForExam(slug);
+  // Practice tests for this exam, from the practice API
+  const practiceTests = await getPracticeTests(slug);
 
   // Colleges accepting this exam — fetched live
   let accepting: Awaited<ReturnType<typeof getColleges>>["data"] = [];

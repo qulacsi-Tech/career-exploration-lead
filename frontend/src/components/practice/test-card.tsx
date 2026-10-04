@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, Clock, FileText, Lock, Unlock } from "lucide-react";
-import { type MockTest, markingSummary, questionCount } from "@/lib/practice-data";
+import type { TestSummary } from "@/lib/practice-data";
 
 /**
  * One practice paper, on the exam page and in the practice lists.
@@ -12,15 +12,15 @@ import { type MockTest, markingSummary, questionCount } from "@/lib/practice-dat
  * starting is finding it out too late.
  */
 
-const KIND_LABELS: Record<MockTest["kind"], string> = {
+const KIND_LABELS: Record<TestSummary["kind"], string> = {
   "full-mock": "Full mock",
   sectional: "Sectional",
   "previous-year": "Previous year",
   sample: "Free sample",
 };
 
-export function TestCard({ test }: { test: MockTest }) {
-  const count = questionCount(test);
+export function TestCard({ test }: { test: TestSummary }) {
+  const count = test.questionCount;
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5 transition hover:border-brand/50 hover:shadow-sm">
@@ -53,7 +53,7 @@ export function TestCard({ test }: { test: MockTest }) {
           </dd>
         </div>
 
-        {test.sections.length > 1 && (
+        {test.sectionCount > 1 && (
           <div className="flex items-center gap-1.5">
             <dt className="sr-only">Section lock</dt>
             {test.sectionLock ? (
@@ -66,7 +66,7 @@ export function TestCard({ test }: { test: MockTest }) {
         )}
       </dl>
 
-      <p className="mt-2 text-xs text-ink-faint">{markingSummary(test)}</p>
+      <p className="mt-2 text-xs text-ink-faint">{test.markingSummary}</p>
 
       {/* mt-auto on the wrapper, so the button lands on the same baseline in
           every card of a row however much summary text sits above it. */}

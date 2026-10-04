@@ -3,15 +3,12 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { exams } from "@/lib/mock-data";
-import {
-  markingSummary,
-  publishedTests,
-  questionCount,
-  testBySlug,
-} from "@/lib/practice-data";
+import { getPracticeTest, getPracticeTests } from "@/lib/api";
+import { markingSummary, questionCount } from "@/lib/practice-data";
 
-export function generateStaticParams() {
-  return publishedTests().map((test) => ({ slug: test.examSlug, test: test.slug }));
+export async function generateStaticParams() {
+  const tests = await getPracticeTests();
+  return tests.map((test) => ({ slug: test.examSlug, test: test.slug }));
 }
 
 export async function generateMetadata({
@@ -20,7 +17,7 @@ export async function generateMetadata({
   params: Promise<{ test: string }>;
 }): Promise<Metadata> {
   const { test: testSlug } = await params;
-  const test = testBySlug(testSlug);
+  const test = await getPracticeTest(testSlug);
   if (!test) return { title: "Test not found" };
 
   return {
@@ -46,7 +43,7 @@ export default async function TestInstructionsPage({
   params: Promise<{ slug: string; test: string }>;
 }) {
   const { slug, test: testSlug } = await params;
-  const test = testBySlug(testSlug);
+  const test = await getPracticeTest(testSlug);
   if (!test || !test.isPublished || test.examSlug !== slug) notFound();
 
   const exam = exams.find((e) => e.slug === slug);
