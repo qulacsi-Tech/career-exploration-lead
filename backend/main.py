@@ -1,3 +1,4 @@
+# Deployed automatically: pushes to main reach the server via deploy/auto-deploy.sh.
 import logging
 from contextlib import asynccontextmanager
 
