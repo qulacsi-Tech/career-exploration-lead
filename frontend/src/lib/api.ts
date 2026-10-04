@@ -860,6 +860,22 @@ export async function adminSetRecommendedPrograms(token: string, slugs: string[]
   return adminRequest<{ message: string }>(token, "PUT", "/admin/programs/recommended", { slugs });
 }
 
+// ── Admin recommended colleges (homepage) ─────────────────────────────────
+
+export type AdminUniversities = {
+  slugs: string[];
+  colleges: { slug: string; name: string }[];
+  options: { slug: string; name: string }[];
+};
+
+export async function adminGetUniversities(token: string): Promise<AdminUniversities> {
+  return adminRequest<AdminUniversities>(token, "GET", "/admin/homepage/universities");
+}
+
+export async function adminSetUniversities(token: string, slugs: string[]) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage/universities", { slugs });
+}
+
 // ── Sitemap ───────────────────────────────────────────────────────────────
 
 /** Slugs for one kind of page, from the backend's sitemap endpoints. */

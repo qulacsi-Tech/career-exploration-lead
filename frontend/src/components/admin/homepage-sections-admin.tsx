@@ -1,13 +1,12 @@
 "use client";
 
-import { recommendedUniversities } from "@/lib/mock-data";
-import { PageSectionsAdmin, SectionEditor } from "@/components/admin/page-sections-admin";
+import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
 import { HomepageCollectionsPicker } from "@/components/admin/homepage-collections-picker";
-import type { AdminHomepage, AdminProgram, AdminTopExams } from "@/lib/api";
+import type { AdminHomepage, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
 import type { HomeCopy } from "@/lib/home-copy";
 import { HeroCopyEditor, SectionCopyEditor } from "@/components/admin/home-copy-editor";
 import { OrderedListEditor } from "@/components/admin/ordered-list-editor";
-import { saveRecommendedPrograms, saveTopExams } from "@/lib/admin-actions";
+import { saveRecommendedPrograms, saveRecommendedUniversities, saveTopExams } from "@/lib/admin-actions";
 import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
 
 /*
@@ -28,6 +27,7 @@ export function HomepageSectionsAdmin({
   topExams,
   copy,
   programs,
+  universities,
 }: {
   homepage: AdminHomepage;
   careers: PanelDraft[];
@@ -35,6 +35,7 @@ export function HomepageSectionsAdmin({
   topExams: AdminTopExams;
   copy: HomeCopy;
   programs: { programs: AdminProgram[]; recommended: string[] };
+  universities: AdminUniversities;
 }) {
   return (
     <PageSectionsAdmin
@@ -126,17 +127,16 @@ export function HomepageSectionsAdmin({
           id: "university",
           label: "Recommended University",
           render: () => (
-            <SectionEditor
-              name="university"
-              heading="Recommended University"
-              subheading=""
-              subheadingLabel="Supporting text (optional)"
-              items={recommendedUniversities.map((university) => ({
-                id: university.slug,
-                label: university.name,
-                meta: `${university.city}, ${university.state}`,
-              }))}
-              itemsTitle="Universities"
+            <OrderedListEditor
+              title="Recommended colleges"
+              description="The recommended colleges row on the homepage, left to right."
+              addLabel="Add to row"
+              emptyText="No colleges chosen. The row will not show on the homepage."
+              max={3}
+              noun="college"
+              chosen={universities.colleges}
+              options={universities.options}
+              onSave={saveRecommendedUniversities}
             />
           ),
         },

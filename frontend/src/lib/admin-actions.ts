@@ -16,6 +16,7 @@ import {
   adminCreateProgram,
   adminUpdateProgram,
   adminSetRecommendedPrograms,
+  adminSetUniversities,
   adminUpdateCollection,
   adminUpdateRanking,
   adminCreateSpecialisation,
@@ -507,6 +508,13 @@ export async function createProgram(
 /** Saves the homepage's recommended programmes, in display order. */
 export async function saveRecommendedPrograms(slugs: string[]): Promise<AdminActionResult> {
   const result = await attempt("/admin/programs", (token) => adminSetRecommendedPrograms(token, slugs));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Saves the homepage's recommended colleges, in display order. */
+export async function saveRecommendedUniversities(slugs: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/homepage", (token) => adminSetUniversities(token, slugs));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }

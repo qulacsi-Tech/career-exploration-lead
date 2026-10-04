@@ -225,7 +225,7 @@ Note: the collection page subtitle is now "N colleges" (the scope description it
 | Admin list shows records loaded one by one | Each college row is read in detail (up to 200 requests); an admin list with detail fields would remove this |
 | Known issue | Five collections order by ranking slugs that are not in the database (`management-bengaluru`, `engineering-india`, `medical-neet`, `management-cat`); those collections fall back to the editor's order |
 | Logout does not revoke tokens | Stateless JWT; the cookie is cleared, the token stays valid until it expires |
-| Recommended universities on the homepage | Computed from the directory; no editor decides whether to override the computed picks |
+| Recommended colleges row on the homepage | Now an ordered list (`home.recommendedUniversities`, at most three), seeded with today's three. This replaces the rating-based pick, so the editor decides the order |
 | City and stream lists on the homepage | Derived from the directory; their order is not editable |
 
 ### Backend Features Not Yet Built
