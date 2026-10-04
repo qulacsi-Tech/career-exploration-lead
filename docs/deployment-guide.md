@@ -174,9 +174,9 @@ From now on, all paths are relative to `/opt/career-platform`.
 1. Generate secrets **(server)**:
 
    ```bash
-   openssl rand -base64 24    # use for POSTGRES_PASSWORD
-   openssl rand -base64 24    # use for the demo admin password
-   openssl rand -base64 48    # use for SECRET_KEY
+   openssl rand -hex 24    # use for POSTGRES_PASSWORD (hex: safe inside a database URL)
+   openssl rand -hex 16    # use for the demo admin password
+   openssl rand -hex 32    # use for SECRET_KEY
    ```
 
    Save them in your password manager. Do not commit them.
