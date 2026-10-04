@@ -41,6 +41,10 @@ services:
         # Public address the browser will call, baked in at build time.
         NEXT_PUBLIC_API_URL: https://${DOMAIN}/api/v1
         NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        # While building, pages are prerendered from the public API. Map the domain to
+        # this host so the build reaches Caddy here, not the internet. Needs Docker 20.10+.
+      extra_hosts:
+        - "${DOMAIN}:host-gateway"
     restart: unless-stopped
     environment:
       # Server-side form forwarding goes straight to the backend on the internal network.
@@ -51,28 +55,19 @@ services:
     expose:
       - "3000"
 
-  # Internal HTTP router. TLS is terminated by Cloudflare; see the tunnel section
-  # of docs/deployment-guide.md. Nothing is published on the host.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    expose:
-      - "80"
-
-  # Outbound-only connector: Cloudflare sends the domain's traffic down this link.
-  # No inbound ports are needed on the server.
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
-    depends_on:
-      - caddy
 
 volumes:
   pgdata:

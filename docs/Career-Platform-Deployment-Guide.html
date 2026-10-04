@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Career Platform: Deployment Guide for Beginners</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #1a1a1a; font-size: 10.5pt; line-height: 1.5; }
+  h1 { font-size: 26pt; color: #0b3d2e; margin: 0 0 6pt; }
+  h2 { font-size: 16pt; color: #0b3d2e; border-bottom: 2px solid #0b3d2e; padding-bottom: 3pt; margin-top: 22pt; page-break-after: avoid; }
+  h3 { font-size: 12pt; color: #0b3d2e; margin-top: 14pt; page-break-after: avoid; }
+  p, li { margin: 4pt 0; }
+  .cover { text-align: left; padding-top: 60pt; }
+  .sub { font-size: 13pt; color: #555; }
+  .box { border-left: 4px solid #0b3d2e; background: #f2f7f5; padding: 8pt 10pt; margin: 10pt 0; page-break-inside: avoid; }
+  .warn { border-left: 4px solid #b03a2e; background: #fbf1f0; padding: 8pt 10pt; margin: 10pt 0; page-break-inside: avoid; }
+  .check { border-left: 4px solid #2e7d32; background: #eef7ee; padding: 6pt 10pt; margin: 8pt 0; page-break-inside: avoid; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; background: #eef0f2; padding: 0 3pt; border-radius: 2pt; }
+  pre { font-family: Consolas, "Courier New", monospace; font-size: 9pt; background: #1e1e1e; color: #e8e8e8; padding: 8pt 10pt; border-radius: 4pt; white-space: pre-wrap; word-break: break-word; page-break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0; page-break-inside: avoid; }
+  th, td { border: 1px solid #c9d3cf; padding: 4pt 6pt; text-align: left; vertical-align: top; font-size: 9.5pt; }
+  th { background: #e4efe9; }
+  .step { font-weight: bold; color: #0b3d2e; }
+  .toc li { margin: 2pt 0; }
+  .pb { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>Career Platform</h1>
+  <p class="sub">Step-by-step deployment guide for beginners</p>
+  <p class="sub">Frontend (Next.js) and backend (FastAPI) on one AWS EC2 server, with PostgreSQL, and public access over HTTPS (Caddy with a Let's Encrypt certificate).</p>
+  <table>
+    <tr><th>Domain</th><td>career.qualcsi.com</td></tr>
+    <tr><th>Repository</th><td>github.com/qulacsi-Tech/career-exploration-lead</td></tr>
+    <tr><th>Server</th><td>AWS EC2, Ubuntu 24.04 LTS, t3.medium, region ap-south-1 (Mumbai)</td></tr>
+    <tr><th>Purpose</th><td>Testing and demonstration. Read section 2 before inviting anyone.</td></tr>
+  </table>
+</div>
+
+<h2 class="pb">Contents</h2>
+<ol class="toc">
+  <li>How the system fits together</li>
+  <li>Before you start: what you need, and what it costs</li>
+  <li>Part A: Create the AWS account items (key pair, security group, server, IP address)</li>
+  <li>Part B: Point the domain at the server</li>
+  <li>Part C: Connect to the server</li>
+  <li>Part D: Prepare the server (updates, swap, firewall, Docker)</li>
+  <li>Part E: Download the code</li>
+  <li>Part F: Write the configuration and secrets</li>
+  <li>Part G: Start the database and the backend</li>
+  <li>Part H: Create the tables and sample data (once only)</li>
+  <li>Part I: Start the proxy and the HTTPS certificate</li>
+  <li>Part J: Build and start the frontend</li>
+  <li>Part K: Test the site</li>
+  <li>Part L: Close the extra ports and set up backups</li>
+  <li>Part M: Everyday operations (update, roll back, stop, restart)</li>
+  <li>Part N: When something goes wrong</li>
+  <li>Part O: Security and demo rules</li>
+  <li>Appendix: Words used in this guide</li>
+</ol>
+
+<h2 class="pb">1. How the system fits together</h2>
+<p>There are four running parts on one server. You only need to know what each one does.</p>
+<table>
+  <tr><th>Part</th><th>What it is</th><th>Who reaches it</th></tr>
+  <tr><td><b>Internet</b> (ports 80 and 443)</td><td>Visitors reach the server directly. Ports 80 and 443 are open; everything else is closed.</td><td>Anyone on the internet</td></tr>
+  <tr><td><b>Caddy</b></td><td>A small web router. It sends <code>/api/...</code> requests to the backend and everything else to the frontend.</td><td>Visitors, on ports 80 and 443</td></tr>
+  <tr><td><b>Frontend</b> (Next.js)</td><td>The public website and the admin panel.</td><td>Only Caddy, inside the server</td></tr>
+  <tr><td><b>Backend</b> (FastAPI) and <b>database</b> (PostgreSQL)</td><td>The API, and the data store.</td><td>Only Caddy and the backend, inside the server. The database is never exposed.</td></tr>
+</table>
+<p>Visitors type <code>https://career.qualcsi.com</code>. The request reaches the server on port 443. Caddy checks the address and sends it to the frontend or to the backend. Caddy also gets the HTTPS certificate from Let's Encrypt, and renews it automatically.</p>
+
+<div class="box"><b>Why this layout?</b> Only SSH (for you), HTTP and HTTPS are open. The database and backend are never reachable directly from the internet. Caddy handles the certificate, so you do not manage it by hand.</div>
+
+<h2>2. Before you start</h2>
+<h3>2.1 What you need</h3>
+<ul>
+  <li>An AWS account with billing enabled. You need permission to create EC2 instances and Elastic IPs.</li>
+  <li>Control of the DNS for <b>qualcsi.com</b>, so you can add one record (Part B).</li>
+  <li>Read access to the GitHub repository <code>qulacsi-Tech/career-exploration-lead</code>.</li>
+  <li>A computer with Windows, macOS or Linux, and an SSH tool. Windows 10 and 11 include <code>ssh</code> in PowerShell.</li>
+  <li>A password manager, for the secrets you will create in Part F.</li>
+</ul>
+
+<h3>2.2 Cost</h3>
+<table>
+  <tr><th>Item</th><th>Approximate monthly cost (USD)</th></tr>
+  <tr><td>EC2 t3.medium, running all the time</td><td>about 30</td></tr>
+  <tr><td>Storage, 30 GB</td><td>about 3</td></tr>
+  <tr><td>Elastic IP (while attached to a running instance it is free; it is billed when the instance is stopped)</td><td>about 0 to 4</td></tr>
+  <tr><td>DNS and HTTPS certificate (Let's Encrypt)</td><td>0</td></tr>
+</table>
+<p>Stop the instance when nobody is testing, to save money. Section M explains how.</p>
+
+<h3>2.3 Decisions already made</h3>
+<table>
+  <tr><th>Decision</th><th>Value used in this guide</th></tr>
+  <tr><td>Region</td><td>ap-south-1 (Mumbai)</td></tr>
+  <tr><td>Instance</td><td>t3.medium, Ubuntu 24.04 LTS</td></tr>
+  <tr><td>Database</td><td>PostgreSQL 16, inside the server, in a container</td></tr>
+  <tr><td>Public access</td><td>Caddy with HTTPS (Let's Encrypt); ports 80 and 443 open</td></tr>
+</table>
+
+<div class="warn"><b>Important: this is a test server.</b> The sample content is not real data. Do not send real student information through it. Read section O before sharing the address with anyone.</div>
+
+<h2 class="pb">Part A. Create the AWS items</h2>
+<p>Use the AWS website: <b>console.aws.amazon.com</b>. Sign in, then follow each step in order.</p>
+
+<h3>A1. Choose the region</h3>
+<p class="step">Step 1.</p>
+<p>In the top-right corner of the AWS console, click the region name. Choose <b>Asia Pacific (Mumbai) ap-south-1</b>.</p>
+<div class="box">Every item in this part must be created in the same region. If you change region later, the items will not be visible.</div>
+
+<h3>A2. Create a key pair (your login key for the server)</h3>
+<p class="step">Step 2.</p>
+<p>Search for <b>EC2</b> at the top, and open it. In the left menu, click <b>Key pairs</b>, then <b>Create key pair</b>.</p>
+<ul>
+  <li>Name: <code>career-demo</code></li>
+  <li>Key pair type: <b>ED25519</b></li>
+  <li>Private key file format: <b>.pem</b></li>
+</ul>
+<p>Click <b>Create key pair</b>. Your browser downloads <code>career-demo.pem</code>.</p>
+<div class="warn">Keep this file private. Anyone with it can log in to your server. Do not email it or upload it anywhere. On Windows, move it to a folder such as <code>C:\Users\&lt;you&gt;\.ssh\</code>.</div>
+
+<h3>A3. Create a security group (the server's firewall rules)</h3>
+<p class="step">Step 3.</p>
+<p>In EC2, click <b>Security Groups</b> in the left menu, then <b>Create security group</b>.</p>
+<ul>
+  <li>Security group name: <code>career-web</code></li>
+  <li>Description: <code>Demo server: SSH, HTTP, HTTPS</code></li>
+  <li>VPC: leave the default</li>
+  <li>Inbound rules: click <b>Add rule</b>
+    <ul>
+      <li>Type: <b>SSH</b>, Port: 22, Source type: <b>My IP</b></li>
+      <li>Type: <b>HTTP</b>, Port: 80, Source: <b>Anywhere</b> (0.0.0.0/0)</li>
+      <li>Type: <b>HTTPS</b>, Port: 443, Source: <b>Anywhere</b> (0.0.0.0/0)</li>
+    </ul>
+  </li>
+  <li>Outbound rules: leave the default (all traffic)</li>
+</ul>
+<p>Click <b>Create security group</b>.</p>
+<div class="box">SSH is open only to your current address. HTTP and HTTPS are open to everyone, because visitors use them. If your internet address changes, edit the SSH rule (Security Groups → career-web → Inbound rules → Edit) and choose <b>My IP</b> again.</div>
+
+<h3>A4. Launch the server (EC2 instance)</h3>
+<p class="step">Step 4.</p>
+<p>In EC2, click <b>Instances</b>, then <b>Launch instances</b>.</p>
+<table>
+  <tr><th>Setting</th><th>What to choose</th></tr>
+  <tr><td>Name and tags: Name</td><td><code>career-demo</code></td></tr>
+  <tr><td>Application and OS Images (AMI)</td><td><b>Ubuntu</b>, then <b>Ubuntu Server 24.04 LTS (HVM), SSD Volume Type, 64-bit (x86)</b></td></tr>
+  <tr><td>Instance type</td><td><b>t3.medium</b> (2 vCPU, 4 GiB memory)</td></tr>
+  <tr><td>Key pair (login)</td><td><code>career-demo</code></td></tr>
+  <tr><td>Network settings: Firewall (security groups)</td><td><b>Select existing security group</b>, then <code>career-web</code></td></tr>
+  <tr><td>Configure storage</td><td><b>30</b> GiB, <b>gp3</b></td></tr>
+</table>
+<p>Click <b>Launch instance</b>. Click <b>View all instances</b>. Wait until <b>Instance state</b> shows <b>Running</b> and <b>Status check</b> shows <b>2/2 checks passed</b> (about 2 minutes).</p>
+
+<h3>A5. Give the server a fixed address (Elastic IP)</h3>
+<p class="step">Step 5.</p>
+<p>Without this, the server's address changes every time it restarts.</p>
+<ol>
+  <li>In the left menu, click <b>Elastic IPs</b>, then <b>Allocate Elastic IP address</b>, then <b>Allocate</b>.</li>
+  <li>Select the new address in the list. Click <b>Actions</b>, then <b>Associate Elastic IP address</b>.</li>
+  <li>Resource type: <b>Instance</b>. Choose <code>career-demo</code>. Click <b>Associate</b>.</li>
+  <li>Write the address down. This guide calls it <b>EIP</b>. An example is <code>13.201.10.25</code>.</li>
+</ol>
+
+<div class="check"><b>Check A:</b> In <b>Instances</b>, <code>career-demo</code> shows <b>Running</b> and its <b>Public IPv4 address</b> equals your EIP.</div>
+
+<h2 class="pb">Part B. Point the domain at the server</h2>
+<p>Create a DNS record that sends <code>career.qualcsi.com</code> to your server's Elastic IP. Caddy then gets the HTTPS certificate for it automatically.</p>
+
+<h3>B1. Create the DNS record</h3>
+<p class="step">Step 6.</p>
+<p>Sign in to the company that manages <b>qualcsi.com</b> (for example AWS Route 53, GoDaddy or Namecheap). Open its DNS settings and add this record:</p>
+<table>
+  <tr><th>Field</th><th>Value</th></tr>
+  <tr><td>Type</td><td><b>A</b></td></tr>
+  <tr><td>Name / Host</td><td><code>career</code></td></tr>
+  <tr><td>Value / Points to</td><td>your Elastic IP (EIP)</td></tr>
+  <tr><td>TTL</td><td>300 (or the default)</td></tr>
+</table>
+
+<h3>B2. Check the record</h3>
+<p class="step">Step 7.</p>
+<p>On your computer, open PowerShell and run:</p>
+<pre>nslookup career.qualcsi.com</pre>
+<div class="check"><b>Check B:</b> The answer shows your Elastic IP. It can take 5 to 30 minutes after you save the record. Wait until it does before going on.</div>
+
+<h3>B3. Confirm the web ports</h3>
+<p class="step">Step 8.</p>
+<p>Ports 80 and 443 were opened in Part A3 (AWS) and are opened in Part D3 (server firewall). Confirm the AWS rules now: EC2 → Security Groups → <code>career-web</code> → Inbound rules shows SSH, HTTP 80 and HTTPS 443.</p>
+
+<h2 class="pb">Part C. Connect to the server</h2>
+<p class="step">Step 9.</p>
+<p>On your computer, open <b>PowerShell</b> (Windows) or <b>Terminal</b> (macOS and Linux). Run the command below. Replace the two placeholders.</p>
+<pre>ssh -i C:\Users\&lt;you&gt;\.ssh\career-demo.pem ubuntu@EIP</pre>
+
+<p>The first time, you will see a question about the server's fingerprint. Type <code>yes</code> and press Enter.</p>
+<p>When the prompt changes to <code>ubuntu@ip-...:~$</code>, you are on the server. Every command from here on runs on the server, unless the step says otherwise.</p>
+
+<div class="check"><b>Check C:</b> Type <code>whoami</code>. It prints <code>ubuntu</code>.</div>
+
+<div class="box"><b>Mistakes to avoid.</b> Use <code>Ctrl+Shift+V</code> or right-click to paste into the terminal. Copy each command exactly, including any capital letters. If a command shows a red error, read it before running the next one.</div>
+
+<h2 class="pb">Part D. Prepare the server</h2>
+
+<h3>D1. Update Ubuntu and install tools</h3>
+<p class="step">Step 10.</p>
+<pre>sudo apt update &amp;&amp; sudo apt -y full-upgrade
+sudo apt -y install ca-certificates curl git ufw fail2ban unattended-upgrades
+sudo dpkg-reconfigure -plow unattended-upgrades</pre>
+<p>In the last step, a blue screen asks about automatic updates. Choose <b>Yes</b>. Press Enter.</p>
+
+<h3>D2. Add swap memory</h3>
+<p>The website build needs more memory than the server has, so we add 4 GB of swap (disk used as extra memory).</p>
+<p class="step">Step 11.</p>
+<pre>sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+free -h</pre>
+<div class="check"><b>Check D2:</b> The line starting with <code>Swap:</code> shows <code>4.0Gi</code>.</div>
+
+<h3>D3. Firewall: allow SSH, HTTP and HTTPS</h3>
+<p class="step">Step 12.</p>
+<pre>sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw --force enable
+sudo ufw status verbose</pre>
+<div class="check"><b>Check D3:</b> The status lists <b>OpenSSH</b>, <b>80/tcp</b> and <b>443/tcp</b>, and nothing else allowed.</div>
+
+<h3>D4. Install Docker</h3>
+<p>Docker runs each part of the platform in its own sealed container, so setup is repeatable.</p>
+<p class="step">Step 13.</p>
+<pre>sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release &amp;&amp; echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list &gt; /dev/null
+sudo apt update
+sudo apt -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker ubuntu</pre>
+<p class="step">Step 14.</p>
+<p>Leave the server and connect again, so the new group membership applies:</p>
+<pre>exit</pre>
+<p>Reconnect with the same command as step 9. Then:</p>
+<pre>docker version
+docker compose version
+docker run --rm hello-world</pre>
+<div class="check"><b>Check D4:</b> <code>hello-world</code> prints <i>Hello from Docker!</i></div>
+
+<h2 class="pb">Part E. Download the code</h2>
+<p>The repository is private. The server gets its own read-only key to download it.</p>
+
+<p class="step">Step 15. Create the server's key.</p>
+<pre>ssh-keygen -t ed25519 -C "career-demo-server" -f ~/.ssh/github_deploy -N ""
+cat ~/.ssh/github_deploy.pub</pre>
+<p>The last command prints one long line that starts with <code>ssh-ed25519</code>. Select it and copy it.</p>
+
+<p class="step">Step 16. Add the key to GitHub (on your computer, in a web browser).</p>
+<ol>
+  <li>Open <code>github.com/qulacsi-Tech/career-exploration-lead</code>.</li>
+  <li>Click <b>Settings</b> (top menu of the repository), then <b>Deploy keys</b> in the left menu.</li>
+  <li>Click <b>Add deploy key</b>. Title: <code>career-demo-server</code>. Paste the key. Leave <b>Allow write access</b> unticked.</li>
+  <li>Click <b>Add key</b>. You may be asked for your GitHub password.</li>
+</ol>
+
+<p class="step">Step 17. Clone the repository (back on the server).</p>
+<pre>cat &gt;&gt; ~/.ssh/config &lt;&lt;'EOF'
+Host github.com
+  IdentityFile ~/.ssh/github_deploy
+  IdentitiesOnly yes
+EOF
+chmod 600 ~/.ssh/config
+ssh-keyscan github.com &gt;&gt; ~/.ssh/known_hosts
+sudo mkdir -p /opt/career-platform
+sudo chown ubuntu:ubuntu /opt/career-platform
+git clone git@github.com:qulacsi-Tech/career-exploration-lead.git /opt/career-platform
+cd /opt/career-platform
+git log --oneline -1</pre>
+<div class="check"><b>Check E:</b> The last line shows a commit (short code and a message). The code is on the server at <code>/opt/career-platform</code>.</div>
+
+<h2 class="pb">Part F. Write the configuration and secrets</h2>
+<div class="box"><b>What is a secret?</b> A password or key the system uses. Each one is random and long, and it is written only on the server. Never paste a secret into a chat, a document, a screenshot or a Git commit.</div>
+
+<p class="step">Step 18. Create three secret values.</p>
+<p>Run the command three times. Each run prints a different random value. Copy each into your password manager, with a label.</p>
+<pre>openssl rand -hex 24    # label: POSTGRES_PASSWORD
+openssl rand -hex 16    # label: ADMIN_PASSWORD (for the demo admin login)
+openssl rand -hex 32    # label: SECRET_KEY</pre>
+
+<p class="step">Step 19. Create the environment file.</p>
+<pre>cd /opt/career-platform/deploy
+cp .env.example .env
+nano .env</pre>
+<p>The <code>nano</code> editor opens. Use the arrow keys to move. Change these lines (keep the rest as it is):</p>
+<pre>DOMAIN=career.qualcsi.com
+ACME_EMAIL=you@example.com
+POSTGRES_PASSWORD=...first secret from step 18...
+ADMIN_EMAIL=admin@career.qualcsi.com
+ADMIN_PASSWORD=...second secret from step 18...
+ADMIN_NAME="Demo Admin"</pre>
+<p>To save and close nano: press <code>Ctrl+O</code>, then <code>Enter</code>, then <code>Ctrl+X</code>.</p>
+
+<p class="step">Step 20. Create the backend file.</p>
+<pre>cp backend.env.example backend.env
+nano backend.env</pre>
+<p>Change these two lines:</p>
+<pre>DATABASE_URL=postgresql+asyncpg://postgres:...first secret from step 18...@db:5432/leadgendb
+SECRET_KEY=...third secret from step 18...</pre>
+<div class="warn">The password in <code>DATABASE_URL</code> must be exactly the same as <code>POSTGRES_PASSWORD</code>. If they differ, the backend cannot connect to the database.</div>
+<p>Save and close nano, as before.</p>
+
+<p class="step">Step 21. Lock both files so only you can read them.</p>
+<pre>chmod 600 .env backend.env
+ls -l .env backend.env</pre>
+<div class="check"><b>Check F:</b> Both lines start with <code>-rw-------</code>.</div>
+
+<h2 class="pb">Part G. Start the database and the backend</h2>
+<p class="step">Step 22. Start the first three containers.</p>
+<pre>cd /opt/career-platform/deploy
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build db backend
+docker compose -f docker-compose.prod.yml ps</pre>
+<p>The first build takes 2 to 5 minutes. Wait until the list shows <code>db</code> with <code>(healthy)</code>. If it is still <code>starting</code>, wait 30 seconds and run the second command again.</p>
+
+<p class="step">Step 23. Check the backend answers.</p>
+<pre>docker compose -f docker-compose.prod.yml exec backend python -c "import urllib.request;print(urllib.request.urlopen('http://localhost:8000/api/ping').read())"</pre>
+<div class="check"><b>Check G:</b> The output is <code>b'{"status":"ok"}'</code>.</div>
+
+<h2 class="pb">Part H. Create the tables and sample data</h2>
+<div class="warn"><b>Run this part only once, on an empty database.</b> Running the sample-data step twice creates duplicate colleges. If you need to start again, see section N.</div>
+
+<p class="step">Step 24. Create the database tables.</p>
+<pre>cd /opt/career-platform/deploy
+set -a; . ./.env; set +a
+docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic upgrade head</pre>
+<p>The output lists several lines ending in <code>Running upgrade ... -&gt; 009</code>.</p>
+
+<p class="step">Step 25. Load the sample data and create the demo admin account.</p>
+<pre>docker compose -f docker-compose.prod.yml --env-file .env run --rm -e ADMIN_EMAIL="$ADMIN_EMAIL" -e ADMIN_PASSWORD="$ADMIN_PASSWORD" -e ADMIN_NAME="$ADMIN_NAME" backend python seed.py</pre>
+<div class="check"><b>Check H:</b> The last line is <code>Seed complete.</code></div>
+
+<h2 class="pb">Part I. Start the proxy and the HTTPS certificate</h2>
+<p class="step">Step 26. Start the router. On first start it requests the certificate from Let's Encrypt.</p>
+<pre>cd /opt/career-platform/deploy
+docker compose -f docker-compose.prod.yml --env-file .env up -d caddy
+docker compose -f docker-compose.prod.yml logs --tail=40 caddy</pre>
+<p>Look for a line containing <code>certificate obtained successfully</code>. It can take up to a minute. If you see challenge errors, check DNS (Part B), then ports 80 and 443 (Parts A3 and D3), then run <code>docker compose -f docker-compose.prod.yml restart caddy</code>.</p>
+<p class="step">Step 27. Check the address works from the server.</p>
+<pre>curl -s https://career.qualcsi.com/api/ping</pre>
+<div class="check"><b>Check I:</b> The output is <code>{"status":"ok"}</code>. If it is not, see section N, "Certificate problems".</div>
+
+<h2 class="pb">Part J. Build and start the website</h2>
+<p>The website is built with the public address, so the proxy and its certificate must be working first (Part I).</p>
+<p class="step">Step 28. Build the frontend. This takes 5 to 15 minutes. Do not close the window.</p>
+<pre>cd /opt/career-platform/deploy
+docker compose -f docker-compose.prod.yml --env-file .env build frontend</pre>
+<p class="step">Step 29. Start it and check every container.</p>
+<pre>docker compose -f docker-compose.prod.yml --env-file .env up -d frontend
+docker compose -f docker-compose.prod.yml ps</pre>
+<div class="check"><b>Check J:</b> Every row (<code>backend</code>, <code>caddy</code>, <code>db</code>, <code>frontend</code>) shows <code>Up</code>. The <code>db</code> row shows <code>(healthy)</code>.</div>
+
+<h2 class="pb">Part K. Test the site</h2>
+<p>Do these checks from <b>your own computer</b>, not from the server. Use a private browser window for the admin checks.</p>
+<table>
+  <tr><th>#</th><th>Open this address</th><th>What you should see</th></tr>
+  <tr><td>1</td><td><code>https://career.qualcsi.com</code></td><td>The home page with the padlock.</td></tr>
+  <tr><td>2</td><td><code>http://career.qualcsi.com</code></td><td>It opens the HTTPS version (Caddy redirects).</td></tr>
+  <tr><td>3</td><td><code>https://career.qualcsi.com/api/v1/home</code></td><td>Text in curly brackets containing <code>"success": true</code>.</td></tr>
+  <tr><td>4</td><td><code>https://career.qualcsi.com/courses</code></td><td>A list of courses such as MBA and BBA.</td></tr>
+  <tr><td>5</td><td><code>https://career.qualcsi.com/compare</code></td><td>The comparison list.</td></tr>
+  <tr><td>6</td><td><code>https://career.qualcsi.com/search?q=mba</code></td><td>Matching colleges.</td></tr>
+  <tr><td>7</td><td><code>https://career.qualcsi.com/sitemap.xml</code></td><td>A page of XML addresses.</td></tr>
+  <tr><td>8</td><td><code>https://career.qualcsi.com/exams/cat/practice</code></td><td>Practice test cards. Open one, answer a question, press Submit, confirm: the result page appears.</td></tr>
+  <tr><td>9</td><td><code>https://career.qualcsi.com/admin</code></td><td>It opens the login page (this is correct).</td></tr>
+  <tr><td>10</td><td>Log in on <code>/login</code> with <code>admin@career.qualcsi.com</code> and the ADMIN_PASSWORD from step 18</td><td>The admin panel opens with its dashboard.</td></tr>
+  <tr><td>11</td><td>Admin → Content → Study Abroad. Change one word, press Save, open the public <code>/study-abroad</code> page, then change the word back.</td><td>The change shows on the public page. Your test confirms saving works.</td></tr>
+</table>
+<div class="check"><b>Check K:</b> All 11 checks pass. Then repeat checks 1, 4 and 8 on a phone using mobile data, which is a different network.</div>
+
+<h2 class="pb">Part L. Close extra ports and set up backups</h2>
+<p>Only SSH, HTTP and HTTPS should be open. Nothing else.</p>
+
+<p class="step">Step 30. Confirm the security group rules.</p>
+<p>In AWS: EC2 → Security Groups → <code>career-web</code> → Inbound rules. There must be three rules: SSH from <b>My IP</b>, HTTP 80 and HTTPS 443 from anywhere. Delete any other rule.</p>
+
+<p class="step">Step 31. Set up a daily backup at 02:30.</p>
+<pre>chmod +x /opt/career-platform/deploy/backup.sh
+(crontab -l 2&gt;/dev/null; echo '30 2 * * * /opt/career-platform/deploy/backup.sh &gt;&gt; /opt/career-platform/deploy/backups/backup.log 2&gt;&amp;1') | crontab -
+/opt/career-platform/deploy/backup.sh
+ls -lh /opt/career-platform/deploy/backups/</pre>
+<div class="check"><b>Check L:</b> The list shows a file named <code>leadgendb-....sql.gz</code>.</div>
+<div class="box">Copy backups off the server regularly. In the AWS console, the simplest way is to download files with an SFTP program such as WinSCP, which connects with the same key. A better option, for later, is to copy them to a private Amazon S3 bucket.</div>
+
+<h2 class="pb">Part M. Everyday operations</h2>
+
+<h3>M1. Look at the logs</h3>
+<pre>cd /opt/career-platform/deploy
+docker compose -f docker-compose.prod.yml logs --tail=100 backend
+docker compose -f docker-compose.prod.yml logs --tail=100 frontend
+docker compose -f docker-compose.prod.yml logs --tail=100 caddy</pre>
+<p>Add <code>-f</code> after <code>logs</code> to follow live. Press <code>Ctrl+C</code> to stop.</p>
+
+<h3>M2. Restart one part</h3>
+<pre>docker compose -f docker-compose.prod.yml restart frontend</pre>
+
+<h3>M3. Update to a new version</h3>
+<pre>cd /opt/career-platform
+git pull
+cd deploy
+docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic upgrade head
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build backend frontend</pre>
+<p>The database changes are applied first, then the new code starts.</p>
+
+<h3>M4. Roll back to the previous version</h3>
+<pre>cd /opt/career-platform
+git log --oneline -5
+git checkout &lt;previous-commit-code&gt;
+cd deploy
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build backend frontend</pre>
+<p>Replace <code>&lt;previous-commit-code&gt;</code> with the code from the list (for example <code>3cb39d1</code>). Database changes are not undone automatically. If a change went wrong, restore the database from a backup (section N).</p>
+
+<h3>M5. Stop the demo to save money</h3>
+<p>Stop the server's containers first, then the instance:</p>
+<pre>cd /opt/career-platform/deploy
+docker compose -f docker-compose.prod.yml --env-file .env stop</pre>
+<p>In the AWS console: EC2 → Instances → select <code>career-demo</code> → Instance state → <b>Stop instance</b>. The Elastic IP stays attached, so the address is the same when you start again.</p>
+<p>To start again: EC2 → Instances → <b>Start instance</b>. Then connect with SSH and run:</p>
+<pre>cd /opt/career-platform/deploy
+docker compose -f docker-compose.prod.yml --env-file .env up -d</pre>
+
+<h3>M6. Check disk space</h3>
+<pre>df -h /
+docker system df
+docker image prune -f</pre>
+<p><code>docker image prune</code> removes old, unused images. It is safe.</p>
+
+<h2 class="pb">Part N. When something goes wrong</h2>
+<p>Find your symptom in the first column. Try the fix, then check again. If it still fails, copy the log output (section M1) and ask for help with the step number.</p>
+<table>
+  <tr><th>What you see</th><th>Likely cause</th><th>Fix</th></tr>
+  <tr><td>SSH: <i>Permission denied (publickey)</i></td><td>Wrong key file, or wrong user name</td><td>Use the <code>.pem</code> from step 2 and the user <code>ubuntu</code>. On Windows, the key file must not be shared with other users (right-click → Properties → Security).</td></tr>
+  <tr><td>SSH: <i>Connection timed out</i></td><td>Your internet address changed</td><td>EC2 → Security Groups → career-web → edit the SSH rule → source <b>My IP</b> again.</td></tr>
+  <tr><td>Site shows <b>502 Bad Gateway</b></td><td>The frontend or backend container is down</td><td><code>docker compose -f docker-compose.prod.yml ps</code>, then restart the one that is not Up.</td></tr>
+  <tr><td><code>curl .../api/ping</code> does not work, but the containers are Up</td><td>DNS or the certificate is not ready</td><td>Check <code>nslookup career.qualcsi.com</code>, then the Caddy log (Part I).</td></tr>
+  <tr><td>Build of the frontend fails with <i>fetch failed</i></td><td>Caddy was not ready with a certificate during the build</td><td>Complete Part I first, then run step 28 again.</td></tr>
+  <tr><td><code>backend</code> logs show a database error</td><td><code>POSTGRES_PASSWORD</code> and the password in <code>backend.env</code> do not match</td><td>Make them identical (step 20), then <code>up -d backend</code>.</td></tr>
+  <tr><td>Admin login says <i>Could not sign in</i></td><td>Wrong password, or the sample-data step (26) did not run</td><td>Use the ADMIN_PASSWORD from step 18. Check the output of step 25.</td></tr>
+  <tr><td>Site shows a blank page or an error after a change</td><td>A stale build or a failed update</td><td>Run M3 again. Check <code>logs --tail=100 frontend</code>.</td></tr>
+  <tr><td>Build runs out of memory</td><td>Swap not active</td><td><code>free -h</code>; if Swap is 0, repeat step 11.</td></tr>
+  <tr><td>Disk full</td><td>Old images or backups</td><td>Section M6; delete old files in <code>deploy/backups/</code> after copying them.</td></tr>
+</table>
+
+<h3>N0. Certificate problems</h3>
+<p>Browser warnings about the certificate, or <code>challenge failed</code> in the Caddy log, mean the domain does not point at the server yet, or ports 80 and 443 are blocked. Check, in this order: DNS (<code>nslookup career.qualcsi.com</code> shows the Elastic IP), the AWS security group, UFW (<code>sudo ufw status</code>), then restart Caddy. Let's Encrypt retries on its own; wait a few minutes after fixing the cause.</p>
+
+<h3>N1. Start over completely (deletes all data on the server)</h3>
+<pre>cd /opt/career-platform/deploy
+docker compose -f docker-compose.prod.yml --env-file .env down
+docker volume rm career-platform_pgdata
+set -a; . ./.env; set +a
+docker compose -f docker-compose.prod.yml --env-file .env run --rm backend alembic upgrade head
+docker compose -f docker-compose.prod.yml --env-file .env run --rm -e ADMIN_EMAIL="$ADMIN_EMAIL" -e ADMIN_PASSWORD="$ADMIN_PASSWORD" -e ADMIN_NAME="$ADMIN_NAME" backend python seed.py</pre>
+
+<h3>N2. Restore a backup</h3>
+<pre>cd /opt/career-platform/deploy
+ls -lt backups/ | head
+gunzip -c backups/leadgendb-<date>.sql.gz | docker compose -f docker-compose.prod.yml --env-file .env exec -T db psql -U postgres -d leadgendb</pre>
+<p>Replace <code>&lt;date&gt;</code> with the file name from the list. Restoring over a live database can cause errors if tables already exist. Ask for help before restoring on a server that has data you care about.</p>
+
+<h2 class="pb">Part O. Security and demo rules</h2>
+<div class="warn"><b>Before you share the address with anyone:</b></div>
+<ul>
+  <li><b>Use sample data only.</b> The enquiry form (for counselling requests) stores what visitors type. Ask testers to use fake names and numbers, or switch the form off.</li>
+  <li><b>Keep the admin password private.</b> Anyone with it can change the site's content. Change it after the demo: log in, then Admin → Users.</li>
+  <li><b>Keep the API documentation hidden if you do not want it public.</b> The page <code>/api/docs</code> lists every API operation. Ask for help to block it.</li>
+  <li><b>Never commit secrets.</b> The files <code>deploy/.env</code> and <code>deploy/backend.env</code> are excluded by the repository's ignore rules. Check with <code>git status</code> before you commit anything.</li>
+  <li><b>Keep the server updated.</b> Ubuntu installs security updates on its own (step 10). Update the platform with section M3 after each change.</li>
+  <li><b>Delete the demo when finished.</b> Stop the containers, stop the instance (section M5), then delete the instance and the Elastic IP, so no charges continue.</li>
+</ul>
+
+<h3>Known limits in this demo</h3>
+<ul>
+  <li>One server. If it stops, the site stops until it is started again.</li>
+  <li>Visitors do not have student accounts yet. Only the admin panel has a login.</li>
+  <li>Five collections point at ranking lists that do not exist in the database. Their colleges are shown in editor order, not ranking order.</li>
+  <li>Search uses the database, not Meilisearch.</li>
+</ul>
+
+<h2 class="pb">Appendix: Words used in this guide</h2>
+<table>
+  <tr><th>Word</th><th>Meaning</th></tr>
+  <tr><td>AWS / EC2</td><td>Amazon Web Services. EC2 is its service for renting servers.</td></tr>
+  <tr><td>Instance</td><td>One rented server.</td></tr>
+  <tr><td>Elastic IP</td><td>A fixed internet address for your server.</td></tr>
+  <tr><td>Security group</td><td>The server's firewall rules, set in the AWS console.</td></tr>
+  <tr><td>SSH</td><td>A secure way to type commands on the server from your computer.</td></tr>
+  <tr><td>Key pair / .pem / deploy key</td><td>Files that prove who you are. Keep them private.</td></tr>
+  <tr><td>Terminal</td><td>The window where you type commands.</td></tr>
+  <tr><td>Docker / container</td><td>A packaged, isolated copy of an app. Each part of the platform is a container.</td></tr>
+  <tr><td>docker compose</td><td>The tool that starts several containers together, using <code>docker-compose.prod.yml</code>.</td></tr>
+  <tr><td>Environment file (.env)</td><td>A text file of settings and secrets read by the containers.</td></tr>
+  <tr><td>Let's Encrypt</td><td>The free certificate authority that gives the site its HTTPS padlock.</td></tr>
+  <tr><td>HTTPS / padlock</td><td>Encrypted website traffic. Caddy obtains the certificate from Let's Encrypt.</td></tr>
+  <tr><td>Migration</td><td>A script that changes the database structure (step 24).</td></tr>
+  <tr><td>Seed</td><td>Loading sample data into the database (step 25).</td></tr>
+  <tr><td>Swap</td><td>Disk space used as extra memory.</td></tr>
+</table>
+
+</body>
+</html>
