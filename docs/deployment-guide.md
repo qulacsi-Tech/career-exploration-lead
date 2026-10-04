@@ -1,3 +1,5 @@
+> **Superseded.** For the Cloudflare Tunnel setup, use `docs/Career-Platform-Deployment-Guide.pdf` (step-by-step for beginners) and `docs/cloudflare-tunnel.md`. The Caddy/Let's Encrypt steps below apply only if you stop using the tunnel.
+
 # Deployment guide: AWS EC2 (Ubuntu) with career.qualcsi.com
 
 This deploys the whole platform on one EC2 server:
