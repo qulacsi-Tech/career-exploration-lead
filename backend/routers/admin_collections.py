@@ -244,14 +244,18 @@ async def admin_update_collection(slug: str, _admin: AdminPayload, db: DbSession
 
 
 @router.delete("/{slug}", response_model=SuccessResponse[dict])
-async def admin_delete_collection(slug: str, _admin: AdminPayload, db: DbSession):
-    """Deletes a collection. Only a draft that is not on the homepage can be deleted,
-    so no live page or homepage band loses its target."""
+async def admin_delete_collection(slug: str, _admin: AdminPayload, db: DbSession, confirm: Optional[str] = None):
+    """Deletes a collection. A collection on the homepage cannot be deleted. A live
+    (published) collection needs `confirm` set to its slug, so a live page is never
+    removed by a single click. Its URL then returns 404."""
     row = (await db.execute(select(Collection).where(Collection.slug == slug))).scalar_one_or_none()
     if row is None:
         raise NotFoundError("Collection")
-    if row.data.get("isPublished"):
-        raise ConflictError("COLLECTION_PUBLISHED", "Unpublish this collection before deleting it.")
+    if row.data.get("isPublished") and confirm != slug:
+        raise ConflictError(
+            "COLLECTION_PUBLISHED",
+            f"This collection is live at /colleges/{slug}. Type its slug to confirm deleting it.",
+        )
     if (row.data.get("placements") or {}).get("homepage"):
         raise ConflictError("COLLECTION_ON_HOMEPAGE", "Remove this collection from the homepage before deleting it.")
     await db.delete(row)
