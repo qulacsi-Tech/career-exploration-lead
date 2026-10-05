@@ -21,6 +21,7 @@ export function CollegeListing({
   colleges,
   emptyMessage,
   sidebar,
+  topSection,
   children,
 }: {
   breadcrumbs: { label: string; href?: string }[];
@@ -30,6 +31,8 @@ export function CollegeListing({
   colleges: College[];
   emptyMessage: string;
   sidebar?: ReactNode;
+  /** Content above the list, inside the main column. A city page puts its stream choices here. */
+  topSection?: ReactNode;
   /**
    * Extra content below the listing, inside the main column so it keeps the
    * sidebar beside it. Used for a collection's editor-authored intro copy and
@@ -59,6 +62,8 @@ export function CollegeListing({
 
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
+          {topSection}
+
           {colleges.length > 0 ? (
             <div className="space-y-4">
               {colleges.map((college) => (

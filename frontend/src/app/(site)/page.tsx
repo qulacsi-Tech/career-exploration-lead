@@ -25,8 +25,10 @@ function ChevronDownIcon({ className }: { className?: string }) {
   );
 }
 
-// ── TEMPORARY static data for checking the destination stack's design ─────────
-// Remove this block (and the matching lines inside Home()) when the check is done.
+// ── Sample destinations ────────────────────────────────────────────────────────
+// Shown only when the admin has no active destination cards (see Home() below). They are
+// illustrative: the fee ranges are not sourced. As soon as one location is active, these
+// disappear and the admin's own cards take over.
 const STATIC_LOCATIONS: HomeLocation[] = [
   {
     slug: "bangalore", name: "Bangalore", state: "Karnataka", collegeCount: 214,
@@ -84,10 +86,10 @@ export default async function Home() {
 
   const copy          = mergeHomeCopy(home?.homeCopy);
   const topExams      = home?.featuredExams      ?? [];
-  // TEMPORARY: static destination cards to check the stacking UI. To go back to live data,
-  // delete the STATIC_LOCATIONS block below and uncomment the next line.
-  // const locations     = home?.homeLocations      ?? [];
-  const locations: HomeLocation[] = STATIC_LOCATIONS;
+  // The admin's active destinations. Only when there are none (the list is empty, or every
+  // location is switched off) does the sample set below stand in, so the section is never bare.
+  const liveLocations = home?.homeLocations ?? [];
+  const locations: HomeLocation[] = liveLocations.length > 0 ? liveLocations : STATIC_LOCATIONS;
   const articles      = home?.articles           ?? [];
   const programs      = home?.recommendedPrograms ?? [];
   const careerPanels  = home?.careerPanels        ?? [];

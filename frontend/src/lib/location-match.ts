@@ -23,6 +23,10 @@ const CITY_ALIASES: Record<string, string[]> = {
   mumbai: ["mumbai", "navi mumbai", "thane"],
 };
 
+/** Every spelling a college record may use for this location, lowercase. */
+export const cityNamesFor = (citySlug: string, cityName: string) =>
+  CITY_ALIASES[citySlug] ?? [cityName.toLowerCase()];
+
 /**
  * Does `collegeCity` fall under the location identified by `citySlug`?
  *
