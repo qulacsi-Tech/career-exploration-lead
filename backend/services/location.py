@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.exceptions import NotFoundError
 from models.location import Location
 from repositories.location import LocationRepository
-from schemas.location import HomeLocationSchema, LocationSchema
+from schemas.location import CourseFeeSchema, HomeLocationSchema, LocationSchema
 
 
 def _to_schema(loc: Location) -> LocationSchema:
@@ -24,6 +24,7 @@ def _to_home_schema(loc: Location, labels: List[str]) -> HomeLocationSchema:
         state=loc.state,
         collegeCount=loc.college_count,
         labels=labels,
+        courseFees=[CourseFeeSchema(**row) for row in (loc.course_fees or []) if row.get("category")],
         description=loc.description,
         avgPackage=loc.avg_package,
         image=loc.image,

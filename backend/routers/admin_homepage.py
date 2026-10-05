@@ -260,6 +260,7 @@ def _card(loc, labels: list[str] | None = None) -> dict[str, Any]:
         "show": loc.show_on_home,
         "collegeCount": loc.college_count,
         "labels": labels or [],
+        "courseFees": list(loc.course_fees or []),
         "description": loc.description,
         "avgPackage": loc.avg_package,
         "image": loc.image,

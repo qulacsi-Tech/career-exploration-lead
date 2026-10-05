@@ -171,10 +171,15 @@ export type HomeField = {
   avgCtc: string;
 };
 
+/** A course category and its fee range, shown as a tile on a destination card. */
+export type CourseFee = { category: string; fees: string };
+
 /** A homepage carousel card: the directory entry plus what the card shows. */
 export type HomeLocation = Location & {
   /** Tags on the card, in label order. */
   labels: string[];
+  /** Up to three course categories with their fee ranges. */
+  courseFees: CourseFee[];
   description: string;
   avgPackage: string;
   /** /images/... (shipped with the site) or /api/uploads/... (uploaded in the admin). Empty: no photo. */
@@ -970,6 +975,7 @@ export type LocationInput = {
   image: string;
   /** The pool labels this card shows, by text. A text not yet in the pool is added to it. */
   labels: string[];
+  courseFees: CourseFee[];
   /** On the homepage carousel. */
   show: boolean;
 };

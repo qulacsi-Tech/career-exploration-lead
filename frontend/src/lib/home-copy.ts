@@ -30,6 +30,8 @@ export type LocationCardCopy = {
   institutionsLabel: string;
   /** Label above the average package. */
   ctcLabel: string;
+  /** Heading over the sliding course fees. */
+  coursesLabel: string;
   buttonLabel: string;
 };
 
@@ -90,7 +92,7 @@ export const DEFAULT_HOME_COPY: HomeCopy = {
     accent: "Shape Your Tomorrow.",
     subheading: "Pick a stream to see its colleges, entrance exams, fees and placement records.",
   },
-  locationCard: { institutionsLabel: "Ranked Institutions", ctcLabel: "Average CTC", buttonLabel: "Explore Colleges" },
+  locationCard: { institutionsLabel: "Ranked Institutions", ctcLabel: "Average CTC", coursesLabel: "Courses & fees", buttonLabel: "Explore Colleges" },
   collegeCard: { buttonLabel: "Courses & fees", viewAllLabel: "View All" },
   examCard: { cutoffLabel: "Cutoff", answerKeyLabel: "Answer key", buttonLabel: "Read more", viewAllLabel: "View All" },
   topExams: { eyebrow: "", heading: "Top Exams", accent: "", subheading: "Exams Cherry Picked For You" },

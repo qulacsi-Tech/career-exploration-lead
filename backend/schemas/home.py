@@ -120,6 +120,8 @@ class LocationCardCopySchema(BaseModel):
 
     institutionsLabel: str = "Ranked Institutions"
     ctcLabel: str = "Average CTC"
+    # Heading over the sliding course fees.
+    coursesLabel: str = "Courses & fees"
     buttonLabel: str = "Explore Colleges"
 
     model_config = ConfigDict(populate_by_name=True)

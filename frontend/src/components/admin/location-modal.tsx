@@ -31,6 +31,7 @@ const input =
   "mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
 
 const MAX_LABELS = 6;
+const MAX_COURSE_FEES = 3;
 const SOFT_LABELS = 4;
 
 type TabId = "details" | "content" | "photo" | "wording";
@@ -51,6 +52,7 @@ const BLANK: LocationInput = {
   avgPackage: "",
   image: "",
   labels: [],
+  courseFees: [],
   show: true,
 };
 
@@ -64,6 +66,7 @@ function toInput(loc: AdminHomeLocation): LocationInput {
     avgPackage: loc.avgPackage,
     image: loc.image,
     labels: loc.labels,
+    courseFees: loc.courseFees,
     show: loc.show,
   };
 }
@@ -181,6 +184,7 @@ export function LocationModal({
   const wordingChanged =
     wordingDraft.institutionsLabel !== savedWording.institutionsLabel ||
     wordingDraft.ctcLabel !== savedWording.ctcLabel ||
+    wordingDraft.coursesLabel !== savedWording.coursesLabel ||
     wordingDraft.buttonLabel !== savedWording.buttonLabel;
 
   const save = () => {
@@ -202,7 +206,11 @@ export function LocationModal({
         }
         setSavedWording(wordingDraft);
       }
-      const body = { ...draft, labels };
+      // A half-filled row would be refused, so only complete rows are sent.
+      const courseFees = draft.courseFees
+        .map((r) => ({ category: r.category.trim(), fees: r.fees.trim() }))
+        .filter((r) => r.category && r.fees);
+      const body = { ...draft, labels, courseFees };
       const result = editing ? await updateLocation(editing.slug, body) : await createLocation(body);
       if ("error" in result) {
         setError(result.error);
@@ -388,6 +396,53 @@ export function LocationModal({
 
           <fieldset>
             <legend className="text-xs font-semibold text-ink">
+              Courses &amp; fees <span className="font-normal text-ink-soft">({draft.courseFees.length} of {MAX_COURSE_FEES})</span>
+            </legend>
+            <p className="mt-1 text-xs text-ink-faint">
+              Shown as tiles on the card: a course category and its fee range, such as MBA and ₹6L - 24L.
+            </p>
+            <div className="mt-2 max-w-2xl space-y-2">
+              {draft.courseFees.map((row, i) => (
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
+                  <input
+                    aria-label={`Course category ${i + 1}`}
+                    maxLength={60}
+                    value={row.category}
+                    placeholder="Category, e.g. MBA"
+                    onChange={(e) => set("courseFees", draft.courseFees.map((r, n) => (n === i ? { ...r, category: e.target.value } : r)))}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
+                  />
+                  <input
+                    aria-label={`Fees range ${i + 1}`}
+                    maxLength={40}
+                    value={row.fees}
+                    placeholder="Fees, e.g. ₹6L - 24L"
+                    onChange={(e) => set("courseFees", draft.courseFees.map((r, n) => (n === i ? { ...r, fees: e.target.value } : r)))}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => set("courseFees", draft.courseFees.filter((_, n) => n !== i))}
+                    className="rounded-lg border border-line px-3 py-2 text-sm text-ink-soft hover:border-red-700 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {draft.courseFees.length < MAX_COURSE_FEES && (
+                <button
+                  type="button"
+                  onClick={() => set("courseFees", [...draft.courseFees, { category: "", fees: "" }])}
+                  className="rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand hover:bg-brand hover:text-white"
+                >
+                  Add a course
+                </button>
+              )}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="text-xs font-semibold text-ink">
               Labels <span className="font-normal text-ink-soft">({draft.labels.length} of {MAX_LABELS})</span>
             </legend>
             <p className="mt-1 text-xs text-ink-faint">The small pills at the top of the card. Type one and press Enter.</p>
@@ -470,7 +525,7 @@ export function LocationModal({
           <p className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             These words repeat on <strong>every</strong> destination card, not only this one. Changing them here changes all cards when you save.
           </p>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
             <Text
               id="wording-institutions"
               label="Text after the count"
@@ -485,6 +540,14 @@ export function LocationModal({
               max={40}
               value={wordingDraft.ctcLabel}
               onChange={(v) => setWording("ctcLabel", v)}
+            />
+            <Text
+              id="wording-courses"
+              label="Heading over the courses"
+              max={40}
+              value={wordingDraft.coursesLabel}
+              onChange={(v) => setWording("coursesLabel", v)}
+              hint="Above the sliding course fees."
             />
             <Text
               id="wording-button"

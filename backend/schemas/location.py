@@ -10,11 +10,21 @@ class LocationSchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class CourseFeeSchema(BaseModel):
+    """A course category and its fee range, e.g. MBA and "6L - 24L"."""
+
+    category: str
+    fees: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class HomeLocationSchema(LocationSchema):
     """A homepage carousel card: the directory entry plus what the card shows."""
 
     # Tags on the card, in label order.
     labels: list[str] = []
+    courseFees: list[CourseFeeSchema] = []
     description: str = ""
     avgPackage: str = ""
     image: str = ""

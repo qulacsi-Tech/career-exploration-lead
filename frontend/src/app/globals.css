@@ -748,3 +748,115 @@ body {
 .slider-track::-webkit-scrollbar {
   display: none;
 }
+
+/* Destination hubs: stacking cards (components/location-carousel.tsx).
+
+   Every card is position: sticky at the same offset, just under the site header, so each
+   one rises and lands on the one before it. No script. Nothing between a card and the page
+   may set overflow: hidden or auto, or the cards stop sticking, which is why the section and
+   its wrappers set none.
+
+   The nav heights are the site header's: py-3 plus the logo at h-14, h-16, h-[72px]. They are
+   kept a few pixels generous, because a header a touch too tall is hidden behind the site
+   header, while one too short leaves a visible gap. */
+:root {
+  --site-nav-h: 5.25rem;
+  --hub-gap: 4rem;
+}
+@media (min-width: 640px) {
+  :root {
+    --site-nav-h: 5.75rem;
+    --hub-gap: 8rem;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --site-nav-h: 6.25rem;
+    --hub-gap: 8.5rem;
+  }
+}
+
+.hub-stack {
+  /* A little air under the site header, so the card's top edge is not hard against it. */
+  --hub-top: calc(var(--site-nav-h) + 1rem);
+  /* Lets a card listen to its neighbour's scroll timeline (set per card in the markup). */
+  timeline-scope: var(--hub-scope);
+}
+
+.hub-stack-item {
+  position: sticky;
+  top: var(--hub-top);
+  /* Fills the screen under the site header, within a range, so the whole card is always
+     visible and each card fully hides the one under it. */
+  height: clamp(26rem, calc(100svh - var(--hub-top) - 1.5rem), 36rem);
+  view-timeline-name: var(--hub-own);
+}
+.hub-stack-item:not(:last-child) {
+  margin-bottom: var(--hub-gap);
+}
+
+/* On a phone the card is a column (photo above, text below) and is taller than the room under
+   the headers, so it runs as a plain list rather than pinning. */
+@media (max-width: 767px) {
+  .hub-stack-item {
+    position: static;
+    height: auto;
+  }
+  .hub-stack-item:not(:last-child) {
+    margin-bottom: 1.25rem;
+  }
+}
+
+/* A card that cannot fit under the site header cannot sit pinned: run a plain column. */
+@media (max-height: 560px) {
+  .hub-stack-item {
+    position: static;
+    height: 26rem;
+  }
+  .hub-stack-item:not(:last-child) {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* The covered card shrinks and dims as the next one rises over it. The animation runs on
+   the next card's timeline, from the moment that card starts to enter until it is fully in. */
+@keyframes hub-covered {
+  to {
+    transform: scale(0.93);
+    filter: brightness(0.6);
+  }
+}
+@supports (animation-timeline: view()) {
+  .hub-stack-card {
+    transform-origin: 50% 0;
+    animation: hub-covered linear both;
+    animation-timeline: var(--hub-next, none);
+    animation-range: entry 0% entry 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-stack-card {
+    animation: none;
+  }
+}
+
+/* The destination card's fees panel slides the courses up one at a time
+   (components/destination-fees.tsx). For visitors who ask for reduced motion nothing
+   slides: the courses are listed one under another. */
+@media (prefers-reduced-motion: reduce) {
+  .fees-viewport {
+    height: auto !important;
+    overflow: visible;
+  }
+  .fees-track {
+    transform: none !important;
+    transition: none;
+  }
+  .fees-row {
+    height: auto !important;
+    padding-block: 0.15rem;
+  }
+  .fees-dots {
+    display: none;
+  }
+}

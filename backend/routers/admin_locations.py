@@ -26,6 +26,13 @@ from schemas.common import SuccessResponse
 router = APIRouter(prefix="/admin/locations", tags=["admin"])
 
 MAX_CARD_LABELS = 6
+MAX_COURSE_FEES = 3
+
+
+class CourseFeeBody(BaseModel):
+    category: str = Field(min_length=1, max_length=60)
+    fees: str = Field(min_length=1, max_length=40)
+    model_config = ConfigDict(extra="forbid")
 
 
 class LocationBody(BaseModel):
@@ -39,6 +46,8 @@ class LocationBody(BaseModel):
     # The pool labels this card shows, by text. A text not yet in the pool is added to it.
     # Omitted: leave the card's labels as they are.
     labels: list[str] | None = Field(default=None, max_length=MAX_CARD_LABELS)
+    # Course categories and fee ranges shown as tiles. Omitted: left as they are.
+    courseFees: list[CourseFeeBody] | None = Field(default=None, max_length=MAX_COURSE_FEES)
     # On the homepage carousel. Omitted: a new location shows, an edited one is unchanged.
     show: bool | None = None
     model_config = ConfigDict(extra="forbid")
@@ -86,6 +95,8 @@ def _apply(row: Location, data: LocationBody) -> None:
     row.description = data.description.strip()
     row.avg_package = data.avgPackage.strip()
     row.image = data.image
+    if data.courseFees is not None:
+        row.course_fees = [{"category": c.category.strip(), "fees": c.fees.strip()} for c in data.courseFees]
 
 
 async def _set_labels(db, row: Location, texts: list[str]) -> list[str]:

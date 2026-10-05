@@ -32,7 +32,7 @@ FORMATS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
 MIN_SIZE = {
     "hero": (1600, 500),
     "banner": (800, 270),
-    "location": (1200, 450),
+    "location": (800, 660),
     "college": (800, 520),
     "exam": (800, 520),
 }

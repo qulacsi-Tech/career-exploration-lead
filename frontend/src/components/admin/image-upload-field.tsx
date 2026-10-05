@@ -44,13 +44,13 @@ const SLOTS: Record<Slot["kind"], Slot> = {
   location: {
     kind: "location",
     label: "Card photo",
-    recommended: [1600, 600],
-    minimum: [1200, 450],
-    previewClass: "aspect-[8/3]",
+    recommended: [1200, 1000],
+    minimum: [800, 660],
+    previewClass: "aspect-[6/5]",
     notes: [
-      "The photo fills the whole card behind the text. A dark fade covers the bottom and the left edge, where the name, description and package sit, so keep the subject in the upper middle.",
-      "Do not put text or logos in the picture. They would sit under the card's own text.",
-      "On phones the card is taller than it is wide, so the left and right are cropped. Keep the subject in the centre.",
+      "The photo fills the left half of the card, about 640 by 540 px, with rounded corners. The institutions count sits in a chip at the bottom left, so keep that corner simple.",
+      "Do not put text or logos in the picture. They would be cropped.",
+      "On phones the photo becomes a wide strip at the top of the card, so keep the subject in the middle.",
     ],
   },
   college: {

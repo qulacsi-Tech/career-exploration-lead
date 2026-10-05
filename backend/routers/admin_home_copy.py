@@ -55,6 +55,7 @@ class StoryBody(BaseModel):
 class LocationCardBody(BaseModel):
     institutionsLabel: str = Field(min_length=1, max_length=40)
     ctcLabel: str = Field(min_length=1, max_length=40)
+    coursesLabel: str = Field(min_length=1, max_length=40)
     buttonLabel: str = Field(min_length=1, max_length=30)
     model_config = ConfigDict(extra="forbid")
 

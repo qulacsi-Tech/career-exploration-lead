@@ -438,31 +438,38 @@ EXAMS = [
 
 # tagline / highlight / description / avg_package / image fill the homepage
 # carousel card; home_order keeps most-colleges-first. Admin edits them later.
+# course_fees is sample data for the demo cities: fee ranges are illustrative, not sourced.
 LOCATIONS = [
     {"slug": "bangalore", "name": "Bangalore", "state": "Karnataka", "college_count": 214, "home_order": 2,
      "tagline": "Silicon Valley of India", "highlight": "Top Startup Ecosystem",
      "description": "Global epicenter for IT, Artificial Intelligence, Product Startups & Tech Giants.",
-     "avg_package": "₹8.5 - 24 LPA", "image": "/images/locations/bangalore.jpg"},
+     "avg_package": "₹8.5 - 24 LPA", "image": "/images/locations/bangalore.jpg",
+     "course_fees": [{"category": "MBA", "fees": "₹8L - 22L"}, {"category": "B.Tech", "fees": "₹4L - 16L"}, {"category": "Medical", "fees": "₹12L - 30L"}]},
     {"slug": "hyderabad", "name": "Hyderabad", "state": "Telangana", "district": "Hyderabad", "college_count": 156, "home_order": 5,
      "tagline": "Cyber City & Biotech", "highlight": "Highest Growth Index",
      "description": "Rapidly expanding IT corridor, pharmaceutical research & Fortune 500 campuses.",
-     "avg_package": "₹7.5 - 20 LPA", "image": "/images/locations/hyderabad.jpg"},
+     "avg_package": "₹7.5 - 20 LPA", "image": "/images/locations/hyderabad.jpg",
+     "course_fees": [{"category": "MBA", "fees": "₹6L - 18L"}, {"category": "B.Tech", "fees": "₹3L - 14L"}, {"category": "Pharmacy", "fees": "₹2L - 8L"}]},
     {"slug": "pune", "name": "Pune", "state": "Maharashtra", "district": "Pune", "college_count": 189, "home_order": 3,
      "tagline": "Oxford of the East", "highlight": "Student Capital",
      "description": "Academic heritage, premier automotive design, research & manufacturing hubs.",
-     "avg_package": "₹7.0 - 18 LPA", "image": "/images/locations/pune.jpg"},
+     "avg_package": "₹7.0 - 18 LPA", "image": "/images/locations/pune.jpg",
+     "course_fees": [{"category": "MBA", "fees": "₹7L - 20L"}, {"category": "Engineering", "fees": "₹3L - 12L"}, {"category": "Design", "fees": "₹4L - 10L"}]},
     {"slug": "mumbai", "name": "Mumbai", "state": "Maharashtra", "college_count": 241, "home_order": 1,
      "tagline": "Financial Capital", "highlight": "Finance & Corporate HQ",
      "description": "Headquarters of India's major investment banks, consulting & media powerhouses.",
-     "avg_package": "₹9.0 - 28 LPA", "image": "/images/locations/mumbai.jpg"},
+     "avg_package": "₹9.0 - 28 LPA", "image": "/images/locations/mumbai.jpg",
+     "course_fees": [{"category": "MBA", "fees": "₹10L - 26L"}, {"category": "Commerce", "fees": "₹1L - 6L"}, {"category": "Law", "fees": "₹3L - 12L"}]},
     {"slug": "delhi-ncr", "name": "Delhi NCR", "state": "Delhi", "college_count": 302, "home_order": 0,
      "tagline": "National Corporate Hub", "highlight": "Leadership & Policy Hub",
      "description": "Center of policy, diplomacy, FMCG giants & fast-growing tech conglomerates.",
-     "avg_package": "₹8.0 - 25 LPA", "image": "/images/locations/delhi-ncr.jpg"},
+     "avg_package": "₹8.0 - 25 LPA", "image": "/images/locations/delhi-ncr.jpg",
+     "course_fees": [{"category": "MBA", "fees": "₹9L - 24L"}, {"category": "B.Tech", "fees": "₹4L - 15L"}, {"category": "Law", "fees": "₹4L - 14L"}]},
     {"slug": "chennai", "name": "Chennai", "state": "Tamil Nadu", "district": "Chennai", "college_count": 167, "home_order": 4,
      "tagline": "Industrial & IT Powerhouse", "highlight": "Core Tech & Research",
      "description": "Renowned research institutions, health-tech revolution & automotive manufacturing.",
-     "avg_package": "₹6.8 - 18 LPA", "image": "/images/locations/chennai.jpg"},
+     "avg_package": "₹6.8 - 18 LPA", "image": "/images/locations/chennai.jpg",
+     "course_fees": [{"category": "MBA", "fees": "₹5L - 16L"}, {"category": "Engineering", "fees": "₹3L - 13L"}, {"category": "Medical", "fees": "₹10L - 28L"}]},
 ]
 
 
