@@ -152,6 +152,15 @@ export type Location = {
   collegeCount: number;
 };
 
+/** One hero slide. Empty `image`: the slide shows the built-in illustration. */
+export type HeroItem = {
+  id: string;
+  headline: string;
+  subheadline: string;
+  image: string;
+  imageAlt: string;
+};
+
 /** One disc in the homepage Fields grid. `icon` is a key from lib/field-icons. */
 export type HomeField = {
   slug: string;
@@ -236,6 +245,8 @@ export type HomeData = {
   streams: StreamCount[];
   /** The Fields grid, in the admin's order. Absent from an API older than the field editor. */
   fields?: HomeField[];
+  /** The active hero slides, in order. One shows plain, several rotate. */
+  heroItems?: HeroItem[];
 };
 
 // ── Home ──────────────────────────────────────────────────────────────────
@@ -969,6 +980,38 @@ export type AdminLocationLabel = { id: string | null; text: string; slugs: strin
 export async function adminGetLocationLabels(token: string): Promise<AdminLocationLabel[]> {
   const data = await adminRequest<{ labels: AdminLocationLabel[] }>(token, "GET", "/admin/locations/labels");
   return data.labels;
+}
+
+/** A hero slide in the admin table. */
+export type AdminHeroItem = HeroItem & { active: boolean };
+
+/** What the slide form sends. */
+export type HeroItemInput = {
+  headline: string;
+  subheadline: string;
+  image: string;
+  imageAlt: string;
+  active: boolean;
+};
+
+export async function adminGetHeroItems(token: string): Promise<{ items: AdminHeroItem[]; max: number }> {
+  return adminRequest<{ items: AdminHeroItem[]; max: number }>(token, "GET", "/admin/hero-items");
+}
+
+export async function adminCreateHeroItem(token: string, body: HeroItemInput) {
+  return adminRequest<AdminHeroItem>(token, "POST", "/admin/hero-items", body);
+}
+
+export async function adminUpdateHeroItem(token: string, id: string, body: HeroItemInput) {
+  return adminRequest<AdminHeroItem>(token, "PATCH", `/admin/hero-items/${encodeURIComponent(id)}`, body);
+}
+
+export async function adminDeleteHeroItem(token: string, id: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/hero-items/${encodeURIComponent(id)}`);
+}
+
+export async function adminPutHeroOrder(token: string, ids: string[]) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/hero-items/order", { ids });
 }
 
 /** A field in the admin list. `collegeCount` is how many colleges its page would list; 0 means the link shows "not found". */

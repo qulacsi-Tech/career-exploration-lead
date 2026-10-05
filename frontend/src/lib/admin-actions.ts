@@ -16,10 +16,15 @@ import {
   adminUploadImage,
   adminPutHomeLocations,
   adminCreateLocation,
+  adminCreateHeroItem,
+  adminUpdateHeroItem,
+  adminDeleteHeroItem,
+  adminPutHeroOrder,
   adminGetBandColleges,
   adminPutBandColleges,
   type BandColleges,
   type CollegeCardInput,
+  type HeroItemInput,
   type ExamInput,
   adminPutFieldOrder,
   adminCreateField,
@@ -583,6 +588,32 @@ export async function createExamCard(input: ExamInput): Promise<{ slug: string }
 
 export async function updateExamCard(slug: string, input: ExamInput): Promise<AdminActionResult> {
   const result = await attempt("/admin/sections/homepage", (token) => adminUpdateExam(token, slug, examBody(input)));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Adds a hero slide. It goes last, and starts active unless the form says otherwise. */
+export async function createHeroItem(input: HeroItemInput): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminCreateHeroItem(token, input));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function updateHeroItem(id: string, input: HeroItemInput): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminUpdateHeroItem(token, id, input));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function deleteHeroItem(id: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminDeleteHeroItem(token, id));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Saves the order of every hero slide. */
+export async function saveHeroOrder(ids: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminPutHeroOrder(token, ids));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }

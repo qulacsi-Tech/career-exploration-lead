@@ -2,7 +2,7 @@ import { mergeHomeCopy } from "@/lib/home-copy";
 import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import Image from "next/image";
-import { HeroBackdrop } from "./hero-backdrop";
+import { HeroCarousel } from "@/components/hero-carousel";
 import { TopExamCard } from "@/components/top-exam-card";
 import { StreamTabs } from "@/components/ui/stream-tabs";
 import { ViewAllButton } from "@/components/ui/view-all-button";
@@ -45,6 +45,7 @@ export default async function Home() {
   const highlights    = home?.dataHighlights      ?? [];
   // The Fields grid and every stream link below come from the admin's list, nothing hard-coded.
   const fields        = home?.fields             ?? [];
+  const heroItems     = home?.heroItems          ?? [];
   const streamTabs    = fields.map((f) => f.name);
   const slugOfStream  = new Map(fields.map((f) => [f.name, f.slug]));
 
@@ -59,30 +60,8 @@ export default async function Home() {
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-brand-ink">
-        {copy.hero.image ? (
-          // The picture comes from the API's own uploads, so it is a plain img rather than next/image.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={mediaUrl(copy.hero.image)}
-            alt={copy.hero.imageAlt}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <HeroBackdrop />
-        )}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/55 to-black/40"
-        />
-        <div className="relative mx-auto max-w-3xl px-4 py-24 text-center sm:px-6 lg:px-8">
-          <h1 className="font-display balance text-4xl font-extrabold tracking-tight text-white drop-shadow-sm sm:text-5xl">
-            {copy.hero.headline}
-          </h1>
-          <p className="mx-auto mt-4 max-w-xl text-white/90">
-            {copy.hero.subheadline}
-          </p>
+      {/* Hero: one slide shows plain, several rotate. The search box stays under them. */}
+      <HeroCarousel items={heroItems}>
           <form
             action="/search"
             className="mx-auto mt-8 flex max-w-2xl flex-col gap-2 rounded-3xl border border-white/20 bg-surface p-2 shadow-lg sm:flex-row sm:items-center sm:gap-0 sm:rounded-full"
@@ -115,8 +94,7 @@ export default async function Home() {
               {copy.hero.searchButton}
             </button>
           </form>
-        </div>
-      </section>
+      </HeroCarousel>
 
       {/* Browse by location */}
       <LocationCarousel locations={locations} copy={copy.locations} card={copy.locationCard} />

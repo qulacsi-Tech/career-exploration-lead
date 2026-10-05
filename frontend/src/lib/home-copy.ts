@@ -57,14 +57,10 @@ export type PromoBannerCopy = {
 };
 
 export type HomeCopy = {
+  /** The search box under the hero slides. The slides themselves are `heroItems`. */
   hero: {
-    headline: string;
-    subheadline: string;
     searchPlaceholder: string;
     searchButton: string;
-    /** Relative path under /api/uploads, or empty for the built-in illustration. */
-    image: string;
-    imageAlt: string;
   };
   locations: SectionCopy;
   streams: SectionCopy;
@@ -84,12 +80,8 @@ export type HomeCopyPart = keyof HomeCopy;
 
 export const DEFAULT_HOME_COPY: HomeCopy = {
   hero: {
-    headline: "Find Colleges, Courses & Exams That Are Best For You",
-    subheadline: "Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts.",
     searchPlaceholder: "Search by college, course or exam",
     searchButton: "Search",
-    image: "",
-    imageAlt: "",
   },
   locations: { eyebrow: "Destination hubs", heading: "Where Ambition Meets", accent: "Opportunity", subheading: "" },
   streams: {

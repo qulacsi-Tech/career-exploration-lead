@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from schemas.home import (
     HomeCopySchema,
     HomeFieldSchema,
+    HeroItemSchema,
     CareerPanelLinkSchema,
     CareerPanelSchema,
     DataHighlightLinkSchema,
@@ -135,6 +136,18 @@ async def _stored_value(db: AsyncSession, key: str):
     return row.data if row else None
 
 
+async def _hero_items(db: AsyncSession) -> list[HeroItemSchema]:
+    """The active hero slides, in the admin's order."""
+    from models.hero_item import HeroItem
+    rows = (
+        await db.execute(select(HeroItem).where(HeroItem.active.is_(True)).order_by(HeroItem.position, HeroItem.headline))
+    ).scalars().all()
+    return [
+        HeroItemSchema(id=str(r.id), headline=r.headline, subheadline=r.subheadline, image=r.image, imageAlt=r.image_alt)
+        for r in rows
+    ]
+
+
 async def _home_fields(db: AsyncSession) -> list[HomeFieldSchema]:
     """The fields ticked for the homepage, in the admin's order."""
     from models.home_field import HomeField
@@ -183,6 +196,7 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
             RecommendedUniversitySchema(**u) for u in universities_raw
         ],
         dataHighlights=await _stored(db, "home.dataHighlights", DataHighlightSchema),
+        heroItems=await _hero_items(db),
         fields=await _home_fields(db),
         streams=[
             StreamCountSchema(

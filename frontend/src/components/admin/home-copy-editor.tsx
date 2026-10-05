@@ -140,24 +140,12 @@ export function HeroCopyEditor({ copy }: { copy: HomeCopy["hero"] }) {
   return (
     <CopyForm
       part="hero"
-      title="Hero"
-      description="The picture, headline and search box at the top of the homepage."
+      title="Search box"
+      description="The search box under the hero slides. It is the same for every slide."
       initial={copy}
       fields={[
-        { key: "headline", label: "Headline", hint: "5 to 150 characters." },
-        { key: "subheadline", label: "Sub-headline", multiline: true, hint: "5 to 300 characters." },
         { key: "searchPlaceholder", label: "Search placeholder" },
         { key: "searchButton", label: "Search button label" },
-        {
-          key: "image",
-          image: "hero",
-          fallbackNote: "No image chosen. The site shows the built-in campus illustration.",
-        },
-        {
-          key: "imageAlt",
-          label: "Image description",
-          hint: "Read aloud by screen readers. Leave empty if the picture is only decoration.",
-        },
       ]}
     />
   );

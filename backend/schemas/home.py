@@ -72,12 +72,20 @@ class HomeFieldSchema(BaseModel):
 
 
 class HeroCopySchema(BaseModel):
-    headline: str = "Find Colleges, Courses & Exams That Are Best For You"
-    subheadline: str = "Search 30,000+ colleges, compare fees and placements, and get free counselling from admission experts."
+    """The search box under the hero slides. The slides themselves are `heroItems`."""
+
     searchPlaceholder: str = "Search by college, course or exam"
     searchButton: str = "Search"
-    # Optional background photo: a relative path under /api/uploads. Empty keeps
-    # the built-in illustration.
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class HeroItemSchema(BaseModel):
+    """One hero slide."""
+
+    id: str
+    headline: str
+    subheadline: str
     image: str = ""
     imageAlt: str = ""
 
@@ -179,6 +187,8 @@ class HomeDataSchema(BaseModel):
     recommendedUniversities: List[RecommendedUniversitySchema]
     dataHighlights: List[DataHighlightSchema]
     streams: List[StreamCountSchema]
+    # The active hero slides, in order. One shows as a plain hero, several rotate.
+    heroItems: List[HeroItemSchema] = []
     # The Fields grid, in the admin's order. Separate from `streams`, which lists real college streams.
     fields: List[HomeFieldSchema] = []
 

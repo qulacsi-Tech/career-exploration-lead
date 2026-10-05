@@ -21,3 +21,4 @@ from models.collection import Collection  # noqa: F401
 from models.site_content import SiteContent  # noqa: F401
 from models.practice import PracticeItem  # noqa: F401
 from models.home_field import HomeField  # noqa: F401
+from models.hero_item import HeroItem  # noqa: F401

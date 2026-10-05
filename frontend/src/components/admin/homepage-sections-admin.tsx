@@ -1,9 +1,10 @@
 "use client";
 
 import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
+import { HeroItemsEditor } from "@/components/admin/hero-items-editor";
 import { TopCollegesEditor } from "@/components/admin/top-colleges-editor";
 import { TopExamsEditor } from "@/components/admin/top-exams-editor";
-import type { AdminField, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
+import type { AdminField, AdminHeroItem, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
 import { HomeLocationsEditor } from "@/components/admin/home-locations-editor";
 import { HomeFieldsEditor } from "@/components/admin/home-fields-editor";
 import type { HomeCopy } from "@/lib/home-copy";
@@ -35,6 +36,8 @@ export function HomepageSectionsAdmin({
   geo,
   locationLabels,
   fieldList,
+  heroItems,
+  heroMax,
 }: {
   homepage: AdminHomepage;
   careers: PanelDraft[];
@@ -47,6 +50,8 @@ export function HomepageSectionsAdmin({
   geo: IndiaGeo;
   locationLabels: AdminLocationLabel[];
   fieldList: AdminField[];
+  heroItems: AdminHeroItem[];
+  heroMax: number;
 }) {
   return (
     <PageSectionsAdmin
@@ -56,7 +61,12 @@ export function HomepageSectionsAdmin({
         {
           id: "hero",
           label: "Hero",
-          render: () => <HeroCopyEditor copy={copy.hero} />,
+          render: () => (
+            <div className="space-y-6">
+              <HeroItemsEditor items={heroItems} max={heroMax} />
+              <HeroCopyEditor copy={copy.hero} />
+            </div>
+          ),
         },
         {
           id: "location",

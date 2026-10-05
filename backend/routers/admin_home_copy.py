@@ -30,15 +30,9 @@ def _upload_path(value: str) -> str:
 
 
 class HeroBody(BaseModel):
-    headline: str = Field(min_length=5, max_length=150)
-    subheadline: str = Field(min_length=5, max_length=300)
     searchPlaceholder: str = Field(min_length=1, max_length=100)
     searchButton: str = Field(min_length=1, max_length=30)
-    image: str = Field(default="", max_length=200)
-    imageAlt: str = Field(default="", max_length=150)
     model_config = ConfigDict(extra="forbid")
-
-    _image = field_validator("image")(_upload_path)
 
 
 class SectionBody(BaseModel):
