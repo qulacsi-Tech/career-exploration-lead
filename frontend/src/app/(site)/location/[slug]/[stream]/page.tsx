@@ -9,7 +9,7 @@ import {
 import { LocationStreams, type LocationStream } from "@/components/location-streams";
 import { ApiError, getHomeData } from "@/lib/api";
 import { getLocationOrSample } from "@/lib/sample-locations";
-import { getCollegesInLocation } from "@/lib/location-colleges";
+import { getCollegesInLocation, streamsIn } from "@/lib/location-colleges";
 
 /**
  * One stream's colleges in one city: /location/bangalore/engineering lists
@@ -20,7 +20,8 @@ import { getCollegesInLocation } from "@/lib/location-colleges";
  * `cache` makes the home payload one request per render, shared by the metadata and
  * the page.
  */
-const loadHome = cache(getHomeData);
+const loadHome = cache(() => getHomeData().catch(() => null));
+const loadCity = cache((slug: string, name: string) => getCollegesInLocation({ slug, name }));
 
 async function resolve(slug: string, streamSlug: string) {
   let location: Awaited<ReturnType<typeof getLocationOrSample>>;
@@ -30,10 +31,12 @@ async function resolve(slug: string, streamSlug: string) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
   }
-  const home = await loadHome();
-  const stream = home.streams.find((s) => s.slug === streamSlug);
+  const [home, inCity] = await Promise.all([loadHome(), loadCity(location.slug, location.name)]);
+  // The category comes from the colleges in the city, so it does not depend on the home payload.
+  const stream =
+    streamsIn(inCity).find((s) => s.slug === streamSlug) ?? home?.streams.find((s) => s.slug === streamSlug);
   if (!stream) return null;
-  return { location, stream, home };
+  return { location, stream, home, inCity };
 }
 
 export async function generateMetadata({
@@ -60,22 +63,11 @@ export default async function LocationStreamPage({
   const { slug, stream: streamSlug } = await params;
   const found = await resolve(slug, streamSlug);
   if (!found) notFound();
-  const { location, stream, home } = found;
-
-  // Every stream's colleges in the city, so the other streams can be offered with their counts.
-  const inCity = await getCollegesInLocation(location);
+  const { location, stream, home, inCity } = found;
   const inStream = inCity.filter((college) => college.stream === stream.name);
 
-  const iconOf = new Map((home.fields ?? []).map((f) => [f.slug, f.icon]));
-  const streamsHere: LocationStream[] = home.streams
-    .map((s) => ({
-      slug: s.slug,
-      name: s.name,
-      count: inCity.filter((college) => college.stream === s.name).length,
-      icon: iconOf.get(s.slug),
-    }))
-    .filter((s) => s.count > 0)
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const iconOf = new Map((home?.fields ?? []).map((f) => [f.slug, f.icon]));
+  const streamsHere: LocationStream[] = streamsIn(inCity, iconOf);
 
   return (
     <CollegeListing

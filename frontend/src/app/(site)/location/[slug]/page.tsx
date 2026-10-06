@@ -9,7 +9,7 @@ import type { LocationStream } from "@/components/location-streams";
 import { LocationStreamFilter } from "@/components/location-stream-filter";
 import { ApiError, getHomeData, getLocations } from "@/lib/api";
 import { getLocationOrSample } from "@/lib/sample-locations";
-import { getCollegesInLocation } from "@/lib/location-colleges";
+import { getCollegesInLocation, streamsIn } from "@/lib/location-colleges";
 
 export async function generateStaticParams() {
   const locs = await getLocations();
@@ -58,19 +58,15 @@ export default async function LocationPage({
   const inCity = await getCollegesInLocation(location);
 
   // All locations for the "Other cities" sidebar, and the stream and icon lists.
-  const [allLocations, home] = await Promise.all([getLocations(), getHomeData()]);
+  // A payload that cannot be fetched only costs the sidebar and the icons, not the page.
+  const [allLocations, home] = await Promise.all([
+    getLocations().catch(() => []),
+    getHomeData().catch(() => null),
+  ]);
 
   // Streams that have at least one college in this city, most colleges first.
-  const iconOf = new Map((home.fields ?? []).map((f) => [f.slug, f.icon]));
-  const streamsHere: LocationStream[] = home.streams
-    .map((stream) => ({
-      slug: stream.slug,
-      name: stream.name,
-      count: inCity.filter((college) => college.stream === stream.name).length,
-      icon: iconOf.get(stream.slug),
-    }))
-    .filter((stream) => stream.count > 0)
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const iconOf = new Map((home?.fields ?? []).map((f) => [f.slug, f.icon]));
+  const streamsHere: LocationStream[] = streamsIn(inCity, iconOf);
 
   // An unknown or empty stream in the URL just shows everything, like the reset.
   const active = streamsHere.find((stream) => stream.slug === requested);
