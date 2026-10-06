@@ -5,8 +5,10 @@ import {
   CounsellingCard,
   SidebarLinks,
 } from "@/components/college-listing";
-import { LocationStreams, type LocationStream } from "@/components/location-streams";
-import { ApiError, getHomeData, getLocation, getLocations } from "@/lib/api";
+import type { LocationStream } from "@/components/location-streams";
+import { LocationStreamFilter } from "@/components/location-stream-filter";
+import { ApiError, getHomeData, getLocations } from "@/lib/api";
+import { getLocationOrSample } from "@/lib/sample-locations";
 import { getCollegesInLocation } from "@/lib/location-colleges";
 
 export async function generateStaticParams() {
@@ -21,7 +23,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   try {
-    const location = await getLocation(slug);
+    const location = await getLocationOrSample(slug);
     return {
       title: `Colleges in ${location.name}: Streams, Fees & Admissions`,
       description: `Browse engineering, medical, management and other colleges in ${location.name} by stream, with fees, placements, accepted exams and rankings.`,
@@ -34,14 +36,18 @@ export async function generateMetadata({
 
 export default async function LocationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ stream?: string | string[] }>;
 }) {
   const { slug } = await params;
+  const { stream: streamParam } = await searchParams;
+  const requested = Array.isArray(streamParam) ? streamParam[0] : streamParam;
 
-  let location: Awaited<ReturnType<typeof getLocation>>;
+  let location: Awaited<ReturnType<typeof getLocationOrSample>>;
   try {
-    location = await getLocation(slug);
+    location = await getLocationOrSample(slug);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     throw err;
@@ -66,6 +72,11 @@ export default async function LocationPage({
     .filter((stream) => stream.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
+  // An unknown or empty stream in the URL just shows everything, like the reset.
+  const active = streamsHere.find((stream) => stream.slug === requested);
+  const shown = active ? inCity.filter((college) => college.stream === active.name) : inCity;
+  const heading = active ? `${active.name} colleges in ${location.name}` : `All colleges in ${location.name}`;
+
   return (
     <CollegeListing
       breadcrumbs={[
@@ -73,17 +84,20 @@ export default async function LocationPage({
         { label: "Colleges", href: "/colleges" },
         { label: location.name },
       ]}
-      title={`Colleges in ${location.name}`}
-      subtitle={`${inCity.length} of ${location.collegeCount.toLocaleString()} listed`}
+      title={active ? `${active.name} Colleges in ${location.name}` : `Colleges in ${location.name}`}
+      subtitle={active ? `${shown.length} listed` : `${inCity.length} of ${location.collegeCount.toLocaleString()} listed`}
       intro={`Choose a stream to see its colleges in ${location.name}, or scroll down for every college in the city. Compare fees, placements, accepted entrance exams and rankings, and shortlist two or three to open the full comparison.`}
-      colleges={inCity}
+      colleges={shown}
       emptyMessage={`No colleges in ${location.name} are in the directory yet.`}
       topSection={
         <>
-          <LocationStreams locationSlug={location.slug} locationName={location.name} streams={streamsHere} />
-          {inCity.length > 0 && (
-            <h2 className="mb-4 font-display text-lg font-bold text-ink sm:text-xl">All colleges in {location.name}</h2>
-          )}
+          <LocationStreamFilter
+            locationSlug={location.slug}
+            streams={streamsHere}
+            activeSlug={active?.slug}
+            total={inCity.length}
+          />
+          {shown.length > 0 && <h2 className="mb-4 font-display text-lg font-bold text-ink sm:text-xl">{heading}</h2>}
         </>
       }
       sidebar={

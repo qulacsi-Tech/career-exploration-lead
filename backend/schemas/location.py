@@ -19,6 +19,19 @@ class CourseFeeSchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class FeaturedCollegeSchema(BaseModel):
+    slug: str
+    name: str
+
+
+class FeaturedStreamSchema(BaseModel):
+    """A category the card offers, with the colleges the admin picked under it."""
+
+    stream: str  # the category's slug, e.g. "engineering"
+    name: str
+    colleges: list[FeaturedCollegeSchema] = []
+
+
 class HomeLocationSchema(LocationSchema):
     """A homepage carousel card: the directory entry plus what the card shows."""
 
@@ -28,3 +41,5 @@ class HomeLocationSchema(LocationSchema):
     description: str = ""
     avgPackage: str = ""
     image: str = ""
+    # Empty: the card works its categories out from the colleges in the city.
+    featured: list[FeaturedStreamSchema] = []

@@ -21,6 +21,9 @@ class Location(Base):
     image = Column(String(200), nullable=False, default="", server_default="")
     # Up to three {category, fees} rows shown as tiles on the card.
     course_fees = Column(JSONB, nullable=False, default=list, server_default="[]")
+    # Categories the card offers and the colleges listed under each:
+    # [{"stream": "Engineering", "colleges": ["college-slug"]}]. Empty: worked out from the city's colleges.
+    featured = Column(JSONB, nullable=False, default=list, server_default="[]")
     show_on_home = Column(Boolean, nullable=False, default=True, server_default="true")
     home_order = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

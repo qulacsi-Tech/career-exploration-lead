@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveHomeLocations } from "@/lib/admin-actions";
-import type { AdminHomeLocation, AdminLocationLabel, IndiaGeo } from "@/lib/api";
+import type { AdminHomeLocation, AdminLocationLabel, IndiaGeo, LocationPicker } from "@/lib/api";
 import type { LocationCardCopy } from "@/lib/home-copy";
 import { mediaUrl } from "@/lib/media";
 import { AdminSection } from "@/components/admin/admin-section";
@@ -30,11 +30,13 @@ export function HomeLocationsEditor({
   locations: initial,
   geo,
   labelPool,
+  picker,
   wording,
 }: {
   locations: AdminHomeLocation[];
   geo: IndiaGeo;
   labelPool: AdminLocationLabel[];
+  picker: LocationPicker;
   wording: LocationCardCopy;
 }) {
   const router = useRouter();
@@ -167,6 +169,7 @@ export function HomeLocationsEditor({
           location={modal}
           geo={geo}
           labelPool={labelPool}
+          picker={picker}
           wording={wording}
           onClose={(message) => {
             setModal(undefined);

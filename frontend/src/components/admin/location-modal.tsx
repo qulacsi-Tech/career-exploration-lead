@@ -3,15 +3,17 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createLocation, deleteLocation, saveHomeCopy, updateLocation } from "@/lib/admin-actions";
-import type { AdminHomeLocation, AdminLocationLabel, IndiaGeo, LocationInput } from "@/lib/api";
+import type { AdminHomeLocation, AdminLocationLabel, IndiaGeo, LocationInput, LocationPicker } from "@/lib/api";
 import type { LocationCardCopy } from "@/lib/home-copy";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { CategoriesPicker } from "@/components/admin/location-categories-picker";
 
 /*
   One location, one full-width form in four tabs:
 
     Details       where it is, its name and count, and whether it shows
+    Categories    which categories the card offers and the colleges listed under each
     Card content  the description, the average package and the labels
     Photo         the card's picture
     Card wording  the fixed words on every card (shared, not per location)
@@ -34,10 +36,11 @@ const MAX_LABELS = 6;
 const MAX_COURSE_FEES = 3;
 const SOFT_LABELS = 4;
 
-type TabId = "details" | "content" | "photo" | "wording";
+type TabId = "details" | "categories" | "content" | "photo" | "wording";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "details", label: "Details" },
+  { id: "categories", label: "Categories & colleges" },
   { id: "content", label: "Card content" },
   { id: "photo", label: "Photo" },
   { id: "wording", label: "Card wording" },
@@ -53,6 +56,7 @@ const BLANK: LocationInput = {
   image: "",
   labels: [],
   courseFees: [],
+  featured: [],
   show: true,
 };
 
@@ -67,6 +71,7 @@ function toInput(loc: AdminHomeLocation): LocationInput {
     image: loc.image,
     labels: loc.labels,
     courseFees: loc.courseFees,
+    featured: loc.featured,
     show: loc.show,
   };
 }
@@ -113,6 +118,7 @@ export function LocationModal({
   location,
   geo,
   labelPool,
+  picker,
   wording,
   onClose,
 }: {
@@ -120,6 +126,8 @@ export function LocationModal({
   location: AdminHomeLocation | null;
   geo: IndiaGeo;
   labelPool: AdminLocationLabel[];
+  /** Every category and its colleges, for the Categories tab. */
+  picker: LocationPicker;
   /** The fixed words on every card. Saved with the location when changed. */
   wording: LocationCardCopy;
   /** Called when the form closes. `message` is set when something was saved, added or deleted. */
@@ -382,6 +390,12 @@ export function LocationModal({
             />
             <span className="text-sm text-ink">Show this card in the homepage carousel</span>
           </label>
+        </div>
+      )}
+
+      {tab === "categories" && (
+        <div role="tabpanel" id="loc-panel-categories" aria-labelledby="loc-tab-categories">
+          <CategoriesPicker picker={picker} value={draft.featured} onChange={(v) => set("featured", v)} />
         </div>
       )}
 

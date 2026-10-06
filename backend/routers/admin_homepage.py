@@ -264,6 +264,7 @@ def _card(loc, labels: list[str] | None = None) -> dict[str, Any]:
         "description": loc.description,
         "avgPackage": loc.avg_package,
         "image": loc.image,
+        "featured": list(loc.featured or []),
     }
 
 

@@ -7,7 +7,8 @@ import {
   SidebarLinks,
 } from "@/components/college-listing";
 import { LocationStreams, type LocationStream } from "@/components/location-streams";
-import { ApiError, getHomeData, getLocation } from "@/lib/api";
+import { ApiError, getHomeData } from "@/lib/api";
+import { getLocationOrSample } from "@/lib/sample-locations";
 import { getCollegesInLocation } from "@/lib/location-colleges";
 
 /**
@@ -22,9 +23,9 @@ import { getCollegesInLocation } from "@/lib/location-colleges";
 const loadHome = cache(getHomeData);
 
 async function resolve(slug: string, streamSlug: string) {
-  let location: Awaited<ReturnType<typeof getLocation>>;
+  let location: Awaited<ReturnType<typeof getLocationOrSample>>;
   try {
-    location = await getLocation(slug);
+    location = await getLocationOrSample(slug);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;

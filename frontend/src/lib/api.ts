@@ -175,7 +175,12 @@ export type HomeField = {
 export type CourseFee = { category: string; fees: string };
 
 /** A homepage carousel card: the directory entry plus what the card shows. */
+/** A category a card offers, with the colleges the admin picked under it. */
+export type FeaturedStream = { stream: string; name: string; colleges: { slug: string; name: string }[] };
+
 export type HomeLocation = Location & {
+  /** Categories and colleges picked in the admin. Empty: worked out from the city's colleges. */
+  featured?: FeaturedStream[];
   /** Tags on the card, in label order. */
   labels: string[];
   /** Up to three course categories with their fee ranges. */
@@ -952,7 +957,8 @@ export async function adminPutHomeCopy(token: string, part: keyof HomeCopy, valu
 }
 
 /** One location in the admin's carousel editor. `show` is the checkbox. */
-export type AdminHomeLocation = HomeLocation & { show: boolean; district: string };
+export type FeaturedInput = { stream: string; colleges: string[] };
+export type AdminHomeLocation = Omit<HomeLocation, "featured"> & { show: boolean; district: string; featured: FeaturedInput[] };
 
 export async function adminGetHomeLocations(token: string): Promise<AdminHomeLocation[]> {
   const data = await adminRequest<{ locations: AdminHomeLocation[] }>(token, "GET", "/admin/homepage/locations");
@@ -976,12 +982,21 @@ export type LocationInput = {
   /** The pool labels this card shows, by text. A text not yet in the pool is added to it. */
   labels: string[];
   courseFees: CourseFee[];
+  /** Categories the card offers and the colleges under each. */
+  featured: FeaturedInput[];
   /** On the homepage carousel. */
   show: boolean;
 };
 
 /** A reusable card tag and the locations that show it. `id` is null until the label is first saved. */
 export type AdminLocationLabel = { id: string | null; text: string; slugs: string[] };
+
+/** Every category and its colleges, for the card editor's pickers. */
+export type LocationPicker = { streams: string[]; colleges: { slug: string; name: string; stream: string; city: string }[] };
+
+export async function adminGetLocationPicker(token: string): Promise<LocationPicker> {
+  return adminRequest<LocationPicker>(token, "GET", "/admin/locations/picker");
+}
 
 export async function adminGetLocationLabels(token: string): Promise<AdminLocationLabel[]> {
   const data = await adminRequest<{ labels: AdminLocationLabel[] }>(token, "GET", "/admin/locations/labels");

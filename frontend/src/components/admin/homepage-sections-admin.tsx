@@ -4,7 +4,7 @@ import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
 import { HeroItemsEditor } from "@/components/admin/hero-items-editor";
 import { TopCollegesEditor } from "@/components/admin/top-colleges-editor";
 import { TopExamsEditor } from "@/components/admin/top-exams-editor";
-import type { AdminField, AdminHeroItem, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
+import type { AdminField, AdminHeroItem, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, LocationPicker, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
 import { HomeLocationsEditor } from "@/components/admin/home-locations-editor";
 import { HomeFieldsEditor } from "@/components/admin/home-fields-editor";
 import type { HomeCopy } from "@/lib/home-copy";
@@ -35,6 +35,7 @@ export function HomepageSectionsAdmin({
   locations,
   geo,
   locationLabels,
+  locationPicker,
   fieldList,
   heroItems,
   heroMax,
@@ -49,6 +50,7 @@ export function HomepageSectionsAdmin({
   locations: AdminHomeLocation[];
   geo: IndiaGeo;
   locationLabels: AdminLocationLabel[];
+  locationPicker: LocationPicker;
   fieldList: AdminField[];
   heroItems: AdminHeroItem[];
   heroMax: number;
@@ -79,7 +81,7 @@ export function HomepageSectionsAdmin({
                 description="The heading above the city carousel."
                 copy={copy.locations}
               />
-              <HomeLocationsEditor locations={locations} geo={geo} labelPool={locationLabels} wording={copy.locationCard} />
+              <HomeLocationsEditor locations={locations} geo={geo} labelPool={locationLabels} picker={locationPicker} wording={copy.locationCard} />
             </div>
           ),
         },

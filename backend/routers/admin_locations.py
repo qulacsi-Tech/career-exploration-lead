@@ -27,6 +27,14 @@ router = APIRouter(prefix="/admin/locations", tags=["admin"])
 
 MAX_CARD_LABELS = 6
 MAX_COURSE_FEES = 3
+MAX_FEATURED_STREAMS = 6
+MAX_FEATURED_COLLEGES = 12
+
+
+class FeaturedBody(BaseModel):
+    stream: str = Field(min_length=1, max_length=100)
+    colleges: list[str] = Field(default_factory=list, max_length=MAX_FEATURED_COLLEGES)
+    model_config = ConfigDict(extra="forbid")
 
 
 class CourseFeeBody(BaseModel):
@@ -48,6 +56,8 @@ class LocationBody(BaseModel):
     labels: list[str] | None = Field(default=None, max_length=MAX_CARD_LABELS)
     # Course categories and fee ranges shown as tiles. Omitted: left as they are.
     courseFees: list[CourseFeeBody] | None = Field(default=None, max_length=MAX_COURSE_FEES)
+    # Categories the card offers and the colleges under each. Omitted: left as they are.
+    featured: list[FeaturedBody] | None = Field(default=None, max_length=MAX_FEATURED_STREAMS)
     # On the homepage carousel. Omitted: a new location shows, an edited one is unchanged.
     show: bool | None = None
     model_config = ConfigDict(extra="forbid")
@@ -83,6 +93,30 @@ def _parse(body: dict) -> LocationBody:
     return data
 
 
+async def _check_featured(db, featured: list[FeaturedBody] | None) -> None:
+    """Every category must be unique and every college must exist and belong to its category."""
+    if not featured:
+        return
+    from models.college import College
+
+    streams = [f.stream.strip() for f in featured]
+    if len({s.lower() for s in streams}) != len(streams):
+        raise ValidationError("featured: a category appears more than once.")
+    slugs = [s for f in featured for s in f.colleges]
+    if len(set(slugs)) != len(slugs):
+        raise ValidationError("featured: a college is picked more than once.")
+    found = {
+        slug: stream
+        for slug, stream in (await db.execute(select(College.slug, College.stream).where(College.slug.in_(slugs)))).all()
+    }
+    for f in featured:
+        for slug in f.colleges:
+            if slug not in found:
+                raise ValidationError(f"featured: unknown college '{slug}'.")
+            if found[slug].strip().lower() != f.stream.strip().lower():
+                raise ValidationError(f"featured: '{slug}' is not a {f.stream.strip()} college.")
+
+
 def _slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
@@ -97,6 +131,8 @@ def _apply(row: Location, data: LocationBody) -> None:
     row.image = data.image
     if data.courseFees is not None:
         row.course_fees = [{"category": c.category.strip(), "fees": c.fees.strip()} for c in data.courseFees]
+    if data.featured is not None:
+        row.featured = [{"stream": f.stream.strip(), "colleges": f.colleges} for f in data.featured]
 
 
 async def _set_labels(db, row: Location, texts: list[str]) -> list[str]:
@@ -143,6 +179,21 @@ async def _current_labels(db, row: Location) -> list[str]:
     return (await LocationRepository(db).labels_for([row.id])).get(row.id, [])
 
 
+@router.get("/picker", response_model=SuccessResponse[dict])
+async def picker(_admin: AdminPayload, db: DbSession):
+    """Every category and its colleges: what the card editor's pickers offer."""
+    from models.college import College
+
+    rows = (await db.execute(select(College.slug, College.name, College.stream, College.city).order_by(College.name))).all()
+    streams = sorted({r.stream for r in rows})
+    return SuccessResponse[dict](
+        data={
+            "streams": streams,
+            "colleges": [{"slug": r.slug, "name": r.name, "stream": r.stream, "city": r.city} for r in rows],
+        }
+    )
+
+
 @router.get("/geo", response_model=SuccessResponse[dict])
 async def geo(_admin: AdminPayload):
     """Every state or union territory with its districts, for the admin's dropdowns."""
@@ -175,6 +226,7 @@ async def list_labels(_admin: AdminPayload, db: DbSession):
 @router.post("", response_model=SuccessResponse[dict], status_code=201)
 async def create_location(_admin: AdminPayload, db: DbSession, body: dict):
     data = _parse(body)
+    await _check_featured(db, data.featured)
     slug = _slugify(data.name)
     if not slug:
         raise ValidationError("name: use letters or numbers.")
@@ -196,6 +248,7 @@ async def create_location(_admin: AdminPayload, db: DbSession, body: dict):
 @router.patch("/{slug}", response_model=SuccessResponse[dict])
 async def update_location(slug: str, _admin: AdminPayload, db: DbSession, body: dict):
     data = _parse(body)
+    await _check_featured(db, data.featured)
     row = (await db.execute(select(Location).where(Location.slug == slug))).scalar_one_or_none()
     if row is None:
         raise NotFoundError("Location")

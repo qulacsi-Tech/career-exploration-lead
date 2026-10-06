@@ -834,6 +834,11 @@ body {
     animation-range: entry 0% entry 100%;
   }
 }
+/* The last card has no card to be covered by. With no timeline the animation would just run on
+   the clock and leave it permanently shrunk and dimmed, which is what a lone card looked like. */
+.hub-stack-item:last-child .hub-stack-card {
+  animation: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .hub-stack-card {
     animation: none;
@@ -859,4 +864,20 @@ body {
   .fees-dots {
     display: none;
   }
+}
+
+/* Location card: the college names drift upward; the list is doubled so the loop is seamless. */
+@keyframes college-ticker {
+  to { transform: translateY(-50%); }
+}
+.college-ticker-track {
+  animation: college-ticker linear infinite;
+}
+.college-ticker:hover .college-ticker-track,
+.college-ticker:focus-within .college-ticker-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .college-ticker-track { animation: none; }
+  .college-ticker { overflow-y: auto; }
 }

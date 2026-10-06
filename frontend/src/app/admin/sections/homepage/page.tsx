@@ -1,4 +1,4 @@
-import { adminGetContent, adminGetHomeCopy, adminGetFields, adminGetHeroItems, adminGetGeo, adminGetHomeLocations, adminGetLocationLabels, adminGetHomepage, adminGetTopExams, adminGetUniversities, adminListPrograms } from "@/lib/api";
+import { adminGetContent, adminGetHomeCopy, adminGetFields, adminGetHeroItems, adminGetGeo, adminGetHomeLocations, adminGetLocationLabels, adminGetLocationPicker, adminGetHomepage, adminGetTopExams, adminGetUniversities, adminListPrograms } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
 import { HomepageSectionsAdmin } from "@/components/admin/homepage-sections-admin";
 
@@ -7,7 +7,7 @@ import { HomepageSectionsAdmin } from "@/components/admin/homepage-sections-admi
   admin API with the session token, so each tab shows what is saved.
 */
 export default async function AdminHomepageSectionsPage() {
-  const [homepage, careers, highlights, topExams, copy, programs, universities, locations, geo, locationLabels, fieldList, hero] = await withAdminToken((token) =>
+  const [homepage, careers, highlights, topExams, copy, programs, universities, locations, geo, locationLabels, fieldList, hero, picker] = await withAdminToken((token) =>
     Promise.all([
       adminGetHomepage(token),
       adminGetContent(token, "careers"),
@@ -21,6 +21,7 @@ export default async function AdminHomepageSectionsPage() {
       adminGetLocationLabels(token),
       adminGetFields(token),
       adminGetHeroItems(token),
+      adminGetLocationPicker(token),
     ]),
   );
   return (
@@ -35,6 +36,7 @@ export default async function AdminHomepageSectionsPage() {
       locations={locations}
       geo={geo}
       locationLabels={locationLabels}
+      locationPicker={picker}
       fieldList={fieldList}
       heroItems={hero.items}
       heroMax={hero.max}

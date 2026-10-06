@@ -38,6 +38,15 @@ class LocationRepository:
             labels.setdefault(location_id, []).append(text)
         return labels
 
+    async def college_names(self, slugs: List[str]) -> dict:
+        """{college slug: (name, stream)} for the colleges that exist."""
+        if not slugs:
+            return {}
+        from models.college import College
+
+        result = await self.db.execute(select(College.slug, College.name, College.stream).where(College.slug.in_(slugs)))
+        return {slug: (name, stream) for slug, name, stream in result.all()}
+
     async def get_by_slug(self, slug: str) -> Optional[Location]:
         result = await self.db.execute(select(Location).where(Location.slug == slug))
         return result.scalar_one_or_none()
