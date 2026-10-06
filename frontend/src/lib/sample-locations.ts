@@ -1,4 +1,4 @@
-import { ApiError, getLocation, type HomeLocation, type Location } from "@/lib/api";
+import { getLocation, type HomeLocation, type Location } from "@/lib/api";
 
 // ── Sample destinations ────────────────────────────────────────────────────────
 // Shown only when the admin has no active destination cards (see Home() below). They are
@@ -51,17 +51,16 @@ export const STATIC_LOCATIONS: HomeLocation[] = [
 
 /**
  * A location by slug: the directory's own when it has one, else the matching sample card.
- * The homepage shows the samples when the admin has no cards, so their links must open a
- * page rather than a 404. Any other failure, and a slug that is neither, still throws.
+ * The homepage shows the samples when the admin has no cards, or when the API cannot be
+ * reached, so their links must open a page rather than a 404 or an error. The sample stands
+ * in when the API says 404 or fails outright; a slug that is not a sample still throws.
  */
 export async function getLocationOrSample(slug: string): Promise<Location> {
   try {
     return await getLocation(slug);
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      const sample = STATIC_LOCATIONS.find((l) => l.slug === slug);
-      if (sample) return { slug: sample.slug, name: sample.name, state: sample.state, collegeCount: sample.collegeCount };
-    }
+    const sample = STATIC_LOCATIONS.find((l) => l.slug === slug);
+    if (sample) return { slug: sample.slug, name: sample.name, state: sample.state, collegeCount: sample.collegeCount };
     throw err;
   }
 }
