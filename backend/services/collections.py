@@ -13,6 +13,10 @@ from models.ranking import RankingEntry, RankingList
 from services.college import _to_list_schema
 
 
+# The most colleges one homepage band can hold, across all its categories.
+MAX_BAND_COLLEGES = 100
+
+
 class CollectionService:
     """Resolves stored collections into what the site shows.
 
@@ -64,11 +68,39 @@ class CollectionService:
         ]
         bands = []
         for data in sorted(visible, key=lambda d: d["placements"]["homepage"]["order"]):
-            colleges = await self._colleges_for(data, data["placements"]["homepage"].get("limit"))
+            everything = await self._colleges_for(data, MAX_BAND_COLLEGES)
+            limit = data["placements"]["homepage"].get("limit") or 6
+            # The page splits the section into a tab per category and slides through each one.
+            # Only the first page of every category is sent now; the rest is fetched as the
+            # visitor slides (see band_page).
+            by_stream: dict[str, list] = {}
+            for c in everything:
+                by_stream.setdefault(c.stream, []).append(c)
+            first_pages = [c for group in by_stream.values() for c in group[:limit]]
             # A band with no colleges is dropped rather than shown as a bare heading.
-            if colleges:
-                bands.append({"collection": data, "colleges": colleges})
+            if first_pages:
+                bands.append({
+                    "collection": data,
+                    "colleges": first_pages,
+                    "limit": limit,
+                    "totals": {stream: len(group) for stream, group in by_stream.items()},
+                })
         return bands
+
+    async def band_page(self, slug: str, stream: Optional[str], page: int) -> dict:
+        """One page of a homepage section's colleges, of one category (or all), page size = the card limit."""
+        for data in await self._published():
+            placement = (data.get("placements") or {}).get("homepage")
+            if data["slug"] != slug or not placement or not placement.get("isVisible"):
+                continue
+            limit = placement.get("limit") or 6
+            rows = await self._colleges_for(data, MAX_BAND_COLLEGES)
+            if stream:
+                rows = [c for c in rows if c.stream == stream]
+            pages = max(1, -(-len(rows) // limit))
+            start = (page - 1) * limit
+            return {"colleges": rows[start:start + limit], "page": page, "pages": pages, "total": len(rows), "limit": limit}
+        raise NotFoundError("Collection")
 
     async def footer_columns(self) -> list[dict]:
         columns: dict[str, list[dict]] = {}

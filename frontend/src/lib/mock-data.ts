@@ -1299,6 +1299,8 @@ export type RecommendedProgram = {
   universitySlug: string;
   online: { duration: string; fees: string; feesNote: string };
   onCampus: { duration: string; fees: string };
+  /** The programme's own photo. Empty or absent: the card uses the site's shared photo set. */
+  image?: string;
 };
 
 export const recommendedPrograms: RecommendedProgram[] = [
@@ -1330,6 +1332,7 @@ export const recommendedPrograms: RecommendedProgram[] = [
 
 export type CareerPanel = {
   title: string;
+  category?: string;
   viewAllHref: string;
   links: { label: string; href: string }[];
 };

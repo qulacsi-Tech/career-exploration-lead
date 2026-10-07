@@ -4,14 +4,15 @@ import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
 import { HeroItemsEditor } from "@/components/admin/hero-items-editor";
 import { TopCollegesEditor } from "@/components/admin/top-colleges-editor";
 import { TopExamsEditor } from "@/components/admin/top-exams-editor";
-import type { AdminField, AdminHeroItem, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, LocationPicker, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
+import type { AdminField, AdminHeroItem, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, LinkPool, AdminNews, LocationPicker, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
+import { RecommendedProgramsManager } from "@/components/admin/recommended-programs-manager";
 import { HomeLocationsEditor } from "@/components/admin/home-locations-editor";
 import { HomeFieldsEditor } from "@/components/admin/home-fields-editor";
 import type { HomeCopy } from "@/lib/home-copy";
 import { HeroCopyEditor, PromoBannerEditor, SectionCopyEditor, StoryCopyEditor } from "@/components/admin/home-copy-editor";
-import { OrderedListEditor } from "@/components/admin/ordered-list-editor";
-import { saveRecommendedPrograms, saveRecommendedUniversities } from "@/lib/admin-actions";
-import { CareerPanelsEditor, DataTilesEditor, type PanelDraft, type TileDraft } from "@/components/admin/homepage-content-editors";
+import { CareerPanelsManager, DataTilesManager, type PanelDraft, type TileDraft } from "@/components/admin/home-content-managers";
+import { RecommendedCollegesManager } from "@/components/admin/recommended-colleges-manager";
+import { NewsManager } from "@/components/admin/news-manager";
 
 /*
   Defaults mirror what app/(site)/page.tsx renders today, so this screen opens
@@ -36,6 +37,8 @@ export function HomepageSectionsAdmin({
   geo,
   locationLabels,
   locationPicker,
+  linkPool,
+  news,
   fieldList,
   heroItems,
   heroMax,
@@ -51,6 +54,8 @@ export function HomepageSectionsAdmin({
   geo: IndiaGeo;
   locationLabels: AdminLocationLabel[];
   locationPicker: LocationPicker;
+  linkPool: LinkPool;
+  news: AdminNews;
   fieldList: AdminField[];
   heroItems: AdminHeroItem[];
   heroMax: number;
@@ -118,6 +123,7 @@ export function HomepageSectionsAdmin({
               geo={geo}
               streams={fieldList.map((f) => f.name)}
               wording={copy.collegeCard}
+              picker={locationPicker}
             />
           ),
         },
@@ -133,7 +139,7 @@ export function HomepageSectionsAdmin({
                 copy={copy.topExams}
                 show={["heading", "accent", "subheading"]}
               />
-              <TopExamsEditor topExams={topExams} wording={copy.examCard} />
+              <TopExamsEditor streams={fieldList.map((f) => f.name)} topExams={topExams} wording={copy.examCard} />
             </div>
           ),
         },
@@ -149,16 +155,10 @@ export function HomepageSectionsAdmin({
                 copy={copy.programs}
                 extra="itemEyebrow"
               />
-              <OrderedListEditor
-                title="Recommended programmes"
-                description="The brand-coloured row on the homepage, left to right. Edit the programme details on the Programmes page."
-                addLabel="Add to row"
-                emptyText="No programmes chosen. The row will not show on the homepage."
-                max={3}
-                noun="programme"
-                chosen={programs.recommended.map((slug) => ({ slug, name: programs.programs.find((p) => p.slug === slug)?.name ?? slug })).filter((c) => programs.programs.some((p) => p.slug === c.slug))}
-                options={programs.programs.map((p) => ({ slug: p.slug, name: p.name }))}
-                onSave={saveRecommendedPrograms}
+              <RecommendedProgramsManager
+                programs={programs.programs}
+                recommended={programs.recommended}
+                colleges={locationPicker.colleges.map((c) => ({ slug: c.slug, name: c.name }))}
               />
             </div>
           ),
@@ -175,7 +175,7 @@ export function HomepageSectionsAdmin({
                 copy={copy.careers}
                 show={["heading", "accent", "subheading"]}
               />
-              <CareerPanelsEditor panels={careers} />
+              <CareerPanelsManager panels={careers} pool={linkPool} categories={fieldList.map((f) => f.name)} />
               <PromoBannerEditor copy={copy.promoBanner} />
             </div>
           ),
@@ -192,17 +192,7 @@ export function HomepageSectionsAdmin({
                 copy={copy.universities}
                 extra="itemSubline"
               />
-              <OrderedListEditor
-                title="Recommended colleges"
-                description="The recommended colleges row on the homepage, left to right."
-                addLabel="Add to row"
-                emptyText="No colleges chosen. The row will not show on the homepage."
-                max={3}
-                noun="college"
-                chosen={universities.colleges}
-                options={universities.options}
-                onSave={saveRecommendedUniversities}
-              />
+              <RecommendedCollegesManager chosen={universities.colleges.map((c) => c.slug)} picker={locationPicker} />
             </div>
           ),
         },
@@ -218,7 +208,7 @@ export function HomepageSectionsAdmin({
                 copy={copy.data}
                 show={["heading", "accent", "subheading"]}
               />
-              <DataTilesEditor tiles={highlights} />
+              <DataTilesManager tiles={highlights} pool={linkPool} />
             </div>
           ),
         },
@@ -226,13 +216,16 @@ export function HomepageSectionsAdmin({
           id: "articles",
           label: "Articles",
           render: () => (
-            <SectionCopyEditor
-              part="articles"
-              title="Latest news heading"
-              description="The heading above the news spread. It shows the three most recent articles."
-              copy={copy.articles}
-              show={["heading", "accent"]}
-            />
+            <div className="space-y-6">
+              <SectionCopyEditor
+                part="articles"
+                title="Latest news heading"
+                description="The heading above the news spread. It shows the three most recent articles."
+                copy={copy.articles}
+                show={["heading", "accent"]}
+              />
+              <NewsManager news={news} categories={fieldList.map((f) => f.name)} picker={locationPicker} />
+            </div>
           ),
         },
       ]}

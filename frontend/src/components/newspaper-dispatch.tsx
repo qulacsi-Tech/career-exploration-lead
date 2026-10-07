@@ -1,5 +1,6 @@
 "use client";
 
+import { mediaUrl } from "@/lib/media";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -7,7 +8,7 @@ import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, Pause, Play } from "lucide-react";
 
-type Article = { slug: string; title: string; excerpt: string; date: string };
+type Article = { slug: string; title: string; excerpt: string; date: string; image?: string };
 
 /** How long a spread stays open before the page turns itself. */
 const DWELL = 7000;
@@ -255,15 +256,19 @@ function LeadPage({ lead }: { lead: Article }) {
         </Link>
       </h4>
 
-      <div className="relative mt-4 aspect-[16/8] w-full overflow-hidden border border-ink/15 bg-bg-alt grayscale-[35%]">
-        <Image
-          src={`/images/articles/${lead.slug}.jpg`}
-          alt={lead.title}
-          fill
-          sizes="(max-width: 640px) 90vw, 45vw"
-          className="object-cover"
-        />
-      </div>
+      {lead.image && (
+        <div className="relative mt-4 aspect-[16/8] w-full overflow-hidden border border-ink/15 bg-bg-alt grayscale-[35%]">
+          <Image
+            src={mediaUrl(lead.image)}
+            alt={lead.title}
+            fill
+            // An uploaded picture is served by the API on another origin, which the optimizer is not set up for.
+            unoptimized={mediaUrl(lead.image).startsWith("http")}
+            sizes="(max-width: 640px) 90vw, 45vw"
+            className="object-cover"
+          />
+        </div>
+      )}
 
       <p className="mt-4 text-sm leading-relaxed text-ink-soft [column-gap:1.75rem] first-letter:float-left first-letter:mr-2 first-letter:font-display first-letter:text-5xl first-letter:font-bold first-letter:leading-[0.8] first-letter:text-ink lg:columns-2">
         {lead.excerpt}

@@ -32,6 +32,10 @@ class Exam(Base):
     official_site = Column(String(300), nullable=True)
     duration_minutes = Column(Integer, nullable=True)
     sections = Column(JSONB, nullable=True)            # ["VARC", "DILR", "QA"]
+    # Detail page content, written in the admin. Empty: the page leaves the section out.
+    eligibility = Column(Text, nullable=False, default="", server_default="")
+    syllabus = Column(Text, nullable=False, default="", server_default="")
+    faqs = Column(JSONB, nullable=False, default=list, server_default="[]")  # [{"question", "answer"}]
     # Card photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).
     image = Column(String(200), nullable=False, default="", server_default="")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

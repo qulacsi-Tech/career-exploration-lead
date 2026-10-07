@@ -96,6 +96,8 @@ function PhotoCrossfade({
         src={frames[0]}
         alt={alt}
         fill
+        // An uploaded photo is served by the API on another origin, which the optimizer is not set up for.
+        unoptimized={frames[0].startsWith("http")}
         sizes="(max-width: 640px) 90vw, 42vw"
         className="object-cover"
       />
@@ -124,6 +126,7 @@ function PhotoCrossfade({
           alt={i === 0 ? alt : ""}
           aria-hidden={i !== 0}
           fill
+          unoptimized={src.startsWith("http")}
           sizes="(max-width: 640px) 90vw, 42vw"
           className={`object-cover transition-opacity duration-[1200ms] ease-in-out ${
             i === index ? "opacity-100" : "opacity-0"

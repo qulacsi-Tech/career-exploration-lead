@@ -34,12 +34,19 @@ export function CollegeSlider({
   colleges,
   label,
   buttonLabel,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: {
   colleges: College[];
   /** The card button's text, from the homepage's card wording. */
   buttonLabel: string;
   /** Names the region for screen readers, e.g. the band's heading. */
   label: string;
+  /** More colleges wait on the server. Reaching the end of the track asks for the next page. */
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   const trackRef = useRef<HTMLUListElement>(null);
   const headingId = useId();
@@ -68,6 +75,16 @@ export function CollegeSlider({
     setPageCount(pages);
     setPage(Math.min(pages - 1, Math.round(scrollLeft / clientWidth)));
   }, []);
+
+  // New cards arrive without the track resizing, so measure again, and ask for the next
+  // page as soon as the visitor is at the end of what is loaded.
+  useEffect(() => {
+    measure();
+  }, [colleges.length, measure]);
+
+  useEffect(() => {
+    if (atEnd && hasMore && !loadingMore) onLoadMore?.();
+  }, [atEnd, hasMore, loadingMore, onLoadMore]);
 
   useEffect(() => {
     measure();
@@ -160,13 +177,13 @@ export function CollegeSlider({
           })}
         </ul>
 
-        <SliderButton direction="next" disabled={atEnd} onClick={() => scrollByPage(1)} />
+        <SliderButton direction="next" disabled={atEnd && !hasMore} onClick={() => (atEnd ? onLoadMore?.() : scrollByPage(1))} />
       </div>
 
       {/* Position readout for screen readers. Polite, so it does not interrupt
           whatever is being read when the track moves. */}
       <p aria-live="polite" className="sr-only">
-        Showing group {page + 1} of {pageCount}
+        {loadingMore ? "Loading more colleges" : `Showing group ${page + 1} of ${pageCount}`}
       </p>
     </section>
   );

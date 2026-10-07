@@ -18,7 +18,7 @@ import { mediaUrl } from "@/lib/media";
 */
 
 type Slot = {
-  kind: "hero" | "banner" | "location" | "college" | "exam";
+  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article";
   label: string;
   recommended: [number, number];
   minimum: [number, number];
@@ -73,6 +73,28 @@ const SLOTS: Record<Slot["kind"], Slot> = {
     previewClass: "aspect-[3/2]",
     notes: [
       "The photo fills the top of the card, about 380 by 230 px. When someone points at the card it grows to fill the whole card behind the text, so keep the subject in the middle.",
+      "Do not put text or logos in the picture. They would be cropped and sit under the card's own text.",
+    ],
+  },
+  article: {
+    kind: "article",
+    label: "Article picture",
+    recommended: [1600, 800],
+    minimum: [800, 400],
+    previewClass: "aspect-[2/1]",
+    notes: [
+      "The picture runs wide above the lead story on the homepage news, about 800 by 400 px, in muted tones, and across the top of the article's own page. It is cropped to fit, so keep the subject in the middle.",
+      "Do not put text or logos in the picture. They would be cropped.",
+    ],
+  },
+  program: {
+    kind: "program",
+    label: "Programme photo",
+    recommended: [1200, 800],
+    minimum: [800, 520],
+    previewClass: "aspect-[3/2]",
+    notes: [
+      "The photo fills the picture side of the programme card on the homepage Recommended row, about 560 by 420 px, and is cropped to fit. Keep the subject in the middle.",
       "Do not put text or logos in the picture. They would be cropped and sit under the card's own text.",
     ],
   },

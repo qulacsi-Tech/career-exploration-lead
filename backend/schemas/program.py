@@ -24,5 +24,7 @@ class ProgramSchema(BaseModel):
     universitySlug: str
     online: OnlineInfoSchema
     onCampus: OnCampusInfoSchema
+    # The programme's own photo. Empty: the card uses the site's shared photo set.
+    image: str = ""
 
     model_config = ConfigDict(populate_by_name=True)

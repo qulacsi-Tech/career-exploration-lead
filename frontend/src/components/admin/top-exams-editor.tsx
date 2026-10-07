@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Eye } from "lucide-react";
 import { useState, useTransition } from "react";
 import { saveTopExams } from "@/lib/admin-actions";
 import type { AdminExam, AdminTopExams } from "@/lib/api";
 import type { ExamCardCopy } from "@/lib/home-copy";
 import { mediaUrl } from "@/lib/media";
 import { AdminSection } from "@/components/admin/admin-section";
+import { ExamDetailModal } from "@/components/admin/exam-detail-modal";
 import { ExamModal, MAX_TOP_EXAMS } from "@/components/admin/exam-modal";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 
@@ -14,8 +16,9 @@ import { StatusMessage, useFlash } from "@/components/admin/status-message";
   The homepage's Top Exams row, one line per exam.
 
   Tick an exam to put it in the row (it holds six) and use Up and Down to order the
-  ticked ones. Every click saves at once. Everything about an exam, and adding a new
-  one, is in the form that Add exam and Edit open. Exams are listed with the ones in
+  ticked ones. Every click saves at once. Everything about an exam card, and adding a new
+  one, is in the form that Add exam and Edit open. The eye button opens the content of the
+  exam's own page (about, dates, pattern, syllabus, FAQs). Exams are listed with the ones in
   the row first, in their order, then the rest by name.
 */
 
@@ -27,7 +30,7 @@ function move<T>(list: T[], index: number, direction: -1 | 1): T[] {
   return next;
 }
 
-export function TopExamsEditor({ topExams, wording }: { topExams: AdminTopExams; wording: ExamCardCopy }) {
+export function TopExamsEditor({ topExams, wording, streams }: { topExams: AdminTopExams; wording: ExamCardCopy; streams: string[] }) {
   const router = useRouter();
   const [list, setList] = useState<AdminExam[]>(topExams.exams);
   const [seen, setSeen] = useState(topExams);
@@ -35,6 +38,8 @@ export function TopExamsEditor({ topExams, wording }: { topExams: AdminTopExams;
   const [pending, startTransition] = useTransition();
   // undefined: closed. null: adding. An exam: editing it.
   const [modal, setModal] = useState<AdminExam | null | undefined>(undefined);
+  // The exam whose own page content is open (the eye button).
+  const [detail, setDetail] = useState<AdminExam | null>(null);
 
   // The page re-rendered with fresh data (after a save or the form closing).
   if (topExams !== seen) {
@@ -158,6 +163,15 @@ export function TopExamsEditor({ topExams, wording }: { topExams: AdminTopExams;
                           </button>
                         </>
                       )}
+                      <button
+                        type="button"
+                        aria-label={`Edit the page content of ${exam.name}`}
+                        title="Page content: about, dates, pattern, syllabus, FAQs"
+                        onClick={() => setDetail(exam)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft hover:border-brand hover:text-brand"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                       <button type="button" onClick={() => setModal(exam)} className="rounded-lg border border-brand px-3 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white">
                         Edit
                       </button>
@@ -179,8 +193,20 @@ export function TopExamsEditor({ topExams, wording }: { topExams: AdminTopExams;
           exam={modal}
           topSlugs={list.filter((e) => e.show).map((e) => e.slug)}
           wording={wording}
+          streams={streams}
           onClose={(message) => {
             setModal(undefined);
+            if (message) showFlash("ok", message);
+          }}
+        />
+      )}
+
+      {detail && (
+        <ExamDetailModal
+          key={detail.slug}
+          exam={detail}
+          onClose={(message) => {
+            setDetail(null);
             if (message) showFlash("ok", message);
           }}
         />

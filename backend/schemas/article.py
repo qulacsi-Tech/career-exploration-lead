@@ -10,6 +10,8 @@ class ArticleListSchema(BaseModel):
     author: Optional[str] = "Editorial Desk"
     category: Optional[str] = None
     readMinutes: Optional[int] = 5
+    # The article's picture. Empty: none.
+    image: str = ""
 
     model_config = ConfigDict(populate_by_name=True)
 

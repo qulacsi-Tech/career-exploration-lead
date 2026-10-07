@@ -19,6 +19,8 @@ class Article(Base):
     read_minutes = Column(Integer, nullable=True, default=5)
     # comma-separated college slugs related to this article
     related_college_slugs = Column(Text, nullable=True, default="")
+    # Picture: /images/... (shipped) or /api/uploads/... (uploaded in the admin). Empty: none.
+    image = Column(String(200), nullable=False, default="", server_default="")
     published_at = Column(Date, nullable=False, index=True)
     is_published = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

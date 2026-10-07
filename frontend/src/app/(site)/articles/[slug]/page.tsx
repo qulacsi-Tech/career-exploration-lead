@@ -5,6 +5,8 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
 import { getArticle, getArticleSlugs, getArticles, getCollege } from "@/lib/api";
+import { articleImage } from "@/lib/article-images";
+import { mediaUrl } from "@/lib/media";
 
 export async function generateStaticParams() {
   try {
@@ -77,6 +79,8 @@ export default async function ArticlePage({
     ? article.body.split(/\n\n+/).map((p) => p.trim()).filter(Boolean)
     : [];
 
+  const picture = articleImage(article.slug, article.image);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Breadcrumbs
@@ -102,6 +106,12 @@ export default async function ArticlePage({
           <p className="mt-3 max-w-3xl text-base leading-relaxed text-ink-soft">
             {article.excerpt}
           </p>
+
+          {picture && (
+            // Plain img: an uploaded picture comes from the API's origin, and its height is not known.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={mediaUrl(picture)} alt={article.title} className="mt-6 aspect-[2/1] w-full max-w-3xl rounded-xl border border-line object-cover" />
+          )}
 
           {bodyParagraphs.length > 0 && (
             <div className="mt-6 max-w-3xl space-y-4 border-t border-line pt-6 text-sm leading-relaxed text-ink-soft">

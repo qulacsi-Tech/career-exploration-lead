@@ -141,9 +141,17 @@ export type Exam = {
   officialSite?: string;
   durationMinutes?: number;
   sections?: string[];
+  /** The category the exam is listed under (a name from the Fields list). Empty or absent: none. */
+  stream?: string;
+  /** Detail page content, written in the admin. Empty or absent: the page leaves the section out. */
+  eligibility?: string;
+  syllabus?: string;
+  faqs?: ExamFaq[];
   /** Card photo: /images/... or /api/uploads/... Empty: no photo. */
   image?: string;
 };
+
+export type ExamFaq = { question: string; answer: string };
 
 export type Location = {
   slug: string;
@@ -192,6 +200,8 @@ export type HomeLocation = Location & {
 };
 
 export type Article = {
+  /** The article's picture: /images/... or /api/uploads/... Empty or absent: none. */
+  image?: string;
   slug: string;
   title: string;
   excerpt: string;
@@ -213,11 +223,15 @@ export type RecommendedProgram = {
   universitySlug: string;
   online: OnlineInfo;
   onCampus: OnCampusInfo;
+  /** The programme's own photo: /images/... or /api/uploads/... Empty or absent: the shared set. */
+  image?: string;
 };
 
 export type CareerPanelLink = { label: string; href: string };
 export type CareerPanel = {
   title: string;
+  /** The category tab the panel shows under. Empty or absent: under every tab. */
+  category?: string;
   viewAllHref: string;
   links: CareerPanelLink[];
 };
@@ -673,7 +687,16 @@ export type Collection = {
   updatedAt: string;
 };
 
-export type CollectionBand = { collection: Collection; colleges: College[] };
+/** `colleges` is every college of the section; `limit` is how many cards each category tab shows. */
+export type CollectionBand = {
+  collection: Collection;
+  /** The first page of every category. The rest are fetched as the slider moves. */
+  colleges: College[];
+  /** Cards per page. */
+  limit?: number;
+  /** How many colleges each category holds in all. */
+  totals?: Record<string, number>;
+};
 
 export type FooterColumn = {
   title: string;
@@ -691,6 +714,9 @@ export type CollectionPagePayload = {
 export async function getCollectionBands(): Promise<CollectionBand[]> {
   return apiFetch<CollectionBand[]>("/collections/homepage");
 }
+
+/** One page of a homepage section's colleges, of one category or all. */
+export type BandPage = { colleges: College[]; page: number; pages: number; total: number; limit: number };
 
 /** Footer link columns built from the collections placed in them. */
 export async function getFooterColumns(): Promise<FooterColumn[]> {
@@ -825,12 +851,15 @@ export type AdminHomepageBand = {
   slug: string;
   title: string;
   heading: string;
+  /** The line under the heading. Absent from an API older than the editable text. */
+  subheading?: string;
   isPublished: boolean;
   isVisible: boolean;
   limit: number;
   order: number;
   total: number;
-  preview: { slug: string; name: string }[];
+  /** Every college of the section with its category; the card limit applies to each category. */
+  preview: { slug: string; name: string; stream: string }[];
 };
 
 export type AdminHomepageAvailable = { slug: string; title: string; isPublished: boolean };
@@ -843,6 +872,17 @@ export async function adminGetHomepage(token: string): Promise<AdminHomepage> {
 
 export async function adminSaveHomepage(token: string, bands: { slug: string; limit: number; isVisible: boolean }[]) {
   return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage", { bands });
+}
+
+/** What the Add a college row form sends. */
+export type NewBandInput = { title: string; heading: string; subheading: string; collegeSlugs: string[]; limit: number };
+
+export async function adminCreateBand(token: string, body: NewBandInput) {
+  return adminRequest<{ slug: string; message: string }>(token, "POST", "/admin/homepage/bands", body);
+}
+
+export async function adminUpdateBandWords(token: string, slug: string, body: { heading: string; subheading: string }) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/homepage/bands/${encodeURIComponent(slug)}`, body);
 }
 
 /** A college as the band editor lists it: just what a card and the picker need. */
@@ -911,6 +951,10 @@ export type AdminExam = {
   officialSite: string;
   durationMinutes: number | null;
   sections: string[];
+  stream: string;
+  eligibility: string;
+  syllabus: string;
+  faqs: ExamFaq[];
   image: string;
   show: boolean;
 };
@@ -935,6 +979,10 @@ export type ExamInput = {
   officialSite: string;
   durationMinutes: number | null;
   sections: string[];
+  stream: string;
+  eligibility: string;
+  syllabus: string;
+  faqs: ExamFaq[];
   image: string;
 };
 
@@ -1093,7 +1141,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);
@@ -1129,6 +1177,24 @@ export type AdminProgram = {
   onlineFeesNote: string | null;
   onCampusDuration: string | null;
   onCampusFees: string | null;
+  /** Off: kept in the admin, hidden from the site. */
+  isActive: boolean;
+  /** The programme's own photo: /images/... or /api/uploads/... Empty: the shared set. */
+  image: string;
+};
+
+/** What the programme form sends. The slug is made from the name when a programme is created. */
+export type ProgramInput = {
+  name: string;
+  universityName: string;
+  universitySlug: string;
+  onlineDuration: string;
+  onlineFees: string;
+  onlineFeesNote: string;
+  onCampusDuration: string;
+  onCampusFees: string;
+  isActive: boolean;
+  image: string;
 };
 
 export async function adminListPrograms(token: string): Promise<{ programs: AdminProgram[]; recommended: string[] }> {
@@ -1398,4 +1464,135 @@ export async function adminUpdateLeadStatus(token: string, id: string, status: L
 /** Admin: the figures for the dashboard, computed by the API from the database. */
 export async function adminGetDashboard(token: string): Promise<AdminDashboard> {
   return adminRequest<AdminDashboard>(token, "GET", "/admin/dashboard");
+}
+
+// ── Admin practice tests ──────────────────────────────────────────────────
+
+/** A test as the exam's Practice tests tab lists it. */
+export type AdminPracticeCard = {
+  slug: string;
+  examSlug: string;
+  title: string;
+  kind: "full-mock" | "sectional" | "previous-year" | "sample";
+  summary: string;
+  totalMinutes: number;
+  isFree: boolean;
+  isPublished: boolean;
+  questionCount: number;
+  sectionCount: number;
+};
+
+/** One question as the editor holds it: plain text throughout. */
+export type AdminPracticeQuestion = {
+  type: "mcq-single" | "mcq-multi" | "tita";
+  topic: string;
+  difficulty: "easy" | "medium" | "hard";
+  stem: string;
+  /** A passage shared with the questions that carry the same text. */
+  passage: string;
+  options: string[];
+  /** Positions in `options` of the correct answer(s). */
+  correctOptions: number[];
+  /** The correct number of a type-in question. */
+  answerValue: number | null;
+  tolerance: number;
+  marks: number;
+  negativeMarks: number;
+  expectedSeconds: number;
+  solution: string;
+};
+
+export type AdminPracticeSection = {
+  label: string;
+  /** Minutes the candidate is held in the section when sections are locked. */
+  durationMinutes: number | null;
+  questions: AdminPracticeQuestion[];
+};
+
+/** A whole test as the editor holds it, and as it is saved. */
+export type AdminPracticeTest = {
+  title: string;
+  kind: AdminPracticeCard["kind"];
+  summary: string;
+  /** 0 means untimed. */
+  totalMinutes: number;
+  sectionLock: boolean;
+  languages: string[];
+  /** null: unlimited retakes. */
+  attemptsAllowed: number | null;
+  isFree: boolean;
+  isPublished: boolean;
+  sections: AdminPracticeSection[];
+};
+
+export async function adminListPracticeTests(token: string, exam: string): Promise<AdminPracticeCard[]> {
+  const data = await adminRequest<{ tests: AdminPracticeCard[] }>(token, "GET", `/admin/practice/tests?exam=${encodeURIComponent(exam)}`);
+  return data.tests;
+}
+
+export async function adminGetPracticeTest(token: string, slug: string): Promise<AdminPracticeTest & { slug: string; examSlug: string }> {
+  return adminRequest(token, "GET", `/admin/practice/tests/${encodeURIComponent(slug)}`);
+}
+
+export async function adminCreatePracticeTest(token: string, body: { examSlug: string; title: string }) {
+  return adminRequest<{ slug: string; message: string }>(token, "POST", "/admin/practice/tests", body);
+}
+
+export async function adminSavePracticeTest(token: string, slug: string, body: AdminPracticeTest) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/practice/tests/${encodeURIComponent(slug)}`, body);
+}
+
+export async function adminDeletePracticeTest(token: string, slug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/practice/tests/${encodeURIComponent(slug)}`);
+}
+
+// ── Admin: link pool and homepage news ────────────────────────────────────
+
+/** Every page a homepage link can point to, grouped, from the data already in the directory. */
+export type LinkPool = { groups: { label: string; items: { label: string; path: string }[] }[] };
+
+export async function adminGetLinkPool(token: string): Promise<LinkPool> {
+  return adminRequest<LinkPool>(token, "GET", "/admin/content/link-pool");
+}
+
+/** An article as the news manager edits it. */
+export type AdminArticle = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  author: string;
+  category: string;
+  readMinutes: number;
+  /** YYYY-MM-DD */
+  publishedAt: string;
+  isPublished: boolean;
+  relatedCollegeSlugs: string[];
+  /** /images/... or /api/uploads/... Empty: no picture. */
+  image: string;
+};
+
+/** What the article form sends. The slug is made from the title when an article is created. */
+export type ArticleInput = Omit<AdminArticle, "slug">;
+
+export type AdminNews = { pinned: string[]; articles: AdminArticle[] };
+
+export async function adminGetNews(token: string): Promise<AdminNews> {
+  return adminRequest<AdminNews>(token, "GET", "/admin/homepage/articles");
+}
+
+export async function adminSetPinnedNews(token: string, slugs: string[]) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/homepage/articles", { slugs });
+}
+
+export async function adminCreateArticle(token: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "POST", "/admin/articles", body);
+}
+
+export async function adminUpdateArticle(token: string, slug: string, body: Record<string, unknown>) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/articles/${encodeURIComponent(slug)}`, body);
+}
+
+export async function adminDeleteArticle(token: string, slug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/articles/${encodeURIComponent(slug)}`);
 }

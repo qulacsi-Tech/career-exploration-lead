@@ -12,6 +12,7 @@ import {
   Field,
   NameSlugFields,
 } from "@/components/admin/admin-fields";
+import { FormDateField } from "@/components/admin/date-field";
 import { ImageUploadField } from "@/components/admin/media-uploader";
 
 export function ExamsAdmin({ exams }: { exams: Exam[] }) {
@@ -140,13 +141,14 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           label: "Dates & fees",
           render: (exam) => (
             <FieldGrid>
-              <TextField
+              <FormDateField
+                id={`reg-${exam.slug}`}
                 label="Registration closes"
                 name="registrationCloses"
-                defaultValue={exam.registrationCloses}
+                defaultValue={exam.registrationCloses ?? ""}
                 hint="Drives the deadline alerts on the public site."
               />
-              <TextField label="Exam date" name="examDate" defaultValue={exam.examDate} />
+              <FormDateField id={`date-${exam.slug}`} label="Exam date" name="examDate" defaultValue={exam.examDate ?? ""} />
               <TextField label="Frequency" name="frequency" defaultValue={exam.frequency ?? ""} />
               <TextField
                 label="Application fee"
@@ -232,7 +234,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           <TextField label="Conducting body" name="conductingBody" placeholder="IIM" />
           <SelectWithOtherField label="Level" name="level" options={["National", "State"]} />
           <SelectField label="Mode" name="mode" options={["Online", "Offline", "Hybrid"]} />
-          <TextField label="Exam date" name="examDate" placeholder="29 Nov 2026" />
+          <FormDateField id="new-exam-date" label="Exam date" name="examDate" />
           <TextAreaField
             label="Description"
             name="description"

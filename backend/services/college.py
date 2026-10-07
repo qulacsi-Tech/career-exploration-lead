@@ -166,7 +166,7 @@ class CollegeService:
     async def get_stream_counts(self) -> List[dict]:
         return await self.repo.stream_counts()
 
-    async def get_recommended_universities(self, limit: int = 3):
+    async def get_recommended_universities(self, limit: int = 6):
         """The homepage's recommended colleges, in the order the admin set. Unknown slugs are skipped."""
         from sqlalchemy import select
         from models.site_content import SiteContent

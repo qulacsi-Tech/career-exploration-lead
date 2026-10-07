@@ -47,18 +47,19 @@ async def admin_homepage(_admin: AdminPayload, db: DbSession):
         placement = (d.get("placements") or {}).get("homepage")
         if placement:
             everything = await service.colleges_for(d)
-            shown = everything[: placement["limit"]]
             placed.append({
                 "slug": d["slug"],
                 "title": d["title"],
                 "heading": d.get("heading") or d["title"],
+                "subheading": d.get("subheading") or "",
                 "isPublished": bool(d.get("isPublished")),
                 "isVisible": placement["isVisible"],
                 "limit": placement["limit"],
                 "order": placement["order"],
                 "total": len(everything),
-                # The same resolution the public page uses, so the preview is what visitors see.
-                "preview": [{"slug": c.slug, "name": c.name} for c in shown],
+                # The same resolution the public page uses. Every college is listed with its
+                # category, because the card limit applies to each category separately.
+                "preview": [{"slug": c.slug, "name": c.name, "stream": c.stream} for c in everything],
             })
         else:
             available.append({"slug": d["slug"], "title": d["title"], "isPublished": bool(d.get("isPublished"))})
@@ -132,6 +133,10 @@ def _exam_card(e, show: bool) -> dict:
         "officialSite": e.official_site or "",
         "durationMinutes": e.duration_minutes,
         "sections": e.sections or [],
+        "stream": e.stream or "",
+        "eligibility": e.eligibility or "",
+        "syllabus": e.syllabus or "",
+        "faqs": list(e.faqs or []),
         "image": e.image or "",
         "show": show,
     }
@@ -184,7 +189,7 @@ def _validate_top(body: dict) -> TopExamsBody:
 
 
 class UniversitiesBody(BaseModel):
-    slugs: list[str] = Field(default_factory=list, max_length=3)
+    slugs: list[str] = Field(default_factory=list, max_length=6)
     model_config = ConfigDict(extra="forbid")
 
 
@@ -308,3 +313,168 @@ async def admin_put_home_locations(_admin: AdminPayload, db: DbSession, body: di
         row.home_order = index
     await db.commit()
     return SuccessResponse[dict](data={"message": "Locations saved."})
+
+
+class NewBandBody(BaseModel):
+    """A college row made from scratch: its words, its colleges and how many cards show."""
+
+    title: str = Field(min_length=2, max_length=70)
+    heading: str = Field(default="", max_length=200)
+    subheading: str = Field(default="", max_length=300)
+    collegeSlugs: list[str] = Field(min_length=1, max_length=100)
+    limit: int = Field(default=6, ge=1, le=24)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.post("/bands", response_model=SuccessResponse[dict], status_code=201)
+async def admin_create_band(_admin: AdminPayload, db: DbSession, body: dict):
+    """Creates a published collection and puts it at the end of the homepage in one step,
+    so a row can be added here without visiting Content -> Collections. The collection's
+    page, SEO text and rules can still be refined there afterwards."""
+    import re
+    import uuid
+
+    from routers.admin_collections import (
+        CollectionCreateBody,
+        HomepageBody,
+        SeoBody,
+        _check_references,
+        _stored,
+    )
+
+    try:
+        data = NewBandBody.model_validate(body)
+    except PydanticValidationError as exc:
+        first = exc.errors()[0]
+        field = ".".join(str(p) for p in first["loc"])
+        raise ValidationError(f"{field}: {first['msg']}") from exc
+
+    slug = re.sub(r"[^a-z0-9]+", "-", data.title.lower()).strip("-")
+    if len(slug) < 2:
+        raise ValidationError("title: use letters or numbers.")
+    rows = (await db.execute(select(Collection))).scalars().all()
+    if any((r.data.get("placements") or {}).get("homepage") for r in rows):
+        raise ValidationError(
+            "The homepage has one college section. Add colleges of other categories to it with Manage colleges."
+        )
+    if any(r.slug == slug for r in rows):
+        raise ValidationError(f"title: a collection called '{data.title.strip()}' already exists. Choose another title.")
+
+    order = 1 + max(((r.data.get("placements") or {}).get("homepage", {}).get("order", -1) for r in rows), default=-1)
+    heading = data.heading.strip() or data.title.strip()
+    collection = CollectionCreateBody(
+        slug=slug,
+        title=data.title.strip(),
+        heading=heading,
+        subheading=data.subheading.strip(),
+        collegeSlugs=data.collegeSlugs,
+        homepage=HomepageBody(order=order, limit=data.limit, isVisible=True),
+        # A published page needs SEO text; this is a sensible start the editor can refine.
+        seo=SeoBody(
+            metaTitle=heading[:70],
+            metaDescription=(data.subheading.strip() or f"Compare {data.title.strip()} on fees, placements and rankings.")[:170],
+        ),
+        isPublished=True,
+    )
+    await _check_references(db, collection)
+
+    collection_id = str(uuid.uuid4())
+    db.add(Collection(id=uuid.UUID(collection_id), slug=slug, data=_stored(collection_id, slug, collection)))
+    await db.commit()
+    return SuccessResponse[dict](data={"slug": slug, "message": f"{heading} added to the homepage."})
+
+
+class BandWordsBody(BaseModel):
+    heading: str = Field(min_length=1, max_length=200)
+    subheading: str = Field(default="", max_length=300)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.patch("/bands/{slug}", response_model=SuccessResponse[dict])
+async def admin_update_band_words(slug: str, _admin: AdminPayload, db: DbSession, body: dict):
+    """Changes a row's heading and the line under it. Nothing else on the collection is touched."""
+    try:
+        data = BandWordsBody.model_validate(body)
+    except PydanticValidationError as exc:
+        first = exc.errors()[0]
+        field = ".".join(str(p) for p in first["loc"])
+        raise ValidationError(f"{field}: {first['msg']}") from exc
+    row = (await db.execute(select(Collection).where(Collection.slug == slug))).scalar_one_or_none()
+    if row is None:
+        raise ValidationError(f"slug: unknown collection '{slug}'.")
+    row.data = {
+        **row.data,
+        "heading": data.heading.strip(),
+        "subheading": data.subheading.strip(),
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Heading and text saved."})
+
+
+# ── Homepage news ────────────────────────────────────────────────────────────
+
+ARTICLES_KEY = "home.articles"
+ARTICLES_ROW_LIMIT = 3  # the news spread shows three
+
+
+class ArticlesRowBody(BaseModel):
+    slugs: list[str] = Field(default_factory=list, max_length=ARTICLES_ROW_LIMIT)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.get("/articles", response_model=SuccessResponse[dict])
+async def admin_get_articles(_admin: AdminPayload, db: DbSession):
+    """Every article, newest first, and the ones pinned to the homepage. With none pinned,
+    the homepage shows the most recent published ones."""
+    from models.article import Article
+    from models.site_content import SiteContent
+
+    row = (await db.execute(select(SiteContent).where(SiteContent.key == ARTICLES_KEY))).scalar_one_or_none()
+    pinned = list(row.data) if row and isinstance(row.data, list) else []
+    articles = (await db.execute(select(Article).order_by(Article.published_at.desc(), Article.title))).scalars().all()
+    return SuccessResponse[dict](data={
+        "pinned": [s for s in pinned if any(a.slug == s for a in articles)],
+        "articles": [
+            {
+                "slug": a.slug,
+                "title": a.title,
+                "excerpt": a.excerpt,
+                "body": a.body or "",
+                "author": a.author or "",
+                "category": a.category or "",
+                "readMinutes": a.read_minutes or 5,
+                "image": a.image or "",
+                "publishedAt": a.published_at.isoformat(),
+                "isPublished": bool(a.is_published),
+                "relatedCollegeSlugs": [s for s in (a.related_college_slugs or "").split(",") if s],
+            }
+            for a in articles
+        ],
+    })
+
+
+@router.put("/articles", response_model=SuccessResponse[dict])
+async def admin_set_articles(_admin: AdminPayload, db: DbSession, body: dict):
+    from models.article import Article
+    from models.site_content import SiteContent
+    try:
+        data = ArticlesRowBody.model_validate(body)
+    except PydanticValidationError as exc:
+        first = exc.errors()[0]
+        field = ".".join(str(p) for p in first["loc"])
+        raise ValidationError(f"{field}: {first['msg']}") from exc
+    if len(set(data.slugs)) != len(data.slugs):
+        raise ValidationError("slugs: an article appears more than once.")
+    known = set((await db.execute(select(Article.slug).where(Article.slug.in_(data.slugs)))).scalars().all())
+    missing = [s for s in data.slugs if s not in known]
+    if missing:
+        raise ValidationError(f"slugs: unknown article '{missing[0]}'.")
+
+    row = (await db.execute(select(SiteContent).where(SiteContent.key == ARTICLES_KEY))).scalar_one_or_none()
+    if row is None:
+        db.add(SiteContent(key=ARTICLES_KEY, data=data.slugs))
+    else:
+        row.data = data.slugs
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Homepage news saved."})

@@ -2,6 +2,11 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
+class ExamFaqSchema(BaseModel):
+    question: str
+    answer: str
+
+
 class ExamSchema(BaseModel):
     slug: str
     name: str
@@ -17,6 +22,12 @@ class ExamSchema(BaseModel):
     officialSite: Optional[str] = None
     durationMinutes: Optional[int] = None
     sections: Optional[List[str]] = None
+    # The category the exam is listed under. Empty: none.
+    stream: str = ""
+    # Detail page content. Empty: the page leaves the section out.
+    eligibility: str = ""
+    syllabus: str = ""
+    faqs: List[ExamFaqSchema] = []
     # Card photo. Empty: the card shows no photo.
     image: str = ""
 

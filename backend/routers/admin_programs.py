@@ -1,4 +1,4 @@
-"""Admin programmes: the programme records, and which three the homepage recommends.
+"""Admin programmes: the programme records, and which the homepage recommends.
 ADMIN role required on every route.
 
 The homepage's recommended row is an ordered list of programme slugs stored as
@@ -10,7 +10,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
 
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/admin/programs", tags=["admin"])
 
 SLUG = r"^[a-z0-9]+(-[a-z0-9]+)*$"
 ROW_KEY = "home.recommendedPrograms"
-ROW_LIMIT = 3  # the homepage row shows three
+ROW_LIMIT = 6  # the homepage row shows up to six
 
 
 class ProgramBody(BaseModel):
@@ -36,7 +36,22 @@ class ProgramBody(BaseModel):
     onlineFeesNote: Optional[str] = Field(default=None, max_length=200)
     onCampusDuration: Optional[str] = Field(default=None, max_length=100)
     onCampusFees: Optional[str] = Field(default=None, max_length=200)
+    # Off: kept here, hidden from the site.
+    # Omitted on an update: left as it is. A new programme starts active.
+    isActive: Optional[bool] = None
+    # An uploaded photo or a shipped one. Omitted on an update: left as it is.
+    image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("image")
+    @classmethod
+    def _photo(cls, value):
+        if value is None:
+            return value
+        value = value.strip()
+        if value and (not (value.startswith("/api/uploads/") or value.startswith("/images/")) or ".." in value):
+            raise ValueError("must be an image uploaded through the admin")
+        return value
 
 
 class ProgramCreateBody(ProgramBody):
@@ -69,11 +84,13 @@ def _out(p: Program) -> dict:
         "onlineFeesNote": p.online_fees_note,
         "onCampusDuration": p.on_campus_duration,
         "onCampusFees": p.on_campus_fees,
+        "isActive": bool(p.is_active),
+        "image": p.image or "",
     }
 
 
 def _fields(data: ProgramBody) -> dict:
-    return {
+    values = {
         "name": data.name,
         "university_name": data.universityName,
         "university_slug": data.universitySlug,
@@ -83,6 +100,11 @@ def _fields(data: ProgramBody) -> dict:
         "on_campus_duration": data.onCampusDuration,
         "on_campus_fees": data.onCampusFees,
     }
+    if data.isActive is not None:
+        values["is_active"] = data.isActive
+    if data.image is not None:
+        values["image"] = data.image
+    return values
 
 
 async def _row_slugs(db) -> list[str]:
@@ -105,7 +127,7 @@ async def admin_create_program(_admin: AdminPayload, db: DbSession, body: dict):
     taken = (await db.execute(select(Program.id).where(Program.slug == data.slug))).scalar_one_or_none()
     if taken is not None:
         raise ConflictError("PROGRAM_SLUG_TAKEN", f"A programme with slug '{data.slug}' already exists.")
-    db.add(Program(id=uuid.uuid4(), slug=data.slug, is_recommended=False, **_fields(data)))
+    db.add(Program(id=uuid.uuid4(), slug=data.slug, is_recommended=False, **{'is_active': True, **_fields(data)}))
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Programme '{data.slug}' created."})
 

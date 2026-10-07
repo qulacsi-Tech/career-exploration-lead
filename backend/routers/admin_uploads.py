@@ -26,6 +26,9 @@ router = APIRouter(prefix="/admin/uploads", tags=["admin"])
 
 MAX_BYTES = 4 * 1024 * 1024  # Vercel caps a request body at 4.5 MB, so stay under it.
 FORMATS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
+# Figures in practice questions may also be animated. The bytes are stored as uploaded, so
+# the animation survives. SVG is not accepted: it can carry script.
+PRACTICE_FORMATS = {**FORMATS, "GIF": "gif"}
 
 # Minimum size per slot, as (width, height). Smaller images look blurry when
 # stretched to the slot. The admin screen shows the same numbers.
@@ -35,13 +38,17 @@ MIN_SIZE = {
     "location": (800, 660),
     "college": (800, 520),
     "exam": (800, 520),
+    # Diagrams and option pictures can be small.
+    "practice": (40, 40),
+    "program": (800, 520),
+    "article": (800, 400),
 }
 
 
 @router.post("", response_model=SuccessResponse[dict], status_code=201)
 async def upload_image(
     _admin: AdminPayload,
-    kind: Literal["hero", "banner", "location", "college", "exam"] = Form(...),
+    kind: Literal["hero", "banner", "location", "college", "exam", "practice", "program", "article"] = Form(...),
     file: UploadFile = File(...),
 ):
     raw = await file.read(MAX_BYTES + 1)
@@ -56,10 +63,11 @@ async def upload_image(
         with Image.open(io.BytesIO(raw)) as img:
             fmt, width, height = img.format, img.width, img.height
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
-        raise ValidationError("That file is not a valid image. Use JPG, PNG or WebP.")
+        raise ValidationError("That file is not a valid image. Use JPG, PNG, WebP or (for practice questions) GIF.")
 
-    if fmt not in FORMATS:
-        raise ValidationError("Use a JPG, PNG or WebP image.")
+    allowed = PRACTICE_FORMATS if kind == "practice" else FORMATS
+    if fmt not in allowed:
+        raise ValidationError("Use a JPG, PNG, WebP or GIF image." if kind == "practice" else "Use a JPG, PNG or WebP image.")
 
     min_w, min_h = MIN_SIZE[kind]
     if width < min_w or height < min_h:
@@ -69,7 +77,7 @@ async def upload_image(
 
     folder = Path(settings.UPLOAD_DIR)
     folder.mkdir(parents=True, exist_ok=True)
-    name = f"{kind}-{uuid.uuid4().hex}.{FORMATS[fmt]}"
+    name = f"{kind}-{uuid.uuid4().hex}.{allowed[fmt]}"
     (folder / name).write_bytes(raw)
 
     return SuccessResponse[dict](

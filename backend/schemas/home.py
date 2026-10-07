@@ -27,6 +27,8 @@ class CareerPanelLinkSchema(BaseModel):
 
 class CareerPanelSchema(BaseModel):
     title: str
+    # The category tab the panel shows under. Empty: under every tab.
+    category: str = ""
     viewAllHref: str
     links: List[CareerPanelLinkSchema]
 

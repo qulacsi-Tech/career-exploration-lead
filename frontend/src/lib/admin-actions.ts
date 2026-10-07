@@ -5,6 +5,13 @@ import { redirect } from "next/navigation";
 import {
   ApiError,
   adminCreateCollege,
+  adminListPracticeTests,
+  adminGetPracticeTest,
+  adminCreatePracticeTest,
+  adminSavePracticeTest,
+  adminDeletePracticeTest,
+  type AdminPracticeCard,
+  type AdminPracticeTest,
   adminCreateExam,
   adminCreateCourse,
   adminCreateRanking,
@@ -21,8 +28,12 @@ import {
   adminDeleteHeroItem,
   adminPutHeroOrder,
   adminGetBandColleges,
+  adminCreateBand,
+  adminUpdateBandWords,
   adminPutBandColleges,
   type BandColleges,
+  type NewBandInput,
+  type ProgramInput,
   type CollegeCardInput,
   type HeroItemInput,
   type ExamInput,
@@ -35,6 +46,11 @@ import {
   adminDeleteLocation,
   type LocationInput,
   adminCreateProgram,
+  adminSetPinnedNews,
+  adminCreateArticle,
+  adminUpdateArticle,
+  adminDeleteArticle,
+  type ArticleInput,
   adminUpdateProgram,
   adminSetRecommendedPrograms,
   adminSetUniversities,
@@ -469,6 +485,28 @@ export async function saveHomepageBands(
   return result;
 }
 
+/** Saves a row's heading and the line under it. */
+export async function saveBandWords(slug: string, heading: string, subheading: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminUpdateBandWords(token, slug, { heading, subheading }));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Makes a college row from scratch and puts it at the end of the homepage. */
+export async function createHomepageBand(input: NewBandInput): Promise<{ ok: true; message: string } | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    const created = await adminCreateBand(token, input);
+    revalidatePath("/admin/sections/homepage");
+    revalidatePath("/", "layout");
+    return { ok: true, message: created.message };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not add the row. Try again." };
+  }
+}
+
 /** The band's colleges and the colleges that could be added, read for the Manage colleges dialog. */
 export async function loadBandColleges(slug: string): Promise<BandColleges | { error: string }> {
   const token = await requireAdminToken();
@@ -570,6 +608,13 @@ function examBody(input: ExamInput) {
     officialSite: input.officialSite.trim(),
     durationMinutes: input.durationMinutes,
     sections: input.sections,
+    stream: input.stream.trim(),
+    eligibility: input.eligibility.trim(),
+    syllabus: input.syllabus.trim(),
+    // A half-filled question would be refused, so only complete ones are sent.
+    faqs: input.faqs
+      .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
+      .filter((f) => f.question && f.answer),
     image: input.image,
   };
 }
@@ -692,7 +737,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam") {
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article") {
     return { error: "Unknown image slot." };
   }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
@@ -769,3 +814,154 @@ export async function deleteProgram(slug: string): Promise<AdminActionResult> {
   return attempt("/admin/programs", (token) => adminDeleteProgram(token, slug));
 }
 
+
+// ── Practice tests ────────────────────────────────────────────────────────
+
+/** Runs a practice call and returns its data, or the message the API gave. */
+async function practiceCall<T>(call: (token: string) => Promise<T>, fallback: string): Promise<T | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await call(token);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: fallback };
+  }
+}
+
+export async function loadPracticeTests(exam: string): Promise<AdminPracticeCard[] | { error: string }> {
+  return practiceCall((token) => adminListPracticeTests(token, exam), "Could not load the practice tests. Try again.");
+}
+
+export async function loadPracticeTest(slug: string) {
+  return practiceCall((token) => adminGetPracticeTest(token, slug), "Could not load the test. Try again.");
+}
+
+export async function createPracticeTest(examSlug: string, title: string): Promise<{ slug: string; message: string } | { error: string }> {
+  const result = await practiceCall((token) => adminCreatePracticeTest(token, { examSlug, title: title.trim() }), "Could not create the test. Try again.");
+  if (!("error" in result)) revalidatePath(`/exams/${examSlug}`);
+  return result;
+}
+
+export async function savePracticeTest(slug: string, examSlug: string, body: AdminPracticeTest): Promise<{ message: string } | { error: string }> {
+  const result = await practiceCall((token) => adminSavePracticeTest(token, slug, body), "Could not save the test. Try again.");
+  if (!("error" in result)) {
+    revalidatePath(`/exams/${examSlug}`);
+    revalidatePath(`/exams/${examSlug}/practice`);
+  }
+  return result;
+}
+
+export async function deletePracticeTest(slug: string, examSlug: string): Promise<{ message: string } | { error: string }> {
+  const result = await practiceCall((token) => adminDeletePracticeTest(token, slug), "Could not delete the test. Try again.");
+  if (!("error" in result)) {
+    revalidatePath(`/exams/${examSlug}`);
+    revalidatePath(`/exams/${examSlug}/practice`);
+  }
+  return result;
+}
+
+// ── Programmes, from the Recommended tab ──────────────────────────────────
+
+function programRecord(input: ProgramInput) {
+  // Empty optional text is sent as null, as the programme form does.
+  const orNull = (v: string) => (v.trim() === "" ? null : v.trim());
+  return {
+    name: input.name.trim(),
+    universityName: input.universityName.trim(),
+    universitySlug: input.universitySlug.trim(),
+    onlineDuration: orNull(input.onlineDuration),
+    onlineFees: orNull(input.onlineFees),
+    onlineFeesNote: orNull(input.onlineFeesNote),
+    onCampusDuration: orNull(input.onCampusDuration),
+    onCampusFees: orNull(input.onCampusFees),
+    isActive: input.isActive,
+    image: input.image,
+  };
+}
+
+/** Creates a programme (slug null) or saves one. Returns the programme's slug. */
+export async function saveProgramRecord(slug: string | null, input: ProgramInput): Promise<{ slug: string } | { error: string }> {
+  const address = slug ?? input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  if (address.length < 2) return { error: "name: use letters or numbers." };
+  const result = await attempt("/admin/sections/homepage", (token) =>
+    slug ? adminUpdateProgram(token, slug, programRecord(input)) : adminCreateProgram(token, { slug: address, ...programRecord(input) })
+  );
+  if ("error" in result) return result;
+  revalidatePath("/", "layout");
+  return { slug: address };
+}
+
+/** Switches a programme on or off without touching its other details. */
+export async function setProgramActive(slug: string, input: ProgramInput, active: boolean): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminUpdateProgram(token, slug, programRecord({ ...input, isActive: active })));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Deletes a programme. One in the homepage row is taken out of the row first, which the API insists on. */
+export async function removeProgram(slug: string, rowSlugs: string[]): Promise<AdminActionResult> {
+  if (rowSlugs.includes(slug)) {
+    const out = await attempt("/admin/sections/homepage", (token) => adminSetRecommendedPrograms(token, rowSlugs.filter((s) => s !== slug)));
+    if ("error" in out) return out;
+  }
+  const result = await attempt("/admin/sections/homepage", (token) => adminDeleteProgram(token, slug));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+// ── Homepage news ─────────────────────────────────────────────────────────
+
+const articleSlug = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+function articleBody(input: ArticleInput) {
+  return {
+    title: input.title.trim(),
+    excerpt: input.excerpt.trim(),
+    body: input.body.trim(),
+    author: input.author.trim() || "Editorial Desk",
+    category: input.category.trim() || null,
+    readMinutes: input.readMinutes,
+    publishedAt: input.publishedAt,
+    isPublished: input.isPublished,
+    relatedCollegeSlugs: input.relatedCollegeSlugs,
+    image: input.image,
+  };
+}
+
+/** Creates an article (slug null) or saves one. Returns its slug. */
+export async function saveArticle(slug: string | null, input: ArticleInput): Promise<{ slug: string } | { error: string }> {
+  const address = slug ?? articleSlug(input.title);
+  if (address.length < 2) return { error: "title: use letters or numbers." };
+  const result = await attempt("/admin/sections/homepage", (token) =>
+    slug ? adminUpdateArticle(token, slug, articleBody(input)) : adminCreateArticle(token, { slug: address, ...articleBody(input) })
+  );
+  if ("error" in result) return result;
+  revalidatePath("/", "layout");
+  return { slug: address };
+}
+
+/** Saves which articles the homepage news shows (empty: the most recent). */
+export async function savePinnedNews(slugs: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminSetPinnedNews(token, slugs));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Switches an article's published state without touching its other details. */
+export async function setArticlePublished(slug: string, published: boolean): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminUpdateArticle(token, slug, { isPublished: published }));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Deletes an article. One pinned to the homepage is unpinned first. */
+export async function removeArticle(slug: string, pinned: string[]): Promise<AdminActionResult> {
+  if (pinned.includes(slug)) {
+    const out = await attempt("/admin/sections/homepage", (token) => adminSetPinnedNews(token, pinned.filter((s) => s !== slug)));
+    if ("error" in out) return out;
+  }
+  const result = await attempt("/admin/sections/homepage", (token) => adminDeleteArticle(token, slug));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}

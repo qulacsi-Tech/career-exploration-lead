@@ -4,14 +4,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { saveHomepageBands } from "@/lib/admin-actions";
-import type { AdminHomepage, AdminHomepageAvailable, AdminHomepageBand, IndiaGeo } from "@/lib/api";
+import type { AdminHomepage, AdminHomepageAvailable, AdminHomepageBand, IndiaGeo, LocationPicker } from "@/lib/api";
 import type { CollegeCardCopy } from "@/lib/home-copy";
 import { AdminSection } from "@/components/admin/admin-section";
+import { BandCreateModal } from "@/components/admin/band-create-modal";
 import { BandCollegesModal } from "@/components/admin/band-colleges-modal";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 
 /*
-  The Top Colleges rows of the homepage, one per band.
+  The Top Colleges section of the homepage.
+
+  There is one section. It holds colleges of several categories (Management, Engineering,
+  Medical and so on) and the homepage shows a tab per category, so another category is added
+  inside the section with Manage colleges, not as a new row. Once the section exists, Add a
+  college row is switched off.
 
   A band is a collection: a group of colleges with its own heading and page. This
   list decides which bands show, in what order and how many cards each one holds,
@@ -32,14 +38,16 @@ function move<T>(list: T[], index: number, direction: -1 | 1): T[] {
 
 export function TopCollegesEditor({
   data,
-  geo,
   streams,
   wording,
+  picker,
 }: {
   data: AdminHomepage;
   geo: IndiaGeo;
   streams: string[];
   wording: CollegeCardCopy;
+  /** Every college with its type, for the Add a college row form. */
+  picker: LocationPicker;
 }) {
   const router = useRouter();
   const [bands, setBands] = useState<AdminHomepageBand[]>(data.bands);
@@ -49,6 +57,7 @@ export function TopCollegesEditor({
   const [pending, startTransition] = useTransition();
   const [managing, setManaging] = useState<AdminHomepageBand | null>(null);
   const [adding, setAdding] = useState("");
+  const [creating, setCreating] = useState(false);
 
   // The page re-rendered with fresh data (after a save or the dialog closing).
   if (data !== seen) {
@@ -116,7 +125,7 @@ export function TopCollegesEditor({
   return (
     <AdminSection
       title="Top colleges"
-      description="The college rows on the homepage, top to bottom. Show, hide and order them here, and use Manage colleges to choose the colleges in each."
+      description="The homepage college section. Its categories show as tabs. Use Manage colleges to add colleges, and other categories, to it."
     >
       <div className="space-y-4">
         <p className="text-xs text-ink-soft">
@@ -127,11 +136,28 @@ export function TopCollegesEditor({
           .
         </p>
 
-        <StatusMessage flash={flash} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <StatusMessage flash={flash} />
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            disabled={bands.length >= 1}
+            title={bands.length >= 1 ? "The homepage has one college section. Add other categories to it with Manage colleges." : undefined}
+            className="ml-auto rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Add a college row
+          </button>
+        </div>
+
+        {bands.length >= 1 && (
+          <p role="status" className="rounded-lg border border-line bg-bg-alt px-4 py-3 text-sm text-ink-soft">
+            The homepage has one college section. To show another category, use <strong className="text-ink">Manage colleges</strong> and add that category&apos;s colleges here.
+          </p>
+        )}
 
         {bands.length === 0 ? (
           <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">
-            No college rows on the homepage yet. Add a collection below.
+            No college rows on the homepage yet. Use Add a college row to make one.
           </p>
         ) : (
           <>
@@ -168,7 +194,7 @@ export function TopCollegesEditor({
 
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="flex items-center gap-1.5 text-xs text-ink-soft">
-                        Cards
+                        Cards per page
                         <select
                           value={band.limit}
                           disabled={pending}
@@ -199,15 +225,30 @@ export function TopCollegesEditor({
 
                   <div className="mt-3 border-t border-line-soft pt-3">
                     {band.preview.length > 0 ? (
-                      <ol className="flex flex-wrap gap-2">
-                        {band.preview.slice(0, band.limit).map((college, position) => (
-                          <li key={college.slug} className="rounded-lg border border-line bg-bg-alt px-2.5 py-1 text-xs text-ink-soft">
-                            {position + 1}. {college.name}
-                          </li>
-                        ))}
-                      </ol>
+                      <div className="space-y-2">
+                        {[...new Set(band.preview.map((c) => c.stream))].map((category) => {
+                          const inCategory = band.preview.filter((c) => c.stream === category);
+                          return (
+                            <div key={category || "none"} className="flex flex-wrap items-center gap-2">
+                              <span className="w-28 shrink-0 text-xs font-semibold text-ink">
+                                {category || "No category"} <span className="font-normal text-ink-faint">({inCategory.length})</span>
+                              </span>
+                              <ol className="flex flex-wrap gap-2">
+                                {inCategory.slice(0, band.limit).map((college, position) => (
+                                  <li key={college.slug} className="rounded-lg border border-line bg-bg-alt px-2.5 py-1 text-xs text-ink-soft">
+                                    {position + 1}. {college.name}
+                                  </li>
+                                ))}
+                                {inCategory.length > band.limit && (
+                                  <li className="px-1 py-1 text-xs text-ink-faint">+{inCategory.length - band.limit} load as visitors slide</li>
+                                )}
+                              </ol>
+                            </div>
+                          );
+                        })}
+                      </div>
                     ) : (
-                      <p className="text-xs text-brand">Empty: this band will not render on the homepage. Use Manage colleges to add some.</p>
+                      <p className="text-xs text-brand">Empty: this section will not render on the homepage. Use Manage colleges to add some.</p>
                     )}
                   </div>
                 </li>
@@ -216,11 +257,11 @@ export function TopCollegesEditor({
           </>
         )}
 
-        {available.length > 0 && (
+        {bands.length === 0 && available.length > 0 && (
           <div className="flex max-w-xl flex-wrap items-end gap-2">
             <div className="min-w-60 flex-1">
               <label htmlFor="add-homepage-collection" className="block text-xs font-semibold text-ink">
-                Add a collection to the homepage
+                Use an existing collection as the homepage section
               </label>
               <select
                 id="add-homepage-collection"
@@ -244,12 +285,24 @@ export function TopCollegesEditor({
         )}
       </div>
 
+      {creating && (
+        <BandCreateModal
+          picker={picker}
+          onClose={(message) => {
+            setCreating(false);
+            if (message) {
+              showFlash("ok", message);
+              router.refresh();
+            }
+          }}
+        />
+      )}
+
       {/* Mounted only while open, so every opening starts fresh. */}
       {managing && (
         <BandCollegesModal
           key={managing.slug}
           band={managing}
-          geo={geo}
           streams={streams}
           wording={wording}
           onClose={(message) => {

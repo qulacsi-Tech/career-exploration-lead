@@ -2,24 +2,26 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { createBandCollege, loadBandColleges, saveBandColleges, saveHomeCopy, updateBandCollege } from "@/lib/admin-actions";
-import type { AdminHomepageBand, BandCollege, BandColleges, CollegeCardInput, IndiaGeo } from "@/lib/api";
+import { loadBandColleges, saveBandColleges, saveBandWords, saveHomeCopy } from "@/lib/admin-actions";
+import type { AdminHomepageBand, BandCollege, BandColleges } from "@/lib/api";
 import type { CollegeCardCopy } from "@/lib/home-copy";
 import { mediaUrl } from "@/lib/media";
 import { AdminModal } from "@/components/admin/admin-modal";
-import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { CollegeMultiPicker } from "@/components/admin/college-multi-picker";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 
 /*
-  Manage colleges: the colleges in one homepage band, in three tabs.
+  Manage colleges: one homepage band, in three tabs.
 
-    Colleges       who is in the band and in what order; add one that exists
-    Add / edit     create a college or change one, photo included
+    Heading & text the row's heading and the line under it
+    Colleges       who is in the band and in what order; pick several existing colleges
     Card wording   the fixed words on every college card (shared by all bands)
 
+  Creating or editing a college itself (details, photo, courses) is on its own screen,
+  Content -> Colleges, which the "Add / edit colleges" buttons open.
+
   Adding, removing and reordering save the moment you click, as on the other
-  homepage screens. A new college is created and added to this band in one step.
-  Courses, placements and reviews live on the college's full record under Content.
+  homepage screens.   Courses, placements and reviews live on the college's full record under Content.
 
   A college removed here only leaves the band. It stays in the directory.
 */
@@ -27,19 +29,13 @@ import { StatusMessage, useFlash } from "@/components/admin/status-message";
 const input =
   "mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
 
-type TabId = "colleges" | "college" | "wording";
+type TabId = "words" | "colleges" | "wording";
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: "words", label: "Heading & text" },
   { id: "colleges", label: "Colleges" },
-  { id: "college", label: "Add / edit college" },
   { id: "wording", label: "Card wording" },
 ];
-
-const BLANK: CollegeCardInput = { name: "", city: "", state: "", ownership: "Private", stream: "", feesRange: "", image: "" };
-
-function toInput(c: BandCollege): CollegeCardInput {
-  return { name: c.name, city: c.city, state: c.state, ownership: c.ownership, stream: c.stream, feesRange: c.feesRange, image: c.image };
-}
 
 function Thumb({ image }: { image: string }) {
   return (
@@ -55,13 +51,11 @@ function Thumb({ image }: { image: string }) {
 
 export function BandCollegesModal({
   band,
-  geo,
   streams,
   wording,
   onClose,
 }: {
   band: AdminHomepageBand;
-  geo: IndiaGeo;
   /** Stream names the stream pages know, for the stream dropdown. */
   streams: string[];
   wording: CollegeCardCopy;
@@ -69,27 +63,20 @@ export function BandCollegesModal({
   onClose: (message?: string) => void;
 }) {
   const [tab, setTab] = useState<TabId>("colleges");
+  const [headingDraft, setHeadingDraft] = useState(band.heading);
+  const [subDraft, setSubDraft] = useState(band.subheading ?? "");
+  const [savedWords, setSavedWords] = useState({ heading: band.heading, sub: band.subheading ?? "" });
   const [data, setData] = useState<BandColleges | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [flash, showFlash, clearFlash] = useFlash();
   const [pending, startTransition] = useTransition();
   const [changed, setChanged] = useState(false);
 
-  const [pick, setPick] = useState("");
-  const [editing, setEditing] = useState<BandCollege | null>(null);
-  const [draft, setDraft] = useState<CollegeCardInput>(BLANK);
+  const [picked, setPicked] = useState<string[]>([]);
+  // The category whose colleges are being added in the "Add another category" panel.
+  const [addCategory, setAddCategory] = useState("");
   const [wordingDraft, setWordingDraft] = useState<CollegeCardCopy>(wording);
   const [savedWording, setSavedWording] = useState<CollegeCardCopy>(wording);
-
-  const read = () =>
-    loadBandColleges(band.slug).then((result) => {
-      if ("error" in result) setLoadError(result.error);
-      else {
-        setLoadError(null);
-        setData(result);
-      }
-      return result;
-    });
 
   useEffect(() => {
     let alive = true;
@@ -127,62 +114,34 @@ export function BandCollegesModal({
     });
   };
 
-  const move = (index: number, direction: -1 | 1) => {
+  /** Moves a college up or down among the colleges of its own category. */
+  const moveInCategory = (slug: string, direction: -1 | 1) => {
     if (!data) return;
-    const target = index + direction;
-    if (target < 0 || target >= data.colleges.length) return;
+    const at = data.colleges.findIndex((c) => c.slug === slug);
+    if (at < 0) return;
+    const category = data.colleges[at].stream;
+    let to = at + direction;
+    while (to >= 0 && to < data.colleges.length && data.colleges[to].stream !== category) to += direction;
+    if (to < 0 || to >= data.colleges.length) return;
     const next = [...data.colleges];
-    [next[index], next[target]] = [next[target], next[index]];
-    persist(next, `Moved ${data.colleges[index].name} ${direction < 0 ? "up" : "down"}. Order saved.`);
+    [next[at], next[to]] = [next[to], next[at]];
+    persist(next, `Moved ${data.colleges[at].name} ${direction < 0 ? "up" : "down"}. Order saved.`);
   };
 
-  const openForm = (college: BandCollege | null) => {
-    setEditing(college);
-    setDraft(college ? toInput(college) : BLANK);
-    setTab("college");
-    clearFlash();
-  };
-
-  const set = <K extends keyof CollegeCardInput>(key: K, value: CollegeCardInput[K]) => {
-    setDraft((d) => ({ ...d, [key]: value }));
-    clearFlash();
-  };
-
-  const states = Object.keys(geo).sort();
-  const stateOptions = draft.state && !states.includes(draft.state) ? [draft.state, ...states] : states;
-  const streamOptions = draft.stream && !streams.includes(draft.stream) ? [draft.stream, ...streams] : streams;
-  const formOk = draft.name.trim().length >= 2 && draft.city.trim() !== "" && draft.state !== "" && draft.stream !== "";
-
-  const saveCollege = () => {
+  const wordsChanged = headingDraft !== savedWords.heading || subDraft !== savedWords.sub;
+  const saveWords = () => {
     clearFlash();
     startTransition(async () => {
-      if (editing) {
-        const result = await updateBandCollege(editing.slug, draft);
-        if ("error" in result) {
-          showFlash("error", `Not saved: ${result.error}`);
-          return;
-        }
-        await read();
-        setChanged(true);
-        showFlash("ok", `${draft.name.trim()} saved.`);
-        setTab("colleges");
-        return;
-      }
-      const created = await createBandCollege(draft);
-      if ("error" in created) {
-        showFlash("error", `Not added: ${created.error}`);
-        return;
-      }
-      const slugs = [...(data?.colleges.map((c) => c.slug) ?? []), created.slug];
-      const added = await saveBandColleges(band.slug, slugs);
-      await read();
-      setChanged(true);
-      if ("error" in added) {
-        showFlash("error", `${draft.name.trim()} was created, but could not be added to this band: ${added.error}`);
+      const result = await saveBandWords(band.slug, headingDraft.trim(), subDraft.trim());
+      if ("error" in result) {
+        showFlash("error", `Not saved: ${result.error}`);
       } else {
-        showFlash("ok", `${draft.name.trim()} was created and added to this band.`);
+        setSavedWords({ heading: headingDraft.trim(), sub: subDraft.trim() });
+        setHeadingDraft(headingDraft.trim());
+        setSubDraft(subDraft.trim());
+        setChanged(true);
+        showFlash("ok", "Heading and text saved.");
       }
-      setTab("colleges");
     });
   };
 
@@ -204,6 +163,11 @@ export function BandCollegesModal({
   };
 
   const members = data?.colleges ?? [];
+  // Every category a college can be added under: the Fields list, plus any a college already has.
+  const categoriesToAdd = [...new Set([...streams, ...(data ? [...data.colleges, ...data.options].map((c) => c.stream) : [])])]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+  const optionsInCategory = data ? data.options.filter((c) => c.stream === addCategory) : [];
 
   return (
     <AdminModal
@@ -233,13 +197,13 @@ export function BandCollegesModal({
               id={`band-tab-${t.id}`}
               aria-selected={active}
               aria-controls={`band-panel-${t.id}`}
-              onClick={() => (t.id === "college" ? openForm(null) : setTab(t.id))}
+              onClick={() => setTab(t.id)}
               className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition ${
                 active ? "border-brand text-brand" : "border-transparent text-ink-soft hover:text-ink"
               }`}
             >
               {t.label}
-              {t.id === "wording" && wordingChanged && <span className="h-2 w-2 rounded-full bg-brand" title="Unsaved change" />}
+              {((t.id === "wording" && wordingChanged) || (t.id === "words" && wordsChanged)) && <span className="h-2 w-2 rounded-full bg-brand" title="Unsaved change" />}
             </button>
           );
         })}
@@ -255,6 +219,29 @@ export function BandCollegesModal({
         </p>
       )}
 
+      {tab === "words" && (
+        <div role="tabpanel" id="band-panel-words" aria-labelledby="band-tab-words" className="max-w-2xl space-y-5">
+          <p className="text-sm text-ink-soft">The words above this row&apos;s cards on the homepage.</p>
+          <div>
+            <label htmlFor="bw-heading" className="block text-xs font-semibold text-ink">
+              Heading <span className="text-brand">*</span>
+            </label>
+            <input id="bw-heading" maxLength={200} value={headingDraft} onChange={(e) => setHeadingDraft(e.target.value)} className={input} />
+            <p className="mt-1 text-xs text-ink-faint">{headingDraft.length}/200</p>
+          </div>
+          <div>
+            <label htmlFor="bw-sub" className="block text-xs font-semibold text-ink">
+              Line under the heading
+            </label>
+            <textarea id="bw-sub" rows={3} maxLength={300} value={subDraft} onChange={(e) => setSubDraft(e.target.value)} className={input} />
+            <p className="mt-1 text-xs text-ink-faint">Optional. {subDraft.length}/300</p>
+          </div>
+          <button type="button" onClick={saveWords} disabled={!wordsChanged || pending || !headingDraft.trim()} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50">
+            {pending ? "Saving…" : "Save heading and text"}
+          </button>
+        </div>
+      )}
+
       {tab === "colleges" && (
         <div role="tabpanel" id="band-panel-colleges" aria-labelledby="band-tab-colleges" className="space-y-5">
           {!data && !loadError && <p className="text-sm text-ink-soft">Loading colleges…</p>}
@@ -264,178 +251,137 @@ export function BandCollegesModal({
               <p className="max-w-3xl text-sm text-ink-soft">
                 {data.rankingBound
                   ? "This band follows a ranking list, so the order on the homepage comes from the ranking. The order below only settles colleges the ranking does not list."
-                  : `The first ${band.limit} colleges, in this order, are shown on the homepage. Change how many cards show in the band's row.`}
+                  : `Each category is a tab on the homepage. A category with more than three colleges slides, and loads ${band.limit} at a time from the server. Change that number in the section's row.`}
               </p>
 
-              <div className="flex max-w-2xl flex-wrap items-end gap-2">
-                <div className="min-w-60 flex-1">
-                  <label htmlFor="band-add-existing" className="block text-xs font-semibold text-ink">
-                    Add an existing college
+              {/* The section's colleges, grouped by category: each category is a tab on the homepage. */}
+              {members.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">
+                  No colleges in this section yet, so it will not show on the homepage. Add a category below.
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {[...new Set(members.map((m) => m.stream))].map((category) => {
+                    const group = members.filter((m) => m.stream === category);
+                    return (
+                      <section key={category || "none"} aria-label={`${category || "No category"} colleges`}>
+                        <h3 className="flex flex-wrap items-baseline gap-2 text-sm font-semibold text-ink">
+                          {category || "No category"}
+                          <span className="text-xs font-normal text-ink-soft">
+                            {group.length} college{group.length === 1 ? "" : "s"} · a tab on the homepage
+                          </span>
+                        </h3>
+                        <ul className="mt-2 space-y-2">
+                          {group.map((c, i) => (
+                            <li key={c.slug} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-3">
+                              <Thumb image={c.image} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-semibold text-ink">
+                                  {i + 1}. {c.name}
+                                </span>
+                                <span className="block truncate text-xs text-ink-soft">
+                                  {c.city}, {c.state} · {c.ownership}
+                                  {c.feesRange ? ` · ${c.feesRange}` : ""}
+                                </span>
+                              </span>
+                              {!c.image && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">No photo</span>}
+                              <div className="flex items-center gap-2">
+                                <button type="button" aria-label={`Move ${c.name} up`} disabled={i === 0 || pending} onClick={() => moveInCategory(c.slug, -1)} className="rounded-lg border border-line px-2 py-1 text-xs text-ink-soft hover:border-brand disabled:opacity-40">
+                                  Up
+                                </button>
+                                <button type="button" aria-label={`Move ${c.name} down`} disabled={i === group.length - 1 || pending} onClick={() => moveInCategory(c.slug, 1)} className="rounded-lg border border-line px-2 py-1 text-xs text-ink-soft hover:border-brand disabled:opacity-40">
+                                  Down
+                                </button>
+                                <Link href="/admin/colleges" className="rounded-lg border border-brand px-3 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white">
+                                  Edit
+                                </Link>
+                                <button
+                                  type="button"
+                                  disabled={pending}
+                                  onClick={() => persist(members.filter((m) => m.slug !== c.slug), `${c.name} removed from this section. It is still in the college directory.`)}
+                                  className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-soft hover:border-red-700 hover:text-red-700 disabled:opacity-40"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                        {group.length > 3 && (
+                          <p className="mt-2 text-xs text-ink-faint">
+                            More than three, so this category slides on the homepage, {band.limit} at a time loaded from the server as visitors slide.
+                          </p>
+                        )}
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Another category goes into this same section, not into a new row. */}
+              <section className="space-y-3 rounded-xl border border-line bg-bg-alt p-4" aria-label="Add colleges">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-ink">Add another category</h3>
+                  <Link href="/admin/colleges" className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-soft hover:border-brand">
+                    Add / edit colleges
+                  </Link>
+                </div>
+                <div className="max-w-xs">
+                  <label htmlFor="band-add-category" className="block text-xs font-semibold text-ink">
+                    Category
                   </label>
-                  <select id="band-add-existing" value={pick} onChange={(e) => setPick(e.target.value)} className={input}>
-                    <option value="">{data.options.length === 0 ? "Every college is already here" : "Choose a college"}</option>
-                    {data.options.map((c) => (
-                      <option key={c.slug} value={c.slug}>
-                        {c.name} ({c.city})
+                  <select
+                    id="band-add-category"
+                    value={addCategory}
+                    onChange={(e) => {
+                      setAddCategory(e.target.value);
+                      setPicked([]);
+                    }}
+                    className={input}
+                  >
+                    <option value="">Choose a category</option>
+                    {categoriesToAdd.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                        {members.some((m) => m.stream === category) ? " (already in this section)" : ""}
                       </option>
                     ))}
                   </select>
                 </div>
-                <button
-                  type="button"
-                  disabled={!pick || pending}
-                  onClick={() => {
-                    const college = data.options.find((c) => c.slug === pick);
-                    if (!college) return;
-                    setPick("");
-                    persist([...members, college], `${college.name} added to this band.`);
-                  }}
-                  className="rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand hover:bg-brand hover:text-white disabled:opacity-40"
-                >
-                  Add to band
-                </button>
-                <button type="button" onClick={() => openForm(null)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
-                  Create a new college
-                </button>
-              </div>
 
-              {members.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">
-                  No colleges in this band yet, so it will not show on the homepage. Add one above.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {members.map((c, i) => {
-                    const hidden = !data.rankingBound && i >= band.limit;
-                    return (
-                      <li key={c.slug} className={`flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-3 ${hidden ? "opacity-70" : ""}`}>
-                        <Thumb image={c.image} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-semibold text-ink">
-                            {i + 1}. {c.name}
-                          </span>
-                          <span className="block truncate text-xs text-ink-soft">
-                            {c.city}, {c.state} · {c.stream} · {c.ownership}
-                            {c.feesRange ? ` · ${c.feesRange}` : ""}
-                          </span>
-                        </span>
-                        {!c.image && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">No photo</span>}
-                        {hidden && <span className="rounded-full bg-bg-alt px-2.5 py-1 text-xs text-ink-soft">Over the card limit, not shown</span>}
-                        <div className="flex items-center gap-2">
-                          <button type="button" aria-label={`Move ${c.name} up`} disabled={i === 0 || pending} onClick={() => move(i, -1)} className="rounded-lg border border-line px-2 py-1 text-xs text-ink-soft hover:border-brand disabled:opacity-40">
-                            Up
-                          </button>
-                          <button type="button" aria-label={`Move ${c.name} down`} disabled={i === members.length - 1 || pending} onClick={() => move(i, 1)} className="rounded-lg border border-line px-2 py-1 text-xs text-ink-soft hover:border-brand disabled:opacity-40">
-                            Down
-                          </button>
-                          <button type="button" onClick={() => openForm(c)} className="rounded-lg border border-brand px-3 py-1.5 text-xs font-semibold text-brand hover:bg-brand hover:text-white">
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() => persist(members.filter((m) => m.slug !== c.slug), `${c.name} removed from this band. It is still in the college directory.`)}
-                            className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-soft hover:border-red-700 hover:text-red-700 disabled:opacity-40"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+                {addCategory &&
+                  (optionsInCategory.length === 0 ? (
+                    <p className="text-sm text-ink-soft">Every {addCategory} college is already in this section.</p>
+                  ) : (
+                    <>
+                      <CollegeMultiPicker
+                        key={addCategory}
+                        idPrefix="band-add"
+                        hideType
+                        colleges={optionsInCategory}
+                        streams={[addCategory]}
+                        selected={picked}
+                        onChange={setPicked}
+                      />
+                      <button
+                        type="button"
+                        disabled={picked.length === 0 || pending}
+                        onClick={() => {
+                          const chosen = picked
+                            .map((slug) => data.options.find((c) => c.slug === slug))
+                            .filter((c): c is BandCollege => !!c);
+                          setPicked([]);
+                          persist([...members, ...chosen], `${chosen.length} ${addCategory} college${chosen.length === 1 ? "" : "s"} added to this section.`);
+                        }}
+                        className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-40"
+                      >
+                        {picked.length > 0 ? `Add ${picked.length} selected` : "Add selected"}
+                      </button>
+                    </>
+                  ))}
+              </section>
             </>
           )}
-        </div>
-      )}
-
-      {tab === "college" && (
-        <div role="tabpanel" id="band-panel-college" aria-labelledby="band-tab-college" className="space-y-6">
-          <p className="max-w-3xl text-sm text-ink-soft">
-            {editing
-              ? `Editing ${editing.name}.`
-              : "A new college is created and added to the end of this band."}{" "}
-            Courses, placements and reviews are on the college&apos;s full record under{" "}
-            <Link href="/admin/colleges" className="font-medium text-brand hover:underline">
-              Content → Colleges
-            </Link>
-            .
-          </p>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <div className="xl:col-span-2">
-              <label htmlFor="col-name" className="block text-xs font-semibold text-ink">
-                Name <span className="text-brand">*</span>
-              </label>
-              <input id="col-name" maxLength={500} value={draft.name} onChange={(e) => set("name", e.target.value)} className={input} />
-              <p className="mt-1 text-xs text-ink-faint">
-                {editing ? "The page address stays the same after a rename." : "Becomes the page address."}
-              </p>
-            </div>
-            <div>
-              <label htmlFor="col-state" className="block text-xs font-semibold text-ink">
-                State <span className="text-brand">*</span>
-              </label>
-              <select id="col-state" value={draft.state} onChange={(e) => set("state", e.target.value)} className={input}>
-                <option value="">Select a state</option>
-                {stateOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="col-city" className="block text-xs font-semibold text-ink">
-                City <span className="text-brand">*</span>
-              </label>
-              <input id="col-city" maxLength={200} value={draft.city} onChange={(e) => set("city", e.target.value)} className={input} />
-            </div>
-            <div>
-              <label htmlFor="col-ownership" className="block text-xs font-semibold text-ink">
-                Ownership
-              </label>
-              <select id="col-ownership" value={draft.ownership} onChange={(e) => set("ownership", e.target.value as CollegeCardInput["ownership"])} className={input}>
-                <option value="Private">Private</option>
-                <option value="Government">Government</option>
-                <option value="Deemed">Deemed</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="col-stream" className="block text-xs font-semibold text-ink">
-                Stream <span className="text-brand">*</span>
-              </label>
-              <select id="col-stream" value={draft.stream} onChange={(e) => set("stream", e.target.value)} className={input}>
-                <option value="">Select a stream</option>
-                {streamOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-ink-faint">Sets which stream page lists this college.</p>
-            </div>
-            <div>
-              <label htmlFor="col-fees" className="block text-xs font-semibold text-ink">
-                Fees range
-              </label>
-              <input id="col-fees" maxLength={100} value={draft.feesRange} onChange={(e) => set("feesRange", e.target.value)} className={input} />
-              <p className="mt-1 text-xs text-ink-faint">Shown on the card until the college has courses with fees.</p>
-            </div>
-          </div>
-
-          <ImageUploadField kind="college" value={draft.image} onChange={(v) => set("image", v)} fallbackNote="No photo. The card shows a plain background." />
-
-          <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
-            <button type="button" onClick={saveCollege} disabled={!formOk || pending} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50">
-              {pending ? "Saving…" : editing ? "Save college" : "Create and add to band"}
-            </button>
-            <button type="button" onClick={() => setTab("colleges")} disabled={pending} className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-brand disabled:opacity-50">
-              Back to the band
-            </button>
-            {!formOk && <span className="text-xs text-amber-800">A name, state, city and stream are needed.</span>}
-          </div>
         </div>
       )}
 

@@ -22,6 +22,7 @@ def _to_schema(prog: Program) -> ProgramSchema:
             duration=prog.on_campus_duration,
             fees=prog.on_campus_fees,
         ),
+        image=prog.image or "",
     )
 
 
@@ -40,6 +41,6 @@ class ProgramService:
         slugs = list(row.data)[:limit] if row and isinstance(row.data, list) else []
         if not slugs:
             return []
-        rows = (await self.repo.db.execute(select(Program).where(Program.slug.in_(slugs)))).scalars().all()
+        rows = (await self.repo.db.execute(select(Program).where(Program.slug.in_(slugs), Program.is_active.is_(True)))).scalars().all()
         by_slug = {p.slug: p for p in rows}
         return [_to_schema(by_slug[s]) for s in slugs if s in by_slug]

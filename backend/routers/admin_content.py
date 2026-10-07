@@ -30,6 +30,8 @@ class LinkBody(BaseModel):
 
 class CareerPanelBody(BaseModel):
     title: str = Field(min_length=2, max_length=80)
+    # The category tab the panel shows under, a name from the Fields list. Empty: under every tab.
+    category: str = Field(default="", max_length=100)
     viewAllHref: str = Field(min_length=1, max_length=300, pattern=SITE_PATH)
     links: list[LinkBody] = Field(min_length=1, max_length=12)
     model_config = ConfigDict(extra="forbid")
@@ -53,6 +55,54 @@ BLOCKS: dict[str, tuple[str, type[BaseModel], int]] = {
     "careers": ("home.careerPanels", CareerPanelBody, 6),
     "highlights": ("home.dataHighlights", DataTileBody, 8),
 }
+
+
+# Pages that exist whatever the data is.
+STATIC_PAGES = [
+    ("All colleges", "/colleges"),
+    ("All exams", "/exams"),
+    ("All courses", "/courses"),
+    ("Compare colleges", "/compare"),
+    ("Study abroad", "/study-abroad"),
+    ("Get counselling", "/enquiry"),
+]
+
+
+@router.get("/link-pool", response_model=SuccessResponse[dict])
+async def admin_link_pool(_admin: AdminPayload, db: DbSession):
+    """Every page a homepage link can point to, grouped, so the editors offer a list instead
+    of a path to type. Built from the categories, colleges, exams, courses, programmes,
+    cities and collections already in the directory."""
+    from models.collection import Collection
+    from models.college import College
+    from models.course_catalogue import CourseCatalogue
+    from models.exam import Exam
+    from models.home_field import HomeField
+    from models.location import Location
+    from models.program import Program
+
+    def group(label: str, rows, path) -> dict:
+        return {"label": label, "items": [{"label": name, "path": path(slug)} for slug, name in rows]}
+
+    fields = (await db.execute(select(HomeField.slug, HomeField.name).order_by(HomeField.name))).all()
+    exams = (await db.execute(select(Exam.slug, Exam.name).order_by(Exam.name))).all()
+    courses = (await db.execute(select(CourseCatalogue.slug, CourseCatalogue.name).where(CourseCatalogue.is_published.is_(True)).order_by(CourseCatalogue.name))).all()
+    programs = (await db.execute(select(Program.slug, Program.name).where(Program.is_active.is_(True)).order_by(Program.name))).all()
+    colleges = (await db.execute(select(College.slug, College.name).order_by(College.name))).all()
+    cities = (await db.execute(select(Location.slug, Location.name).order_by(Location.name))).all()
+    collections = [(c.slug, c.data.get("title", c.slug)) for c in (await db.execute(select(Collection))).scalars().all() if c.data.get("isPublished")]
+
+    groups = [
+        {"label": "Pages", "items": [{"label": name, "path": path} for name, path in STATIC_PAGES]},
+        group("Categories (colleges of a field)", fields, lambda s: f"/{s}/colleges"),
+        group("Exams", exams, lambda s: f"/exams/{s}"),
+        group("Courses", courses, lambda s: f"/courses/{s}"),
+        group("Programmes", programs, lambda s: f"/courses/{s}"),
+        group("Cities", cities, lambda s: f"/location/{s}"),
+        group("College lists", sorted(collections, key=lambda c: c[1]), lambda s: f"/colleges/{s}"),
+        group("Colleges", colleges, lambda s: f"/college/{s}"),
+    ]
+    return SuccessResponse[dict](data={"groups": [g for g in groups if g["items"]]})
 
 
 @router.get("/{name}", response_model=SuccessResponse[dict])

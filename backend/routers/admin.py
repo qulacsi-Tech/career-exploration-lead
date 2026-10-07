@@ -15,7 +15,7 @@ from fastapi import APIRouter, Body, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.dependencies import AdminPayload, DbSession
-from core.exceptions import ConflictError, NotFoundError
+from core.exceptions import ConflictError, NotFoundError, ValidationError
 from schemas.college import CollegeFilterParams
 from models.college import OwnershipType
 from models.exam import ExamLevel
@@ -188,6 +188,12 @@ async def admin_delete_college(slug: str, _admin: AdminPayload, db: DbSession):
 # EXAMS
 # ─────────────────────────────────────────────────────────────────────────────
 
+class ExamFaqBody(BaseModel):
+    question: str = Field(min_length=3, max_length=300)
+    answer: str = Field(min_length=1, max_length=2000)
+    model_config = ConfigDict(extra="forbid")
+
+
 class ExamUpdateBody(BaseModel):
     name: Optional[str] = None
     conductingBody: Optional[str] = None
@@ -202,6 +208,11 @@ class ExamUpdateBody(BaseModel):
     level: Optional[ExamLevel] = None
     durationMinutes: Optional[int] = Field(default=None, ge=0, le=1440)
     sections: Optional[list[str]] = Field(default=None, max_length=30)
+    # The category (stream) the exam is listed under, e.g. Management. Matches a name in the Fields list.
+    stream: Optional[str] = Field(default=None, max_length=100)
+    eligibility: Optional[str] = Field(default=None, max_length=5000)
+    syllabus: Optional[str] = Field(default=None, max_length=8000)
+    faqs: Optional[list[ExamFaqBody]] = Field(default=None, max_length=20)
     image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(populate_by_name=True)
 
@@ -222,6 +233,11 @@ class ExamCreateBody(BaseModel):
     officialSite: Optional[str] = Field(default=None, max_length=300)
     durationMinutes: Optional[int] = Field(default=None, ge=0, le=1440)
     sections: Optional[list[str]] = Field(default=None, max_length=30)
+    # The category (stream) the exam is listed under, e.g. Management. Matches a name in the Fields list.
+    stream: Optional[str] = Field(default=None, max_length=100)
+    eligibility: Optional[str] = Field(default=None, max_length=5000)
+    syllabus: Optional[str] = Field(default=None, max_length=8000)
+    faqs: Optional[list[ExamFaqBody]] = Field(default=None, max_length=20)
     image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(populate_by_name=True)
 
@@ -253,6 +269,10 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
         official_site=body.officialSite,
         duration_minutes=body.durationMinutes,
         sections=body.sections,
+        stream=(body.stream or "").strip() or None,
+        eligibility=body.eligibility or "",
+        syllabus=body.syllabus or "",
+        faqs=[f.model_dump() for f in body.faqs or []],
         image=body.image or "",
     ))
     await db.commit()
@@ -278,6 +298,10 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
     if body.isFeatured is not None:          values["is_featured"] = body.isFeatured
     if body.durationMinutes is not None:     values["duration_minutes"] = body.durationMinutes
     if body.sections is not None:            values["sections"] = body.sections
+    if body.stream is not None:              values["stream"] = body.stream.strip() or None
+    if body.eligibility is not None:         values["eligibility"] = body.eligibility
+    if body.syllabus is not None:            values["syllabus"] = body.syllabus
+    if body.faqs is not None:                values["faqs"] = [f.model_dump() for f in body.faqs]
     if body.image is not None:               values["image"] = body.image
 
     if not values:
@@ -303,7 +327,11 @@ class ArticleCreateBody(BaseModel):
     readMinutes: Optional[int] = 5
     publishedAt: str        # "YYYY-MM-DD"
     isPublished: bool = True
+    relatedCollegeSlugs: list[str] = Field(default_factory=list, max_length=20)
+    image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(populate_by_name=True)
+
+    _image = field_validator("image")(_card_photo)
 
 
 class ArticleUpdateBody(BaseModel):
@@ -314,7 +342,12 @@ class ArticleUpdateBody(BaseModel):
     category: Optional[str] = None
     readMinutes: Optional[int] = None
     isPublished: Optional[bool] = None
+    publishedAt: Optional[str] = None   # "YYYY-MM-DD"
+    relatedCollegeSlugs: Optional[list[str]] = Field(default=None, max_length=20)
+    image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(populate_by_name=True)
+
+    _image = field_validator("image")(_card_photo)
 
 
 @router.post("/articles", response_model=SuccessResponse[MessageResponse], status_code=201)
@@ -322,7 +355,14 @@ async def admin_create_article(body: ArticleCreateBody, _admin: AdminPayload, db
     from models.article import Article
     from datetime import date as dt
 
-    published = dt.fromisoformat(body.publishedAt)
+    from sqlalchemy import select as sql_select
+
+    if (await db.execute(sql_select(Article.id).where(Article.slug == body.slug))).scalar_one_or_none() is not None:
+        raise ConflictError("ARTICLE_SLUG_TAKEN", f"An article with slug '{body.slug}' already exists.")
+    try:
+        published = dt.fromisoformat(body.publishedAt)
+    except ValueError:
+        raise ValidationError("publishedAt: use a date.")
     article = Article(
         id=uuid.uuid4(),
         slug=body.slug,
@@ -334,6 +374,8 @@ async def admin_create_article(body: ArticleCreateBody, _admin: AdminPayload, db
         read_minutes=body.readMinutes,
         published_at=published,
         is_published=body.isPublished,
+        related_college_slugs=",".join(body.relatedCollegeSlugs),
+        image=body.image or "",
     )
     db.add(article)
     await db.commit()
@@ -353,6 +395,14 @@ async def admin_update_article(slug: str, body: ArticleUpdateBody, _admin: Admin
     if body.category is not None:    values["category"] = body.category
     if body.readMinutes is not None: values["read_minutes"] = body.readMinutes
     if body.isPublished is not None: values["is_published"] = body.isPublished
+    if body.publishedAt is not None:
+        from datetime import date as dt
+        try:
+            values["published_at"] = dt.fromisoformat(body.publishedAt)
+        except ValueError:
+            raise ValidationError("publishedAt: use a date.")
+    if body.relatedCollegeSlugs is not None: values["related_college_slugs"] = ",".join(body.relatedCollegeSlugs)
+    if body.image is not None:       values["image"] = body.image
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))

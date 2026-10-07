@@ -493,6 +493,7 @@ FIELDS = [
 ARTICLES = [
     {
         "slug": "mba-admission-process-2026",
+        "image": "/images/articles/mba-admission-process-2026.jpg",
         "title": "MBA Admission Process 2026: Dates, Rounds & What's Changed",
         "excerpt": "Every stage of the 2026 MBA admission cycle — entrance windows, shortlisting, interviews and the two changes worth planning around.",
         "author": "Editorial Desk",
@@ -519,6 +520,7 @@ ARTICLES = [
     },
     {
         "slug": "top-mba-placement-report-2026",
+        "image": "/images/articles/top-mba-placement-report-2026.jpg",
         "title": "MBA Placements 2026: Final Placement Report of Top Colleges",
         "excerpt": "Average and median packages across ranked B-schools, and why the median is the number worth reading.",
         "author": "Editorial Desk",
@@ -543,6 +545,7 @@ ARTICLES = [
     },
     {
         "slug": "executive-mba-eligibility-explained",
+        "image": "/images/articles/executive-mba-eligibility-explained.jpg",
         "title": "Executive MBA Eligibility: Who Can Apply and When",
         "excerpt": "Executive MBA programmes accept candidates with a minimum of two years' work experience — but the details vary more than the brochures suggest.",
         "author": "Editorial Desk",
@@ -563,6 +566,76 @@ ARTICLES = [
         ),
         "related_college_slugs": "bengaluru-institute-of-management-studies,meridian-school-of-business,ashwattha-business-school",
         "published_at": date(2026, 8, 3),
+        "is_published": True,
+    },
+    {
+        "slug": "cat-2026-preparation-timeline",
+        "image": "/images/exams/cat.jpg",
+        "title": "CAT 2026: A Six-Month Preparation Timeline That Works",
+        "excerpt": "How to split the months before the exam between concepts, sectional practice and full mocks, with the checkpoints worth holding yourself to.",
+        "author": "Editorial Desk",
+        "category": "Exams",
+        "read_minutes": 6,
+        "body": (
+            "Most successful CAT attempts follow the same shape: concepts first, sections second, full papers last. "
+            "The mistake is to start full mocks too early, when a low score tells you little, or too late, when there "
+            "is no time left to fix what they reveal.\n\n"
+            "In the first two months, build the foundations in all three sections and take one sectional test a week. "
+            "In months three and four, move to timed sectionals and begin analysing every attempt: which questions "
+            "you skipped, which you got wrong, and how long each took. In the last two months, sit one full mock "
+            "a week and spend twice as long reviewing it as you spent taking it.\n\n"
+            "Hold yourself to two checkpoints. By the end of month three you should be able to finish a sectional "
+            "inside its time limit, even if accuracy is still uneven. By the end of month five your mock scores "
+            "should be stable within a few percentile points, which is the sign that the remaining gains are in "
+            "exam temperament, not content."
+        ),
+        "related_college_slugs": "bengaluru-institute-of-management-studies",
+        "published_at": date(2026, 8, 24),
+        "is_published": True,
+    },
+    {
+        "slug": "study-abroad-masters-data-analytics",
+        "image": "/images/universities/clark-university.jpg",
+        "title": "Choosing a Master's in Data Analytics Abroad: What to Compare",
+        "excerpt": "Curriculum depth, industry projects, post-study work rules and total cost: the four things that separate one programme from another.",
+        "author": "Editorial Desk",
+        "category": "Study Abroad",
+        "read_minutes": 5,
+        "body": (
+            "Two data analytics master's degrees with the same name can be very different programmes. The first "
+            "thing to compare is curriculum depth: whether the course goes beyond tools into statistics, modelling "
+            "and experiment design, and how many electives let you specialise.\n\n"
+            "Next, look for industry projects. A capstone with a real company, supervised by someone who has shipped "
+            "analytics work, is worth more than another lecture module. Ask the admissions team for examples from "
+            "the last two cohorts.\n\n"
+            "Then check the post-study work rules of the country and the employment record of the programme itself, "
+            "not only of the university. Finally, compare the total cost, including living expenses and the "
+            "exchange-rate risk on a loan, rather than the headline tuition alone."
+        ),
+        "related_college_slugs": "clark-university",
+        "published_at": date(2026, 9, 3),
+        "is_published": True,
+    },
+    {
+        "slug": "how-to-read-college-rankings",
+        "image": "/images/data/college-by-ranking.jpg",
+        "title": "How to Read College Rankings Without Being Misled",
+        "excerpt": "What a rank measures, what it leaves out, and how to use it as one input among several when you build a shortlist.",
+        "author": "Editorial Desk",
+        "category": "Rankings",
+        "read_minutes": 4,
+        "body": (
+            "A ranking is a summary, and a summary hides detail. Before relying on one, find out what it measures: "
+            "teaching and learning resources, research output, graduation outcomes, outreach, perception. Different "
+            "rankings weigh these differently, which is why the same college can sit far apart in two lists.\n\n"
+            "Treat small gaps as noise. A college ranked 34th and one ranked 41st are not meaningfully different, "
+            "and the order can change with a small shift in weighting. Look at the band a college sits in, and at "
+            "its position in the category that matters to you, such as placements or faculty strength.\n\n"
+            "Use rankings to build a shortlist, then decide on the things a rank cannot show: the course you want, "
+            "the city you will live in, the fees you can carry and what current students say about daily life."
+        ),
+        "related_college_slugs": "",
+        "published_at": date(2026, 9, 18),
         "is_published": True,
     },
 ]

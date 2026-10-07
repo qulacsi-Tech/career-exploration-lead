@@ -10,11 +10,17 @@ export const metadata: Metadata = {
     "Entrance exam calendar with conducting bodies, registration deadlines and exam dates for national and state-level tests.",
 };
 
-export default async function ExamsIndexPage() {
+export default async function ExamsIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stream?: string | string[] }>;
+}) {
+  const { stream: streamParam } = await searchParams;
+  const stream = (Array.isArray(streamParam) ? streamParam[0] : streamParam)?.trim() || undefined;
   let exams: Awaited<ReturnType<typeof getExams>>["data"] = [];
 
   try {
-    const res = await getExams({ limit: 100 });
+    const res = await getExams({ limit: 100, stream });
     exams = res.data;
   } catch {
     exams = [];
@@ -30,11 +36,11 @@ export default async function ExamsIndexPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Exams" }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Exams", href: stream ? "/exams" : undefined }, ...(stream ? [{ label: stream }] : [])]} />
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">Entrance Exams</h1>
+          <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">{stream ? `${stream} Entrance Exams` : "Entrance Exams"}</h1>
           <p className="mt-1 text-sm text-ink-soft">
             {exams.length} exams &middot; registration windows and dates for the current cycle
           </p>
@@ -48,7 +54,15 @@ export default async function ExamsIndexPage() {
       </div>
 
       {exams.length === 0 && (
-        <p className="mt-16 text-center text-sm text-ink-faint">No exams found.</p>
+        <p className="mt-16 text-center text-sm text-ink-faint">
+          {stream ? (
+            <>
+              No {stream} exams are listed yet. <Link href="/exams" className="text-brand hover:underline">See all exams</Link>.
+            </>
+          ) : (
+            "No exams found."
+          )}
+        </p>
       )}
 
       <div className="mt-8 space-y-10">

@@ -175,10 +175,10 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     featured_exams = await exam_svc.get_by_slugs(top_exam_slugs[:6])
     locations = await location_svc.list_locations()
     home_locations = await location_svc.list_home_locations()
-    articles = await article_svc.get_recent(limit=3)
-    programs = await program_svc.get_recommended(limit=3)
+    articles = await article_svc.get_for_home(limit=3)
+    programs = await program_svc.get_recommended(limit=6)
     stream_counts = await college_svc.get_stream_counts()
-    universities_raw = await college_svc.get_recommended_universities(limit=3)
+    universities_raw = await college_svc.get_recommended_universities(limit=6)
 
     copy_row = await _stored_value(db, "home.copy")
     home_copy = HomeCopySchema.model_validate(copy_row) if isinstance(copy_row, dict) else HomeCopySchema()

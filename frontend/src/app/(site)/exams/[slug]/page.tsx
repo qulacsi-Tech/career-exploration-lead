@@ -7,6 +7,23 @@ import { CollegeCard } from "@/components/college-card";
 import { TestCard } from "@/components/practice/test-card";
 import { getExam, getExamSlugs, getColleges, getPracticeTests } from "@/lib/api";
 
+/** Plain text from the admin: a blank line starts a new paragraph. */
+function Paragraphs({ text }: { text: string }) {
+  return (
+    <div className="mt-3 max-w-3xl space-y-3 text-sm leading-relaxed text-ink-soft">
+      {text
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p, i) => (
+          <p key={i} className="whitespace-pre-line">
+            {p}
+          </p>
+        ))}
+    </div>
+  );
+}
+
 export async function generateStaticParams() {
   try {
     const slugs = await getExamSlugs();
@@ -105,6 +122,14 @@ export default async function ExamDetailPage({
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">{exam.description}</p>
           </section>
 
+          {/* Eligibility, written in the admin */}
+          {exam.eligibility && (
+            <section id="eligibility">
+              <h2 className="font-display text-xl font-bold text-ink">{shortName} eligibility</h2>
+              <Paragraphs text={exam.eligibility} />
+            </section>
+          )}
+
           {/* Practice */}
           {practiceTests.length > 0 && (
             <section id="practice">
@@ -161,6 +186,14 @@ export default async function ExamDetailPage({
             </section>
           )}
 
+          {/* Syllabus, written in the admin */}
+          {exam.syllabus && (
+            <section id="syllabus">
+              <h2 className="font-display text-xl font-bold text-ink">{shortName} syllabus</h2>
+              <Paragraphs text={exam.syllabus} />
+            </section>
+          )}
+
           {/* Cutoffs */}
           {cutoffRows.length > 0 && (
             <section id="cutoffs">
@@ -211,6 +244,21 @@ export default async function ExamDetailPage({
                   <CollegeCard key={college.slug} college={college} />
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* FAQs, written in the admin */}
+          {exam.faqs && exam.faqs.length > 0 && (
+            <section id="faqs">
+              <h2 className="font-display text-xl font-bold text-ink">{shortName} FAQs</h2>
+              <dl className="mt-4 space-y-4">
+                {exam.faqs.map((faq) => (
+                  <div key={faq.question} className="rounded-xl border border-line bg-surface p-4">
+                    <dt className="font-medium text-ink">{faq.question}</dt>
+                    <dd className="mt-2 text-sm leading-relaxed text-ink-soft">{faq.answer}</dd>
+                  </div>
+                ))}
+              </dl>
             </section>
           )}
         </div>

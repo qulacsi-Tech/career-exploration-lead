@@ -25,6 +25,10 @@ def _to_schema(exam: Exam) -> ExamSchema:
         officialSite=exam.official_site,
         durationMinutes=exam.duration_minutes,
         sections=exam.sections,
+        stream=exam.stream or "",
+        eligibility=exam.eligibility or "",
+        syllabus=exam.syllabus or "",
+        faqs=[f for f in (exam.faqs or []) if f.get("question") and f.get("answer")],
         image=exam.image or "",
     )
 

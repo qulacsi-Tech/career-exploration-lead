@@ -3,21 +3,33 @@ import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import Image from "next/image";
 import { HeroCarousel } from "@/components/hero-carousel";
-import { TopExamCard } from "@/components/top-exam-card";
-import { StreamTabs } from "@/components/ui/stream-tabs";
-import { ViewAllButton } from "@/components/ui/view-all-button";
-import { CareerPanelCard } from "@/components/career-panel-card";
+import { TopExamsRow } from "@/components/top-exams-row";
+import { TopCollegesRow } from "@/components/top-colleges-row";
+import { CareerPanelsRow } from "@/components/career-panels-row";
 import { DataHighlight } from "@/components/data-highlight";
 import { LocationCarousel } from "@/components/location-carousel";
 import { StreamGrid } from "@/components/stream-grid";
 import { AutoStoryFrame } from "@/components/ui/auto-story-frame";
-import { CollegeSlider } from "@/components/college-slider";
-import { photoSetLedBy } from "@/lib/college-images";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { articleImage } from "@/lib/article-images";
+import { collegePhotoSet, photoSetLedBy } from "@/lib/college-images";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
-import { TopCollegeCard } from "@/components/top-college-card";
 import { STATIC_LOCATIONS } from "@/lib/sample-locations";
 import { getHighlightsByLocation } from "@/lib/location-colleges";
 import { getCollectionBands, getHomeData, type HomeLocation } from "@/lib/api";
+
+/**
+ * The photos of a programme card. A programme added in the admin has no photo shipped
+ * under /public, so only a programme that does leads with its own; the others use the
+ * site's shared set, and no card points at a file that is not there.
+ */
+function programPhotos(slug: string, image?: string): string[] {
+  // A photo uploaded in the admin leads, followed by one from the shared set.
+  if (image) return [mediaUrl(image), ...collegePhotoSet(slug, 2).filter((s) => s !== image)].slice(0, 2);
+  const own = `/images/programs/${slug}.jpg`;
+  return existsSync(join(process.cwd(), "public", own)) ? photoSetLedBy(own, slug, 2) : collegePhotoSet(slug, 2);
+}
 
 function ChevronDownIcon({ className }: { className?: string }) {
   return (
@@ -44,7 +56,7 @@ export default async function Home() {
   const liveLocations = home?.homeLocations ?? [];
   const locations: HomeLocation[] = liveLocations.length > 0 ? liveLocations : STATIC_LOCATIONS;
   const highlights_   = await getHighlightsByLocation(locations, home?.streams ?? []);
-  const articles      = home?.articles           ?? [];
+  const articles      = (home?.articles ?? []).map((a) => ({ ...a, image: articleImage(a.slug, a.image) }));
   const programs      = home?.recommendedPrograms ?? [];
   const careerPanels  = home?.careerPanels        ?? [];
   const universities  = home?.recommendedUniversities ?? [];
@@ -53,16 +65,10 @@ export default async function Home() {
   const fields        = home?.fields             ?? [];
   const heroItems     = home?.heroItems          ?? [];
   const streamTabs    = fields.map((f) => f.name);
-  const slugOfStream  = new Map(fields.map((f) => [f.name, f.slug]));
 
   // ── Collections (college bands) stay on local data until the collections ──
   // ── CMS API ships in a later phase                                        ──
   const visibleBands  = await getCollectionBands();
-
-  // career panels in 3-column layout: left | middle (2 stacked) | right
-  const careerColumns = careerPanels.length >= 4
-    ? [[careerPanels[0]], [careerPanels[1], careerPanels[2]], [careerPanels[3]]]
-    : careerPanels.map((p) => [p]);
 
   return (
     <>
@@ -109,7 +115,7 @@ export default async function Home() {
       <StreamGrid fields={fields} copy={copy.streams} />
 
       {/* College bands (from collections, backed by mock-data until CMS API) */}
-      {visibleBands.map(({ collection, colleges: bandRows }, index) => (
+      {visibleBands.map(({ collection, colleges: bandRows, limit, totals }, index) => (
         <section
           key={collection.id}
           className={`relative overflow-hidden border-b border-line ${index % 2 === 0 ? "bg-bg" : "bg-bg-alt"}`}
@@ -123,29 +129,17 @@ export default async function Home() {
                 <p className="mt-2 text-sm text-ink-soft">{collection.subheading}</p>
               )}
             </div>
-            {index === 0 && (
-              <StreamTabs
-                streams={streamTabs}
-                active={streamTabs[0] ?? ""}
-                hrefFor={(stream) => `/${slugOfStream.get(stream)}/colleges`}
-              />
-            )}
-            {bandRows.length > 3 ? (
-              <CollegeSlider
-                colleges={bandRows}
-                label={collection.heading || collection.title}
-                buttonLabel={copy.collegeCard.buttonLabel}
-              />
-            ) : (
-              <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {bandRows.map((college) => (
-                  <TopCollegeCard key={college.slug} college={college} buttonLabel={copy.collegeCard.buttonLabel} />
-                ))}
-              </div>
-            )}
-            <div className="mt-10 text-center">
-              <ViewAllButton href={`/colleges/${collection.slug}`}>{copy.collegeCard.viewAllLabel}</ViewAllButton>
-            </div>
+            <TopCollegesRow
+              slug={collection.slug}
+              colleges={bandRows}
+              totals={totals ?? {}}
+              categories={streamTabs}
+              limit={limit ?? 6}
+              label={collection.heading || collection.title}
+              buttonLabel={copy.collegeCard.buttonLabel}
+              viewAllLabel={copy.collegeCard.viewAllLabel}
+              viewAllHref={`/colleges/${collection.slug}`}
+            />
           </div>
         </section>
       ))}
@@ -162,19 +156,7 @@ export default async function Home() {
               <p className="mt-2 text-sm text-ink-soft">{copy.topExams.subheading}</p>
             )}
           </div>
-          <StreamTabs
-            streams={streamTabs}
-            active={streamTabs[0] ?? ""}
-            hrefFor={(stream) => `/${slugOfStream.get(stream)}/exams`}
-          />
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {topExams.map((exam) => (
-              <TopExamCard key={exam.slug} exam={exam} labels={copy.examCard} />
-            ))}
-          </div>
-          <div className="mt-10 text-center">
-            <ViewAllButton href="/exams">{copy.examCard.viewAllLabel}</ViewAllButton>
-          </div>
+          <TopExamsRow exams={topExams} categories={streamTabs} labels={copy.examCard} />
         </div>
       </section>
 
@@ -189,7 +171,7 @@ export default async function Home() {
             eyebrow: copy.programs.itemEyebrow,
             headline: program.name,
             subline: `Offered at ${program.university}`,
-            images: photoSetLedBy(`/images/programs/${program.slug}.jpg`, program.slug, 2),
+            images: programPhotos(program.slug, program.image),
             imageAlt: `${program.name} program visual`,
             facts: [
               { label: "Online duration", value: program.online.duration },
@@ -216,16 +198,7 @@ export default async function Home() {
                 <p className="mt-2 text-sm text-ink-soft">{copy.careers.subheading}</p>
               )}
             </div>
-            <StreamTabs
-              streams={streamTabs}
-              active={streamTabs[0] ?? ""}
-              hrefFor={(stream) => `/${slugOfStream.get(stream)}/careers`}
-            />
-            <div className="mt-10 grid items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {careerColumns.map((panels, idx) => (
-                <CareerPanelCard key={panels[0].title + idx} panels={panels} />
-              ))}
-            </div>
+            <CareerPanelsRow panels={careerPanels} categories={streamTabs} />
             {/* Promo banner */}
             <div className="relative mt-12 overflow-hidden rounded-2xl bg-brand px-8 py-10 sm:px-12">
               <div className="relative z-10 max-w-md">

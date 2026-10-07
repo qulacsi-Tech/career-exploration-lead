@@ -49,6 +49,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { TableKit } from "@tiptap/extension-table";
 import { Image } from "@tiptap/extension-image";
 import { generateHTML } from "@tiptap/html";
+import { mediaUrl } from "@/lib/media";
 
 /**
  * A TipTap/ProseMirror document.
@@ -154,10 +155,20 @@ export function isRichTextEmpty(doc: RichTextDoc | null | undefined): boolean {
  * A malformed document renders as nothing rather than throwing: a single bad
  * record should cost one tab, not the whole page.
  */
+/** Figures uploaded in the admin are served by the API, so their address is joined to its origin. */
+function withMediaUrls(node: JSONContent): JSONContent {
+  const next: JSONContent = { ...node };
+  if (node.type === "image" && typeof node.attrs?.src === "string") {
+    next.attrs = { ...node.attrs, src: mediaUrl(node.attrs.src) };
+  }
+  if (node.content) next.content = node.content.map(withMediaUrls);
+  return next;
+}
+
 export function richTextToHtml(doc: RichTextDoc | null | undefined): string {
   if (!doc || isRichTextEmpty(doc)) return "";
   try {
-    return generateHTML(doc, richTextExtensions);
+    return generateHTML(withMediaUrls(doc), richTextExtensions);
   } catch {
     return "";
   }
