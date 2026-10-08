@@ -381,8 +381,45 @@ export async function getColleges(
 }
 
 /** Full college detail by slug (includes courses, placement, cutoffs, reviews). */
+/**
+ * A college's page record with every editor-written part present.
+ *
+ * The site and the API are deployed separately, so for a while the site can be talking to an
+ * API that does not carry the newer fields yet (the faculty roster, gallery, Q&A and so on).
+ * Each missing part is filled with its empty value, so a page renders as "nothing published
+ * yet" instead of failing, and a build never depends on which was deployed first.
+ */
+function withCollegeDefaults(raw: Partial<CollegeDetail> & Pick<CollegeDetail, "slug" | "name">): CollegeDetail {
+  const college = raw as CollegeDetail;
+  return {
+    ...college,
+    courses: raw.courses ?? [],
+    cutoffs: raw.cutoffs ?? [],
+    reviews: raw.reviews ?? [],
+    ratingBreakdown: raw.ratingBreakdown ?? [],
+    placement: raw.placement ?? null,
+    placements: raw.placements ?? (raw.placement ? [raw.placement] : []),
+    shortName: raw.shortName ?? "",
+    tagline: raw.tagline ?? "",
+    locality: raw.locality ?? "",
+    logo: raw.logo ?? "",
+    brochureUrl: raw.brochureUrl ?? "",
+    updatedAt: raw.updatedAt ?? "",
+    faculty: raw.faculty ?? { count: null, studentRatio: "", phdPercent: null, members: [] },
+    faqs: raw.faqs ?? [],
+    similarSlugs: raw.similarSlugs ?? [],
+    seo: raw.seo ?? { metaTitle: "", metaDescription: "" },
+    gallery: raw.gallery ?? [],
+    videos: raw.videos ?? [],
+    media: raw.media ?? [],
+    alerts: raw.alerts ?? [],
+    articles: raw.articles ?? [],
+    tabs: raw.tabs ?? {},
+  };
+}
+
 export async function getCollege(slug: string): Promise<CollegeDetail> {
-  return apiFetch<CollegeDetail>(`/colleges/${slug}`);
+  return withCollegeDefaults(await apiFetch<CollegeDetail>(`/colleges/${slug}`));
 }
 
 /** College by slug, or null when the API has no such college. Other errors still throw. */
