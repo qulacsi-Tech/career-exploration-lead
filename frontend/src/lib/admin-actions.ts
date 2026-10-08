@@ -46,6 +46,10 @@ import {
   adminDeleteLocation,
   type LocationInput,
   adminCreateProgram,
+  adminGetCollegeRecord,
+  adminSaveCollegeRecord,
+  adminGetCollegePools,
+  type CollegeRecord,
   adminSetPinnedNews,
   adminCreateArticle,
   adminUpdateArticle,
@@ -141,8 +145,10 @@ async function attempt(
 }
 
 export async function saveCollege(slug: string, form: FormData): Promise<AdminActionResult> {
+  // The photo is sent even when empty, so removing it clears it. Other empty fields are left out.
+  const photo = form.get("image");
   return attempt("/admin/colleges", (token) =>
-    adminUpdateCollege(token, slug, body(form, COLLEGE_EDIT_FIELDS))
+    adminUpdateCollege(token, slug, { ...body(form, COLLEGE_EDIT_FIELDS), ...(typeof photo === "string" ? { image: photo } : {}) })
   );
 }
 
@@ -737,7 +743,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article") {
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "logo" && kind !== "gallery") {
     return { error: "Unknown image slot." };
   }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
@@ -964,4 +970,44 @@ export async function removeArticle(slug: string, pinned: string[]): Promise<Adm
   const result = await attempt("/admin/sections/homepage", (token) => adminDeleteArticle(token, slug));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
+}
+
+// ── The college record ────────────────────────────────────────────────────
+
+export async function loadCollegeRecord(slug: string) {
+  const token = await requireAdminToken();
+  try {
+    return await adminGetCollegeRecord(token, slug);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not load the college. Try again." };
+  }
+}
+
+export async function loadCollegePools() {
+  const token = await requireAdminToken();
+  try {
+    return await adminGetCollegePools(token);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not load the lists. Try again." };
+  }
+}
+
+/** Saves everything the college page shows, in one go, and refreshes its pages. */
+export async function saveCollegeRecord(slug: string, record: CollegeRecord): Promise<{ message: string } | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    const saved = await adminSaveCollegeRecord(token, slug, record);
+    revalidatePath(`/college/${slug}`, "layout");
+    revalidatePath("/colleges");
+    revalidatePath("/", "layout");
+    return saved;
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not save the college. Try again." };
+  }
 }

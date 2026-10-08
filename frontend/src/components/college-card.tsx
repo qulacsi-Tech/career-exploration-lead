@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { College } from "@/lib/api";
 import { Chip } from "@/components/ui/chip";
 import { RatingPill } from "@/components/ui/rating";
+import { mediaUrl } from "@/lib/media";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { CompareToggle } from "@/components/compare-tray";
 
@@ -33,11 +34,23 @@ export function CollegeCard({ college }: { college: College }) {
       <div className="flex flex-col gap-4 p-5 @2xl:flex-row @2xl:items-center">
         {/* Identity: logo and name always sit together, at every width. */}
         <div className="flex min-w-0 items-start gap-3 @2xl:flex-1">
-          <ImagePlaceholder
-            label={`${college.name} logo`}
-            rounded="rounded-xl"
-            className="h-12 w-12 shrink-0 @2xl:h-14 @2xl:w-14"
-          />
+          {college.image ? (
+            // The college's own photo, set in the admin. Plain img: uploads come from the API's
+            // origin, and a card in a long list should load lazily.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mediaUrl(college.image)}
+              alt={`${college.name} campus`}
+              loading="lazy"
+              className="h-14 w-20 shrink-0 rounded-xl border border-line object-cover @2xl:h-16 @2xl:w-24"
+            />
+          ) : (
+            <ImagePlaceholder
+              label={`${college.name} logo`}
+              rounded="rounded-xl"
+              className="h-12 w-12 shrink-0 @2xl:h-14 @2xl:w-14"
+            />
+          )}
 
           <div className="min-w-0 flex-1">
             {/* The rank chip sits with the name at every width — wrapping below

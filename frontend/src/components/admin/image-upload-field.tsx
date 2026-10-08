@@ -18,7 +18,7 @@ import { mediaUrl } from "@/lib/media";
 */
 
 type Slot = {
-  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article";
+  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "logo" | "gallery";
   label: string;
   recommended: [number, number];
   minimum: [number, number];
@@ -43,7 +43,7 @@ const SLOTS: Record<Slot["kind"], Slot> = {
   },
   location: {
     kind: "location",
-    label: "Card photo",
+    label: "College photo",
     recommended: [1200, 1000],
     minimum: [800, 660],
     previewClass: "aspect-[6/5]",
@@ -75,6 +75,25 @@ const SLOTS: Record<Slot["kind"], Slot> = {
       "The photo fills the top of the card, about 380 by 230 px. When someone points at the card it grows to fill the whole card behind the text, so keep the subject in the middle.",
       "Do not put text or logos in the picture. They would be cropped and sit under the card's own text.",
     ],
+  },
+  logo: {
+    kind: "logo",
+    label: "Logo",
+    recommended: [400, 400],
+    minimum: [120, 120],
+    previewClass: "aspect-square max-w-[160px]",
+    notes: [
+      "Shown in a small square tile on the college page, over the banner. A square picture with some space around the mark works best.",
+      "Without a logo the tile shows the college's initials.",
+    ],
+  },
+  gallery: {
+    kind: "gallery",
+    label: "Gallery photo",
+    recommended: [1600, 1000],
+    minimum: [800, 450],
+    previewClass: "aspect-[16/10]",
+    notes: ["Shown on the college's Gallery tab, the first one large. Describe what it shows in the description box: it is read aloud and used by image search."],
   },
   article: {
     kind: "article",

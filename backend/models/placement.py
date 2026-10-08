@@ -19,6 +19,7 @@ class Placement(Base):
     average_package = Column(String(50), nullable=True)
     median_package = Column(String(50), nullable=True)
     highest_package = Column(String(50), nullable=True)
+    placed_percent = Column(Integer, nullable=True)
     top_recruiters = Column(JSONB, nullable=False, default=list)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 

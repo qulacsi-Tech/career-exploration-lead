@@ -346,7 +346,7 @@ export const videosFor = (collegeSlug: string) =>
   collegeVideos.filter((v) => v.collegeSlug === collegeSlug);
 
 /** Embed and thumbnail URLs, so the provider branch lives in one place. */
-export const videoEmbedUrl = (video: CollegeVideo) =>
+export const videoEmbedUrl = (video: Pick<CollegeVideo, "provider" | "videoId">) =>
   video.provider === "youtube"
     ? `https://www.youtube-nocookie.com/embed/${video.videoId}`
     : `https://player.vimeo.com/video/${video.videoId}`;

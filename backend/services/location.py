@@ -53,6 +53,11 @@ def _to_home_schema(loc: Location, labels: List[str], colleges: dict) -> HomeLoc
         avgPackage=loc.avg_package,
         image=loc.image,
         featured=_featured(loc, colleges),
+        imageCaption=loc.image_caption or "",
+        nirfRank=loc.nirf_rank,
+        otherRankLabel=loc.other_rank_label or "",
+        otherRank=loc.other_rank,
+        topRating=loc.top_rating,
     )
 
 

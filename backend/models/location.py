@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from core.database import Base
@@ -24,6 +24,13 @@ class Location(Base):
     # Categories the card offers and the colleges listed under each:
     # [{"stream": "Engineering", "colleges": ["college-slug"]}]. Empty: worked out from the city's colleges.
     featured = Column(JSONB, nullable=False, default=list, server_default="[]")
+    # The college the card's photo shows, named in a small caption on it. Empty: no caption.
+    image_caption = Column(String(200), nullable=False, default="", server_default="")
+    # Figures over the card's photo. Empty: worked out from the colleges in the location.
+    nirf_rank = Column(Integer, nullable=True)
+    other_rank_label = Column(String(60), nullable=False, default="", server_default="")
+    other_rank = Column(Integer, nullable=True)
+    top_rating = Column(Float, nullable=True)
     show_on_home = Column(Boolean, nullable=False, default=True, server_default="true")
     home_order = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

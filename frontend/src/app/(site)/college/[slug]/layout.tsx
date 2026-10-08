@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import { CollegeMasthead } from "@/components/college/college-masthead";
 import { collegePhoto } from "@/lib/college-images";
-import { highlightsFor, videosFor } from "@/lib/college-content";
 import { faqsOf, monogram, shortNameOf, taglineOf } from "@/lib/college-insights";
-import { colleges } from "@/lib/mock-data";
+import { getCollegeOrNull } from "@/lib/api";
 import { collegeSections, sectionHref } from "@/lib/college-sections";
 
 /**
@@ -19,17 +18,16 @@ import { collegeSections, sectionHref } from "@/lib/college-sections";
  * transition needs both the old and new element to exist in one persistent
  * tree, so in any other arrangement the underline would cut rather than slide.
  *
- * The college is resolved twice, here and in the page — that is the shape of
- * the App Router and it costs nothing against an in-memory array. It will cost
- * one request each against a real API, at which point `cache()` around the
- * lookup is the fix.
+ * Everything on it comes from the college's record in the API (the short title,
+ * locality, logo, brochure, Q&A count, photo and video counts, last-saved date),
+ * so what an editor saves in the admin is what the masthead shows.
  */
 export default async function CollegeLayout({
   children,
   params,
 }: LayoutProps<"/college/[slug]">) {
   const { slug } = await params;
-  const college = colleges.find((entry) => entry.slug === slug);
+  const college = await getCollegeOrNull(slug);
   if (!college) notFound();
 
   /* The same fixed rail on every college — see lib/college-sections. */
@@ -56,23 +54,23 @@ export default async function CollegeLayout({
         slug={college.slug}
         name={college.name}
         title={`${shortNameOf(college)}: ${taglineOf(college, intake)}`}
-        locality={college.locality}
+        locality={college.locality || undefined}
         city={college.city}
         state={college.state}
         ownership={college.ownership}
-        established={college.established}
+        established={college.established ?? 0}
         approvals={college.approvals}
         rating={college.rating}
         reviewCount={college.reviewCount}
-        averagePackage={college.placement.average}
+        averagePackage={college.placement?.average ?? ""}
         qnaCount={faqsOf(college).length}
-        photo={college.image || college.coverImage || collegePhoto(college.slug)}
-        logo={college.logo}
+        photo={college.image || collegePhoto(college.slug)}
+        logo={college.logo || undefined}
         monogram={monogram(college.name)}
         brochureHref={college.brochureUrl || "/enquiry"}
         mediaCount={{
-          photos: highlightsFor(college.slug).length,
-          videos: videosFor(college.slug).length,
+          photos: college.gallery.length,
+          videos: college.videos.length,
         }}
         sections={sections}
         updatedOn={updatedOn}

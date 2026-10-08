@@ -66,7 +66,13 @@ async function fetchCollegesInLocation(
 }
 
 export type LocationBranch = { slug: string; name: string; count: number };
-export type LocationCollegeRef = { slug: string; name: string };
+export type LocationCollegeRef = {
+  slug: string;
+  name: string;
+  /** Used for the rankings and rating shown over the card's photo. Absent on colleges the admin picked by hand. */
+  ranking?: { authority: string; rank: number };
+  rating?: number;
+};
 export type LocationHighlights = { branches: LocationBranch[]; colleges: LocationCollegeRef[] };
 
 /**
@@ -76,8 +82,7 @@ export type LocationHighlights = { branches: LocationBranch[]; colleges: Locatio
  * is worked out from the city's colleges. A location whose lookup fails gets empty lists rather than taking the homepage down.
  */
 export async function getHighlightsByLocation(
-  locations: { slug: string; name: string; featured?: FeaturedStream[] }[],
-  streams: { slug: string; name: string }[]
+  locations: { slug: string; name: string; featured?: FeaturedStream[] }[]
 ): Promise<Record<string, LocationHighlights>> {
   const entries = await Promise.all(
     locations.map(async (location) => {
@@ -94,7 +99,7 @@ export async function getHighlightsByLocation(
         const colleges = await getCollegesInLocation(location);
         // From the colleges themselves, so it does not depend on the home payload's category list.
         const branches = streamsIn(colleges).map(({ slug, name, count }) => ({ slug, name, count }));
-        return [location.slug, { branches, colleges: colleges.map((c) => ({ slug: c.slug, name: c.name })) }] as const;
+        return [location.slug, { branches, colleges: colleges.map((c) => ({ slug: c.slug, name: c.name, ranking: c.ranking, rating: c.rating })) }] as const;
       } catch {
         return [location.slug, { branches: [], colleges: [] }] as const;
       }

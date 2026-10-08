@@ -9,9 +9,10 @@ import {
   rankedColleges,
   collegesInProgram,
 } from "@/lib/rankings-data";
+import { mediaUrl } from "@/lib/media";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
-import { CollegeEditModal } from "@/components/admin/college-edit-modal";
+import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
 
@@ -160,8 +161,19 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
               {filtered.map((college) => (
                 <tr key={college.slug} className="border-b border-line-soft last:border-b-0">
                   <td className="py-3 pr-3">
-                    <p className="font-medium text-ink">{college.name}</p>
-                    <p className="text-xs text-ink-faint">{college.slug}</p>
+                    <div className="flex items-center gap-3">
+                      <span className="relative h-10 w-16 shrink-0 overflow-hidden rounded-md border border-line bg-bg-alt">
+                        {college.image && (
+                          // Plain img: uploads come from the API's origin, not the optimizer's allow-list.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={mediaUrl(college.image)} alt="" loading="lazy" className="h-full w-full object-cover" />
+                        )}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block font-medium text-ink">{college.name}</span>
+                        <span className="block text-xs text-ink-faint">{college.slug}</span>
+                      </span>
+                    </div>
                   </td>
                   <td className="py-3 pr-3 text-ink-soft">
                     {college.city}, {college.state}
@@ -216,11 +228,15 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
           setEditing(c);
         }}
       />
-      <CollegeEditModal
-        college={editing}
-        onClose={() => setEditing(null)}
-        onSaved={(c) => showFlash("ok", `${c.name} saved.`)}
-      />
+      {/* Mounted only while open, so every opening loads the saved record fresh. */}
+      {editing && (
+        <CollegeRecordEditor
+          key={editing.slug}
+          slug={editing.slug}
+          onClose={() => setEditing(null)}
+          onSaved={(name) => showFlash("ok", `${name} saved.`)}
+        />
+      )}
       <AddCollegeModal
         open={adding}
         onClose={() => setAdding(false)}

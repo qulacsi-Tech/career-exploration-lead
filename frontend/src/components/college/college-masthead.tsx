@@ -277,15 +277,19 @@ export function CollegeMasthead({
                 </span>
               </span>
               <span aria-hidden className="h-3.5 w-px bg-line" />
-              <Link
-                href={hrefOf("placements")}
-                className="inline-flex items-center gap-1.5 hover:underline"
-              >
-                <TrendingUp className="h-3.5 w-3.5 text-brand" />
-                Avg. Package
-                <span className="font-semibold text-brand">{averagePackage}</span>
-              </Link>
-              <span aria-hidden className="h-3.5 w-px bg-line" />
+              {averagePackage && (
+                <>
+                  <Link
+                    href={hrefOf("placements")}
+                    className="inline-flex items-center gap-1.5 hover:underline"
+                  >
+                    <TrendingUp className="h-3.5 w-3.5 text-brand" />
+                    Avg. Package
+                    <span className="font-semibold text-brand">{averagePackage}</span>
+                  </Link>
+                  <span aria-hidden className="h-3.5 w-px bg-line" />
+                </>
+              )}
               <Link
                 href={hrefOf("qna")}
                 className="inline-flex items-center gap-1.5 text-brand hover:underline"

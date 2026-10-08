@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Building2, ArrowUpRight } from "lucide-react";
+import { MapPin, Building2, ArrowUpRight, GraduationCap, Layers, Medal, Star, Trophy, Wallet, type LucideIcon } from "lucide-react";
 import { DEFAULT_HOME_COPY, type LocationCardCopy, type SectionCopy } from "@/lib/home-copy";
 import type { HomeLocation } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
@@ -91,6 +91,16 @@ export function LocationCarousel({
   );
 }
 
+type OverlayStat = { icon: LucideIcon; label: string; value: string };
+
+/** The best (lowest) rank among the colleges whose ranking authority passes `accept`. */
+function bestRank(colleges: LocationHighlights["colleges"], accept: (authority: string) => boolean) {
+  return colleges
+    .filter((c) => c.ranking && accept(c.ranking.authority))
+    .map((c) => c.ranking!)
+    .sort((a, b) => a.rank - b.rank)[0];
+}
+
 function DestinationCard({
   location,
   index,
@@ -104,51 +114,81 @@ function DestinationCard({
 }) {
   const branches = highlights?.branches ?? [];
   const colleges = highlights?.colleges ?? [];
-  // The more there is to say, the more room the words get. A sparse card gives the photo up
-  // to 70% of the width; a full one splits the card 50/50. (Literal class names, for Tailwind.)
-  const weight = Math.min(branches.length, 4) + (colleges.length > 0 ? 2 : 0);
-  const columns =
-    weight <= 3
-      ? "md:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]"
-      : weight <= 5
-        ? "md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]"
-        : "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]";
+  // What the overlay on the photo shows, from the colleges in the location. Only a figure with
+  // data behind it is shown, so the strip never carries a dash or an invented number; the first
+  // four that have data are used, in this order.
+  // A figure the admin set wins; otherwise it is worked out from the colleges.
+  const derivedNirf = bestRank(colleges, (authority) => /nirf/i.test(authority));
+  const derivedOther = bestRank(colleges, (authority) => !/nirf/i.test(authority));
+  const nirfRank = location.nirfRank ?? derivedNirf?.rank;
+  const other = location.otherRank && location.otherRankLabel ? { authority: location.otherRankLabel, rank: location.otherRank } : derivedOther;
+  const ratings = colleges.map((c) => c.rating ?? 0).filter((r) => r > 0);
+  const topRating = location.topRating ?? (ratings.length > 0 ? Math.max(...ratings) : undefined);
+  const candidates: (OverlayStat | null)[] = [
+    nirfRank ? { icon: Trophy, label: "Top NIRF rank", value: `#${nirfRank}` } : null,
+    other ? { icon: Medal, label: `${other.authority} rank`, value: `#${other.rank}` } : null,
+    topRating ? { icon: Star, label: "Top rated", value: `${topRating.toFixed(1)} / 5` } : null,
+    location.avgPackage ? { icon: Wallet, label: "Avg. package", value: location.avgPackage } : null,
+    branches.length > 0 ? { icon: Layers, label: "Streams", value: String(branches.length) } : null,
+    colleges.length > 0 ? { icon: GraduationCap, label: "Colleges listed", value: String(colleges.length) } : null,
+  ];
+  const stats = candidates.filter((stat): stat is OverlayStat => stat !== null).slice(0, 4);
+  // The photo is a college's, uploaded in the admin; the caption names that college.
+  const photo = location.image;
+  const caption = location.imageCaption ?? "";
+  const photoAlt = caption ? `${caption} campus` : `${location.name} campus destination`;
   const href = `/location/${location.slug}`;
   return (
     <div
-      className={`hub-stack-card group relative grid h-full w-full grid-cols-1 gap-4 overflow-hidden rounded-[32px] border border-line bg-surface p-3 shadow-[0_30px_70px_-30px_rgba(28,33,40,0.4)] md:gap-8 md:p-4 lg:gap-12 ${columns}`}
+      className={`hub-stack-card group relative grid h-full w-full grid-cols-1 gap-4 overflow-hidden rounded-[32px] border border-line bg-surface p-3 shadow-[0_30px_70px_-30px_rgba(28,33,40,0.4)] md:grid-cols-2 md:gap-8 md:p-4 lg:gap-12`}
     >
-      {/* Photo: the left half of the card. A plain strip at the top on a phone. */}
+      {/* Photo: exactly the left half of the card, with an overlay of rankings and placements. A plain strip at the top on a phone. */}
       <Link href={href} aria-label={`${location.name} colleges`} className="relative block h-48 overflow-hidden rounded-[22px] bg-brand-ink md:h-full">
-        {location.image.startsWith("/api/") ? (
+        {photo.startsWith("/api/") ? (
           // Uploaded in the admin: served by the API, so a plain img rather than next/image.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={mediaUrl(location.image)}
-            alt={`${location.name} campus destination`}
+            src={mediaUrl(photo)}
+            alt={photoAlt}
             loading={index < 2 ? "eager" : "lazy"}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
           />
-        ) : location.image ? (
+        ) : photo ? (
           <Image
-            src={location.image}
-            alt={`${location.name} campus destination`}
+            src={photo}
+            alt={photoAlt}
             fill
             sizes="(max-width: 768px) 90vw, 700px"
             className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
             priority={index < 2}
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/25" />
 
         <span className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white backdrop-blur-md transition-all duration-300 group-hover:border-transparent group-hover:bg-white group-hover:text-black">
           <ArrowUpRight className="h-4 w-4" />
         </span>
 
-        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink shadow-sm backdrop-blur">
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink shadow-sm backdrop-blur">
           <Building2 className="h-3.5 w-3.5 text-brand" />
           {location.collegeCount}+ {card.institutionsLabel}
         </span>
+
+        {/* Overlay: the figures a student weighs a city by, centred over the lower part of the photo. */}
+        {stats.length > 0 && (
+          <div className="absolute inset-x-3 bottom-5 flex flex-col items-center gap-2">
+            {caption && <p className="max-w-full truncate rounded-full bg-black/35 px-3 py-1 text-[11px] font-medium tracking-wide text-white/90 backdrop-blur">Featured: {caption}</p>}
+            <dl className="grid max-w-full grid-cols-2 gap-y-4 rounded-3xl border border-white/25 bg-white/10 px-2 py-4 text-center text-white shadow-[0_18px_40px_-18px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none sm:divide-x sm:divide-white/20">
+              {stats.map((stat) => (
+                <div key={stat.label} className="flex min-w-0 flex-col items-center px-4 sm:px-5">
+                  <stat.icon className="h-4 w-4 text-white/80" strokeWidth={1.75} aria-hidden="true" />
+                  <dd className="mt-1.5 whitespace-nowrap font-display text-xl font-semibold leading-none tracking-tight">{stat.value}</dd>
+                  <dt className="mt-1.5 text-[10px] font-medium uppercase leading-tight tracking-[0.14em] text-white/70">{stat.label}</dt>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
       </Link>
 
       {/* Words: tags, "City, State" on one line, then a button per branch. */}
@@ -179,8 +219,8 @@ function DestinationCard({
         </h3>
 
         {branches.length > 0 ? (
-          <div className="flex flex-col items-start gap-2.5">
-            {branches.slice(0, 4).map((branch) => (
+          <div className="flex flex-wrap items-start gap-2.5">
+            {branches.slice(0, 6).map((branch) => (
               <Link
                 key={branch.slug}
                 href={`${href}?stream=${branch.slug}`}
@@ -214,16 +254,17 @@ function DestinationCard({
  * ask for reduced motion. Each name links to the college's page.
  */
 function CollegeTicker({ colleges }: { colleges: { slug: string; name: string }[] }) {
-  // Too few names to be worth scrolling: show them as they are.
-  const moving = colleges.length > 4;
+  // The names run in two columns across the width of the card, five rows showing. Up to ten fit as
+  // they are (and scroll on a phone, where there is one column); more than that drift upward.
+  const moving = colleges.length > 10;
   const list = (hidden: boolean) => (
-    <ul aria-hidden={hidden || undefined} className="flex flex-col gap-1.5 pb-1.5">
+    <ul aria-hidden={hidden || undefined} className="grid grid-cols-1 gap-x-8 gap-y-1.5 pb-1.5 sm:grid-cols-2">
       {colleges.map((college) => (
         <li key={college.slug}>
           <Link
             href={`/college/${college.slug}`}
             tabIndex={hidden ? -1 : undefined}
-            className="inline-flex max-w-full items-center gap-2 text-sm text-ink-soft transition-colors hover:text-brand"
+            className="flex min-w-0 items-center gap-2 text-sm text-ink-soft transition-colors hover:text-brand"
           >
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
             <span className="truncate">{college.name}</span>
@@ -237,10 +278,10 @@ function CollegeTicker({ colleges }: { colleges: { slug: string; name: string }[
     <div className="mt-1 min-w-0">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-faint">Institutions here</p>
       <div
-        className={`college-ticker relative mt-2 h-32 overflow-hidden ${moving ? "" : "overflow-y-auto"}`}
+        className={`college-ticker relative mt-2 h-36 overflow-hidden ${moving ? "" : "overflow-y-auto"}`}
         style={{ maskImage: "linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent)" }}
       >
-        <div className={moving ? "college-ticker-track" : undefined} style={moving ? { animationDuration: `${colleges.length * 2.5}s` } : undefined}>
+        <div className={moving ? "college-ticker-track" : undefined} style={moving ? { animationDuration: `${Math.ceil(colleges.length / 2) * 3}s` } : undefined}>
           {list(false)}
           {moving && list(true)}
         </div>

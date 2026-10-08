@@ -43,3 +43,10 @@ class HomeLocationSchema(LocationSchema):
     image: str = ""
     # Empty: the card works its categories out from the colleges in the city.
     featured: list[FeaturedStreamSchema] = []
+    # The college the card's photo shows, named in a caption on it. Empty: no caption.
+    imageCaption: str = ""
+    # Figures over the photo. Empty: the page works them out from the location's colleges.
+    nirfRank: int | None = None
+    otherRankLabel: str = ""
+    otherRank: int | None = None
+    topRating: float | None = None

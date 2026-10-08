@@ -714,6 +714,37 @@ async def _seed_colleges(session: AsyncSession) -> None:
     print(f"  ✓ {len(COLLEGES)} colleges seeded")
 
 
+async def _seed_college_extras(session: AsyncSession) -> None:
+    """The editor-written parts of a college page (masthead title, faculty, Q&A, gallery, videos,
+    news, the written sections) from seed_data/college_extras.json, for the colleges that have
+    them, plus the programme eligibility and placement percentage. Safe to run again: it only
+    fills the college's detail document, and never touches a college that is not in the file."""
+    from sqlalchemy import select
+    from models.course import Course
+    from schemas.college_detail import CollegeDetail
+
+    print("Seeding college page content ...")
+    extras = json.loads((Path(__file__).parent / "seed_data" / "college_extras.json").read_text(encoding="utf-8"))
+    updated = 0
+    for slug, extra in extras.items():
+        college = (await session.execute(select(College).where(College.slug == slug))).scalar_one_or_none()
+        if college is None:
+            continue
+        college.detail = CollegeDetail.model_validate(extra["detail"]).model_dump()
+        courses = {c.name: c for c in (await session.execute(select(Course).where(Course.college_id == college.id))).scalars().all()}
+        for row in extra.get("courses", []):
+            course = courses.get(row["name"])
+            if course is not None:
+                course.eligibility = row.get("eligibility") or ""
+                course.seats = row.get("seats")
+        if extra.get("placedPercent") is not None and extra.get("placementYear") is not None:
+            for placement in (await session.execute(select(Placement).where(Placement.college_id == college.id, Placement.year == extra["placementYear"]))).scalars().all():
+                placement.placed_percent = extra["placedPercent"]
+        updated += 1
+    await session.commit()
+    print(f"  done: {updated} colleges")
+
+
 async def _seed_exams(session: AsyncSession) -> None:
     print("Seeding exams …")
     for data in EXAMS:
@@ -910,6 +941,7 @@ async def main() -> None:
 
     async with SessionLocal() as session:
         await _seed_colleges(session)
+        await _seed_college_extras(session)
         await _seed_exams(session)
         await _seed_locations(session)
         await _seed_fields(session)

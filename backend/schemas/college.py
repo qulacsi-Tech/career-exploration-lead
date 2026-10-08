@@ -8,6 +8,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from schemas.college_detail import AlertItem, ArticleItem, Faculty, Faq, GalleryItem, MediaItem, Seo, VideoItem
+
 
 # ── Sub-resource schemas ──────────────────────────────────────────────────────
 
@@ -31,6 +33,8 @@ class CourseSchema(BaseModel):
     mode: str
     fees: str
     exams: List[str]
+    eligibility: str = ""
+    seats: Optional[int] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -41,6 +45,7 @@ class PlacementSchema(BaseModel):
     median: str
     highest: str
     topRecruiters: List[str]
+    placedPercent: Optional[int] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -103,6 +108,26 @@ class CollegeDetailSchema(CollegeListSchema):
     placement: Optional[PlacementSchema]
     cutoffs: List[CutoffSchema]
     reviews: List[ReviewSchema]
+    # Every year's placement record, newest first. `placement` is the latest.
+    placements: List[PlacementSchema] = []
+    # The editor-written parts of the page.
+    shortName: str = ""
+    tagline: str = ""
+    locality: str = ""
+    logo: str = ""
+    brochureUrl: str = ""
+    # When the record was last saved (ISO date).
+    updatedAt: str = ""
+    faculty: Faculty = Faculty()
+    faqs: List[Faq] = []
+    similarSlugs: List[str] = []
+    seo: Seo = Seo()
+    gallery: List[GalleryItem] = []
+    videos: List[VideoItem] = []
+    media: List[MediaItem] = []
+    alerts: List[AlertItem] = []
+    articles: List[ArticleItem] = []
+    tabs: dict = {}
 
     model_config = ConfigDict(populate_by_name=True)
 

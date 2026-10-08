@@ -41,6 +41,8 @@ class College(Base):
     view_count = Column(Integer, nullable=False, default=0)
     # Card and hero photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).
     image = Column(String(200), nullable=False, default="", server_default="")
+    # The editor-written parts of the college page (see schemas/college_detail.py).
+    detail = Column(JSONB, nullable=False, default=dict, server_default="{}")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()

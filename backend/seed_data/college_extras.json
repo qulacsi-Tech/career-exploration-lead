@@ -1,0 +1,894 @@
+{
+ "bengaluru-institute-of-management-studies": {
+  "updatedAtText": "28 Sep 2026",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "Graduation with 50% marks",
+    "seats": 180
+   },
+   {
+    "name": "Executive MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "Ph.D. Management",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": 94,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "BIMS Bengaluru",
+   "tagline": "",
+   "locality": "Hosur Road",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": 64,
+    "studentRatio": "12:1",
+    "phdPercent": 78,
+    "members": [
+     {
+      "name": "Dr. Meera Iyer",
+      "designation": "Dean",
+      "department": "Strategy",
+      "qualification": "PhD, IIM Bangalore"
+     },
+     {
+      "name": "Dr. Rahul Menon",
+      "designation": "Professor",
+      "department": "Finance",
+      "qualification": "PhD, ISB"
+     },
+     {
+      "name": "Prof. Anita Desai",
+      "designation": "Associate Professor",
+      "department": "Marketing",
+      "qualification": "FPM, IIM Ahmedabad"
+     }
+    ]
+   },
+   "faqs": [
+    {
+     "question": "Is BIMS good for an MBA in finance?",
+     "answer": "Finance is the most-chosen specialisation at BIMS. Students rate the finance faculty highly, and banking and consulting firms recruit from the batch every year."
+    },
+    {
+     "question": "Does BIMS offer hostel accommodation?",
+     "answer": "Yes. On-campus hostels are available for MBA students on a first-come basis; see the Infrastructure tab for room types and charges."
+    }
+   ],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "BIMS Bengaluru: MBA Fees 2027, Placements, Cut-Offs & Reviews",
+    "metaDescription": "BIMS Bengaluru MBA fees, CAT cut-offs, 2025 placements (avg ₹14.2 LPA) and student reviews. Compare with similar B-schools."
+   },
+   "gallery": [],
+   "videos": [
+    {
+     "title": "Campus tour 2026",
+     "provider": "youtube",
+     "videoId": "dQw4w9WgXcQ"
+    },
+    {
+     "title": "Placement season: what recruiters look for",
+     "provider": "youtube",
+     "videoId": "aqz-KE-bpKQ"
+    }
+   ],
+   "media": [
+    {
+     "title": "Ranked 34th in NIRF Management 2025",
+     "publication": "The Economic Times",
+     "date": "2026-07-14",
+     "link": "https://example.com/et-nirf-2025"
+    },
+    {
+     "title": "Placement supplement — South India B-schools",
+     "publication": "Business Standard",
+     "date": "2026-06-03",
+     "link": ""
+    }
+   ],
+   "alerts": [
+    {
+     "title": "MBA 2026 application window closes 30 September",
+     "date": "2026-09-01",
+     "kind": "Admission",
+     "isUrgent": true,
+     "link": ""
+    },
+    {
+     "title": "Personal interview dates announced for the first shortlist",
+     "date": "2026-08-22",
+     "kind": "Notice",
+     "isUrgent": false,
+     "link": ""
+    }
+   ],
+   "articles": [
+    {
+     "title": "BIMS Placement Report 2025: averages up 11%",
+     "date": "2026-08-28",
+     "author": "Editorial Desk",
+     "summary": "Consulting and analytics roles drove the increase, with the median package rising to ₹12.8 LPA.",
+     "body": "The 2025 placement season closed with 94% of the batch placed, the highest figure BIMS has recorded. The average package rose 11% year on year to ₹14.2 LPA.\n\nAnalytics roles accounted for nearly a third of offers, up from a fifth in 2024, reflecting the intake into the business analytics electives."
+    }
+   ],
+   "tabs": {
+    "scholarships": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "BIMS offers merit scholarships covering 25% to 100% of tuition, awarded on CAT percentile and the personal interview score. Around 18% of each incoming batch receives some form of award."
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Need-based support is assessed separately on family income, and can be combined with a merit award up to a full tuition waiver."
+        }
+       ]
+      }
+     ]
+    },
+    "hostel-facilities": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "On-campus accommodation is guaranteed for all first-year students, in twin-sharing rooms with attached bathrooms. The 2024 block added 240 single rooms allocated to second-year students by lottery."
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "The campus has a 24-hour library, two computer labs, a gym, and courts for basketball, tennis and cricket."
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "horizon-school-of-business": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "MBA (Online)",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "eastwind-institute-of-management": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "MBA Business Analytics",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {
+    "scholarships": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Eastwind's scholarship pool is among the largest in the region, with awards funded by the alumni endowment. Full-tuition awards go to the top ten admitted candidates by composite score."
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "kaveri-institute-of-technology": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "B.Tech Computer Science",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "B.Tech Electronics",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "M.Tech VLSI Design",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [
+    {
+     "title": "Inside the new CS block",
+     "provider": "vimeo",
+     "videoId": "76979871"
+    }
+   ],
+   "media": [
+    {
+     "title": "Engineering colleges expanding CS intake",
+     "publication": "Deccan Herald",
+     "date": "2026-05-19",
+     "link": "https://example.com/dh-cs-intake"
+    }
+   ],
+   "alerts": [
+    {
+     "title": "KCET counselling round 2 seat allotment published",
+     "date": "2026-08-26",
+     "kind": "Result",
+     "isUrgent": true,
+     "link": ""
+    }
+   ],
+   "articles": [
+    {
+     "title": "Kaveri opens new computer science block",
+     "date": "2026-08-12",
+     "author": "Campus Desk",
+     "summary": "The block adds six labs and a 300-seat auditorium ahead of the 2026 intake.",
+     "body": "The new block was inaugurated ahead of the 2026 academic year and houses six teaching labs, a research wing and a 300-seat auditorium."
+    }
+   ],
+   "tabs": {
+    "admission-process": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Admission to B.Tech programmes is through KCET, COMEDK or JEE Main. Seats are split between the government quota, filled by KCET counselling, and the management quota, filled on COMEDK rank."
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Shortlisted candidates must produce the Class 12 marksheet, the entrance scorecard, a transfer certificate and a caste certificate where a reserved category is claimed."
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "northgate-college-of-engineering": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "B.Tech Mechanical",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "B.Tech Computer Science",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "sanjeevani-medical-college": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBBS",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "MD General Medicine",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "meridian-institute-of-medical-sciences": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBBS",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "MD Paediatrics",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "kr-mangalam-university": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "BBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "B.Tech Computer Science",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "ashwattha-business-school": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "PGDM Marketing",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "Executive MBA",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "vantage-school-of-management": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "PGDM Business Analytics",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "cascade-institute-of-technology": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "B.Tech Computer Science",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "B.Tech Electronics",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "M.Tech Data Science",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "silverleaf-college-of-commerce": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "B.Com (Hons)",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "M.Com",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "MBA Finance",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "meridian-school-of-business": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "Executive MBA",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "sahyadri-institute-of-management": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA Finance",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "PGDM Operations",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "greenfield-school-of-management": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "PGDM Human Resources",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ },
+ "orchid-institute-of-business-studies": {
+  "updatedAtText": "",
+  "courses": [
+   {
+    "name": "MBA",
+    "eligibility": "",
+    "seats": null
+   },
+   {
+    "name": "BBA",
+    "eligibility": "",
+    "seats": null
+   }
+  ],
+  "placedPercent": null,
+  "placementYear": 2025,
+  "detail": {
+   "shortName": "",
+   "tagline": "",
+   "locality": "",
+   "logo": "",
+   "brochureUrl": "",
+   "faculty": {
+    "count": null,
+    "studentRatio": "",
+    "phdPercent": null,
+    "members": []
+   },
+   "faqs": [],
+   "similarSlugs": [],
+   "seo": {
+    "metaTitle": "",
+    "metaDescription": ""
+   },
+   "gallery": [],
+   "videos": [],
+   "media": [],
+   "alerts": [],
+   "articles": [],
+   "tabs": {}
+  }
+ }
+}

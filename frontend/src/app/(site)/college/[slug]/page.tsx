@@ -17,9 +17,9 @@ import {
   ScoreRow,
 } from "@/components/college/detail-ui";
 import { Chip } from "@/components/ui/chip";
-import { alertsFor } from "@/lib/college-content";
 import {
   faqsOf,
+  longDate,
   lakhValue,
   monogram,
   percentOf,
@@ -48,8 +48,8 @@ export async function generateMetadata({
   try {
     const college = await getCollege(slug);
     return {
-      title: `${college.name}: Courses, Fees, Placements & Reviews`,
-      description: college.about,
+      title: college.seo.metaTitle || `${college.name}: Courses, Fees, Placements & Reviews`,
+      description: college.seo.metaDescription || college.about,
       alternates: { canonical: `/college/${college.slug}` },
     };
   } catch {
@@ -75,8 +75,8 @@ export default async function CollegeOverviewPage({
   const short = monogram(college.name);
   const href  = (section: string) => sectionHref(college.slug, section);
 
-  const alerts = [...alertsFor(college.slug)].sort(
-    (a, b) => Number(b.isUrgent) - Number(a.isUrgent),
+  const alerts = [...college.alerts].sort(
+    (a, b) => Number(b.isUrgent) - Number(a.isUrgent) || b.date.localeCompare(a.date),
   );
 
   // Fees as bars against the dearest programme, dearest first
@@ -134,7 +134,7 @@ export default async function CollegeOverviewPage({
           <ul className="space-y-3">
             {alerts.map((alert) => (
               <li
-                key={alert.id}
+                key={`${alert.date}-${alert.title}`}
                 className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3.5 ${
                   alert.isUrgent ? "bg-brand-soft" : "bg-bg-alt"
                 }`}
@@ -147,7 +147,7 @@ export default async function CollegeOverviewPage({
                 )}
                 <Chip tone={alert.isUrgent ? "brand" : undefined}>{alert.kind}</Chip>
                 <span className="min-w-0 flex-1 font-medium text-ink">{alert.title}</span>
-                <span className="shrink-0 text-sm text-ink-faint">{alert.date}</span>
+                <span className="shrink-0 text-sm text-ink-faint">{longDate(alert.date)}</span>
               </li>
             ))}
           </ul>

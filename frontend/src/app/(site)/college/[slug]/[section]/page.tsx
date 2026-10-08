@@ -24,16 +24,10 @@ import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 import { CollegeSectionPage } from "@/components/college/section-page";
 import { RichText } from "@/components/rich-text";
 import { Chip } from "@/components/ui/chip";
-import { collegePhotoSet } from "@/lib/college-images";
+import { videoEmbedUrl } from "@/lib/college-content";
 import {
-  articlesFor,
-  highlightsFor,
-  tabBody,
-  videoEmbedUrl,
-  videosFor,
-} from "@/lib/college-content";
-import {
-  faqsFor,
+  faqsOf,
+  longDate,
   lakhValue,
   overallScore,
   percentOf,
@@ -42,9 +36,10 @@ import {
 } from "@/lib/college-insights";
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
 import { comparisonsFeaturing, compareUrl } from "@/lib/comparison-data";
-import { similarColleges } from "@/lib/comparison-resolve";
-import { getCollegeOrNull, getCollegeSlugs, type CollegeDetail as College } from "@/lib/api";
-import { isRichTextEmpty } from "@/lib/rich-text";
+import { collegesBySlugs, similarColleges } from "@/lib/comparison-resolve";
+import { getCollegeOrNull, getColleges, getCollegeSlugs, type CollegeDetail as College } from "@/lib/api";
+import { mediaUrl } from "@/lib/media";
+import { emptyDoc, isRichTextEmpty } from "@/lib/rich-text";
 
 /**
  * Every college section that is not the overview, on its own URL.
@@ -150,7 +145,7 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
          All three render the same way; only the template differs. */
       const tabSlug = TAB_SLUG_FOR_SECTION[sectionSlug];
       if (!tabSlug) return null;
-      const doc = tabBody(college.slug, tabSlug);
+      const doc = college.tabs?.[tabSlug] ?? emptyDoc();
       if (isRichTextEmpty(doc)) {
         const label = sectionBySlug(sectionSlug)?.label.toLowerCase() ?? "these";
         return (
@@ -233,6 +228,13 @@ function Courses({ college }: { college: College }) {
                     {course.mode}
                   </span>
                 </p>
+                {(course.eligibility || course.seats) && (
+                  <p className="mt-2 text-sm text-ink-soft">
+                    {course.eligibility && <span>Eligibility: {course.eligibility}</span>}
+                    {course.eligibility && course.seats ? <span aria-hidden> &middot; </span> : null}
+                    {course.seats ? <span>{course.seats.toLocaleString("en-IN")} seats</span> : null}
+                  </p>
+                )}
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {course.exams.map((exam) => (
                     <li key={exam}>
@@ -348,9 +350,47 @@ function Fees({ college }: { college: College }) {
 
 function Faculty({ college }: { college: College }) {
   const faculty = college.ratingBreakdown.find((row) => row.label === "Faculty");
+  const roster = college.faculty;
+  const hasStats = roster.count !== null || roster.studentRatio !== "" || roster.phdPercent !== null;
+  const hasRoster = hasStats || roster.members.length > 0;
 
   return (
     <>
+      {hasRoster && (
+        <DetailCard title="Faculty at a Glance">
+          {hasStats && (
+            <div className="grid gap-8 sm:grid-cols-3">
+              {roster.count !== null && <BigFigure label="Faculty members" value={roster.count.toLocaleString("en-IN")} />}
+              {roster.studentRatio && <BigFigure label="Student to faculty ratio" value={roster.studentRatio} />}
+              {roster.phdPercent !== null && <BigFigure label="Hold a PhD" value={`${roster.phdPercent}%`} />}
+            </div>
+          )}
+          {roster.members.length > 0 && (
+            <div className={`-mx-2 overflow-x-auto px-2 ${hasStats ? "mt-10" : ""}`}>
+              <table className="w-full min-w-[520px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-faint">
+                    <th scope="col" className="py-3 pr-4 font-semibold">Name</th>
+                    <th scope="col" className="py-3 pr-4 font-semibold">Designation</th>
+                    <th scope="col" className="py-3 pr-4 font-semibold">Department</th>
+                    <th scope="col" className="py-3 font-semibold">Qualification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roster.members.map((member) => (
+                    <tr key={member.name} className="border-b border-line-soft">
+                      <th scope="row" className="py-4 pr-4 font-semibold text-ink">{member.name}</th>
+                      <td className="py-4 pr-4 text-ink-soft">{member.designation || "—"}</td>
+                      <td className="py-4 pr-4 text-ink-soft">{member.department || "—"}</td>
+                      <td className="py-4 text-ink-soft">{member.qualification || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DetailCard>
+      )}
       {faculty && (
         <DetailCard title="What Students Say About Faculty">
           <div className="grid gap-10 md:grid-cols-2 md:items-center">
@@ -374,12 +414,13 @@ function Faculty({ college }: { college: College }) {
           </div>
         </DetailCard>
       )}
-      {/* No faculty roster in the data yet — said plainly, not padded out. */}
-      <EmptyCard
-        icon="users"
-        title="Faculty profiles coming soon"
-        body={`${college.name} has not published its faculty list here yet. A counsellor can share department and teaching staff details.`}
-      />
+      {!hasRoster && (
+        <EmptyCard
+          icon="users"
+          title="Faculty profiles coming soon"
+          body={`${college.name} has not published its faculty list here yet. A counsellor can share department and teaching staff details.`}
+        />
+      )}
     </>
   );
 }
@@ -469,6 +510,11 @@ function Placements({ college }: { college: College }) {
             <BigFigure key={p.label} label={p.label} value={p.value} />
           ))}
         </div>
+        {placement.placedPercent != null && (
+          <div className="mt-8">
+            <BigFigure label="Of the batch placed" value={`${placement.placedPercent}%`} />
+          </div>
+        )}
         <div className="mt-10">
           <ColumnLabel>Package spread</ColumnLabel>
           <MeterList
@@ -488,6 +534,35 @@ function Placements({ college }: { college: College }) {
       <DetailCard title="Top Recruiters">
         <RecruiterMarquee recruiters={placement.topRecruiters} />
       </DetailCard>
+
+      {college.placements.length > 1 && (
+        <DetailCard title="Earlier Years">
+          <div className="-mx-2 overflow-x-auto px-2">
+            <table className="w-full min-w-[520px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-faint">
+                  <th scope="col" className="py-3 pr-4 font-semibold">Year</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Average</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Median</th>
+                  <th scope="col" className="py-3 pr-4 font-semibold">Highest</th>
+                  <th scope="col" className="py-3 text-right font-semibold">Placed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {college.placements.slice(1).map((row) => (
+                  <tr key={row.year} className="border-b border-line-soft">
+                    <th scope="row" className="py-4 pr-4 font-semibold text-ink">{row.year}</th>
+                    <td className="py-4 pr-4 text-ink-soft">{row.average}</td>
+                    <td className="py-4 pr-4 text-ink-soft">{row.median}</td>
+                    <td className="py-4 pr-4 text-ink-soft">{row.highest}</td>
+                    <td className="py-4 text-right text-ink-soft">{row.placedPercent != null ? `${row.placedPercent}%` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DetailCard>
+      )}
 
       {placementScore && (
         <DetailCard title="What Students Say About Placements">
@@ -534,9 +609,16 @@ function Cutoffs({ college }: { college: College }) {
   );
 }
 
-function Rankings({ college }: { college: College }) {
-  const { rows, position, of } = rankingTable(college);
-  const best = Math.min(...rows.map((row) => row.ranking.rank));
+async function Rankings({ college }: { college: College }) {
+  // The colleges of this stream, from the directory, so the table is real ranks.
+  let directory: Awaited<ReturnType<typeof getColleges>>["data"] = [];
+  try {
+    directory = (await getColleges({ stream: college.stream, limit: 100 })).data;
+  } catch {
+    directory = [];
+  }
+  const { rows, position, of } = rankingTable(college, directory);
+  const best = Math.min(...rows.map((row) => row.ranking.rank), college.ranking.rank || 1);
 
   return (
     <>
@@ -562,29 +644,31 @@ function Rankings({ college }: { college: College }) {
         </div>
       </DetailCard>
 
-      <DetailCard title={`${college.ranking.authority} Rank Among ${college.stream} Peers`}>
-        <p className="mb-5 text-sm text-ink-soft">
-          Longer bars rank higher. Bars are drawn relative to the best-ranked college shown.
-        </p>
-        <MeterList
-          rows={rows.map((row) => ({
-            label: row.name,
-            display: `#${row.ranking.rank}`,
-            fraction: best / row.ranking.rank,
-            highlight: row.slug === college.slug,
-            href: row.slug === college.slug ? undefined : `/college/${row.slug}/rankings`,
-          }))}
-        />
-      </DetailCard>
+      {rows.length > 0 && (
+        <DetailCard title={`${college.ranking.authority} Rank Among ${college.stream} Peers`}>
+          <p className="mb-5 text-sm text-ink-soft">
+            Longer bars rank higher. Bars are drawn relative to the best-ranked college shown.
+          </p>
+          <MeterList
+            rows={rows.map((row) => ({
+              label: row.name,
+              display: `#${row.ranking.rank}`,
+              fraction: best / row.ranking.rank,
+              highlight: row.slug === college.slug,
+              href: row.slug === college.slug ? undefined : `/college/${row.slug}/rankings`,
+            }))}
+          />
+        </DetailCard>
+      )}
     </>
   );
 }
 
 function Gallery({ college }: { college: College }) {
-  const highlights = highlightsFor(college.slug);
-  const photos = collegePhotoSet(college.slug, highlights.length);
-  const videos = videosFor(college.slug);
-  if (highlights.length === 0 && videos.length === 0) {
+  // Photos the editor flagged as highlights come first.
+  const photos = [...college.gallery].sort((a, b) => Number(b.highlight) - Number(a.highlight));
+  const videos = college.videos;
+  if (photos.length === 0 && videos.length === 0) {
     return (
       <EmptyCard
         icon="images"
@@ -596,23 +680,25 @@ function Gallery({ college }: { college: College }) {
 
   return (
     <>
-      {highlights.length > 0 && (
-        <DetailCard title={`Photos (${highlights.length})`}>
+      {photos.length > 0 && (
+        <DetailCard title={`Photos (${photos.length})`}>
           {/* The first frame runs two columns wide, so the eye has somewhere
               to land instead of reading equal tiles left to right. */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {highlights.map((image, i) => (
+            {photos.map((image, i) => (
               <figure
-                key={image.id}
+                key={image.src}
                 className={`group relative overflow-hidden rounded-xl bg-bg-alt ${
                   i === 0 ? "sm:col-span-2 sm:row-span-2" : ""
                 }`}
               >
-                <div className={i === 0 ? "aspect-[16/10] h-full" : "aspect-[4/3]"}>
+                <div className={`relative ${i === 0 ? "aspect-[16/10] h-full" : "aspect-[4/3]"}`}>
                   <Image
-                    src={photos[i % photos.length]}
+                    src={mediaUrl(image.src)}
                     alt={image.alt}
                     fill
+                    // An uploaded photo is served by the API on another origin, which the optimizer is not set up for.
+                    unoptimized={mediaUrl(image.src).startsWith("http")}
                     sizes={i === 0 ? "(max-width: 640px) 100vw, 66vw" : "(max-width: 640px) 100vw, 33vw"}
                     className="object-cover transition-transform duration-700 group-hover:scale-105"
                   />
@@ -623,7 +709,7 @@ function Gallery({ college }: { college: College }) {
                   className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"
                 />
                 <figcaption className="absolute inset-x-0 bottom-0 p-3.5 text-sm font-semibold text-white">
-                  {image.name}
+                  {image.name || image.alt}
                 </figcaption>
               </figure>
             ))}
@@ -637,7 +723,7 @@ function Gallery({ college }: { college: College }) {
               page load, for content below the fold. */}
           <div className="grid gap-6 sm:grid-cols-2">
             {videos.map((video) => (
-              <figure key={video.id}>
+              <figure key={`${video.provider}-${video.videoId}`}>
                 <div className="aspect-video overflow-hidden rounded-xl bg-bg-alt">
                   <iframe
                     src={videoEmbedUrl(video)}
@@ -659,7 +745,9 @@ function Gallery({ college }: { college: College }) {
 }
 
 async function Compare({ college }: { college: College }) {
-  const peers = await similarColleges(college, 2);
+  // Colleges the editor pinned as similar, else the nearest by stream and rank.
+  const pinned = college.similarSlugs.length > 0 ? await collegesBySlugs(college.similarSlugs.slice(0, 2)) : [];
+  const peers = pinned.length > 0 ? pinned : await similarColleges(college, 2);
   const curated = comparisonsFeaturing(college.slug);
   if (peers.length === 0 && curated.length === 0) {
     return (
@@ -727,14 +815,16 @@ function QnA({ college }: { college: College }) {
         </div>
       }
     >
-      <FaqAccordion faqs={faqsFor(college)} />
+      <FaqAccordion faqs={faqsOf(college)} />
     </DetailCard>
   );
 }
 
 function News({ college }: { college: College }) {
-  const articles = articlesFor(college.slug);
-  if (articles.length === 0) {
+  const articles = [...college.articles].sort((a, b) => b.date.localeCompare(a.date));
+  const alerts = [...college.alerts].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent) || b.date.localeCompare(a.date));
+  const press = [...college.media].sort((a, b) => b.date.localeCompare(a.date));
+  if (articles.length === 0 && alerts.length === 0 && press.length === 0) {
     return (
       <EmptyCard
         icon="news"
@@ -745,20 +835,73 @@ function News({ college }: { college: College }) {
   }
 
   return (
-    <DetailCard>
-      <ul className="divide-y divide-line">
-        {articles.map((article) => (
-          <li key={article.slug} className="py-6 first:pt-0 last:pb-0">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
-              {article.publishedAt} &middot; {article.author}
-            </p>
-            <h3 className="mt-2 font-display text-xl font-bold leading-snug text-ink">
-              {article.title}
-            </h3>
-            <p className="mt-2 text-base leading-relaxed text-ink-soft">{article.summary}</p>
-          </li>
-        ))}
-      </ul>
-    </DetailCard>
+    <>
+      {alerts.length > 0 && (
+        <DetailCard title="Alerts">
+          <ul className="space-y-3">
+            {alerts.map((alert) => (
+              <li
+                key={`${alert.date}-${alert.title}`}
+                className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3.5 ${alert.isUrgent ? "bg-brand-soft" : "bg-bg-alt"}`}
+              >
+                <Chip tone={alert.isUrgent ? "brand" : undefined}>{alert.kind}</Chip>
+                <span className="min-w-0 flex-1 font-medium text-ink">
+                  {alert.link ? (
+                    <Link href={alert.link} className="hover:text-brand hover:underline">{alert.title}</Link>
+                  ) : (
+                    alert.title
+                  )}
+                </span>
+                <span className="shrink-0 text-sm text-ink-faint">{longDate(alert.date)}</span>
+              </li>
+            ))}
+          </ul>
+        </DetailCard>
+      )}
+
+      {articles.length > 0 && (
+        <DetailCard title="Latest News">
+          <ul className="divide-y divide-line">
+            {articles.map((article) => (
+              <li key={`${article.date}-${article.title}`} className="py-6 first:pt-0 last:pb-0">
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
+                  {longDate(article.date)} &middot; {article.author}
+                </p>
+                <h3 className="mt-2 font-display text-xl font-bold leading-snug text-ink">{article.title}</h3>
+                {article.summary && <p className="mt-2 text-base leading-relaxed text-ink-soft">{article.summary}</p>}
+                {article.body && (
+                  <div className="mt-3 space-y-3 text-sm leading-relaxed text-ink-soft">
+                    {article.body.split(/\n\s*\n/).map((paragraph, i) => (
+                      <p key={i}>{paragraph}</p>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </DetailCard>
+      )}
+
+      {press.length > 0 && (
+        <DetailCard title="In the Press">
+          <ul className="divide-y divide-line">
+            {press.map((item) => (
+              <li key={`${item.date}-${item.title}`} className="py-4 first:pt-0 last:pb-0">
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
+                  {[item.publication, item.date && longDate(item.date)].filter(Boolean).join(" · ")}
+                </p>
+                <p className="mt-1 font-medium text-ink">
+                  {item.link ? (
+                    <a href={item.link} target="_blank" rel="noopener noreferrer nofollow" className="hover:text-brand hover:underline">{item.title}</a>
+                  ) : (
+                    item.title
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </DetailCard>
+      )}
+    </>
   );
 }

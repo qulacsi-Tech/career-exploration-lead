@@ -6,6 +6,7 @@ import { createLocation, deleteLocation, saveHomeCopy, updateLocation } from "@/
 import type { AdminHomeLocation, AdminLocationLabel, IndiaGeo, LocationInput, LocationPicker } from "@/lib/api";
 import type { LocationCardCopy } from "@/lib/home-copy";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { RangeField } from "@/components/admin/range-field";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { CategoriesPicker } from "@/components/admin/location-categories-picker";
 
@@ -14,7 +15,7 @@ import { CategoriesPicker } from "@/components/admin/location-categories-picker"
 
     Details       where it is, its name and count, and whether it shows
     Categories    which categories the card offers and the colleges listed under each
-    Card content  the description, the average package and the labels
+    Card content  the labels, and the figures over the photo (ranks, rating, average package)
     Photo         the card's picture
     Card wording  the fixed words on every card (shared, not per location)
 
@@ -33,7 +34,6 @@ const input =
   "mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
 
 const MAX_LABELS = 6;
-const MAX_COURSE_FEES = 3;
 const SOFT_LABELS = 4;
 
 type TabId = "details" | "categories" | "content" | "photo" | "wording";
@@ -57,6 +57,11 @@ const BLANK: LocationInput = {
   labels: [],
   courseFees: [],
   featured: [],
+  imageCaption: "",
+  nirfRank: null,
+  otherRankLabel: "",
+  otherRank: null,
+  topRating: null,
   show: true,
 };
 
@@ -72,6 +77,11 @@ function toInput(loc: AdminHomeLocation): LocationInput {
     labels: loc.labels,
     courseFees: loc.courseFees,
     featured: loc.featured,
+    imageCaption: loc.imageCaption ?? "",
+    nirfRank: loc.nirfRank ?? null,
+    otherRankLabel: loc.otherRankLabel ?? "",
+    otherRank: loc.otherRank ?? null,
+    topRating: loc.topRating ?? null,
     show: loc.show,
   };
 }
@@ -401,57 +411,35 @@ export function LocationModal({
 
       {tab === "content" && (
         <div role="tabpanel" id="loc-panel-content" aria-labelledby="loc-tab-content" className="space-y-6">
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <Text id="loc-description" label="Description" multiline max={400} value={draft.description} onChange={(v) => set("description", v)} hint="The paragraph under the city name." />
-            </div>
-            <Text id="loc-avg" label="Average package" max={60} value={draft.avgPackage} onChange={(v) => set("avgPackage", v)} hint="e.g. ₹7.0 - 18 LPA." />
-          </div>
-
-          <fieldset>
-            <legend className="text-xs font-semibold text-ink">
-              Courses &amp; fees <span className="font-normal text-ink-soft">({draft.courseFees.length} of {MAX_COURSE_FEES})</span>
-            </legend>
-            <p className="mt-1 text-xs text-ink-faint">
-              Shown as tiles on the card: a course category and its fee range, such as MBA and ₹6L - 24L.
+          <fieldset className="rounded-xl border border-line p-4">
+            <legend className="px-2 text-xs font-semibold text-ink">Figures over the photo</legend>
+            <p className="mb-4 max-w-3xl text-xs text-ink-faint">
+              The glass panel on the card&apos;s photo. A rank or rating left empty is worked out from the colleges in this location, and left off if there is none. The streams and colleges counts always come from the colleges.
             </p>
-            <div className="mt-2 max-w-2xl space-y-2">
-              {draft.courseFees.map((row, i) => (
-                <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
-                  <input
-                    aria-label={`Course category ${i + 1}`}
-                    maxLength={60}
-                    value={row.category}
-                    placeholder="Category, e.g. MBA"
-                    onChange={(e) => set("courseFees", draft.courseFees.map((r, n) => (n === i ? { ...r, category: e.target.value } : r)))}
-                    className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
-                  />
-                  <input
-                    aria-label={`Fees range ${i + 1}`}
-                    maxLength={40}
-                    value={row.fees}
-                    placeholder="Fees, e.g. ₹6L - 24L"
-                    onChange={(e) => set("courseFees", draft.courseFees.map((r, n) => (n === i ? { ...r, fees: e.target.value } : r)))}
-                    className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => set("courseFees", draft.courseFees.filter((_, n) => n !== i))}
-                    className="rounded-lg border border-line px-3 py-2 text-sm text-ink-soft hover:border-red-700 hover:text-red-700"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-              {draft.courseFees.length < MAX_COURSE_FEES && (
-                <button
-                  type="button"
-                  onClick={() => set("courseFees", [...draft.courseFees, { category: "", fees: "" }])}
-                  className="rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand hover:bg-brand hover:text-white"
-                >
-                  Add a course
-                </button>
-              )}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label htmlFor="loc-nirf" className="block text-xs font-semibold text-ink">Top NIRF rank</label>
+                <input id="loc-nirf" type="number" min={1} max={10000} value={draft.nirfRank ?? ""} placeholder="Worked out" onChange={(e) => set("nirfRank", e.target.value === "" ? null : Math.max(1, Math.floor(Number(e.target.value) || 1)))} className={input} />
+                <p className="mt-1 text-xs text-ink-faint">Shown as #29.</p>
+              </div>
+              <div>
+                <label htmlFor="loc-other-label" className="block text-xs font-semibold text-ink">Another ranking</label>
+                <input id="loc-other-label" maxLength={60} value={draft.otherRankLabel} placeholder="e.g. QS India" onChange={(e) => set("otherRankLabel", e.target.value)} className={input} />
+                <p className="mt-1 text-xs text-ink-faint">The ranking&apos;s name. Optional.</p>
+              </div>
+              <div>
+                <label htmlFor="loc-other-rank" className="block text-xs font-semibold text-ink">Its rank</label>
+                <input id="loc-other-rank" type="number" min={1} max={10000} value={draft.otherRank ?? ""} placeholder="Rank" onChange={(e) => set("otherRank", e.target.value === "" ? null : Math.max(1, Math.floor(Number(e.target.value) || 1)))} className={input} />
+                <p className="mt-1 text-xs text-ink-faint">Needs the name beside it.</p>
+              </div>
+              <div>
+                <label htmlFor="loc-rating" className="block text-xs font-semibold text-ink">Top rating (out of 5)</label>
+                <input id="loc-rating" type="number" min={0} max={5} step="0.1" value={draft.topRating ?? ""} placeholder="Worked out" onChange={(e) => set("topRating", e.target.value === "" ? null : Math.max(0, Math.min(5, Number(e.target.value) || 0)))} className={input} />
+                <p className="mt-1 text-xs text-ink-faint">Shown as 4.5 / 5.</p>
+              </div>
+            </div>
+            <div className="mt-5 max-w-xl">
+              <RangeField id="loc-avg" label="Average package" units={["LPA"]} value={draft.avgPackage} onChange={(v) => set("avgPackage", v)} hint="Placements: the salary range students get." />
             </div>
           </fieldset>
 
@@ -524,13 +512,21 @@ export function LocationModal({
       )}
 
       {tab === "photo" && (
-        <div role="tabpanel" id="loc-panel-photo" aria-labelledby="loc-tab-photo">
+        <div role="tabpanel" id="loc-panel-photo" aria-labelledby="loc-tab-photo" className="space-y-6">
+          <div className="max-w-xl">
+            <label htmlFor="loc-caption" className="block text-xs font-semibold text-ink">College name on the photo</label>
+            <input id="loc-caption" maxLength={120} value={draft.imageCaption} onChange={(e) => set("imageCaption", e.target.value)} className={input} placeholder="e.g. Cascade Institute of Technology" />
+            <p className="mt-1 text-xs text-ink-faint">Optional. Shown as &ldquo;Featured: &hellip;&rdquo; on the photo. {draft.imageCaption.length}/120</p>
+          </div>
+          <div>
+          <p className="mb-2 text-xs font-semibold text-ink">College photo</p>
           <ImageUploadField
             kind="location"
             value={draft.image}
             onChange={(v) => set("image", v)}
             fallbackNote="No photo. The card shows a plain dark background."
           />
+          </div>
         </div>
       )}
 
@@ -549,23 +545,9 @@ export function LocationModal({
               hint="Reads as 189+ Ranked Institutions."
             />
             <Text
-              id="wording-ctc"
-              label="Label above the average package"
-              max={40}
-              value={wordingDraft.ctcLabel}
-              onChange={(v) => setWording("ctcLabel", v)}
-            />
-            <Text
-              id="wording-courses"
-              label="Heading over the courses"
-              max={40}
-              value={wordingDraft.coursesLabel}
-              onChange={(v) => setWording("coursesLabel", v)}
-              hint="Above the sliding course fees."
-            />
-            <Text
               id="wording-button"
               label="Button label"
+              hint="On a card with no categories."
               max={30}
               value={wordingDraft.buttonLabel}
               onChange={(v) => setWording("buttonLabel", v)}

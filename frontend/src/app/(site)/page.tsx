@@ -31,6 +31,17 @@ function programPhotos(slug: string, image?: string): string[] {
   return existsSync(join(process.cwd(), "public", own)) ? photoSetLedBy(own, slug, 2) : collegePhotoSet(slug, 2);
 }
 
+/**
+ * The photos of a recommended-college card: the college's own photo (uploaded in the admin)
+ * leads; otherwise its shipped photo if there is one; otherwise the site's shared set. No card
+ * points at a file that is not there.
+ */
+function universityPhotos(slug: string, image?: string): string[] {
+  if (image) return [mediaUrl(image), ...collegePhotoSet(slug, 2).filter((s) => s !== image)].slice(0, 2);
+  const own = `/images/universities/${slug}.jpg`;
+  return existsSync(join(process.cwd(), "public", own)) ? photoSetLedBy(own, slug, 2) : collegePhotoSet(slug, 2);
+}
+
 function ChevronDownIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
@@ -55,7 +66,7 @@ export default async function Home() {
   // location is switched off) does the sample set below stand in, so the section is never bare.
   const liveLocations = home?.homeLocations ?? [];
   const locations: HomeLocation[] = liveLocations.length > 0 ? liveLocations : STATIC_LOCATIONS;
-  const highlights_   = await getHighlightsByLocation(locations, home?.streams ?? []);
+  const highlights_   = await getHighlightsByLocation(locations);
   const articles      = (home?.articles ?? []).map((a) => ({ ...a, image: articleImage(a.slug, a.image) }));
   const programs      = home?.recommendedPrograms ?? [];
   const careerPanels  = home?.careerPanels        ?? [];
@@ -247,7 +258,7 @@ export default async function Home() {
             eyebrow: `${university.city}, ${university.state}`,
             headline: university.name,
             subline: copy.universities.itemSubline,
-            images: photoSetLedBy(`/images/universities/${university.slug}.jpg`, university.slug, 2),
+            images: universityPhotos(university.slug, university.image),
             imageAlt: `${university.name} campus`,
             facts: [
               { label: "City",  value: university.city },

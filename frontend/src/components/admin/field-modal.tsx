@@ -6,6 +6,7 @@ import { createField, deleteField, updateField } from "@/lib/admin-actions";
 import type { AdminField, FieldInput } from "@/lib/api";
 import { FIELD_ICONS, FieldIcon } from "@/lib/field-icons";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { RangeField } from "@/components/admin/range-field";
 
 /*
   One field of study, one form: its name, its icon, the average CTC shown under
@@ -181,14 +182,7 @@ export function FieldModal({ field, onClose }: { field: AdminField | null; onClo
             </p>
           </div>
 
-          <Text
-            id="field-ctc"
-            label="Average CTC"
-            max={40}
-            value={draft.avgCtc}
-            onChange={(v) => set("avgCtc", v)}
-            hint="Shown under the disc, e.g. ₹9 - 32 LPA."
-          />
+          <RangeField id="field-ctc" label="Average CTC" units={["LPA"]} value={draft.avgCtc} onChange={(v) => set("avgCtc", v)} hint="Shown under the disc." />
           <Text
             id="field-tagline"
             label="Tagline"

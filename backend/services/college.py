@@ -21,6 +21,7 @@ from schemas.college import (
     RatingBreakdownSchema,
     ReviewSchema,
 )
+from schemas.college_detail import CollegeDetail
 from schemas.common import Meta
 
 
@@ -52,6 +53,8 @@ def _to_list_schema(college: College) -> CollegeListSchema:
                 mode=c.mode,
                 fees=c.fees,
                 exams=c.exams or [],
+                eligibility=c.eligibility or "",
+                seats=c.seats,
             )
             for c in (college.courses or [])
         ],
@@ -90,9 +93,26 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
             median=latest.median_package or "N/A",
             highest=latest.highest_package or "N/A",
             topRecruiters=latest.top_recruiters or [],
+            placedPercent=latest.placed_percent,
         )
 
     approved_reviews = [r for r in (college.reviews or []) if r.is_approved]
+
+    history = [
+        PlacementSchema(
+            year=p.year,
+            average=p.average_package or "N/A",
+            median=p.median_package or "N/A",
+            highest=p.highest_package or "N/A",
+            topRecruiters=p.top_recruiters or [],
+            placedPercent=p.placed_percent,
+        )
+        for p in sorted(college.placements or [], key=lambda p: p.year, reverse=True)
+    ]
+    try:
+        extra = CollegeDetail.model_validate(college.detail or {})
+    except Exception:  # stored junk never breaks the page: it shows without the extras
+        extra = CollegeDetail()
 
     # Format review date as "D Mon YYYY"
     def fmt_date(d) -> str:
@@ -110,10 +130,27 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
         about=college.about,
         ratingBreakdown=_rating_breakdown(college.reviews or []),
         placement=placement,
+        placements=history,
         cutoffs=[
             CutoffSchema(exam=c.exam, category=c.category, score=c.score)
             for c in (college.cutoffs or [])
         ],
+        shortName=extra.shortName,
+        tagline=extra.tagline,
+        locality=extra.locality,
+        logo=extra.logo,
+        brochureUrl=extra.brochureUrl,
+        updatedAt=college.updated_at.date().isoformat() if college.updated_at else "",
+        faculty=extra.faculty,
+        faqs=extra.faqs,
+        similarSlugs=extra.similarSlugs,
+        seo=extra.seo,
+        gallery=extra.gallery,
+        videos=extra.videos,
+        media=extra.media,
+        alerts=extra.alerts,
+        articles=extra.articles,
+        tabs=extra.tabs,
         reviews=[
             ReviewSchema(
                 author=r.author_name,
@@ -180,7 +217,7 @@ class CollegeService:
         rows = (await self.repo.db.execute(select(College).where(College.slug.in_(slugs)))).scalars().all()
         by_slug = {c.slug: c for c in rows}
         return [
-            {"slug": c.slug, "name": c.name, "city": c.city, "state": c.state}
+            {"slug": c.slug, "name": c.name, "city": c.city, "state": c.state, "image": c.image or ""}
             for c in (by_slug[s] for s in slugs if s in by_slug)
         ]
 

@@ -79,6 +79,9 @@ export type Course = {
   mode: string;
   fees: string;
   exams: string[];
+  /** "Graduation with 50%": shown under the programme. */
+  eligibility?: string;
+  seats?: number | null;
 };
 export type Placement = {
   year: number;
@@ -86,6 +89,8 @@ export type Placement = {
   median: string;
   highest: string;
   topRecruiters: string[];
+  /** Share of the batch placed, 0-100. */
+  placedPercent?: number | null;
 };
 export type Cutoff = { exam: string; category: string; score: string };
 export type Review = {
@@ -187,6 +192,13 @@ export type CourseFee = { category: string; fees: string };
 export type FeaturedStream = { stream: string; name: string; colleges: { slug: string; name: string }[] };
 
 export type HomeLocation = Location & {
+  /** The college the card's photo shows, named in a caption on it. Empty or absent: no caption. */
+  imageCaption?: string;
+  /** Figures over the photo. Absent or empty: worked out from the location's colleges. */
+  nirfRank?: number | null;
+  otherRankLabel?: string;
+  otherRank?: number | null;
+  topRating?: number | null;
   /** Categories and colleges picked in the admin. Empty: worked out from the city's colleges. */
   featured?: FeaturedStream[];
   /** Tags on the card, in label order. */
@@ -249,6 +261,8 @@ export type RecommendedUniversity = {
   name: string;
   city: string;
   state: string;
+  /** The college's own photo: /images/... or /api/uploads/... Empty or absent: the shared set. */
+  image?: string;
 };
 
 /** homeStreams now has slug so it matches mock-data.ts homeStreams */
@@ -286,11 +300,45 @@ export async function getHomeData(): Promise<HomeData> {
  * A college from the detail endpoint: the list fields plus the detail-only ones.
  * `placement` is null for a college with no placement record.
  */
+export type FacultyMember = { name: string; designation: string; department: string; qualification: string };
+export type CollegeFaculty = { count: number | null; studentRatio: string; phdPercent: number | null; members: FacultyMember[] };
+export type CollegeGalleryItem = { src: string; alt: string; name: string; highlight: boolean };
+export type CollegeVideoItem = { title: string; provider: "youtube" | "vimeo"; videoId: string };
+export type CollegeMediaItem = { title: string; publication: string; date: string; link: string };
+export type CollegeAlert = { title: string; date: string; kind: "Admission" | "Exam" | "Result" | "Notice"; isUrgent: boolean; link: string };
+export type CollegeArticle = { title: string; date: string; author: string; summary: string; body: string };
+
+/** A college's whole page: the record, and everything an editor writes for it in the admin. */
 export type CollegeDetail = Omit<College, "ratingBreakdown" | "placement" | "cutoffs" | "reviews"> & {
   ratingBreakdown: RatingBreakdown[];
   placement: Placement | null;
+  /** Every year's placement record, newest first. */
+  placements: Placement[];
   cutoffs: Cutoff[];
   reviews: Review[];
+  /** "BIMS Bengaluru": the masthead title. Empty: initials and city. */
+  shortName: string;
+  /** After the short name in the page heading. Empty: a default. */
+  tagline: string;
+  /** The street or area before the city. */
+  locality: string;
+  logo: string;
+  /** Empty: the Brochure button opens the enquiry form. */
+  brochureUrl: string;
+  /** When the record was last saved (ISO date). */
+  updatedAt: string;
+  faculty: CollegeFaculty;
+  faqs: { question: string; answer: string }[];
+  /** Colleges pinned as similar. Empty: the nearest by stream and rank. */
+  similarSlugs: string[];
+  seo: { metaTitle: string; metaDescription: string };
+  gallery: CollegeGalleryItem[];
+  videos: CollegeVideoItem[];
+  media: CollegeMediaItem[];
+  alerts: CollegeAlert[];
+  articles: CollegeArticle[];
+  /** Rich-text documents for the written sections (Admissions, Infrastructure, Scholarships), by template slug. */
+  tabs: Record<string, import("@/lib/rich-text").RichTextDoc>;
 };
 
 export type CollegeParams = {
@@ -1032,6 +1080,13 @@ export type LocationInput = {
   courseFees: CourseFee[];
   /** Categories the card offers and the colleges under each. */
   featured: FeaturedInput[];
+  /** The college the card's photo shows, named in a caption on it. Empty: no caption. */
+  imageCaption: string;
+  /** Figures over the photo. Empty: worked out from the location's colleges. */
+  nirfRank: number | null;
+  otherRankLabel: string;
+  otherRank: number | null;
+  topRating: number | null;
   /** On the homepage carousel. */
   show: boolean;
 };
@@ -1141,7 +1196,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "logo" | "gallery", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);
@@ -1595,4 +1650,90 @@ export async function adminUpdateArticle(token: string, slug: string, body: Reco
 
 export async function adminDeleteArticle(token: string, slug: string) {
   return adminRequest<{ message: string }>(token, "DELETE", `/admin/articles/${encodeURIComponent(slug)}`);
+}
+
+// ── Admin: the whole college record ───────────────────────────────────────
+
+export type RecordCourse = { name: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null };
+export type RecordPlacement = { year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[] };
+export type RecordCutoff = { exam: string; category: string; score: string };
+export type RecordReview = {
+  id?: string;
+  author: string;
+  course: string;
+  batch: string;
+  verified: boolean;
+  /** YYYY-MM-DD */
+  date: string;
+  rating: number;
+  body: string;
+  ratingPlacements: number | null;
+  ratingFaculty: number | null;
+  ratingInfrastructure: number | null;
+  ratingCampusLife: number | null;
+  approved: boolean;
+};
+export type RecordDetail = {
+  shortName: string;
+  tagline: string;
+  locality: string;
+  logo: string;
+  brochureUrl: string;
+  faculty: CollegeFaculty;
+  faqs: { question: string; answer: string }[];
+  similarSlugs: string[];
+  seo: { metaTitle: string; metaDescription: string };
+  gallery: CollegeGalleryItem[];
+  videos: CollegeVideoItem[];
+  media: CollegeMediaItem[];
+  alerts: CollegeAlert[];
+  articles: CollegeArticle[];
+  tabs: Record<string, import("@/lib/rich-text").RichTextDoc>;
+};
+
+/** A college as the editor holds it: everything its page shows. Saved together. */
+export type CollegeRecord = {
+  name: string;
+  city: string;
+  state: string;
+  ownership: "Private" | "Government" | "Deemed";
+  stream: string;
+  feesRange: string;
+  about: string;
+  established: number | null;
+  rankingAuthority: string;
+  rankingRank: number | null;
+  examsAccepted: string[];
+  tags: string[];
+  approvals: string[];
+  image: string;
+  courses: RecordCourse[];
+  placements: RecordPlacement[];
+  cutoffs: RecordCutoff[];
+  reviews: RecordReview[];
+  detail: RecordDetail;
+};
+export type LoadedCollegeRecord = CollegeRecord & { slug: string; updatedAt: string };
+
+/** What the editor's pickers offer, from the directory. */
+export type CollegePools = {
+  streams: string[];
+  exams: string[];
+  courses: string[];
+  colleges: { slug: string; name: string }[];
+  approvals: string[];
+  tags: string[];
+  states: string[];
+};
+
+export async function adminGetCollegeRecord(token: string, slug: string): Promise<LoadedCollegeRecord> {
+  return adminRequest<LoadedCollegeRecord>(token, "GET", `/admin/colleges/${encodeURIComponent(slug)}/record`);
+}
+
+export async function adminSaveCollegeRecord(token: string, slug: string, body: CollegeRecord) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/colleges/${encodeURIComponent(slug)}/record`, body);
+}
+
+export async function adminGetCollegePools(token: string): Promise<CollegePools> {
+  return adminRequest<CollegePools>(token, "GET", "/admin/colleges/pools");
 }

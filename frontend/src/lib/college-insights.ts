@@ -13,7 +13,6 @@
  */
 
 import type { CollegeDetail as College } from "@/lib/api";
-import { colleges } from "@/lib/mock-data";
 
 /**
  * The first number in a money string, in lakh. "₹18.4L Total Fees" → 18.4,
@@ -65,13 +64,17 @@ export function monogram(name: string): string {
 
 /**
  * The college among its stream's peers, ordered by rank — the Rankings card.
- * Real ranks from the directory, not an extrapolated table.
+ * Real ranks from the directory (`directory` is the colleges of the stream), not an extrapolated table.
  */
-export function rankingTable(college: College, limit = 6) {
-  const peers = colleges
+export function rankingTable(
+  college: College,
+  directory: { slug: string; name: string; stream: string; ranking: { authority: string; rank: number } }[],
+  limit = 6
+) {
+  const peers = directory
     .filter((entry) => entry.stream === college.stream)
     .sort((a, b) => a.ranking.rank - b.ranking.rank);
-  const position = peers.findIndex((entry) => entry.slug === college.slug);
+  const position = Math.max(0, peers.findIndex((entry) => entry.slug === college.slug));
   /* A window centred on this college, so it is always in the table. */
   const start = Math.max(0, Math.min(position - Math.floor(limit / 2), peers.length - limit));
   return {
@@ -160,6 +163,7 @@ export function faqsFor(college: College): Faq[] {
  */
 type EditorFields = {
   shortName?: string;
+  tagline?: string;
   seo?: { h1Tagline?: string };
   faqs?: Faq[];
 };
@@ -172,6 +176,7 @@ export function shortNameOf(college: College & EditorFields): string {
 /** The H1 after the short name. `intake` is the coming admission year. */
 export function taglineOf(college: College & EditorFields, intake: number): string {
   return (
+    college.tagline?.trim() ||
     college.seo?.h1Tagline?.trim() ||
     `Courses, Fees, Admission ${intake}, Placements, Ranking, Scholarships`
   );
@@ -193,4 +198,12 @@ export function overallScore(college: College): number {
   const rows = college.ratingBreakdown ?? [];
   if (rows.length === 0) return college.rating;
   return rows.reduce((total, row) => total + row.score, 0) / rows.length;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-08-28" -> "28 Aug 2026". Plain string work, so no time zone can shift the day. */
+export function longDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : iso;
 }

@@ -58,6 +58,13 @@ class LocationBody(BaseModel):
     courseFees: list[CourseFeeBody] | None = Field(default=None, max_length=MAX_COURSE_FEES)
     # Categories the card offers and the colleges under each. Omitted: left as they are.
     featured: list[FeaturedBody] | None = Field(default=None, max_length=MAX_FEATURED_STREAMS)
+    # The college the card's photo shows, named in a caption on it. Empty: no caption.
+    imageCaption: str = Field(default="", max_length=120)
+    # Figures over the photo. Empty: worked out from the location's colleges.
+    nirfRank: int | None = Field(default=None, ge=1, le=10000)
+    otherRankLabel: str = Field(default="", max_length=60)
+    otherRank: int | None = Field(default=None, ge=1, le=10000)
+    topRating: float | None = Field(default=None, ge=0, le=5)
     # On the homepage carousel. Omitted: a new location shows, an edited one is unchanged.
     show: bool | None = None
     model_config = ConfigDict(extra="forbid")
@@ -91,6 +98,12 @@ def _parse(body: dict) -> LocationBody:
     if district and district not in INDIA_DISTRICTS[state]:
         raise ValidationError(f"district: '{district}' is not a district of {state}.")
     return data
+
+
+def _check_figures(data: LocationBody) -> None:
+    """Another ranking's rank needs the ranking's name, and the name needs a rank."""
+    if (data.otherRank is None) != (data.otherRankLabel.strip() == ""):
+        raise ValidationError("otherRank: give both the ranking's name and its rank, or neither.")
 
 
 async def _check_featured(db, featured: list[FeaturedBody] | None) -> None:
@@ -129,6 +142,11 @@ def _apply(row: Location, data: LocationBody) -> None:
     row.description = data.description.strip()
     row.avg_package = data.avgPackage.strip()
     row.image = data.image
+    row.image_caption = data.imageCaption.strip()
+    row.nirf_rank = data.nirfRank
+    row.other_rank_label = data.otherRankLabel.strip()
+    row.other_rank = data.otherRank
+    row.top_rating = data.topRating
     if data.courseFees is not None:
         row.course_fees = [{"category": c.category.strip(), "fees": c.fees.strip()} for c in data.courseFees]
     if data.featured is not None:
@@ -226,6 +244,7 @@ async def list_labels(_admin: AdminPayload, db: DbSession):
 @router.post("", response_model=SuccessResponse[dict], status_code=201)
 async def create_location(_admin: AdminPayload, db: DbSession, body: dict):
     data = _parse(body)
+    _check_figures(data)
     await _check_featured(db, data.featured)
     slug = _slugify(data.name)
     if not slug:
@@ -248,6 +267,7 @@ async def create_location(_admin: AdminPayload, db: DbSession, body: dict):
 @router.patch("/{slug}", response_model=SuccessResponse[dict])
 async def update_location(slug: str, _admin: AdminPayload, db: DbSession, body: dict):
     data = _parse(body)
+    _check_figures(data)
     await _check_featured(db, data.featured)
     row = (await db.execute(select(Location).where(Location.slug == slug))).scalar_one_or_none()
     if row is None:
