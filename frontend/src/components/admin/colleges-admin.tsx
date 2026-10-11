@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { createCollege } from "@/lib/admin-actions";
-import type { College } from "@/lib/api";
+import type { College, IndiaGeo } from "@/lib/api";
 import {
   programs,
   rankingListsForProgram,
@@ -12,6 +12,7 @@ import {
 import { mediaUrl } from "@/lib/media";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { StateCityFields } from "@/components/admin/state-city-fields";
 import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
@@ -24,7 +25,7 @@ import { TextField, SelectField, Field, NameSlugFields } from "@/components/admi
  * enough attached to it that showing any of it inline makes the list unusable
  * once there are more than a handful of records.
  */
-export function CollegesAdmin({ colleges }: { colleges: College[] }) {
+export function CollegesAdmin({ colleges, geo = {} }: { colleges: College[]; geo?: IndiaGeo }) {
   const [query, setQuery] = useState("");
   const [programSlug, setProgramSlug] = useState("");
   const [rankingSlug, setRankingSlug] = useState("");
@@ -238,6 +239,7 @@ export function CollegesAdmin({ colleges }: { colleges: College[] }) {
         />
       )}
       <AddCollegeModal
+        geo={geo}
         open={adding}
         onClose={() => setAdding(false)}
         onSaved={() => showFlash("ok", "College added.")}
@@ -376,7 +378,7 @@ function ViewCollegeModal({
   );
 }
 
-function AddCollegeModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+function AddCollegeModal({ open, onClose, onSaved, geo }: { open: boolean; onClose: () => void; onSaved: () => void; geo: IndiaGeo }) {
   return (
     <AdminModal
       open={open}
@@ -405,6 +407,7 @@ function AddCollegeModal({ open, onClose, onSaved }: { open: boolean; onClose: (
       {/* A child of the modal, so its state is discarded when the modal closes
           rather than persisting into the next opening. */}
       <AddCollegeForm
+        geo={geo}
         onDone={() => {
           onSaved();
           onClose();
@@ -414,7 +417,7 @@ function AddCollegeModal({ open, onClose, onSaved }: { open: boolean; onClose: (
   );
 }
 
-function AddCollegeForm({ onDone }: { onDone: () => void }) {
+function AddCollegeForm({ onDone, geo }: { onDone: () => void; geo: IndiaGeo }) {
   const [state, formAction, pending] = useActionState(createCollege, undefined);
 
   // Close once the API has accepted the college; a failure stays open with its message.
@@ -440,8 +443,7 @@ function AddCollegeForm({ onDone }: { onDone: () => void }) {
         slugPlaceholder="bengaluru-institute-of-management"
       />
 
-      <TextField label="City" name="city" placeholder="Bengaluru" required />
-      <TextField label="State" name="state" placeholder="Karnataka" required />
+      <StateCityFields geo={geo} />
 
       <SelectField label="Type" name="institutionType" options={["College", "University"]} />
       <SelectField label="Ownership" name="ownership" options={["Private", "Government", "Deemed"]} />

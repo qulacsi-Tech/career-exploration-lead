@@ -68,7 +68,7 @@ export const adminNav: AdminNavSection[] = [
       */
       { label: "Collections", href: "/admin/collections", phase: 1 },
       { label: "Locations", href: "/admin/locations", phase: 1 },
-      { label: "Articles", href: "/admin/articles", phase: 2 },
+      { label: "Articles", href: "/admin/articles", phase: 1 },
       { label: "Static Pages", href: "/admin/pages", phase: 1 },
     ],
   },

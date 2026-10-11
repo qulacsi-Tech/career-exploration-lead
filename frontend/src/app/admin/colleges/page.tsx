@@ -1,4 +1,4 @@
-import { adminGetColleges, getCollegeOrNull } from "@/lib/api";
+import { adminGetColleges, adminGetGeo, getCollegeOrNull } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
 import { CollegesAdmin } from "@/components/admin/colleges-admin";
 
@@ -19,5 +19,7 @@ export default async function AdminCollegesPage() {
   const colleges = await Promise.all(
     listed.map((college) => getCollegeOrNull(college.slug).then((detail) => detail ?? college)),
   );
-  return <CollegesAdmin colleges={colleges} />;
+  // The state and district lists for the add form. Without them the form falls back to plain text boxes.
+  const geo = await withAdminToken((token) => adminGetGeo(token)).catch(() => ({}));
+  return <CollegesAdmin colleges={colleges} geo={geo} />;
 }
