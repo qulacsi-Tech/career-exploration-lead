@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from core.config import settings
 from core.database import engine
 from core.exceptions import AppException
+from core.migrate import run_migrations
 from routers import health
 from routers import colleges, exams, locations, articles, programs, leads, search, home, auth
 from routers import courses, rankings, admin as admin_router, sitemap as sitemap_router, study_abroad, admin_study_abroad, collections, admin_dashboard, admin_catalogue, admin_rankings, admin_collections, admin_homepage, admin_content, admin_home_copy, admin_programs, practice, admin_uploads, admin_locations, admin_fields, admin_band_colleges, admin_hero, admin_practice, admin_college_record
@@ -24,6 +25,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up %s", settings.PROJECT_NAME)
+    # Apply any migration that is not in the database yet, so a change to the models never meets an older database.
+    await run_migrations()
     yield
     await engine.dispose()
     logger.info("Shutdown complete")

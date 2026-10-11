@@ -15,10 +15,14 @@ COPY . .
 
 # Runs as an unprivileged user.
 # /app/uploads is created here so a fresh volume mounted on it is writable by "app".
-RUN useradd --create-home --uid 10001 app && mkdir -p /app/uploads && chown -R app /app
+RUN chmod +x /app/docker-entrypoint.sh \
+    && useradd --create-home --uid 10001 app && mkdir -p /app/uploads && chown -R app /app
 USER app
 
 EXPOSE 8000
+
+# The entrypoint applies any new migrations, then runs the command below.
+ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # Caddy is the only client, on the internal Docker network. --forwarded-allow-ips
 # trusts the proxy's X-Forwarded-* headers, so the client IP is the real one.
