@@ -622,6 +622,7 @@ function examBody(input: ExamInput) {
       .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
       .filter((f) => f.question && f.answer),
     image: input.image,
+    statusLabel: input.statusLabel.trim(),
   };
 }
 

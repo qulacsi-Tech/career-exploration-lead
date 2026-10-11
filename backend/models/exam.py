@@ -38,6 +38,8 @@ class Exam(Base):
     faqs = Column(JSONB, nullable=False, default=list, server_default="[]")  # [{"question", "answer"}]
     # Card photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).
     image = Column(String(200), nullable=False, default="", server_default="")
+    # The badge on the exam's card: Upcoming, Live, Expired or any words. Empty: no badge.
+    status_label = Column(String(40), nullable=False, default="", server_default="")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()

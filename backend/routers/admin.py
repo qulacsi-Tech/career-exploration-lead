@@ -218,6 +218,7 @@ class ExamUpdateBody(BaseModel):
     syllabus: Optional[str] = Field(default=None, max_length=8000)
     faqs: Optional[list[ExamFaqBody]] = Field(default=None, max_length=20)
     image: Optional[str] = Field(default=None, max_length=200)
+    statusLabel: Optional[str] = Field(default=None, max_length=40)
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
@@ -243,6 +244,7 @@ class ExamCreateBody(BaseModel):
     syllabus: Optional[str] = Field(default=None, max_length=8000)
     faqs: Optional[list[ExamFaqBody]] = Field(default=None, max_length=20)
     image: Optional[str] = Field(default=None, max_length=200)
+    statusLabel: Optional[str] = Field(default=None, max_length=40)
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
@@ -278,6 +280,7 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
         syllabus=body.syllabus or "",
         faqs=[f.model_dump() for f in body.faqs or []],
         image=body.image or "",
+        status_label=(body.statusLabel or "").strip(),
     ))
     await db.commit()
     return SuccessResponse[MessageResponse](data=MessageResponse(message=f"Exam '{body.slug}' created."))
@@ -307,6 +310,7 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
     if body.syllabus is not None:            values["syllabus"] = body.syllabus
     if body.faqs is not None:                values["faqs"] = [f.model_dump() for f in body.faqs]
     if body.image is not None:               values["image"] = body.image
+    if body.statusLabel is not None:         values["status_label"] = body.statusLabel.strip()
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))

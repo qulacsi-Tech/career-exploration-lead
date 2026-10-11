@@ -30,5 +30,7 @@ class ExamSchema(BaseModel):
     faqs: List[ExamFaqSchema] = []
     # Card photo. Empty: the card shows no photo.
     image: str = ""
+    # The badge on the card: Upcoming, Live, Expired or any words. Empty: no badge.
+    statusLabel: str = ""
 
     model_config = ConfigDict(populate_by_name=True)

@@ -154,6 +154,8 @@ export type Exam = {
   faqs?: ExamFaq[];
   /** Card photo: /images/... or /api/uploads/... Empty: no photo. */
   image?: string;
+  /** The badge on the card: Upcoming, Live, Expired or any words. Empty or absent: no badge. */
+  statusLabel?: string;
 };
 
 export type ExamFaq = { question: string; answer: string };
@@ -1064,6 +1066,7 @@ export type AdminExam = {
   syllabus: string;
   faqs: ExamFaq[];
   image: string;
+  statusLabel?: string;
   show: boolean;
 };
 
@@ -1092,6 +1095,8 @@ export type ExamInput = {
   syllabus: string;
   faqs: ExamFaq[];
   image: string;
+  /** The badge on the exam's card. Empty: none. */
+  statusLabel: string;
 };
 
 export async function adminGetTopExams(token: string): Promise<AdminTopExams> {

@@ -59,6 +59,7 @@ function toInput(e: AdminExam): ExamInput {
     syllabus: e.syllabus,
     faqs: e.faqs,
     image: e.image,
+    statusLabel: e.statusLabel ?? "",
   };
 }
 

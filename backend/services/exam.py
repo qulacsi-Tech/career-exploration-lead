@@ -30,6 +30,7 @@ def _to_schema(exam: Exam) -> ExamSchema:
         syllabus=exam.syllabus or "",
         faqs=[f for f in (exam.faqs or []) if f.get("question") and f.get("answer")],
         image=exam.image or "",
+        statusLabel=exam.status_label or "",
     )
 
 

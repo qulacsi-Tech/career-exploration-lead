@@ -8,6 +8,7 @@ import type { ExamCardCopy } from "@/lib/home-copy";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { DateField } from "@/components/admin/date-field";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { ExamStatusBadge } from "@/components/exam-status-badge";
 
 /*
   One exam, one full-width form on a single page (no tabs), so the width is used:
@@ -32,6 +33,7 @@ const input =
 
 export const MAX_TOP_EXAMS = 6;
 const MAX_SECTIONS = 30;
+const BADGE_PRESETS = ["Upcoming", "Live", "Expired"];
 
 const BLANK: ExamInput = {
   name: "",
@@ -51,6 +53,7 @@ const BLANK: ExamInput = {
   syllabus: "",
   faqs: [],
   image: "",
+  statusLabel: "",
 };
 
 function toInput(e: AdminExam): ExamInput {
@@ -72,6 +75,7 @@ function toInput(e: AdminExam): ExamInput {
     syllabus: e.syllabus,
     faqs: e.faqs,
     image: e.image,
+    statusLabel: e.statusLabel ?? "",
   };
 }
 
@@ -362,6 +366,43 @@ export function ExamModal({
         </div>
 
         <div className="space-y-5">
+          <section className={card} aria-labelledby="exam-h-badge">
+            <h3 id="exam-h-badge" className={heading}>Card badge</h3>
+            <p className="mt-1 text-xs text-ink-faint">A small label on the exam&apos;s card on the homepage.</p>
+            <div role="radiogroup" aria-label="Badge" className="mt-3 flex flex-wrap gap-2">
+              {[{ label: "None", value: "" }, ...BADGE_PRESETS.map((p) => ({ label: p, value: p }))].map((opt) => {
+                const on = draft.statusLabel.trim().toLowerCase() === opt.value.toLowerCase() && (opt.value !== "" || draft.statusLabel.trim() === "");
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => set("statusLabel", opt.value)}
+                    className={`rounded-full border px-3.5 py-1.5 text-sm transition ${on ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-line text-ink-soft hover:border-brand hover:text-brand"}`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <label htmlFor="exam-badge-custom" className="mt-4 block text-xs font-semibold text-ink">Or your own words</label>
+            <input
+              id="exam-badge-custom"
+              maxLength={40}
+              value={BADGE_PRESETS.some((p) => p.toLowerCase() === draft.statusLabel.trim().toLowerCase()) ? "" : draft.statusLabel}
+              onChange={(e) => set("statusLabel", e.target.value)}
+              placeholder="e.g. Results out, Admit card released"
+              className={input}
+            />
+            <p className="mt-1 text-xs text-ink-faint">{draft.statusLabel.length}/40</p>
+            {draft.statusLabel.trim() && (
+              <p className="mt-3 flex items-center gap-2 text-xs text-ink-soft">
+                Preview <ExamStatusBadge label={draft.statusLabel} />
+              </p>
+            )}
+          </section>
+
           <section className={card} aria-labelledby="exam-h-photo">
             <h3 id="exam-h-photo" className={heading}>Photo</h3>
             <div className="mt-4">

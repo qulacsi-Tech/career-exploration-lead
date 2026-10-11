@@ -4,6 +4,7 @@ import type { Exam } from "@/lib/api";
 import type { ExamCardCopy } from "@/lib/home-copy";
 import { mediaUrl } from "@/lib/media";
 import { KeyRound, Target } from "lucide-react";
+import { ExamStatusBadge } from "@/components/exam-status-badge";
 
 /**
  * Same travel-card format as TopCollegeCard: the photo occupies the top 228px
@@ -41,6 +42,9 @@ export function TopExamCard({ exam, labels }: { exam: Exam; labels: ExamCardCopy
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-focus-within:opacity-100" />
       </div>
+
+      {/* The badge: Upcoming, Live, Expired or the admin's own words. Above the photo, which grows under it on hover. */}
+      {exam.statusLabel?.trim() && <ExamStatusBadge label={exam.statusLabel} className="absolute left-6 top-6 z-20" />}
 
       {/* Reserves the photo's footprint in flow. The photo is absolute so it
           can grow on hover without reflowing the card, which means the copy

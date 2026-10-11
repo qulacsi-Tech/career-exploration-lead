@@ -9,6 +9,7 @@ import type { ExamCardCopy } from "@/lib/home-copy";
 import { mediaUrl } from "@/lib/media";
 import { AdminSection } from "@/components/admin/admin-section";
 import { ExamDetailModal } from "@/components/admin/exam-detail-modal";
+import { ExamStatusBadge } from "@/components/exam-status-badge";
 import { ExamModal, MAX_TOP_EXAMS } from "@/components/admin/exam-modal";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 
@@ -140,6 +141,7 @@ export function TopExamsEditor({ topExams, wording, streams }: { topExams: Admin
                         <span className="block truncate text-sm font-semibold text-ink">
                           {exam.show ? `${tickedIndex + 1}. ` : ""}
                           {exam.name}
+                          <ExamStatusBadge label={exam.statusLabel} className="ml-2 align-middle !px-2 !py-0.5 !text-[10px]" />
                         </span>
                         <span className="block truncate text-xs text-ink-soft">
                           {exam.conductingBody} · {exam.level}
