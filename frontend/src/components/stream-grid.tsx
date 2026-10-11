@@ -102,7 +102,8 @@ export function StreamGrid({
                       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft text-brand">
                         <Icon className="h-4 w-4" />
                       </span>
-                      <span className="font-display text-[13px] font-medium leading-tight text-ink">
+                      {/* A name longer than the disc holds wraps (even an unbroken string) and scrolls inside. */}
+                      <span className="coin-scroll max-h-[48px] max-w-full overflow-y-auto overscroll-contain font-display text-[13px] font-medium leading-tight text-ink [overflow-wrap:anywhere]">
                         {stream.name}
                       </span>
                     </span>
@@ -111,12 +112,15 @@ export function StreamGrid({
                         room for. Both are flavour rather than information; the
                         number people actually compare on is under the disc. */}
                     <span className="stream-coin-face--back stream-coin-face gap-1 border border-brand/30 bg-brand px-3.5 text-center text-white shadow-[0_16px_34px_-24px_rgba(28,33,40,0.6)]">
-                      {stream.badge && (
-                        <span className="text-[8px] font-medium uppercase tracking-[0.14em] text-white/75">
-                          {stream.badge}
-                        </span>
-                      )}
-                      {stream.tagline && <span className="text-[11px] font-normal leading-snug">{stream.tagline}</span>}
+                      {/* The badge and tagline sit in a box that scrolls when the text is longer than the disc can show. */}
+                      <span className="coin-scroll flex max-h-[84px] w-full flex-col items-center gap-1 overflow-y-auto overscroll-contain px-0.5 [overflow-wrap:anywhere]">
+                        {stream.badge && (
+                          <span className="text-[8px] font-medium uppercase tracking-[0.14em] text-white/75">
+                            {stream.badge}
+                          </span>
+                        )}
+                        {stream.tagline && <span className="text-[11px] font-normal leading-snug">{stream.tagline}</span>}
+                      </span>
                       <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider">
                         Explore <ArrowUpRight className="h-2.5 w-2.5" />
                       </span>

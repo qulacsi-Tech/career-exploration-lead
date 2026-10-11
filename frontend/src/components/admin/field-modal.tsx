@@ -162,7 +162,7 @@ export function FieldModal({ field, onClose }: { field: AdminField | null; onClo
               id="field-name"
               label="Name"
               required
-              max={80}
+              max={30}
               value={draft.name}
               onChange={(v) => set("name", v)}
               hint="Letters, numbers and spaces."
@@ -186,15 +186,15 @@ export function FieldModal({ field, onClose }: { field: AdminField | null; onClo
           <Text
             id="field-tagline"
             label="Tagline"
-            max={120}
+            max={50}
             value={draft.tagline}
             onChange={(v) => set("tagline", v)}
-            hint="On the back of the disc when someone points at it."
+            hint="On the back of the disc when someone points at it. Short enough to fit; longer text scrolls inside."
           />
           <Text
             id="field-badge"
             label="Badge"
-            max={60}
+            max={24}
             value={draft.badge}
             onChange={(v) => set("badge", v)}
             hint="The small line above the tagline, e.g. Highest Demand."
@@ -233,7 +233,7 @@ export function FieldModal({ field, onClose }: { field: AdminField | null; onClo
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft text-brand">
                 <FieldIcon name={draft.icon} className="h-4 w-4" />
               </span>
-              <span className="font-display text-[11px] font-medium leading-tight text-ink">{draft.name.trim() || "Name"}</span>
+              <span className="max-h-8 max-w-full overflow-hidden font-display text-[11px] font-medium leading-tight text-ink [overflow-wrap:anywhere]">{draft.name.trim() || "Name"}</span>
             </span>
             <span className="mt-2 text-[9px] font-medium uppercase tracking-[0.12em] text-ink-soft">Avg CTC</span>
             <span className="text-[11px] font-medium text-ink-soft">{draft.avgCtc.trim() || "—"}</span>

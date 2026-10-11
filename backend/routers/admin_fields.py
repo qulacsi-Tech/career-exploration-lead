@@ -35,10 +35,11 @@ ICON_PATTERN = re.compile(r"^[a-z0-9-]{1,30}$")
 
 
 class FieldBody(BaseModel):
-    name: str = Field(min_length=2, max_length=80)
+    # What fits on a 150 px disc: a name on two or three lines, a badge line and a short tagline.
+    name: str = Field(min_length=2, max_length=30)
     icon: str = Field(min_length=1, max_length=30)
-    tagline: str = Field(default="", max_length=120)
-    badge: str = Field(default="", max_length=60)
+    tagline: str = Field(default="", max_length=50)
+    badge: str = Field(default="", max_length=24)
     avgCtc: str = Field(default="", max_length=40)
     # Omitted: a new field shows, an edited one is unchanged.
     show: bool | None = None
