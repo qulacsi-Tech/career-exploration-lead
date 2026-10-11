@@ -219,7 +219,7 @@ export function AutoStoryFrame({
       className={`relative overflow-hidden py-20 ${onBrand ? "bg-brand" : `border-b border-line ${ground === "plain" ? "bg-bg" : "bg-bg-alt"}`}`}
     >
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto w-full max-w-[1700px] px-4 sm:px-6 lg:px-10">
         <div
           className={`relative overflow-hidden rounded-[36px] border shadow-[0_40px_110px_-50px_rgba(28,33,40,0.5)] backdrop-blur-2xl ${frame}`}
         >

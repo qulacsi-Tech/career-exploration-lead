@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   // Hides the floating Next.js dev badge in the bottom-left corner. Compile and
   // runtime errors are still surfaced. Dev-only — it never shipped to prod.
   devIndicators: false,
+  // Lets a production build go in its own folder (NEXT_DIST_DIR=.next-prod), so it can run beside `next dev`.
+  distDir: process.env.NEXT_DIST_DIR || undefined,
 
   experimental: {
     // Admin image uploads go through a Server Action. The default 1 MB cap is

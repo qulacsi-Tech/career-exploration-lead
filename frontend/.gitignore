@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Production build kept beside `next dev` (NEXT_DIST_DIR=.next-prod)
+/.next-prod
