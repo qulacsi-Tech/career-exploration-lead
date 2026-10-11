@@ -37,7 +37,28 @@ function fieldClass(invalid?: string) {
  * offending input; transport failures show a retry banner and leave the values
  * alone.
  */
-export function EnquiryForm({ streams, cities }: { streams: Option[]; cities: Option[] }) {
+export function EnquiryForm({
+  streams,
+  cities,
+  collegeSlug,
+  defaultStream = "",
+  defaultMessage = "",
+  source = "enquiry-page",
+  bare = false,
+}: {
+  streams: Option[];
+  cities: Option[];
+  /** The college the visitor is asking about. Sent with the lead so it is attributed to that college. */
+  collegeSlug?: string;
+  /** The stream the select starts on. */
+  defaultStream?: string;
+  /** What the message box starts with. */
+  defaultMessage?: string;
+  /** Where on the site the enquiry came from. */
+  source?: string;
+  /** Inside a dialog that already has its own frame: no outer card and no top margin. */
+  bare?: boolean;
+}) {
   const [status, setStatus] = useState<"idle" | "submitting" | "done">("idle");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -92,7 +113,7 @@ export function EnquiryForm({ streams, cities }: { streams: Option[]; cities: Op
       const response = await fetch("/api/enquiry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...raw, consent: raw.consent !== null, source: "enquiry-page" }),
+        body: JSON.stringify({ ...raw, consent: raw.consent !== null, source, ...(collegeSlug && { collegeSlug }) }),
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -127,7 +148,7 @@ export function EnquiryForm({ streams, cities }: { streams: Option[]; cities: Op
       <div
         ref={successRef}
         tabIndex={-1}
-        className="mt-8 rounded-2xl border border-brand/30 bg-brand-soft p-8 focus:outline-none"
+        className={`${bare ? "" : "mt-8 "}rounded-2xl border border-brand/30 bg-brand-soft p-8 focus:outline-none`}
       >
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white">
           <CheckCircle2 className="h-5 w-5" />
@@ -169,7 +190,7 @@ export function EnquiryForm({ streams, cities }: { streams: Option[]; cities: Op
   const busy = status === "submitting";
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} noValidate className="mt-8 rounded-2xl border border-line bg-surface p-6">
+    <form ref={formRef} onSubmit={handleSubmit} noValidate className={bare ? "" : "mt-8 rounded-2xl border border-line bg-surface p-6"}>
       {formError && (
         <div
           role="alert"
@@ -226,7 +247,7 @@ export function EnquiryForm({ streams, cities }: { streams: Option[]; cities: Op
           <select
             id="lead-stream"
             name="stream"
-            defaultValue=""
+            defaultValue={defaultStream}
             aria-invalid={!!errors.stream}
             aria-describedby={errors.stream ? "lead-stream-error" : undefined}
             className={fieldClass(errors.stream)}
@@ -262,6 +283,7 @@ export function EnquiryForm({ streams, cities }: { streams: Option[]; cities: Op
             name="message"
             rows={3}
             maxLength={1000}
+            defaultValue={defaultMessage}
             placeholder="Expected CAT percentile, budget, or a college you already have in mind."
             className={fieldClass()}
           />

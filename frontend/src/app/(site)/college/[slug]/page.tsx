@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { BellRing, Headset, MessagesSquare, PhoneCall, Sparkles } from "lucide-react";
@@ -28,6 +29,8 @@ import {
 import { sectionHref } from "@/lib/college-sections";
 import { getCollege, getCollegeSlugs, getSimilarColleges } from "@/lib/api";
 import type { College, CollegeDetail } from "@/lib/api";
+import { CollegeEnquiryModal } from "@/components/college/college-enquiry-modal";
+import { homeStreams, locations } from "@/lib/mock-data";
 
 export async function generateStaticParams() {
   try {
@@ -116,6 +119,16 @@ export default async function CollegeOverviewPage({
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
+      {/* Opens on ?enquire=1 (the Recommended programs cards link here). Reads the address, so it sits in Suspense. */}
+      <Suspense fallback={null}>
+        <CollegeEnquiryModal
+          collegeSlug={college.slug}
+          collegeName={college.name}
+          stream={college.stream}
+          streams={homeStreams.map((s) => ({ slug: s.slug, name: s.name }))}
+          cities={locations.map((l) => ({ slug: l.slug, name: l.name }))}
+        />
+      </Suspense>
       <h2 className="font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
         {college.name} Overview
       </h2>
@@ -222,6 +235,7 @@ export default async function CollegeOverviewPage({
       {/* Courses & fees */}
       {feeRows.length > 0 && (
         <DetailCard
+          id="courses"
           title="Courses & Fees"
           footer={
             <div className="flex flex-wrap items-center justify-between gap-4">
