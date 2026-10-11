@@ -1,7 +1,9 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ComparePicker } from "@/components/compare-picker";
 import { MAX_COMPARE, compareUrl } from "@/lib/comparison-data";
 
 /**
@@ -186,7 +188,9 @@ export function CompareToggle({
 }
 
 function CompareTray() {
-  const { entries: selected, slugs, remove, clear } = useCompare();
+  const { entries: selected, slugs, remove, clear, set, isFull } = useCompare();
+  const router = useRouter();
+  const [picking, setPicking] = useState(false);
   if (selected.length === 0) return null;
 
   const ready = selected.length >= 2;
@@ -229,19 +233,40 @@ function CompareTray() {
           Clear
         </button>
 
-        {ready ? (
+        {/* Opens the picker: every college, searchable, tick up to three. */}
+        {!isFull && (
+          <button
+            type="button"
+            onClick={() => setPicking(true)}
+            className={`rounded-full border px-5 py-2 text-sm font-medium transition hover:border-brand hover:text-brand ${
+              ready ? "border-line text-ink-soft" : "border-brand text-brand"
+            }`}
+          >
+            {ready ? "Add more" : "Add colleges"}
+          </button>
+        )}
+
+        {ready && (
           <Link
             href={compareUrl(slugs)}
             className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
           >
             Compare {selected.length}
           </Link>
-        ) : (
-          <span className="rounded-full border border-line px-5 py-2 text-sm font-medium text-ink-faint">
-            Add one more
-          </span>
         )}
       </div>
+
+      {picking && (
+        <ComparePicker
+          initial={selected}
+          onClose={() => setPicking(false)}
+          onApply={(picked) => {
+            set(picked);
+            setPicking(false);
+            router.push(compareUrl(picked.map((p) => p.slug)));
+          }}
+        />
+      )}
     </div>
   );
 }

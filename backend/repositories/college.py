@@ -56,6 +56,9 @@ def _apply_filters(stmt, params: CollegeFilterParams):
         stmt = stmt.order_by(College.rating.desc())
     elif params.sort == "views":
         stmt = stmt.order_by(College.view_count.desc())
+    elif params.sort == "name":
+        # A tie-break on id keeps the order stable from one page to the next.
+        stmt = stmt.order_by(College.name, College.id)
     else:  # popularity (default)
         stmt = stmt.order_by(College.review_count.desc())
 
