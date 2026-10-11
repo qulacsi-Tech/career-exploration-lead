@@ -8,6 +8,8 @@ import type { LocationCardCopy } from "@/lib/home-copy";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { RangeField } from "@/components/admin/range-field";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { cityNamesFor } from "@/lib/location-match";
+import { mediaUrl } from "@/lib/media";
 import { CategoriesPicker } from "@/components/admin/location-categories-picker";
 
 /*
@@ -16,7 +18,7 @@ import { CategoriesPicker } from "@/components/admin/location-categories-picker"
     Details       where it is, its name and count, and whether it shows
     Categories    which categories the card offers and the colleges listed under each
     Card content  the labels, and the figures over the photo (ranks, rating, average package)
-    Photo         the card's picture
+    Photo         the highlighted (sponsored) college and the card's picture
     Card wording  the fixed words on every card (shared, not per location)
 
   Add and edit are the same screen. One Save at the bottom saves the location, and
@@ -42,7 +44,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "details", label: "Details" },
   { id: "categories", label: "Categories & colleges" },
   { id: "content", label: "Card content" },
-  { id: "photo", label: "Photo" },
+  { id: "photo", label: "Highlighted college" },
   { id: "wording", label: "Card wording" },
 ];
 
@@ -58,6 +60,7 @@ const BLANK: LocationInput = {
   courseFees: [],
   featured: [],
   imageCaption: "",
+  highlightCollege: "",
   nirfRank: null,
   otherRankLabel: "",
   otherRank: null,
@@ -78,12 +81,18 @@ function toInput(loc: AdminHomeLocation): LocationInput {
     courseFees: loc.courseFees,
     featured: loc.featured,
     imageCaption: loc.imageCaption ?? "",
+    highlightCollege: loc.highlightCollege ?? "",
     nirfRank: loc.nirfRank ?? null,
     otherRankLabel: loc.otherRankLabel ?? "",
     otherRank: loc.otherRank ?? null,
     topRating: loc.topRating ?? null,
     show: loc.show,
   };
+}
+
+/** The slug the location has, or the one its name will make, for matching city spellings. */
+function slugOf(editing: AdminHomeLocation | null, name: string) {
+  return editing?.slug ?? name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 function Text({
@@ -197,6 +206,14 @@ export function LocationModal({
   };
 
   const suggestions = labelPool.map((l) => l.text).filter((text) => !hasLabel(text));
+
+  // Colleges in this location first: the ones whose city matches the location's name or district.
+  const cityNames = cityNamesFor(slugOf(editing, draft.name), draft.name);
+  const districtName = draft.district.trim().toLowerCase();
+  const isHere = (city: string) => cityNames.includes(city.toLowerCase()) || (districtName !== "" && city.toLowerCase() === districtName);
+  const inCity = picker.colleges.filter((c) => isHere(c.city));
+  const elsewhere = picker.colleges.filter((c) => !isHere(c.city));
+  const highlighted = picker.colleges.find((c) => c.slug === draft.highlightCollege);
 
   const canSave = draft.name.trim().length >= 2 && draft.state !== "";
   const wordingChanged =
@@ -411,6 +428,12 @@ export function LocationModal({
 
       {tab === "content" && (
         <div role="tabpanel" id="loc-panel-content" aria-labelledby="loc-tab-content" className="space-y-6">
+          {highlighted && (
+            <p className="max-w-3xl rounded-lg border border-line bg-bg-alt px-4 py-3 text-sm text-ink-soft">
+              The figures over the photo (ranks, rating, average package, courses) come from <strong className="text-ink">{highlighted.name}</strong>&apos;s own record, so there is nothing to type here. Change the college on the Highlighted college tab.
+            </p>
+          )}
+          {!highlighted && (
           <fieldset className="rounded-xl border border-line p-4">
             <legend className="px-2 text-xs font-semibold text-ink">Figures over the photo</legend>
             <p className="mb-4 max-w-3xl text-xs text-ink-faint">
@@ -442,6 +465,7 @@ export function LocationModal({
               <RangeField id="loc-avg" label="Average package" units={["LPA"]} value={draft.avgPackage} onChange={(v) => set("avgPackage", v)} hint="Placements: the salary range students get." />
             </div>
           </fieldset>
+          )}
 
           <fieldset>
             <legend className="text-xs font-semibold text-ink">
@@ -514,18 +538,50 @@ export function LocationModal({
       {tab === "photo" && (
         <div role="tabpanel" id="loc-panel-photo" aria-labelledby="loc-tab-photo" className="space-y-6">
           <div className="max-w-xl">
-            <label htmlFor="loc-caption" className="block text-xs font-semibold text-ink">College name on the photo</label>
-            <input id="loc-caption" maxLength={120} value={draft.imageCaption} onChange={(e) => set("imageCaption", e.target.value)} className={input} placeholder="e.g. Cascade Institute of Technology" />
-            <p className="mt-1 text-xs text-ink-faint">Optional. Shown as &ldquo;Featured: &hellip;&rdquo; on the photo. {draft.imageCaption.length}/120</p>
+            <label htmlFor="loc-highlight" className="block text-xs font-semibold text-ink">Highlighted college</label>
+            <select id="loc-highlight" value={draft.highlightCollege} onChange={(e) => set("highlightCollege", e.target.value)} className={input}>
+              <option value="">None</option>
+              {inCity.length > 0 && (
+                <optgroup label={`In ${draft.name.trim() || "this location"}`}>
+                  {inCity.map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
+                </optgroup>
+              )}
+              {elsewhere.length > 0 && (
+                <optgroup label={inCity.length > 0 ? "Other colleges" : "All colleges"}>
+                  {elsewhere.map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name} ({c.city})</option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <p className="mt-1 text-xs text-ink-faint">
+              Shown on the left of the card as &ldquo;Featured: &hellip;&rdquo;, and the figures over the photo come from it. Clicking the photo opens this college.
+            </p>
           </div>
+
           <div>
-          <p className="mb-2 text-xs font-semibold text-ink">College photo</p>
-          <ImageUploadField
-            kind="location"
-            value={draft.image}
-            onChange={(v) => set("image", v)}
-            fallbackNote="No photo. The card shows a plain dark background."
-          />
+            <p className="mb-2 text-xs font-semibold text-ink">Card photo</p>
+            {highlighted && !draft.image && (
+              <div className="mb-3 flex max-w-xl items-center gap-3 rounded-lg border border-line bg-bg-alt p-3">
+                {highlighted.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaUrl(highlighted.image)} alt="" className="h-16 w-24 shrink-0 rounded-md object-cover" />
+                ) : null}
+                <p className="text-xs text-ink-soft">
+                  {highlighted.image
+                    ? `The card uses ${highlighted.name}'s own photo. Upload one below to use a different picture on this card only.`
+                    : `${highlighted.name} has no photo yet. Upload one below for this card.`}
+                </p>
+              </div>
+            )}
+            <ImageUploadField
+              kind="location"
+              value={draft.image}
+              onChange={(v) => set("image", v)}
+              fallbackNote={highlighted ? "Optional. Without one, the college's own photo is used." : "No photo. The card shows a plain dark background."}
+            />
           </div>
         </div>
       )}

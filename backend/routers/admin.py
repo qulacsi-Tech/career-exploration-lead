@@ -9,7 +9,7 @@ automatically protected.
 
 import uuid
 from datetime import date
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Body, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -71,6 +71,7 @@ class CollegeUpdateBody(BaseModel):
     state: Optional[str] = None
     ownership: Optional[OwnershipType] = None
     stream: Optional[str] = None
+    institutionType: Optional[Literal["College", "University"]] = None
     feesRange: Optional[str] = None
     about: Optional[str] = None
     isFeature: Optional[bool] = None
@@ -94,6 +95,7 @@ class CollegeCreateBody(BaseModel):
     state: str = Field(min_length=1, max_length=200)
     ownership: OwnershipType
     stream: str = Field(min_length=1, max_length=100)
+    institutionType: Literal["College", "University"] = "College"
     feesRange: Optional[str] = Field(default=None, max_length=100)
     about: Optional[str] = None
     rankingAuthority: Optional[str] = Field(default=None, max_length=100)
@@ -123,6 +125,7 @@ async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db
         state=body.state,
         ownership=body.ownership,
         stream=body.stream,
+        institution_type=body.institutionType,
         fees_range=body.feesRange,
         about=body.about,
         ranking_authority=body.rankingAuthority,
@@ -151,6 +154,7 @@ async def admin_update_college(
     if body.state is not None:        values["state"] = body.state
     if body.ownership is not None:    values["ownership"] = body.ownership
     if body.stream is not None:       values["stream"] = body.stream
+    if body.institutionType is not None: values["institution_type"] = body.institutionType
     if body.feesRange is not None:    values["fees_range"] = body.feesRange
     if body.about is not None:        values["about"] = body.about
     if body.isFeature is not None:    values["is_featured"] = body.isFeature

@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveProgramRecord, saveRecommendedPrograms } from "@/lib/admin-actions";
-import type { AdminProgram, ProgramInput } from "@/lib/api";
+import type { AdminProgram, ProgramInput, ProgramSourceCourse } from "@/lib/api";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { DurationField, FeesField } from "@/components/admin/duration-fees-fields";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 
 /*
@@ -19,7 +20,7 @@ import { ImageUploadField } from "@/components/admin/image-upload-field";
 */
 
 const input =
-  "mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
+  "mt-1.5 w-full rounded-lg border border-line bg-bg px-3.5 py-3 text-base text-ink focus:border-brand focus:outline-none";
 
 export const MAX_ROW = 6;
 
@@ -91,6 +92,8 @@ export function ProgramModal({
   program,
   rowSlugs,
   colleges,
+  courses,
+  takenSlugs,
   onClose,
 }: {
   /** The programme to edit, or null to add a new one. */
@@ -99,6 +102,10 @@ export function ProgramModal({
   rowSlugs: string[];
   /** Directory colleges, offered as universities. */
   colleges: { slug: string; name: string }[];
+  /** Courses colleges already offer. A new programme is picked from these. */
+  courses: ProgramSourceCourse[];
+  /** The slugs programmes already use. */
+  takenSlugs: string[];
   /** `message` is set when something was saved or added. */
   onClose: (message?: string) => void;
 }) {
@@ -114,6 +121,47 @@ export function ProgramModal({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // A new programme starts from an existing course. Nothing shows below the picker until one is chosen.
+  const [source, setSource] = useState<ProgramSourceCourse | null>(null);
+  const [query, setQuery] = useState("");
+  const [address, setAddress] = useState<string | undefined>(undefined);
+
+  const isOnline = (mode: string) => /online|distance/i.test(mode);
+  const usable = (src: string) => src.startsWith("/api/uploads/") || src.startsWith("/images/");
+  // The page address: the course's name, or the name with the college when another programme has it.
+  const addressFor = (course: ProgramSourceCourse) => {
+    const base = slugify(course.name);
+    return takenSlugs.includes(base) ? slugify(`${course.name} ${course.collegeName}`) : base;
+  };
+  const isTaken = (course: ProgramSourceCourse) => takenSlugs.includes(slugify(`${course.name} ${course.collegeName}`));
+
+  const pick = (course: ProgramSourceCourse) => {
+    const online = isOnline(course.mode);
+    setSource(course);
+    setAddress(addressFor(course));
+    setDraft((d) => ({
+      ...d,
+      name: course.name,
+      universityName: course.collegeName,
+      universitySlug: course.collegeSlug,
+      onlineDuration: online ? course.duration : "",
+      onlineFees: online ? course.fees : "",
+      onCampusDuration: online ? "" : course.duration,
+      onCampusFees: online ? "" : course.fees,
+      // The college's own photo to begin with; the Photo box below replaces it.
+      image: usable(course.collegeImage) ? course.collegeImage : "",
+    }));
+    setError(null);
+  };
+
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = courses
+    .filter((c) => {
+      const hay = `${c.name} ${c.collegeName} ${c.mode} ${c.duration}`.toLowerCase();
+      return words.every((w) => hay.includes(w));
+    })
+    .slice(0, 50);
+
   const set = <K extends keyof ProgramInput>(key: K, value: ProgramInput[K]) => {
     setDraft((d) => ({ ...d, [key]: value }));
     setError(null);
@@ -125,12 +173,13 @@ export function ProgramModal({
     setError(null);
   };
 
-  const canSave = draft.name.trim().length >= 2 && draft.universityName.trim().length >= 2 && draft.universitySlug.length >= 2;
+  const picking = !editing && source === null;
+  const canSave = !picking && draft.name.trim().length >= 2 && draft.universityName.trim().length >= 2 && draft.universitySlug.length >= 2;
 
   const save = () => {
     setError(null);
     startTransition(async () => {
-      const saved = await saveProgramRecord(editing ? editing.slug : null, draft);
+      const saved = await saveProgramRecord(editing ? editing.slug : null, draft, address);
       if ("error" in saved) {
         setError(saved.error);
         return;
@@ -158,7 +207,7 @@ export function ProgramModal({
         </p>
       )}
       <div className="ml-auto flex flex-wrap items-center gap-3">
-        {!canSave && <span className="text-xs text-amber-800">Enter the programme name and the university.</span>}
+        {!canSave && <span className="text-xs text-amber-800">{picking ? "Choose a course to start from." : "Enter the programme name and the university."}</span>}
         <button type="button" onClick={() => onClose()} disabled={pending} className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-brand disabled:opacity-50">
           Cancel
         </button>
@@ -173,12 +222,69 @@ export function ProgramModal({
     <AdminModal
       open
       onClose={() => onClose()}
-      size="lg"
+      size="wide"
       title={editing ? `Edit ${editing.name}` : "Add programme"}
-      description="The programme's details and photo, whether it is active, and whether it is in the homepage row."
+      description={editing ? "The programme's details and photo, whether it is active, and whether it is in the homepage row." : "Pick a course a college already offers. Its details come across, and you add whatever is missing."}
       footer={footer}
     >
       <div className="space-y-5">
+        {!editing && (
+          <div>
+            <label htmlFor="prog-search" className="block text-xs font-semibold text-ink">
+              Course <span className="text-brand">*</span>
+            </label>
+            {source ? (
+              <div className="mt-1.5 flex items-center justify-between gap-3 rounded-lg border border-brand/40 bg-brand-soft px-3 py-2.5">
+                <p className="min-w-0 text-sm text-ink">
+                  <span className="font-semibold">{source.name}</span>
+                  <span className="text-ink-soft"> · {source.collegeName} · {source.mode}</span>
+                </p>
+                <button type="button" onClick={() => { setSource(null); setQuery(""); }} className="shrink-0 rounded-md border border-line bg-bg px-2.5 py-1 text-xs text-ink-soft hover:border-brand hover:text-brand">
+                  Change
+                </button>
+              </div>
+            ) : (
+              <>
+                <input id="prog-search" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by course, college, mode or duration" className={input} autoComplete="off" />
+                <ul role="listbox" aria-label="Courses" className="mt-2 max-h-72 divide-y divide-line overflow-y-auto rounded-lg border border-line bg-bg">
+                  {matches.map((c) => {
+                    const used = isTaken(c);
+                    return (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={false}
+                          disabled={used}
+                          onClick={() => pick(c)}
+                          className="flex w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-3 py-2.5 text-left hover:bg-bg-alt disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <span className="text-sm font-medium text-ink">
+                            {c.name}
+                            <span className="font-normal text-ink-soft"> · {c.collegeName}</span>
+                          </span>
+                          <span className="text-xs text-ink-faint">
+                            {[c.mode, c.duration, c.fees].filter(Boolean).join(" · ")}
+                            {used && " · already a programme"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {matches.length === 0 && (
+                    <li className="px-3 py-4 text-center text-sm text-ink-soft">
+                      {courses.length === 0 ? "No college has a course yet. Add courses to a college first." : `No course matches \u201c${query}\u201d.`}
+                    </li>
+                  )}
+                </ul>
+                <p className="mt-1 text-xs text-ink-faint">{courses.length} courses across all colleges. Showing up to 50.</p>
+              </>
+            )}
+          </div>
+        )}
+
+        {!picking && (
+        <>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Text id="prog-name" label="Programme name" required max={500} value={draft.name} onChange={(v) => set("name", v)} hint={editing ? "The page address stays the same after a rename." : "Becomes the page address."} />
           <div>
@@ -194,8 +300,8 @@ export function ProgramModal({
         <fieldset className="rounded-xl border border-line p-4">
           <legend className="px-2 text-xs font-semibold text-ink">Online</legend>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            <Text id="prog-od" label="Duration" max={100} value={draft.onlineDuration} onChange={(v) => set("onlineDuration", v)} hint="e.g. 8 months." />
-            <Text id="prog-of" label="Fees" max={200} value={draft.onlineFees} onChange={(v) => set("onlineFees", v)} hint="e.g. INR 4,00,000." />
+            <DurationField id="prog-od" label="Duration" value={draft.onlineDuration} onChange={(v) => set("onlineDuration", v)} hint="A number, then days, months or years." />
+            <FeesField id="prog-of" label="Fees" value={draft.onlineFees} onChange={(v) => set("onlineFees", v)} hint="An amount, in rupees unless you pick another currency." />
             <Text id="prog-on" label="Fees note" max={200} value={draft.onlineFeesNote} onChange={(v) => set("onlineFeesNote", v)} hint="e.g. (including taxes)." />
           </div>
         </fieldset>
@@ -203,8 +309,8 @@ export function ProgramModal({
         <fieldset className="rounded-xl border border-line p-4">
           <legend className="px-2 text-xs font-semibold text-ink">On campus</legend>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <Text id="prog-cd" label="Duration" max={100} value={draft.onCampusDuration} onChange={(v) => set("onCampusDuration", v)} hint="e.g. 1 year." />
-            <Text id="prog-cf" label="Fees" max={200} value={draft.onCampusFees} onChange={(v) => set("onCampusFees", v)} hint="e.g. USD 17,000 (indicative)." />
+            <DurationField id="prog-cd" label="Duration" value={draft.onCampusDuration} onChange={(v) => set("onCampusDuration", v)} hint="A number, then days, months or years." />
+            <FeesField id="prog-cf" label="Fees" value={draft.onCampusFees} onChange={(v) => set("onCampusFees", v)} hint="An amount, in rupees unless you pick another currency." />
           </div>
         </fieldset>
 
@@ -229,6 +335,8 @@ export function ProgramModal({
             </span>
           </label>
         </div>
+        </>
+        )}
       </div>
     </AdminModal>
   );

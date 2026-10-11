@@ -16,6 +16,8 @@ from sqlalchemy import select
 
 from core.dependencies import AdminPayload, DbSession
 from core.exceptions import ConflictError, NotFoundError, ValidationError
+from models.college import College
+from models.course import Course
 from models.program import Program
 from models.site_content import SiteContent
 from schemas.common import SuccessResponse
@@ -112,12 +114,37 @@ async def _row_slugs(db) -> list[str]:
     return list(row.data) if row and isinstance(row.data, list) else []
 
 
+async def _source_courses(db) -> list[dict]:
+    """Every course a college offers, which a programme can be made from."""
+    rows = (
+        await db.execute(
+            select(Course, College.slug, College.name, College.image)
+            .join(College, College.id == Course.college_id)
+            .order_by(Course.name, College.name)
+        )
+    ).all()
+    return [
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "mode": c.mode,
+            "duration": c.duration,
+            "fees": c.fees,
+            "collegeSlug": slug,
+            "collegeName": name,
+            "collegeImage": image or "",
+        }
+        for c, slug, name, image in rows
+    ]
+
+
 @router.get("", response_model=SuccessResponse[dict])
 async def admin_list_programs(_admin: AdminPayload, db: DbSession):
     programs = (await db.execute(select(Program).order_by(Program.name))).scalars().all()
     return SuccessResponse[dict](data={
         "programs": [_out(p) for p in programs],
         "recommended": await _row_slugs(db),
+        "courses": await _source_courses(db),
     })
 
 

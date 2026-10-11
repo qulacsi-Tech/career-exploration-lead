@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
   filter, so colleges of different types can go into one row.
 */
 
-export type PickableCollege = { slug: string; name: string; stream: string; city: string };
+export type PickableCollege = { slug: string; name: string; stream: string; city: string; institutionType?: string };
 
 export function CollegeMultiPicker({
   colleges,
@@ -32,15 +32,16 @@ export function CollegeMultiPicker({
   hideType?: boolean;
 }) {
   const [type, setType] = useState("");
+  const [kind, setKind] = useState("");
   const [query, setQuery] = useState("");
 
   const q = query.trim().toLowerCase();
   const shown = useMemo(
     () =>
       colleges.filter(
-        (c) => (!type || c.stream === type) && (!q || `${c.name} ${c.city}`.toLowerCase().includes(q))
+        (c) => (!type || c.stream === type) && (!kind || (c.institutionType ?? "College") === kind) && (!q || `${c.name} ${c.city}`.toLowerCase().includes(q))
       ),
-    [colleges, type, q]
+    [colleges, type, kind, q]
   );
 
   const chosen = new Set(selected);
@@ -60,6 +61,16 @@ export function CollegeMultiPicker({
   return (
     <div>
       <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-40">
+          <label htmlFor={`${idPrefix}-kind`} className="block text-xs font-semibold text-ink">
+            Institution
+          </label>
+          <select id={`${idPrefix}-kind`} value={kind} onChange={(e) => setKind(e.target.value)} className={`${input} mt-1.5`}>
+            <option value="">Colleges and universities</option>
+            <option value="College">Colleges</option>
+            <option value="University">Universities</option>
+          </select>
+        </div>
         {!hideType && (
         <div className="min-w-44">
           <label htmlFor={`${idPrefix}-type`} className="block text-xs font-semibold text-ink">
@@ -121,7 +132,7 @@ export function CollegeMultiPicker({
                 />
                 <span className="min-w-0 flex-1 truncate text-ink">{c.name}</span>
                 <span className="shrink-0 text-xs text-ink-faint">
-                  {c.city} · {c.stream}
+                  {c.institutionType ?? "College"} · {c.city} · {c.stream}
                 </span>
               </label>
             </li>

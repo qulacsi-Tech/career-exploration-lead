@@ -443,6 +443,7 @@ function AddCollegeForm({ onDone }: { onDone: () => void }) {
       <TextField label="City" name="city" placeholder="Bengaluru" required />
       <TextField label="State" name="state" placeholder="Karnataka" required />
 
+      <SelectField label="Type" name="institutionType" options={["College", "University"]} />
       <SelectField label="Ownership" name="ownership" options={["Private", "Government", "Deemed"]} />
       <SelectField
         label="Stream"

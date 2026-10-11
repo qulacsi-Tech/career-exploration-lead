@@ -174,7 +174,8 @@ export default async function Home() {
       {/* Recommended Programs — live from API */}
       {programs.length > 0 && (
         <AutoStoryFrame
-          tone="brand"
+          layout="split"
+          ground="plain"
           title={copy.programs.heading}
           highlight={copy.programs.accent}
           items={programs.map((program) => ({
@@ -184,12 +185,11 @@ export default async function Home() {
             subline: `Offered at ${program.university}`,
             images: programPhotos(program.slug, program.image),
             imageAlt: `${program.name} program visual`,
+            // One line per mode, and only the parts that exist: nothing is shown for a blank.
             facts: [
-              { label: "Online duration", value: program.online.duration },
-              { label: "Online fees",     value: program.online.fees },
-              { label: "On-campus duration", value: program.onCampus.duration },
-              { label: "On-campus fees",  value: program.onCampus.fees },
-            ],
+              { label: "Online", value: [program.online.duration, program.online.fees].filter(Boolean).join("  ·  ") },
+              { label: "On campus", value: [program.onCampus.duration, program.onCampus.fees].filter(Boolean).join("  ·  ") },
+            ].filter((fact) => fact.value),
             href: `/courses/${program.slug}`,
             cta: copy.programs.buttonLabel,
           }))}
@@ -248,22 +248,20 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Recommended Universities — live from API */}
+      {/* Recommended colleges and universities: two at a time, in the order the admin chose */}
       {universities.length > 0 && (
         <AutoStoryFrame
+          layout="split"
           title={copy.universities.heading}
           highlight={copy.universities.accent}
           items={universities.map((university) => ({
             key: university.slug,
-            eyebrow: `${university.city}, ${university.state}`,
+            eyebrow: university.institutionType || "College",
             headline: university.name,
-            subline: copy.universities.itemSubline,
+            subline: [university.city, university.state].filter(Boolean).join(", "),
             images: universityPhotos(university.slug, university.image),
             imageAlt: `${university.name} campus`,
-            facts: [
-              { label: "City",  value: university.city },
-              { label: "State", value: university.state },
-            ],
+            facts: copy.universities.itemSubline ? [{ label: "", value: copy.universities.itemSubline }] : [],
             href: `/college/${university.slug}`,
             cta: copy.universities.buttonLabel,
           }))}

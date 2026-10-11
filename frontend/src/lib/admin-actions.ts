@@ -91,13 +91,13 @@ import { DEFAULT_HOME_COPY, type HomeCopy } from "@/lib/home-copy";
 export type AdminActionResult = { ok: true } | { error: string };
 
 const COLLEGE_EDIT_FIELDS = [
-  "name", "city", "state", "ownership", "stream", "feesRange", "about",
+  "name", "city", "state", "ownership", "stream", "institutionType", "feesRange", "about",
   "rankingRank", "rankingAuthority", "coursesOffered", "established",
   "examsAccepted", "tags", "approvals",
 ] as const;
 
 const COLLEGE_CREATE_FIELDS = [
-  "name", "city", "state", "ownership", "stream", "feesRange", "about", "established",
+  "name", "city", "state", "ownership", "stream", "institutionType", "feesRange", "about", "established",
 ] as const;
 
 const EXAM_EDIT_FIELDS = [
@@ -887,8 +887,8 @@ function programRecord(input: ProgramInput) {
 }
 
 /** Creates a programme (slug null) or saves one. Returns the programme's slug. */
-export async function saveProgramRecord(slug: string | null, input: ProgramInput): Promise<{ slug: string } | { error: string }> {
-  const address = slug ?? input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+export async function saveProgramRecord(slug: string | null, input: ProgramInput, newAddress?: string): Promise<{ slug: string } | { error: string }> {
+  const address = slug ?? newAddress ?? input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   if (address.length < 2) return { error: "name: use letters or numbers." };
   const result = await attempt("/admin/sections/homepage", (token) =>
     slug ? adminUpdateProgram(token, slug, programRecord(input)) : adminCreateProgram(token, { slug: address, ...programRecord(input) })

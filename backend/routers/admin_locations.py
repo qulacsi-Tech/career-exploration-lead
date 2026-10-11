@@ -58,8 +58,10 @@ class LocationBody(BaseModel):
     courseFees: list[CourseFeeBody] | None = Field(default=None, max_length=MAX_COURSE_FEES)
     # Categories the card offers and the colleges under each. Omitted: left as they are.
     featured: list[FeaturedBody] | None = Field(default=None, max_length=MAX_FEATURED_STREAMS)
-    # The college the card's photo shows, named in a caption on it. Empty: no caption.
+    # Older cards: a typed college name shown as a caption. Superseded by `highlightCollege`.
     imageCaption: str = Field(default="", max_length=120)
+    # Slug of the college the card highlights. Empty: none.
+    highlightCollege: str = Field(default="", max_length=200)
     # Figures over the photo. Empty: worked out from the location's colleges.
     nirfRank: int | None = Field(default=None, ge=1, le=10000)
     otherRankLabel: str = Field(default="", max_length=60)
@@ -130,6 +132,17 @@ async def _check_featured(db, featured: list[FeaturedBody] | None) -> None:
                 raise ValidationError(f"featured: '{slug}' is not a {f.stream.strip()} college.")
 
 
+async def _check_highlight(db, slug: str) -> None:
+    slug = slug.strip()
+    if not slug:
+        return
+    from models.college import College
+
+    found = (await db.execute(select(College.id).where(College.slug == slug))).scalar_one_or_none()
+    if found is None:
+        raise ValidationError(f"highlightCollege: unknown college '{slug}'.")
+
+
 def _slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
@@ -143,6 +156,7 @@ def _apply(row: Location, data: LocationBody) -> None:
     row.avg_package = data.avgPackage.strip()
     row.image = data.image
     row.image_caption = data.imageCaption.strip()
+    row.highlight_college = data.highlightCollege.strip()
     row.nirf_rank = data.nirfRank
     row.other_rank_label = data.otherRankLabel.strip()
     row.other_rank = data.otherRank
@@ -202,12 +216,12 @@ async def picker(_admin: AdminPayload, db: DbSession):
     """Every category and its colleges: what the card editor's pickers offer."""
     from models.college import College
 
-    rows = (await db.execute(select(College.slug, College.name, College.stream, College.city).order_by(College.name))).all()
+    rows = (await db.execute(select(College.slug, College.name, College.stream, College.city, College.image, College.institution_type).order_by(College.name))).all()
     streams = sorted({r.stream for r in rows})
     return SuccessResponse[dict](
         data={
             "streams": streams,
-            "colleges": [{"slug": r.slug, "name": r.name, "stream": r.stream, "city": r.city} for r in rows],
+            "colleges": [{"slug": r.slug, "name": r.name, "stream": r.stream, "city": r.city, "image": r.image or "", "institutionType": r.institution_type or "College"} for r in rows],
         }
     )
 
@@ -246,6 +260,7 @@ async def create_location(_admin: AdminPayload, db: DbSession, body: dict):
     data = _parse(body)
     _check_figures(data)
     await _check_featured(db, data.featured)
+    await _check_highlight(db, data.highlightCollege)
     slug = _slugify(data.name)
     if not slug:
         raise ValidationError("name: use letters or numbers.")
@@ -269,6 +284,7 @@ async def update_location(slug: str, _admin: AdminPayload, db: DbSession, body: 
     data = _parse(body)
     _check_figures(data)
     await _check_featured(db, data.featured)
+    await _check_highlight(db, data.highlightCollege)
     row = (await db.execute(select(Location).where(Location.slug == slug))).scalar_one_or_none()
     if row is None:
         raise NotFoundError("Location")

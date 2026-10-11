@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Building2, ArrowUpRight, GraduationCap, Layers, Medal, Star, Trophy, Wallet, type LucideIcon } from "lucide-react";
+import { MapPin, Building2, BookOpen, ArrowUpRight, GraduationCap, Layers, Medal, Star, Trophy, Wallet, type LucideIcon } from "lucide-react";
 import { DEFAULT_HOME_COPY, type LocationCardCopy, type SectionCopy } from "@/lib/home-copy";
 import type { HomeLocation } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
@@ -118,32 +118,43 @@ function DestinationCard({
   // data behind it is shown, so the strip never carries a dash or an invented number; the first
   // four that have data are used, in this order.
   // A figure the admin set wins; otherwise it is worked out from the colleges.
-  const derivedNirf = bestRank(colleges, (authority) => /nirf/i.test(authority));
-  const derivedOther = bestRank(colleges, (authority) => !/nirf/i.test(authority));
-  const nirfRank = location.nirfRank ?? derivedNirf?.rank;
-  const other = location.otherRank && location.otherRankLabel ? { authority: location.otherRankLabel, rank: location.otherRank } : derivedOther;
+  const highlight = location.highlightCollege ?? null;
+  // A highlighted card shows that college's own record, nothing typed in by hand. Otherwise a figure
+  // the admin set wins, and the rest are worked out from the location's colleges.
+  const own = highlight?.rank && highlight.rankingAuthority ? { authority: highlight.rankingAuthority, rank: highlight.rank } : undefined;
+  const isNirf = (authority: string) => /nirf/i.test(authority);
+  const nirf = highlight ? (own && isNirf(own.authority) ? own.rank : undefined) : (location.nirfRank ?? bestRank(colleges, isNirf)?.rank);
+  const other = highlight
+    ? own && !isNirf(own.authority) ? own : undefined
+    : location.otherRank && location.otherRankLabel
+      ? { authority: location.otherRankLabel, rank: location.otherRank }
+      : bestRank(colleges, (authority) => !isNirf(authority));
   const ratings = colleges.map((c) => c.rating ?? 0).filter((r) => r > 0);
-  const topRating = location.topRating ?? (ratings.length > 0 ? Math.max(...ratings) : undefined);
+  const topRating = highlight ? (highlight.rating ?? undefined) : (location.topRating ?? (ratings.length > 0 ? Math.max(...ratings) : undefined));
+  const avgPackage = highlight ? highlight.avgPackage : location.avgPackage;
   const candidates: (OverlayStat | null)[] = [
-    nirfRank ? { icon: Trophy, label: "Top NIRF rank", value: `#${nirfRank}` } : null,
+    nirf ? { icon: Trophy, label: "NIRF rank", value: `#${nirf}` } : null,
     other ? { icon: Medal, label: `${other.authority} rank`, value: `#${other.rank}` } : null,
-    topRating ? { icon: Star, label: "Top rated", value: `${topRating.toFixed(1)} / 5` } : null,
-    location.avgPackage ? { icon: Wallet, label: "Avg. package", value: location.avgPackage } : null,
+    topRating ? { icon: Star, label: highlight ? "Rating" : "Top rated", value: `${topRating.toFixed(1)} / 5` } : null,
+    avgPackage ? { icon: Wallet, label: "Avg. package", value: avgPackage } : null,
+    highlight?.coursesOffered ? { icon: BookOpen, label: "Courses", value: String(highlight.coursesOffered) } : null,
     branches.length > 0 ? { icon: Layers, label: "Streams", value: String(branches.length) } : null,
     colleges.length > 0 ? { icon: GraduationCap, label: "Colleges listed", value: String(colleges.length) } : null,
   ];
   const stats = candidates.filter((stat): stat is OverlayStat => stat !== null).slice(0, 4);
-  // The photo is a college's, uploaded in the admin; the caption names that college.
-  const photo = location.image;
-  const caption = location.imageCaption ?? "";
+  // The highlighted college's own photo, unless a picture was uploaded for this card.
+  const photo = location.image || highlight?.image || "";
+  const caption = highlight?.name ?? location.imageCaption ?? "";
   const photoAlt = caption ? `${caption} campus` : `${location.name} campus destination`;
   const href = `/location/${location.slug}`;
+  // On a highlighted card the photo opens that college; the heading and buttons still open the location.
+  const photoHref = highlight ? `/college/${highlight.slug}` : href;
   return (
     <div
       className={`hub-stack-card group relative grid h-full w-full grid-cols-1 gap-4 overflow-hidden rounded-[32px] border border-line bg-surface p-3 shadow-[0_30px_70px_-30px_rgba(28,33,40,0.4)] md:grid-cols-2 md:gap-8 md:p-4 lg:gap-12`}
     >
       {/* Photo: exactly the left half of the card, with an overlay of rankings and placements. A plain strip at the top on a phone. */}
-      <Link href={href} aria-label={`${location.name} colleges`} className="relative block h-48 overflow-hidden rounded-[22px] bg-brand-ink md:h-full">
+      <Link href={photoHref} aria-label={highlight ? `${highlight.name}` : `${location.name} colleges`} className="relative block h-48 overflow-hidden rounded-[22px] bg-brand-ink md:h-full">
         {photo.startsWith("/api/") ? (
           // Uploaded in the admin: served by the API, so a plain img rather than next/image.
           // eslint-disable-next-line @next/next/no-img-element
@@ -163,32 +174,69 @@ function DestinationCard({
             priority={index < 2}
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/45" />
 
-        <span className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white backdrop-blur-md transition-all duration-300 group-hover:border-transparent group-hover:bg-white group-hover:text-black">
-          <ArrowUpRight className="h-4 w-4" />
-        </span>
+        {/* A column over the photo (badges, the name, the figures) so a short card never lets them overlap. */}
+        <div className="absolute inset-0 flex flex-col p-2.5 sm:p-3">
+          <div className="flex items-start justify-between gap-2">
+            {highlight ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white shadow-sm">
+                <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                Featured
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink shadow-sm backdrop-blur">
+                <Building2 className="h-3 w-3 text-brand" aria-hidden="true" />
+                {location.collegeCount}+ {card.institutionsLabel}
+              </span>
+            )}
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white backdrop-blur-md transition-all duration-300 group-hover:border-transparent group-hover:bg-white group-hover:text-black">
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
 
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink shadow-sm backdrop-blur">
-          <Building2 className="h-3.5 w-3.5 text-brand" />
-          {location.collegeCount}+ {card.institutionsLabel}
-        </span>
+          {/* The college, as a heading in the middle of the photo: where it is, its name, a line about it. */}
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-2 py-2 text-center">
+            {caption && (
+              <>
+                {highlight && (highlight.stream || highlight.city) && (
+                  <p className="text-[10px] font-light uppercase tracking-[0.28em] text-white/75 sm:text-[11px]">
+                    {[highlight.stream, highlight.city].filter(Boolean).join("  ·  ")}
+                  </p>
+                )}
+                <p className="line-clamp-3 font-display text-xl font-light leading-tight tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.55)] sm:text-2xl lg:text-[1.75rem]">
+                  {caption}
+                </p>
+                {highlight && (
+                  <span aria-hidden="true" className="h-px w-10 bg-white/50" />
+                )}
+                {highlight?.about && (
+                  <p className="line-clamp-2 max-w-md text-xs font-light leading-relaxed text-white/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)] sm:line-clamp-3 sm:text-[13px]">
+                    {highlight.about}
+                  </p>
+                )}
+                {highlight && (highlight.established || highlight.ownership) && (
+                  <p className="text-[10px] font-light tracking-[0.18em] text-white/60">
+                    {[highlight.established ? `Est. ${highlight.established}` : "", highlight.ownership].filter(Boolean).join("  ·  ")}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
 
-        {/* Overlay: the figures a student weighs a city by, centred over the lower part of the photo. */}
-        {stats.length > 0 && (
-          <div className="absolute inset-x-3 bottom-5 flex flex-col items-center gap-2">
-            {caption && <p className="max-w-full truncate rounded-full bg-black/35 px-3 py-1 text-[11px] font-medium tracking-wide text-white/90 backdrop-blur">Featured: {caption}</p>}
-            <dl className="grid max-w-full grid-cols-2 gap-y-4 rounded-3xl border border-white/25 bg-white/10 px-2 py-4 text-center text-white shadow-[0_18px_40px_-18px_rgba(0,0,0,0.6)] backdrop-blur-xl sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none sm:divide-x sm:divide-white/20">
+          {/* The figures: small tiles that wrap to as many rows as the width needs. */}
+          {stats.length > 0 && (
+            <dl className="grid grid-cols-[repeat(auto-fit,minmax(4.5rem,1fr))] gap-1.5">
               {stats.map((stat) => (
-                <div key={stat.label} className="flex min-w-0 flex-col items-center px-4 sm:px-5">
-                  <stat.icon className="h-4 w-4 text-white/80" strokeWidth={1.75} aria-hidden="true" />
-                  <dd className="mt-1.5 whitespace-nowrap font-display text-xl font-semibold leading-none tracking-tight">{stat.value}</dd>
-                  <dt className="mt-1.5 text-[10px] font-medium uppercase leading-tight tracking-[0.14em] text-white/70">{stat.label}</dt>
+                <div key={stat.label} className="flex min-w-0 flex-col items-center rounded-xl border border-white/20 bg-white/10 px-1.5 py-2 text-center text-white backdrop-blur-md">
+                  <stat.icon className="h-3 w-3 text-white/80" strokeWidth={1.75} aria-hidden="true" />
+                  <dd className="mt-1 max-w-full truncate font-display text-sm font-semibold leading-none tracking-tight sm:text-base">{stat.value}</dd>
+                  <dt className="mt-1 max-w-full text-[9px] font-medium uppercase leading-tight tracking-[0.1em] text-white/70">{stat.label}</dt>
                 </div>
               ))}
             </dl>
-          </div>
-        )}
+          )}
+        </div>
       </Link>
 
       {/* Words: tags, "City, State" on one line, then a button per branch. */}

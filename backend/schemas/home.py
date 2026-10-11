@@ -56,6 +56,8 @@ class RecommendedUniversitySchema(BaseModel):
     name: str
     city: str
     state: str
+    image: str = ""
+    institutionType: str = "College"
 
     model_config = ConfigDict(populate_by_name=True)
 

@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.location import Location, LocationLabel, LocationLabelLink
@@ -46,6 +47,15 @@ class LocationRepository:
 
         result = await self.db.execute(select(College.slug, College.name, College.stream).where(College.slug.in_(slugs)))
         return {slug: (name, stream) for slug, name, stream in result.all()}
+
+    async def highlight_colleges(self, slugs: List[str]) -> dict:
+        """{college slug: College} for the colleges that exist."""
+        if not slugs:
+            return {}
+        from models.college import College
+
+        result = await self.db.execute(select(College).options(selectinload(College.placements)).where(College.slug.in_(slugs)))
+        return {c.slug: c for c in result.scalars()}
 
     async def get_by_slug(self, slug: str) -> Optional[Location]:
         result = await self.db.execute(select(Location).where(Location.slug == slug))

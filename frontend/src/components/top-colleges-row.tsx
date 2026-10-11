@@ -98,6 +98,9 @@ export function TopCollegesRow({
 
   const shown = state?.colleges ?? [];
   const slides = total > 3;
+  const viewAll = (
+    <ViewAllButton href={current && tabs.length > 1 ? `/${streamSlug(current)}/colleges` : viewAllHref}>{viewAllLabel}</ViewAllButton>
+  );
 
   return (
     <>
@@ -133,6 +136,7 @@ export function TopCollegesRow({
             hasMore={hasMore}
             loadingMore={state?.loading}
             onLoadMore={loadMore}
+            action={viewAll}
           />
         ) : (
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -143,9 +147,8 @@ export function TopCollegesRow({
         )}
       </div>
 
-      <div className="mt-10 text-center">
-        <ViewAllButton href={current && tabs.length > 1 ? `/${streamSlug(current)}/colleges` : viewAllHref}>{viewAllLabel}</ViewAllButton>
-      </div>
+      {/* A short list has no slider controls to share a row with, so the button sits alone, bottom right. */}
+      {!slides && <div className="mt-5 flex justify-end">{viewAll}</div>}
     </>
   );
 }

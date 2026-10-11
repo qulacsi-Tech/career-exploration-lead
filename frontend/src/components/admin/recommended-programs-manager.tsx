@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { removeProgram, saveRecommendedPrograms, setProgramActive } from "@/lib/admin-actions";
-import type { AdminProgram, ProgramInput } from "@/lib/api";
+import type { AdminProgram, ProgramInput, ProgramSourceCourse } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { AdminSection } from "@/components/admin/admin-section";
 import { MAX_ROW, ProgramModal } from "@/components/admin/program-modal";
@@ -43,11 +43,14 @@ const toInput = (p: AdminProgram): ProgramInput => ({
 export function RecommendedProgramsManager({
   programs,
   recommended,
+  courses,
   colleges,
 }: {
   programs: AdminProgram[];
   /** The programme slugs in the homepage row, in order. */
   recommended: string[];
+  /** Courses colleges offer: a new programme is made from one. */
+  courses: ProgramSourceCourse[];
   colleges: { slug: string; name: string }[];
 }) {
   const router = useRouter();
@@ -295,6 +298,8 @@ export function RecommendedProgramsManager({
           program={modal}
           rowSlugs={inRow}
           colleges={colleges}
+          courses={courses}
+          takenSlugs={list.map((p) => p.slug)}
           onClose={(message) => {
             setModal(undefined);
             if (message) showFlash("ok", message);

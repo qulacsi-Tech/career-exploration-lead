@@ -4,7 +4,7 @@ import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
 import { HeroItemsEditor } from "@/components/admin/hero-items-editor";
 import { TopCollegesEditor } from "@/components/admin/top-colleges-editor";
 import { TopExamsEditor } from "@/components/admin/top-exams-editor";
-import type { AdminField, AdminHeroItem, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, LinkPool, AdminNews, LocationPicker, AdminProgram, AdminTopExams, AdminUniversities } from "@/lib/api";
+import type { AdminField, AdminHeroItem, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, LinkPool, AdminNews, LocationPicker, AdminProgram, ProgramSourceCourse, AdminTopExams, AdminUniversities } from "@/lib/api";
 import { RecommendedProgramsManager } from "@/components/admin/recommended-programs-manager";
 import { HomeLocationsEditor } from "@/components/admin/home-locations-editor";
 import { HomeFieldsEditor } from "@/components/admin/home-fields-editor";
@@ -48,7 +48,7 @@ export function HomepageSectionsAdmin({
   highlights: TileDraft[];
   topExams: AdminTopExams;
   copy: HomeCopy;
-  programs: { programs: AdminProgram[]; recommended: string[] };
+  programs: { programs: AdminProgram[]; recommended: string[]; courses: ProgramSourceCourse[] };
   universities: AdminUniversities;
   locations: AdminHomeLocation[];
   geo: IndiaGeo;
@@ -158,6 +158,7 @@ export function HomepageSectionsAdmin({
               <RecommendedProgramsManager
                 programs={programs.programs}
                 recommended={programs.recommended}
+                courses={programs.courses}
                 colleges={locationPicker.colleges.map((c) => ({ slug: c.slug, name: c.name }))}
               />
             </div>

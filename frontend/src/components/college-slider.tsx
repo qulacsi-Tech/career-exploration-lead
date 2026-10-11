@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { College } from "@/lib/api";
 import { TopCollegeCard } from "@/components/top-college-card";
@@ -37,6 +37,7 @@ export function CollegeSlider({
   hasMore = false,
   loadingMore = false,
   onLoadMore,
+  action,
 }: {
   colleges: College[];
   /** The card button's text, from the homepage's card wording. */
@@ -47,6 +48,8 @@ export function CollegeSlider({
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  /** Sits at the right end of the controls row, e.g. a View All button. */
+  action?: ReactNode;
 }) {
   const trackRef = useRef<HTMLUListElement>(null);
   const headingId = useId();
@@ -151,7 +154,9 @@ export function CollegeSlider({
         </ul>
       </div>
 
-      <div className="mt-6 flex items-center justify-center gap-4">
+      <div className="mt-6 grid grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_auto_1fr]">
+        <div className="hidden sm:block" />
+        <div className="flex items-center justify-center gap-4">
         <SliderButton
           direction="prev"
           disabled={atStart}
@@ -178,6 +183,8 @@ export function CollegeSlider({
         </ul>
 
         <SliderButton direction="next" disabled={atEnd && !hasMore} onClick={() => (atEnd ? onLoadMore?.() : scrollByPage(1))} />
+        </div>
+        <div className="flex justify-center sm:justify-end">{action}</div>
       </div>
 
       {/* Position readout for screen readers. Polite, so it does not interrupt

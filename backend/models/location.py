@@ -26,6 +26,9 @@ class Location(Base):
     featured = Column(JSONB, nullable=False, default=list, server_default="[]")
     # The college the card's photo shows, named in a small caption on it. Empty: no caption.
     image_caption = Column(String(200), nullable=False, default="", server_default="")
+    # Slug of the college the card highlights (sponsored). Its photo is the card's photo unless `image`
+    # holds one uploaded for the card. Empty: no highlighted college.
+    highlight_college = Column(String(200), nullable=False, default="", server_default="")
     # Figures over the card's photo. Empty: worked out from the colleges in the location.
     nirf_rank = Column(Integer, nullable=True)
     other_rank_label = Column(String(60), nullable=False, default="", server_default="")

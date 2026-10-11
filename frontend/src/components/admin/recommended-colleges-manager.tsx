@@ -92,6 +92,7 @@ export function RecommendedCollegesManager({ chosen, picker }: { chosen: string[
                 <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
                   <th scope="col" className="w-12 px-3 py-2.5 font-semibold">#</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">College</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">Type</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">City</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Category</th>
                   <th scope="col" className="px-3 py-2.5 text-right font-semibold">Actions</th>
@@ -102,6 +103,7 @@ export function RecommendedCollegesManager({ chosen, picker }: { chosen: string[
                   <tr key={c.slug} className="border-b border-line-soft last:border-b-0">
                     <td className="px-3 py-3 text-xs font-semibold text-ink-soft">{i + 1}</td>
                     <td className="px-3 py-3 font-medium text-ink">{c.name}</td>
+                    <td className="px-3 py-3 text-ink-soft">{c.institutionType ?? "College"}</td>
                     <td className="px-3 py-3 text-ink-soft">{c.city}</td>
                     <td className="px-3 py-3 text-ink-soft">{c.stream}</td>
                     <td className="px-3 py-3">

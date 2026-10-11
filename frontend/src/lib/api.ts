@@ -191,7 +191,28 @@ export type CourseFee = { category: string; fees: string };
 /** A category a card offers, with the colleges the admin picked under it. */
 export type FeaturedStream = { stream: string; name: string; colleges: { slug: string; name: string }[] };
 
+/** The college a card highlights (sponsors): its own photo and the figures drawn from it. */
+export type HighlightCollege = {
+  slug: string;
+  name: string;
+  image?: string;
+  rankingAuthority?: string | null;
+  rank?: number | null;
+  rating?: number | null;
+  avgPackage?: string;
+  coursesOffered?: number;
+  city?: string;
+  state?: string;
+  stream?: string;
+  established?: number | null;
+  ownership?: string;
+  /** A short plain-text excerpt of the college's About text. */
+  about?: string;
+};
+
 export type HomeLocation = Location & {
+  /** The highlighted college. Its photo is the card's photo unless `image` holds one uploaded for the card. */
+  highlightCollege?: HighlightCollege | null;
   /** The college the card's photo shows, named in a caption on it. Empty or absent: no caption. */
   imageCaption?: string;
   /** Figures over the photo. Absent or empty: worked out from the location's colleges. */
@@ -263,6 +284,8 @@ export type RecommendedUniversity = {
   state: string;
   /** The college's own photo: /images/... or /api/uploads/... Empty or absent: the shared set. */
   image?: string;
+  /** "College" or "University". Absent on an API older than the type field. */
+  institutionType?: string;
 };
 
 /** homeStreams now has slug so it matches mock-data.ts homeStreams */
@@ -1091,7 +1114,7 @@ export async function adminPutHomeCopy(token: string, part: keyof HomeCopy, valu
 
 /** One location in the admin's carousel editor. `show` is the checkbox. */
 export type FeaturedInput = { stream: string; colleges: string[] };
-export type AdminHomeLocation = Omit<HomeLocation, "featured"> & { show: boolean; district: string; featured: FeaturedInput[] };
+export type AdminHomeLocation = Omit<HomeLocation, "featured" | "highlightCollege"> & { highlightCollege?: string; show: boolean; district: string; featured: FeaturedInput[] };
 
 export async function adminGetHomeLocations(token: string): Promise<AdminHomeLocation[]> {
   const data = await adminRequest<{ locations: AdminHomeLocation[] }>(token, "GET", "/admin/homepage/locations");
@@ -1117,7 +1140,9 @@ export type LocationInput = {
   courseFees: CourseFee[];
   /** Categories the card offers and the colleges under each. */
   featured: FeaturedInput[];
-  /** The college the card's photo shows, named in a caption on it. Empty: no caption. */
+  /** The college the card highlights, by slug. Empty: none. */
+  highlightCollege: string;
+  /** Older cards: a typed college name shown as a caption. */
   imageCaption: string;
   /** Figures over the photo. Empty: worked out from the location's colleges. */
   nirfRank: number | null;
@@ -1132,7 +1157,7 @@ export type LocationInput = {
 export type AdminLocationLabel = { id: string | null; text: string; slugs: string[] };
 
 /** Every category and its colleges, for the card editor's pickers. */
-export type LocationPicker = { streams: string[]; colleges: { slug: string; name: string; stream: string; city: string }[] };
+export type LocationPicker = { streams: string[]; colleges: { slug: string; name: string; stream: string; city: string; image?: string; institutionType?: string }[] };
 
 export async function adminGetLocationPicker(token: string): Promise<LocationPicker> {
   return adminRequest<LocationPicker>(token, "GET", "/admin/locations/picker");
@@ -1289,8 +1314,21 @@ export type ProgramInput = {
   image: string;
 };
 
-export async function adminListPrograms(token: string): Promise<{ programs: AdminProgram[]; recommended: string[] }> {
-  return adminRequest<{ programs: AdminProgram[]; recommended: string[] }>(token, "GET", "/admin/programs");
+/** A course a college offers, which a programme can be made from. */
+export type ProgramSourceCourse = {
+  id: string;
+  name: string;
+  mode: string;
+  duration: string;
+  fees: string;
+  collegeSlug: string;
+  collegeName: string;
+  collegeImage: string;
+};
+
+export async function adminListPrograms(token: string): Promise<{ programs: AdminProgram[]; recommended: string[]; courses: ProgramSourceCourse[] }> {
+  const data = await adminRequest<{ programs: AdminProgram[]; recommended: string[]; courses?: ProgramSourceCourse[] }>(token, "GET", "/admin/programs");
+  return { ...data, courses: data.courses ?? [] };
 }
 
 export async function adminCreateProgram(token: string, body: Record<string, unknown>) {
@@ -1735,6 +1773,8 @@ export type CollegeRecord = {
   state: string;
   ownership: "Private" | "Government" | "Deemed";
   stream: string;
+  /** Whether this listing is a college or a university. */
+  institutionType: "College" | "University";
   feesRange: string;
   about: string;
   established: number | null;

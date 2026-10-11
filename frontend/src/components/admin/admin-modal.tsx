@@ -26,7 +26,7 @@ export function AdminModal({
   title: string;
   description?: string;
   footer?: ReactNode;
-  size?: "md" | "lg" | "full";
+  size?: "md" | "lg" | "wide" | "full";
   children: ReactNode;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -60,6 +60,8 @@ export function AdminModal({
           size === "full"
             ? // Near-viewport: a record with eight tabs of fields needs the room.
               "h-[95vh] sm:h-[calc(100vh-2.5rem)] sm:max-w-[calc(100vw-2.5rem)]"
+            : size === "wide"
+              ? "max-h-[90vh] sm:max-w-[90vw]"
             : size === "lg"
               ? "max-h-[90vh] sm:max-w-3xl"
               : "max-h-[90vh] sm:max-w-lg"

@@ -91,6 +91,7 @@ class RecordBody(BaseModel):
     state: str = Field(min_length=1, max_length=200)
     ownership: Literal["Private", "Government", "Deemed"]
     stream: str = Field(min_length=1, max_length=100)
+    institutionType: Literal["College", "University"] = "College"
     feesRange: str = Field(default="", max_length=100)
     about: str = Field(default="", max_length=20000)
     established: Optional[int] = Field(default=None, ge=1000, le=YEAR)
@@ -137,6 +138,7 @@ def _record(c: College) -> dict:
         "state": c.state,
         "ownership": c.ownership.value if hasattr(c.ownership, "value") else str(c.ownership),
         "stream": c.stream,
+        "institutionType": c.institution_type or "College",
         "feesRange": c.fees_range or "",
         "about": c.about or "",
         "established": c.established,
@@ -273,6 +275,7 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
     row.state = data.state.strip()
     row.ownership = OwnershipType(data.ownership)
     row.stream = data.stream.strip()
+    row.institution_type = data.institutionType
     row.fees_range = data.feesRange.strip() or None
     row.about = data.about.strip() or None
     row.established = data.established

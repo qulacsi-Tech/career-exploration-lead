@@ -32,6 +32,26 @@ class FeaturedStreamSchema(BaseModel):
     colleges: list[FeaturedCollegeSchema] = []
 
 
+class HighlightCollegeSchema(BaseModel):
+    """The college a card highlights: its name, its own photo and the figures drawn from it."""
+
+    slug: str
+    name: str
+    image: str = ""
+    rankingAuthority: str | None = None
+    rank: int | None = None
+    rating: float | None = None
+    avgPackage: str = ""
+    coursesOffered: int = 0
+    city: str = ""
+    state: str = ""
+    stream: str = ""
+    established: int | None = None
+    ownership: str = ""
+    # A short plain-text excerpt of the college's About text.
+    about: str = ""
+
+
 class HomeLocationSchema(LocationSchema):
     """A homepage carousel card: the directory entry plus what the card shows."""
 
@@ -45,6 +65,8 @@ class HomeLocationSchema(LocationSchema):
     featured: list[FeaturedStreamSchema] = []
     # The college the card's photo shows, named in a caption on it. Empty: no caption.
     imageCaption: str = ""
+    # The highlighted (sponsored) college. The card shows its photo unless `image` is set.
+    highlightCollege: HighlightCollegeSchema | None = None
     # Figures over the photo. Empty: the page works them out from the location's colleges.
     nirfRank: int | None = None
     otherRankLabel: str = ""

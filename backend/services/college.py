@@ -217,7 +217,7 @@ class CollegeService:
         rows = (await self.repo.db.execute(select(College).where(College.slug.in_(slugs)))).scalars().all()
         by_slug = {c.slug: c for c in rows}
         return [
-            {"slug": c.slug, "name": c.name, "city": c.city, "state": c.state, "image": c.image or ""}
+            {"slug": c.slug, "name": c.name, "city": c.city, "state": c.state, "image": c.image or "", "institutionType": c.institution_type or "College"}
             for c in (by_slug[s] for s in slugs if s in by_slug)
         ]
 

@@ -66,7 +66,7 @@ export function TopExamsRow({
         ))}
       </div>
 
-      <div className="mt-10 text-center">
+      <div className="mt-5 flex justify-end">
         <ViewAllButton href={current ? `/exams?stream=${encodeURIComponent(current)}` : "/exams"}>{labels.viewAllLabel}</ViewAllButton>
       </div>
     </>

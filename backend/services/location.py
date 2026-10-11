@@ -1,3 +1,5 @@
+import re
+from html import unescape
 from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +11,7 @@ from schemas.location import (
     CourseFeeSchema,
     FeaturedCollegeSchema,
     FeaturedStreamSchema,
+    HighlightCollegeSchema,
     HomeLocationSchema,
     LocationSchema,
 )
@@ -41,7 +44,39 @@ def _featured(loc: Location, colleges: dict) -> List[FeaturedStreamSchema]:
     return out
 
 
-def _to_home_schema(loc: Location, labels: List[str], colleges: dict) -> HomeLocationSchema:
+def _excerpt(html: str | None, limit: int = 170) -> str:
+    """The start of a college's About text as plain text, cut at a word."""
+    text = unescape(re.sub(r"<[^>]*>", " ", html or ""))
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0].rstrip(",.;:") + "…"
+
+
+def _highlight(loc: Location, highlights: dict) -> HighlightCollegeSchema | None:
+    college = highlights.get(loc.highlight_college or "")
+    if college is None:
+        return None
+    latest = max(college.placements or [], key=lambda p: p.year, default=None)
+    return HighlightCollegeSchema(
+        slug=college.slug,
+        name=college.name,
+        image=college.image or "",
+        rankingAuthority=college.ranking_authority,
+        rank=college.ranking_rank,
+        rating=college.rating or None,
+        avgPackage=(latest.average_package or "") if latest else "",
+        coursesOffered=college.courses_offered or 0,
+        city=college.city,
+        state=college.state,
+        stream=college.stream,
+        established=college.established,
+        ownership=getattr(college.ownership, "value", college.ownership) or "",
+        about=_excerpt(college.about),
+    )
+
+
+def _to_home_schema(loc: Location, labels: List[str], colleges: dict, highlights: dict) -> HomeLocationSchema:
     return HomeLocationSchema(
         slug=loc.slug,
         name=loc.name,
@@ -54,6 +89,7 @@ def _to_home_schema(loc: Location, labels: List[str], colleges: dict) -> HomeLoc
         image=loc.image,
         featured=_featured(loc, colleges),
         imageCaption=loc.image_caption or "",
+        highlightCollege=_highlight(loc, highlights),
         nirfRank=loc.nirf_rank,
         otherRankLabel=loc.other_rank_label or "",
         otherRank=loc.other_rank,
@@ -74,7 +110,8 @@ class LocationService:
         labels = await self.repo.labels_for([l.id for l in locs])
         picked = sorted({s for l in locs for row in (l.featured or []) for s in row.get("colleges", [])})
         colleges = await self.repo.college_names(picked)
-        return [_to_home_schema(l, labels.get(l.id, []), colleges) for l in locs]
+        highlights = await self.repo.highlight_colleges(sorted({l.highlight_college for l in locs if l.highlight_college}))
+        return [_to_home_schema(l, labels.get(l.id, []), colleges, highlights) for l in locs]
 
     async def get_location(self, slug: str) -> LocationSchema:
         loc = await self.repo.get_by_slug(slug)

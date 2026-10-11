@@ -26,6 +26,8 @@ class College(Base):
     state = Column(String(200), nullable=False, index=True)
     ownership = Column(Enum(OwnershipType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     stream = Column(String(100), nullable=False, index=True)
+    # "College" or "University": what kind of institution this listing is.
+    institution_type = Column(String(20), nullable=False, default="College", server_default="College")
     ranking_authority = Column(String(100), nullable=True)
     ranking_rank = Column(Integer, nullable=True)
     rating = Column(Float, nullable=False, default=0.0)

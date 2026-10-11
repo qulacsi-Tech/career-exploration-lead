@@ -35,6 +35,7 @@ export function InfoTab({ record, update, pools, slug }: EditorProps) {
               <SelectInput id="ci-state" label="State" required value={record.state} onChange={(v) => set("state", v)} options={pools.states} placeholder="Select a state" />
               <TextInput id="ci-city" label="City" required max={200} value={record.city} onChange={(v) => set("city", v)} />
               <TextInput id="ci-locality" label="Locality" max={120} value={record.detail.locality} onChange={(v) => detail({ locality: v })} hint="The street or area before the city, e.g. Hosur Road." />
+              <SelectInput id="ci-type" label="Type" required value={record.institutionType ?? "College"} onChange={(v) => set("institutionType", v as CollegeRecord["institutionType"])} options={["College", "University"]} hint="Whether this is a college or a university." />
               <SelectInput id="ci-ownership" label="Ownership" required value={record.ownership} onChange={(v) => set("ownership", v as CollegeRecord["ownership"])} options={["Private", "Government", "Deemed"]} />
               <SelectInput id="ci-stream" label="Category" required value={record.stream} onChange={(v) => set("stream", v)} options={pools.streams} placeholder="Select a category" hint="The category the college is listed under." />
               <NumberInput id="ci-established" label="Established" min={1000} max={YEAR} value={record.established} onChange={(v) => set("established", v)} placeholder="e.g. 1998" hint="The year it was founded." />
