@@ -18,7 +18,7 @@ import { mediaUrl } from "@/lib/media";
 */
 
 type Slot = {
-  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "logo" | "gallery";
+  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "article_figure" | "logo" | "gallery";
   label: string;
   recommended: [number, number];
   minimum: [number, number];
@@ -104,6 +104,17 @@ const SLOTS: Record<Slot["kind"], Slot> = {
     notes: [
       "The picture runs wide above the lead story on the homepage news, about 800 by 400 px, in muted tones, and across the top of the article's own page. It is cropped to fit, so keep the subject in the middle.",
       "Do not put text or logos in the picture. They would be cropped.",
+    ],
+  },
+  article_figure: {
+    kind: "article_figure",
+    label: "Picture",
+    recommended: [1200, 800],
+    minimum: [200, 200],
+    previewClass: "aspect-[3/2]",
+    notes: [
+      "Shown inside the article at the size and shape chosen below, cropped to fit, so keep the subject in the middle.",
+      "Do not put text in the picture. It would be cropped, and it is not readable on phones.",
     ],
   },
   program: {

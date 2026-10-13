@@ -1,6 +1,7 @@
 import uuid
 
 from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 
 from core.database import Base
@@ -21,6 +22,8 @@ class Article(Base):
     related_college_slugs = Column(Text, nullable=True, default="")
     # Picture: /images/... (shipped) or /api/uploads/... (uploaded in the admin). Empty: none.
     image = Column(String(200), nullable=False, default="", server_default="")
+    # The article page, as sections of blocks (see schemas/article.py). Empty: the page shows `body`.
+    sections = Column(JSONB, nullable=False, default=list, server_default="[]")
     published_at = Column(Date, nullable=False, index=True)
     is_published = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -105,7 +105,7 @@ export function NewspaperDispatch({
   const upcoming = spread(next);
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden bg-bg py-16 sm:py-20">
+    <section ref={sectionRef} className="relative overflow-hidden bg-bg py-3 sm:py-4">
       <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10">
         {/* Rail above the book */}
         <div className="mx-auto mb-6 flex w-full max-w-[1700px] flex-wrap items-end justify-between gap-4">
@@ -144,10 +144,6 @@ export function NewspaperDispatch({
             >
               {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </button>
-
-            <Link href="/articles" className="text-sm font-semibold text-brand hover:underline">
-              View all
-            </Link>
           </div>
         </div>
 
@@ -213,6 +209,17 @@ export function NewspaperDispatch({
                 className="pointer-events-none absolute inset-y-0 left-1/2 z-30 hidden w-14 -translate-x-1/2 bg-[linear-gradient(to_right,transparent,rgba(28,33,40,0.13),rgba(28,33,40,0.04),rgba(28,33,40,0.13),transparent)] sm:block"
               />
             </div>
+          </div>
+
+          {/* On to the full listing */}
+          <div className="mt-5 flex justify-end">
+            <Link
+              href="/articles"
+              className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
+            >
+              View all
+              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </Link>
           </div>
         </div>
       </div>

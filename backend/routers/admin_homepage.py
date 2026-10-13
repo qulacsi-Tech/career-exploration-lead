@@ -448,6 +448,7 @@ async def admin_get_articles(_admin: AdminPayload, db: DbSession):
                 "title": a.title,
                 "excerpt": a.excerpt,
                 "body": a.body or "",
+                "sections": a.sections or [],
                 "author": a.author or "",
                 "category": a.category or "",
                 "readMinutes": a.read_minutes or 5,

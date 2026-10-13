@@ -42,6 +42,8 @@ MIN_SIZE = {
     "practice": (40, 40),
     "program": (800, 520),
     "article": (800, 400),
+    # A picture inside an article. It may be small (a headshot, a diagram).
+    "article_figure": (200, 200),
     "logo": (120, 120),
     "gallery": (800, 450),
 }
@@ -50,7 +52,7 @@ MIN_SIZE = {
 @router.post("", response_model=SuccessResponse[dict], status_code=201)
 async def upload_image(
     _admin: AdminPayload,
-    kind: Literal["hero", "banner", "location", "college", "exam", "practice", "program", "article", "logo", "gallery"] = Form(...),
+    kind: Literal["hero", "banner", "location", "college", "exam", "practice", "program", "article", "article_figure", "logo", "gallery"] = Form(...),
     file: UploadFile = File(...),
 ):
     raw = await file.read(MAX_BYTES + 1)

@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.dependencies import AdminPayload, DbSession
 from core.exceptions import ConflictError, NotFoundError, ValidationError
+from schemas.article import ArticleSection
 from schemas.college import CollegeFilterParams
 from models.college import OwnershipType
 from models.exam import ExamLevel
@@ -337,6 +338,7 @@ class ArticleCreateBody(BaseModel):
     isPublished: bool = True
     relatedCollegeSlugs: list[str] = Field(default_factory=list, max_length=20)
     image: Optional[str] = Field(default=None, max_length=200)
+    sections: list[ArticleSection] = Field(default_factory=list, max_length=30)
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
@@ -353,6 +355,7 @@ class ArticleUpdateBody(BaseModel):
     publishedAt: Optional[str] = None   # "YYYY-MM-DD"
     relatedCollegeSlugs: Optional[list[str]] = Field(default=None, max_length=20)
     image: Optional[str] = Field(default=None, max_length=200)
+    sections: Optional[list[ArticleSection]] = Field(default=None, max_length=30)
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
@@ -384,6 +387,7 @@ async def admin_create_article(body: ArticleCreateBody, _admin: AdminPayload, db
         is_published=body.isPublished,
         related_college_slugs=",".join(body.relatedCollegeSlugs),
         image=body.image or "",
+        sections=[sec.model_dump() for sec in body.sections],
     )
     db.add(article)
     await db.commit()
@@ -411,6 +415,7 @@ async def admin_update_article(slug: str, body: ArticleUpdateBody, _admin: Admin
             raise ValidationError("publishedAt: use a date.")
     if body.relatedCollegeSlugs is not None: values["related_college_slugs"] = ",".join(body.relatedCollegeSlugs)
     if body.image is not None:       values["image"] = body.image
+    if body.sections is not None:    values["sections"] = [sec.model_dump() for sec in body.sections]
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))

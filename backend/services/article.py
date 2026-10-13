@@ -49,6 +49,7 @@ def _to_detail_schema(article: Article) -> ArticleDetailSchema:
         readMinutes=article.read_minutes or 5,
         image=article.image or "",
         body=article.body,
+        sections=article.sections or [],
         relatedCollegeSlugs=_related_slugs(article),
     )
 

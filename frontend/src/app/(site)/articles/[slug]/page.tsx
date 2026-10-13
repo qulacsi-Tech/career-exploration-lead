@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
+import { ArticleSections } from "@/components/article-sections";
+import { sectionAnchor } from "@/lib/article-sections";
 import { getArticle, getArticleSlugs, getArticles, getCollege } from "@/lib/api";
 import { articleImage } from "@/lib/article-images";
 import { mediaUrl } from "@/lib/media";
@@ -79,6 +81,7 @@ export default async function ArticlePage({
     ? article.body.split(/\n\n+/).map((p) => p.trim()).filter(Boolean)
     : [];
 
+  const sections = article.sections ?? [];
   const picture = articleImage(article.slug, article.image);
 
   return (
@@ -113,7 +116,9 @@ export default async function ArticlePage({
             <img src={mediaUrl(picture)} alt={article.title} className="mt-6 aspect-[2/1] w-full max-w-3xl rounded-xl border border-line object-cover" />
           )}
 
-          {bodyParagraphs.length > 0 && (
+          {sections.length > 0 && <ArticleSections sections={sections} />}
+
+          {sections.length === 0 && bodyParagraphs.length > 0 && (
             <div className="mt-6 max-w-3xl space-y-4 border-t border-line pt-6 text-sm leading-relaxed text-ink-soft">
               {bodyParagraphs.map((para, i) => (
                 <p key={i}>{para}</p>
@@ -136,9 +141,26 @@ export default async function ArticlePage({
         </article>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl border border-brand/30 bg-brand-soft p-5">
-            <p className="font-display font-semibold text-brand-ink">Need help deciding?</p>
-            <p className="mt-1 text-xs text-brand-ink/80">
+          {sections.filter((s) => s.heading).length > 1 && (
+            <nav aria-label="In this article" className="rounded-2xl bg-brand-soft p-5">
+              <p className="font-display text-lg font-semibold text-brand-ink">In this article</p>
+              <ol className="mt-3 space-y-2 text-sm">
+                {sections.map((s, i) =>
+                  s.heading ? (
+                    <li key={i}>
+                      <a href={`#${sectionAnchor(s.heading, i)}`} className="text-brand-ink/80 hover:text-brand">
+                        {s.heading}
+                      </a>
+                    </li>
+                  ) : null,
+                )}
+              </ol>
+            </nav>
+          )}
+
+          <div className="rounded-2xl bg-brand-soft p-5">
+            <p className="font-display text-lg font-semibold text-brand-ink">Need help deciding?</p>
+            <p className="mt-2 text-sm text-brand-ink/80">
               Talk to an admission counsellor about the colleges in this article.
             </p>
             <Link
@@ -150,8 +172,8 @@ export default async function ArticlePage({
           </div>
 
           {more.length > 0 && (
-            <div className="rounded-2xl border border-line bg-surface p-5">
-              <p className="font-display font-semibold text-ink">More articles</p>
+            <div className="rounded-2xl bg-brand-soft p-5">
+              <p className="font-display text-lg font-semibold text-brand-ink">More articles</p>
               <ul className="mt-3 space-y-3">
                 {more.map((other) => (
                   <li key={other.slug}>

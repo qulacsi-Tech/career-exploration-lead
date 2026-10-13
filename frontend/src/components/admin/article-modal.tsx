@@ -8,11 +8,14 @@ import { AdminModal } from "@/components/admin/admin-modal";
 import { CollegeMultiPicker } from "@/components/admin/college-multi-picker";
 import { DateField } from "@/components/admin/date-field";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { ArticleSectionsEditor } from "@/components/admin/article-sections-editor";
+import { sectionsFromBody } from "@/lib/article-sections";
 
 /*
   One article: add or edit, in one dialog.
 
-  The title, the short text shown on the homepage, the full text, the category (chosen from
+  The title, the short text shown on the homepage, the article's sections (built with buttons: a
+  heading and any mix of text, points, tables, steps, key facts, notes and quotes), the category (chosen from
   the directory's categories), the author, the reading time, the date and whether it is
   published, plus the colleges it is about (chosen from the directory). One Save keeps it all,
   and ticking "Pin to the homepage news" puts it in the news spread (which holds three).
@@ -83,8 +86,8 @@ export function ArticleModal({
 
   const [draft, setDraft] = useState<ArticleInput>(() =>
     article
-      ? { title: article.title, excerpt: article.excerpt, body: article.body, author: article.author, category: article.category, readMinutes: article.readMinutes, publishedAt: article.publishedAt, isPublished: article.isPublished, relatedCollegeSlugs: article.relatedCollegeSlugs, image: article.image }
-      : { title: "", excerpt: "", body: "", author: "Editorial Desk", category: "", readMinutes: 5, publishedAt: today(), isPublished: true, relatedCollegeSlugs: [], image: "" }
+      ? { title: article.title, excerpt: article.excerpt, body: article.body, sections: article.sections?.length ? article.sections : sectionsFromBody(article.body), author: article.author, category: article.category, readMinutes: article.readMinutes, publishedAt: article.publishedAt, isPublished: article.isPublished, relatedCollegeSlugs: article.relatedCollegeSlugs, image: article.image }
+      : { title: "", excerpt: "", body: "", sections: [], author: "Editorial Desk", category: "", readMinutes: 5, publishedAt: today(), isPublished: true, relatedCollegeSlugs: [], image: "" }
   );
   const [pin, setPin] = useState(wasPinned);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +143,7 @@ export function ArticleModal({
         <div className="space-y-5">
           <Text id="art-title" label="Title" required max={500} value={draft.title} onChange={(v) => set("title", v)} hint={article ? "The page address stays the same after a rename." : "Becomes the page address."} />
           <Text id="art-excerpt" label="Short text" required rows={3} max={600} value={draft.excerpt} onChange={(v) => set("excerpt", v)} hint="Shown on the homepage news and in lists." />
-          <Text id="art-body" label="Article" rows={12} max={20000} value={draft.body} onChange={(v) => set("body", v)} hint="The full text. A blank line starts a new paragraph." />
+          <ArticleSectionsEditor sections={draft.sections} onChange={(v) => set("sections", v)} />
         </div>
 
         <div className="space-y-5">
