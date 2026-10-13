@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { ArrowRight, Clock, GraduationCap, IndianRupee, Landmark, Users } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { Chip } from "@/components/ui/chip";
-import { CollegeCard } from "@/components/college-card";
-import { ApiError, getColleges, getCourse, getCourseSlugs, getExams } from "@/lib/api";
+import { ListingCard } from "@/components/colleges/listing-card";
+import { ApiError, getColleges, getCourse, getCourseSlugs, getCourses, getExams } from "@/lib/api";
 
 export async function generateStaticParams() {
   const slugs = await getCourseSlugs();
@@ -37,6 +37,19 @@ export async function generateMetadata({
   };
 }
 
+/** A content section: a card with an accent bar beside its heading. */
+function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="scroll-mt-44 rounded-2xl border border-line bg-surface p-5 sm:p-6">
+      <h2 className="flex items-center gap-3 font-display text-xl font-bold text-ink">
+        <span aria-hidden className="h-6 w-1.5 rounded-full bg-brand" />
+        {title}
+      </h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
 export default async function CourseDetailPage({
   params,
 }: {
@@ -57,12 +70,32 @@ export default async function CourseDetailPage({
     ? offering.data
     : (await getColleges({ stream: course.stream, limit: 3 })).data;
 
-  const examDirectory = await getExams({ limit: 100 });
+  const [examDirectory, siblings] = await Promise.all([
+    getExams({ limit: 100 }),
+    getCourses({ stream: course.stream, limit: 12 })
+      .then((r) => r.data)
+      .catch(() => []),
+  ]);
   const acceptedExams = examDirectory.data.filter((exam) =>
     course.examsAccepted.some((name) => exam.name.includes(name) || exam.slug === name.toLowerCase()),
   );
-
+  const otherCourses = siblings.filter((c) => c.slug !== course.slug).slice(0, 5);
   const courseSpecialisations = course.specialisations ?? [];
+
+  const collegesHref = `/colleges?course=${encodeURIComponent(course.name)}`;
+  const stats = [
+    { icon: Clock, label: "Duration", value: course.duration },
+    { icon: IndianRupee, label: "Average Fees", value: course.averageFees ?? "—" },
+    { icon: Landmark, label: "Colleges", value: course.collegeCount.toLocaleString() },
+    { icon: Users, label: "Modes", value: course.modes.join(", ") || "—" },
+  ];
+  const sections = [
+    { id: "about", label: "About", show: true },
+    { id: "eligibility", label: "Eligibility", show: true },
+    { id: "exams", label: "Exams", show: acceptedExams.length > 0 },
+    { id: "specialisations", label: "Specialisations", show: courseSpecialisations.length > 0 },
+    { id: "colleges", label: "Colleges", show: true },
+  ].filter((s) => s.show);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -74,123 +107,192 @@ export default async function CourseDetailPage({
         ]}
       />
 
-      <div className="mt-4 flex flex-col gap-4 border-b border-line pb-8 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">{course.name}</h1>
-            <Chip tone="gold">{course.level}</Chip>
-            <Chip>{course.stream}</Chip>
-          </div>
-          <p className="mt-1 text-sm text-ink-soft">{course.fullName}</p>
-        </div>
-        <Link
-          href="/enquiry"
-          className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
-        >
-          Get Free Counselling
-        </Link>
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-12">
-          <section id="about">
-            <h2 className="font-display text-xl font-bold text-ink">About {course.name}</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">{course.about ?? "—"}</p>
-          </section>
-
-          <section id="eligibility">
-            <h2 className="font-display text-xl font-bold text-ink">Eligibility</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">
-              {course.eligibility ?? "—"}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {course.modes.map((mode) => (
-                <Chip key={mode}>{mode}</Chip>
-              ))}
+      {/* Header card: identity, key facts, actions */}
+      <header className="relative mt-4 overflow-hidden rounded-2xl border border-line bg-surface">
+        <span className="absolute right-0 top-0 rounded-bl-xl bg-brand-ink px-3 py-1 text-[11px] font-bold tracking-wide text-white">
+          {course.level}
+        </span>
+        <div className="bg-gradient-to-br from-brand-soft via-bg-alt to-surface p-5 sm:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4 pr-16">
+              <span
+                aria-hidden
+                className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-line bg-surface text-brand shadow-sm"
+              >
+                <GraduationCap className="h-8 w-8" />
+              </span>
+              <div className="min-w-0">
+                <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">{course.name}</h1>
+                <p className="mt-1 text-sm text-ink-soft">{course.fullName}</p>
+                <p className="mt-2 inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-brand-ink">
+                  {course.stream}
+                </p>
+              </div>
             </div>
-          </section>
+
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Link
+                href={collegesHref}
+                className="inline-flex items-center rounded-lg border border-brand bg-surface px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand-soft"
+              >
+                View Colleges
+              </Link>
+              <Link
+                href="/enquiry"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
+              >
+                Get Free Counselling
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <dl className="grid grid-cols-2 divide-line-soft border-t border-line-soft sm:grid-cols-4 sm:divide-x">
+          {stats.map(({ icon: Icon, label, value }) => (
+            <div key={label} className="flex items-center gap-3 px-5 py-4">
+              <Icon className="h-5 w-5 shrink-0 text-brand" />
+              <div className="min-w-0">
+                <dt className="text-xs text-ink-faint">{label}</dt>
+                <dd className="mt-0.5 truncate text-sm font-semibold text-ink">{value}</dd>
+              </div>
+            </div>
+          ))}
+        </dl>
+      </header>
+
+      {/* Section nav */}
+      <nav
+        aria-label="On this page"
+        className="sticky top-[5.1rem] z-10 lg:top-[6.3rem] -mx-4 mt-6 flex gap-2 overflow-x-auto border-b border-line bg-bg/90 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0"
+      >
+        {sections.map((s) => (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className="shrink-0 rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-ink-soft transition hover:border-brand hover:bg-brand-soft hover:text-brand-ink"
+          >
+            {s.label}
+          </a>
+        ))}
+      </nav>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
+          <Section id="about" title={`About ${course.name}`}>
+            <p className="max-w-3xl text-sm leading-relaxed text-ink-soft">{course.about ?? "—"}</p>
+          </Section>
+
+          <Section id="eligibility" title="Eligibility">
+            <p className="max-w-3xl text-sm leading-relaxed text-ink-soft">{course.eligibility ?? "—"}</p>
+            {course.modes.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wider text-ink-faint">Modes</span>
+                {course.modes.map((mode) => (
+                  <span key={mode} className="rounded-lg bg-bg-alt px-3 py-1.5 text-sm text-ink-soft">
+                    {mode}
+                  </span>
+                ))}
+              </div>
+            )}
+          </Section>
 
           {acceptedExams.length > 0 && (
-            <section id="exams">
-              <h2 className="font-display text-xl font-bold text-ink">Entrance exams accepted</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Section id="exams" title="Entrance exams accepted">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {acceptedExams.map((exam) => (
                   <Link
                     key={exam.slug}
                     href={`/exams/${exam.slug}`}
-                    className="rounded-xl border border-line bg-surface p-4 transition hover:border-brand"
+                    className="group rounded-xl border border-line bg-surface p-4 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-[0_8px_24px_-12px_rgba(177,36,62,0.35)]"
                   >
-                    <p className="font-medium text-ink">{exam.name}</p>
-                    <p className="mt-0.5 text-xs text-ink-faint">
-                      {exam.conductingBody} &middot; {exam.examDate}
+                    <p className="font-semibold text-ink group-hover:text-brand">{exam.name}</p>
+                    <p className="mt-1 text-xs text-ink-faint">{exam.conductingBody}</p>
+                    <p className="mt-2 text-xs text-ink-soft">
+                      Exam date: <span className="font-medium text-brand">{exam.examDate}</span>
                     </p>
                   </Link>
                 ))}
               </div>
-            </section>
+            </Section>
           )}
 
           {courseSpecialisations.length > 0 && (
-            <section id="specialisations">
-              <h2 className="font-display text-xl font-bold text-ink">Specialisations</h2>
-              <div className="mt-4 flex flex-wrap gap-2">
+            <Section id="specialisations" title="Specialisations">
+              <div className="flex flex-wrap gap-2">
                 {courseSpecialisations.map((specialisation) => (
-                  <Chip key={specialisation.slug}>{specialisation.name}</Chip>
+                  <Link
+                    key={specialisation.slug}
+                    href={`/colleges?specialisation=${encodeURIComponent(specialisation.name)}`}
+                    className="rounded-lg bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand-ink transition hover:bg-brand hover:text-white"
+                  >
+                    {specialisation.name}
+                  </Link>
                 ))}
               </div>
-            </section>
+            </Section>
           )}
 
-          <section id="colleges">
-            <h2 className="font-display text-xl font-bold text-ink">
+          <section id="colleges" className="scroll-mt-44">
+            <h2 className="flex items-center gap-3 font-display text-xl font-bold text-ink">
+              <span aria-hidden className="h-6 w-1.5 rounded-full bg-brand" />
               Colleges offering {course.name}
             </h2>
             <div className="mt-4 space-y-4">
               {relatedColleges.map((college) => (
-                <CollegeCard key={college.slug} college={college} />
+                <ListingCard key={college.slug} college={college} />
               ))}
             </div>
             <Link
-              href="/colleges"
-              className="mt-5 inline-block rounded-full border border-brand px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white"
+              href={collegesHref}
+              className="mt-5 inline-flex items-center gap-1.5 rounded-lg border border-brand px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand-soft"
             >
               View all colleges
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </section>
         </div>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl border border-line bg-surface p-5">
-            <p className="font-display font-semibold text-ink">Course at a glance</p>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div className="flex justify-between gap-3">
-                <dt className="text-ink-faint">Level</dt>
-                <dd className="font-medium text-ink">{course.level}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-ink-faint">Duration</dt>
-                <dd className="font-medium text-ink">{course.duration}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-ink-faint">Average fees</dt>
-                <dd className="font-medium text-ink">{course.averageFees ?? "—"}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-ink-faint">Colleges</dt>
-                <dd className="font-medium text-ink">{course.collegeCount.toLocaleString()}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="shrink-0 text-ink-faint">Modes</dt>
-                <dd className="text-right font-medium text-ink">{course.modes.join(", ")}</dd>
-              </div>
+          <div className="rounded-2xl bg-brand-soft p-5">
+            <p className="font-display text-lg font-semibold text-brand-ink">Course at a glance</p>
+            <dl className="mt-4 space-y-2.5 text-sm">
+              {[
+                ["Level", course.level],
+                ["Duration", course.duration],
+                ["Average fees", course.averageFees ?? "—"],
+                ["Colleges", course.collegeCount.toLocaleString()],
+                ["Modes", course.modes.join(", ") || "—"],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-3">
+                  <dt className="shrink-0 text-brand-ink/70">{label}</dt>
+                  <dd className="text-right font-medium text-brand-ink">{value}</dd>
+                </div>
+              ))}
             </dl>
           </div>
 
-          <div className="rounded-2xl border border-brand/30 bg-brand-soft p-5">
-            <p className="font-display font-semibold text-brand-ink">Not sure this is the one?</p>
-            <p className="mt-1 text-xs text-brand-ink/80">
-              Compare {course.name} against other {course.stream.toLowerCase()} programmes with a
-              counsellor.
+          {otherCourses.length > 0 && (
+            <div className="rounded-2xl bg-brand-soft p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-brand">{course.stream}</p>
+              <p className="mt-1 font-display text-lg font-semibold text-brand-ink">Related Courses</p>
+              <ul className="mt-4 space-y-2.5 text-sm text-brand-ink/80">
+                {otherCourses.map((c) => (
+                  <li key={c.slug} className="flex justify-between gap-3">
+                    <Link href={`/courses/${c.slug}`} className="min-w-0 truncate hover:text-brand">
+                      {c.name}
+                    </Link>
+                    <span className="shrink-0 font-medium">{c.level}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="rounded-2xl bg-brand-soft p-5">
+            <p className="font-display text-lg font-semibold text-brand-ink">Not sure this is the one?</p>
+            <p className="mt-2 text-sm text-brand-ink/80">
+              Compare {course.name} against other {course.stream.toLowerCase()} programmes with a counsellor.
             </p>
             <Link
               href="/enquiry"

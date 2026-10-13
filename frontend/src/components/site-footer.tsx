@@ -1,24 +1,13 @@
 import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
-import { getFooterColumns } from "@/lib/api";
-import { exams } from "@/lib/mock-data";
+import { getExams, getFooterColumns } from "@/lib/api";
 
 /**
- * The exam and company columns, which are not collections.
- *
- * Exams link to exam records and Company to static pages, so neither is a group
- * of colleges. They stay declared here; the college columns come from
- * `footerColumns()` and are editable under Content → Collections.
+ * The company column, which is not a collection: it links to static pages. The
+ * college columns come from `footerColumns()` and are editable under Content →
+ * Collections; the Exams column is built from the exams in the directory.
  */
-const staticColumns = [
-  {
-    title: "Exams",
-    links: exams.slice(0, 4).map((exam) => ({
-      // The short form: "Common Admission Test (CAT)" does not fit a footer column.
-      label: exam.name.replace(/^.*\(([^)]+)\)$/, "$1"),
-      href: `/exams/${exam.slug}`,
-    })),
-  },
+const companyColumns = [
   {
     title: "Company",
     links: [
@@ -32,6 +21,19 @@ const staticColumns = [
 
 export async function SiteFooter() {
   const dynamicColumns = await getFooterColumns();
+  // Featured exams first, then the rest. An unreachable API just leaves the column out.
+  const exams = await getExams({ limit: 50 })
+    .then((r) => [...r.data].sort((a, b) => Number(!!b.image) - Number(!!a.image)).slice(0, 4))
+    .catch(() => []);
+  const examColumn = {
+    title: "Exams",
+    links: exams.map((exam) => ({
+      // The short form: "Common Admission Test (CAT)" does not fit a footer column.
+      label: exam.name.replace(/^.*\(([^)]+)\)$/, "$1"),
+      href: `/exams/${exam.slug}`,
+    })),
+  };
+  const staticColumns = [...(examColumn.links.length > 0 ? [examColumn] : []), ...companyColumns];
   return (
     <footer className="border-t border-line bg-ink text-white">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">

@@ -5,15 +5,15 @@ import type { AdminProgram } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import { TextField, NameSlugFields } from "@/components/admin/admin-fields";
+import { UniversityPicker, type UniversityOption } from "@/components/admin/university-picker";
 
 /** The programme fields the homepage row and the programme pages show. */
-function ProgramFields({ program }: { program: AdminProgram | null }) {
+function ProgramFields({ program, colleges }: { program: AdminProgram | null; colleges: UniversityOption[] }) {
   return (
     <FieldGrid>
       {/* The add form takes the name from the name field beside the slug. */}
       {program && <TextField label="Programme name" name="name" defaultValue={program.name} required />}
-      <TextField label="University" name="universityName" defaultValue={program?.universityName ?? ""} required />
-      <TextField label="University slug" name="universitySlug" defaultValue={program?.universitySlug ?? ""} hint="Lowercase letters, digits and hyphens. Matches the college's address." required />
+      <UniversityPicker colleges={colleges} defaultName={program?.universityName ?? ""} defaultSlug={program?.universitySlug ?? ""} />
       <TextField label="Online duration" name="onlineDuration" defaultValue={program?.onlineDuration ?? ""} placeholder="8 months" />
       <TextField label="Online fees" name="onlineFees" defaultValue={program?.onlineFees ?? ""} placeholder="INR 4,00,000" />
       <TextField label="Online fees note" name="onlineFeesNote" defaultValue={program?.onlineFeesNote ?? ""} placeholder="(including taxes)" />
@@ -23,7 +23,15 @@ function ProgramFields({ program }: { program: AdminProgram | null }) {
   );
 }
 
-export function ProgramsAdmin({ programs, recommendedSlugs }: { programs: AdminProgram[]; recommendedSlugs: string[] }) {
+export function ProgramsAdmin({
+  programs,
+  recommendedSlugs,
+  colleges,
+}: {
+  programs: AdminProgram[];
+  recommendedSlugs: string[];
+  colleges: UniversityOption[];
+}) {
   const inRow = new Set(recommendedSlugs);
   return (
     <ResourceAdmin<AdminProgram>
@@ -67,7 +75,7 @@ export function ProgramsAdmin({ programs, recommendedSlugs }: { programs: AdminP
           </AdminSubsection>
         </div>
       )}
-      editTabs={[{ id: "programme", label: "Programme", render: (p) => <ProgramFields program={p} /> }]}
+      editTabs={[{ id: "programme", label: "Programme", render: (p) => <ProgramFields program={p} colleges={colleges} /> }]}
       onSave={(p, data) => saveProgram(p.slug, data)}
       onAdd={(data) => createProgram(undefined, data)}
       onDelete={(p) => deleteProgram(p.slug)}
@@ -75,7 +83,7 @@ export function ProgramsAdmin({ programs, recommendedSlugs }: { programs: AdminP
         <>
           <NameSlugFields nameLabel="Programme name" nameFieldName="name" namePlaceholder="MS in Data Analytics" slugPlaceholder="ms-data-analytics" />
           <div className="sm:col-span-2">
-            <ProgramFields program={null} />
+            <ProgramFields program={null} colleges={colleges} />
           </div>
         </>
       )}

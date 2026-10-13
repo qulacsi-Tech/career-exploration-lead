@@ -216,7 +216,7 @@ export function AutoStoryFrame({
   return (
     <section
       ref={sectionRef}
-      className={`relative overflow-hidden py-20 ${onBrand ? "bg-brand" : `border-b border-line ${ground === "plain" ? "bg-bg" : "bg-bg-alt"}`}`}
+      className={`relative overflow-hidden py-4 ${onBrand ? "bg-brand" : `border-b border-line ${ground === "plain" ? "bg-bg" : "bg-bg-alt"}`}`}
     >
 
       <div className="relative z-10 mx-auto w-full max-w-[1700px] px-4 sm:px-6 lg:px-10">

@@ -1,12 +1,24 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { exams } from "@/lib/mock-data";
-import { getPracticeTests } from "@/lib/api";
+import { getExam, getExamSlugs, getPracticeTests, type Exam } from "@/lib/api";
 import { TestCard } from "@/components/practice/test-card";
 
-export function generateStaticParams() {
-  return exams.map((exam) => ({ slug: exam.slug }));
+/** The exam, or null when there is none by that slug (or the API cannot be reached). */
+async function loadExam(slug: string): Promise<Exam | null> {
+  try {
+    return await getExam(slug);
+  } catch {
+    return null;
+  }
+}
+
+export async function generateStaticParams() {
+  try {
+    return (await getExamSlugs()).map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -15,7 +27,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const exam = exams.find((e) => e.slug === slug);
+  const exam = await loadExam(slug);
   if (!exam) return { title: "Exam not found" };
 
   const short = exam.name.match(/\(([^)]+)\)/)?.[1] ?? exam.name;
@@ -39,7 +51,7 @@ export default async function ExamPracticePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const exam = exams.find((e) => e.slug === slug);
+  const exam = await loadExam(slug);
   if (!exam) notFound();
 
   const tests = await getPracticeTests(slug);

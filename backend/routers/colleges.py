@@ -26,6 +26,10 @@ async def list_colleges(
     fees_min: Optional[int] = Query(None),
     fees_max: Optional[int] = Query(None),
     ranking_max: Optional[int] = Query(None),
+    specialisation: Optional[str] = Query(None),
+    level: Optional[str] = Query(None),
+    credential: Optional[str] = Query(None),
+    min_rating: Optional[float] = Query(None, ge=0, le=5),
     sort: str = Query("popularity"),
     featured: Optional[bool] = Query(None),
     q: Optional[str] = Query(None),
@@ -34,11 +38,18 @@ async def list_colleges(
         page=page, limit=limit, stream=stream, city=city, state=state,
         ownership=ownership, course=course, mode=mode, approval=approval,
         exam=exam, fees_min=fees_min, fees_max=fees_max, ranking_max=ranking_max,
+        specialisation=specialisation, level=level, credential=credential, min_rating=min_rating,
         sort=sort, featured=featured, q=q,
     )
     svc = CollegeService(db)
     colleges, meta = await svc.list_colleges(params)
     return ListResponse[CollegeListSchema](data=colleges, meta=meta)
+
+
+@router.get("/facets", response_model=SuccessResponse[dict])
+async def get_facets(db: DbSession):
+    """Filter-menu options for the listing, from the directory's own data."""
+    return SuccessResponse[dict](data=await CollegeService(db).facets())
 
 
 @router.get("/slugs", response_model=SuccessResponse[list])

@@ -129,6 +129,12 @@ export type College = {
   reviews?: Review[];
   /** Card and hero photo: /images/... or /api/uploads/... Empty: no photo. */
   image?: string;
+  /** The college's logo and its brochure link. Empty: none uploaded. */
+  logo?: string;
+  brochureUrl?: string;
+  /** Featured in the admin, and how many times the page has been viewed. */
+  isFeatured?: boolean;
+  viewCount?: number;
 };
 
 export type Exam = {
@@ -246,6 +252,8 @@ export type Article = {
   readMinutes?: number;
   // Detail only
   body?: string;
+  /** The page as sections of blocks. Empty or absent: `body` is shown as paragraphs. */
+  sections?: import("@/lib/article-sections").ArticleSection[];
   relatedCollegeSlugs?: string[];
 };
 
@@ -381,6 +389,16 @@ export type CollegeParams = {
   exam?: string;
   approval?: string;
   ranking_max?: number;
+  mode?: string;
+  specialisation?: string;
+  /** UG | PG | Doctorate */
+  level?: string;
+  /** Degree | Diploma */
+  credential?: string;
+  /** Lowest fee bounds, in lakh rupees: fees_min <= fee < fees_max. */
+  fees_min?: number;
+  fees_max?: number;
+  min_rating?: number;
 };
 
 /** College listing with optional filters / search / pagination. */
@@ -401,8 +419,29 @@ export async function getColleges(
   if (params?.exam) qs.set("exam", params.exam);
   if (params?.approval) qs.set("approval", params.approval);
   if (params?.ranking_max) qs.set("ranking_max", String(params.ranking_max));
+  if (params?.mode) qs.set("mode", params.mode);
+  if (params?.specialisation) qs.set("specialisation", params.specialisation);
+  if (params?.level) qs.set("level", params.level);
+  if (params?.credential) qs.set("credential", params.credential);
+  if (params?.fees_min !== undefined) qs.set("fees_min", String(params.fees_min));
+  if (params?.fees_max !== undefined) qs.set("fees_max", String(params.fees_max));
+  if (params?.min_rating) qs.set("min_rating", String(params.min_rating));
   const query = qs.toString() ? `?${qs}` : "";
   return apiListFetch<College>(`/colleges${query}`);
+}
+
+/** What the listing's filter menus offer, read from the directory. */
+export type CollegeFacets = {
+  cities: string[];
+  exams: string[];
+  approvals: string[];
+  modes: string[];
+  courses: string[];
+  specialisations: string[];
+};
+
+export async function getCollegeFacets(): Promise<CollegeFacets> {
+  return apiFetch<CollegeFacets>("/colleges/facets");
 }
 
 /** Full college detail by slug (includes courses, placement, cutoffs, reviews). */
@@ -855,6 +894,8 @@ export type AdminSpecialisation = {
   duration: string | null;
   averageFees: string | null;
   collegeCount: number;
+  /** What the site shows: the typed figure, or the live count when none is typed. */
+  shownCount: number;
   about: string | null;
 };
 
@@ -871,6 +912,8 @@ export type AdminCourse = {
   averageFees: string | null;
   examsAccepted: string[];
   collegeCount: number;
+  /** What the site shows: the typed figure, or the live count when none is typed. */
+  shownCount: number;
   about: string | null;
   isPublished: boolean;
   specialisations: AdminSpecialisation[];
@@ -1263,7 +1306,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "logo" | "gallery", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "gallery", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);
@@ -1696,6 +1739,8 @@ export type AdminArticle = {
   title: string;
   excerpt: string;
   body: string;
+  /** The page as sections of blocks. */
+  sections: import("@/lib/article-sections").ArticleSection[];
   author: string;
   category: string;
   readMinutes: number;

@@ -27,10 +27,9 @@ import {
   shortFee,
 } from "@/lib/college-insights";
 import { sectionHref } from "@/lib/college-sections";
-import { getCollege, getCollegeSlugs, getSimilarColleges } from "@/lib/api";
+import { getCollege, getCollegeSlugs, getHomeData, getLocations, getSimilarColleges } from "@/lib/api";
 import type { College, CollegeDetail } from "@/lib/api";
 import { CollegeEnquiryModal } from "@/components/college/college-enquiry-modal";
-import { homeStreams, locations } from "@/lib/mock-data";
 
 export async function generateStaticParams() {
   try {
@@ -99,6 +98,12 @@ export default async function CollegeOverviewPage({
     : [];
   const maxPackage = Math.max(...packages.map((p) => lakhValue(p.value) ?? 0), 1);
 
+  // Options for the enquiry dialog. It still opens with none if either request fails.
+  const [enquiryStreams, enquiryCities] = await Promise.all([
+    getHomeData().then((h) => h.streams.map((s) => ({ slug: s.slug, name: s.name }))).catch(() => []),
+    getLocations().then((l) => l.map((x) => ({ slug: x.slug, name: x.name }))).catch(() => []),
+  ]);
+
   // Peer grid — similar colleges from API
   let peers: College[] = [];
   try {
@@ -125,8 +130,8 @@ export default async function CollegeOverviewPage({
           collegeSlug={college.slug}
           collegeName={college.name}
           stream={college.stream}
-          streams={homeStreams.map((s) => ({ slug: s.slug, name: s.name }))}
-          cities={locations.map((l) => ({ slug: l.slug, name: l.name }))}
+          streams={enquiryStreams}
+          cities={enquiryCities}
         />
       </Suspense>
       <h2 className="font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">

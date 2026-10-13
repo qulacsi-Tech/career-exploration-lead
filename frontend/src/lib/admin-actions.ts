@@ -79,6 +79,7 @@ import {
 } from "@/lib/api";
 import { requireAdminToken } from "@/lib/admin-session";
 import { DEFAULT_HOME_COPY, type HomeCopy } from "@/lib/home-copy";
+import { cleanSections } from "@/lib/article-sections";
 
 /**
  * Admin writes, run as Server Actions so the session token stays on the server.
@@ -262,12 +263,12 @@ export async function updateLeadStatus(id: string, status: string): Promise<Admi
 
 const COURSE_FIELDS = [
   "name", "fullName", "level", "stream", "duration", "averageFees", "about",
-  "eligibility", "modes", "examsAccepted",
+  "eligibility", "modes", "examsAccepted", "collegeCount",
 ] as const;
 const COURSE_NULLABLE = new Set(["averageFees", "about", "eligibility"]);
 const COURSE_LISTS = new Set(["modes", "examsAccepted"]);
 
-const SPEC_FIELDS = ["name", "courseSlug", "duration", "averageFees", "about"] as const;
+const SPEC_FIELDS = ["name", "courseSlug", "duration", "averageFees", "collegeCount", "about"] as const;
 const SPEC_NULLABLE = new Set(["duration", "averageFees", "about"]);
 
 /**
@@ -285,6 +286,9 @@ function fieldsBody(form: FormData, fields: readonly string[], nullable: Set<str
       out[field] = value.split(",").map((item) => item.trim()).filter(Boolean);
     } else if (value === "" && nullable.has(field)) {
       out[field] = null;
+    } else if (field === "collegeCount") {
+      // A count is a whole number, never blank: an empty box means 0.
+      out[field] = Math.max(0, Math.floor(Number(value) || 0));
     } else {
       out[field] = value;
     }
@@ -744,7 +748,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "logo" && kind !== "gallery") {
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "gallery") {
     return { error: "Unknown image slot." };
   }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
@@ -922,10 +926,13 @@ export async function removeProgram(slug: string, rowSlugs: string[]): Promise<A
 const articleSlug = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 function articleBody(input: ArticleInput) {
+  const sections = cleanSections(input.sections);
   return {
     title: input.title.trim(),
     excerpt: input.excerpt.trim(),
-    body: input.body.trim(),
+    // The sections are the page; the old plain text is only kept for an article with none.
+    body: sections.length ? "" : input.body.trim(),
+    sections,
     author: input.author.trim() || "Editorial Desk",
     category: input.category.trim() || null,
     readMinutes: input.readMinutes,

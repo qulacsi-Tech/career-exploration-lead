@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from models.course import Course
 from models.course_catalogue import CourseCatalogue
 from models.specialisation import Specialisation
 
@@ -35,6 +36,11 @@ class CourseCatalogueRepository:
         offset = (page - 1) * limit
         result = await self.db.execute(stmt.offset(offset).limit(limit))
         return list(result.scalars().unique()), total
+
+    async def college_course_names(self) -> List[Tuple[object, str]]:
+        """Every (college, course name) pair in the directory, for counting colleges per course."""
+        rows = await self.db.execute(select(Course.college_id, Course.name))
+        return [(college_id, name or "") for college_id, name in rows]
 
     async def get_by_slug(self, slug: str) -> Optional[CourseCatalogue]:
         stmt = (

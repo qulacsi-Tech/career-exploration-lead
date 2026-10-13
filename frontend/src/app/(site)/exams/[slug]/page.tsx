@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { Chip } from "@/components/ui/chip";
-import { CollegeCard } from "@/components/college-card";
+import { ArrowRight, CalendarClock, CalendarDays, CreditCard, FileText, Monitor } from "lucide-react";
+import { ListingCard } from "@/components/colleges/listing-card";
+import { ExamStatusBadge } from "@/components/exam-status-badge";
+import { mediaUrl } from "@/lib/media";
 import { TestCard } from "@/components/practice/test-card";
 import { getExam, getExamSlugs, getColleges, getPracticeTests } from "@/lib/api";
 
@@ -21,6 +23,19 @@ function Paragraphs({ text }: { text: string }) {
           </p>
         ))}
     </div>
+  );
+}
+
+/** Heading with an accent bar, shared by every section. */
+const H2 =
+  "relative pl-4 font-display text-xl font-bold text-ink before:absolute before:bottom-1 before:left-0 before:top-1 before:w-1.5 before:rounded-full before:bg-brand";
+
+/** A content section: a bordered card. */
+function Section({ id, children }: { id: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="scroll-mt-44 rounded-2xl border border-line bg-surface p-5 sm:p-6">
+      {children}
+    </section>
   );
 }
 
@@ -97,45 +112,131 @@ export default async function ExamDetailPage({
         ]}
       />
 
-      <div className="mt-4 flex flex-col gap-4 border-b border-line pb-8 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">{exam.name}</h1>
-            <Chip tone="gold">{exam.level}</Chip>
-          </div>
-          <p className="mt-1 text-sm text-ink-soft">Conducted by {exam.conductingBody}</p>
-        </div>
-        <Link
-          href="/enquiry"
-          className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
-        >
-          Get Exam Alerts
-        </Link>
-      </div>
+      <header className="relative mt-4 overflow-hidden rounded-2xl border border-line bg-surface">
+        <span className="absolute right-0 top-0 rounded-bl-xl bg-brand-ink px-3 py-1 text-[11px] font-bold tracking-wide text-white">
+          {exam.level}
+        </span>
+        <div className="bg-gradient-to-br from-brand-soft via-bg-alt to-surface p-5 sm:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4 pr-16">
+              {exam.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={mediaUrl(exam.image)}
+                  alt={exam.name}
+                  className="h-16 w-16 shrink-0 rounded-2xl border border-line object-cover shadow-sm"
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-line bg-surface text-brand shadow-sm"
+                >
+                  <FileText className="h-8 w-8" />
+                </span>
+              )}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">{exam.name}</h1>
+                  <ExamStatusBadge label={exam.statusLabel} />
+                </div>
+                <p className="mt-1 text-sm text-ink-soft">Conducted by {exam.conductingBody}</p>
+                {exam.stream && (
+                  <p className="mt-2 inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-brand-ink">
+                    {exam.stream}
+                  </p>
+                )}
+              </div>
+            </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-12">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {practiceTests.length > 0 && (
+                <Link
+                  href={`/exams/${slug}/practice`}
+                  className="inline-flex items-center rounded-lg border border-brand bg-surface px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand-soft"
+                >
+                  Practice Tests
+                </Link>
+              )}
+              <Link
+                href="/enquiry"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
+              >
+                Get Exam Alerts
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <dl className="grid grid-cols-2 divide-line-soft border-t border-line-soft sm:grid-cols-4 sm:divide-x">
+          {[
+            { icon: CalendarClock, label: "Registration Closes", value: exam.registrationCloses, accent: true },
+            { icon: CalendarDays, label: "Exam Date", value: exam.examDate },
+            { icon: Monitor, label: "Mode", value: exam.mode },
+            { icon: CreditCard, label: "Application Fee", value: exam.applicationFee },
+          ].map(({ icon: Icon, label, value, accent }) => (
+            <div key={label} className="flex items-center gap-3 px-5 py-4">
+              <Icon className="h-5 w-5 shrink-0 text-brand" />
+              <div className="min-w-0">
+                <dt className="text-xs text-ink-faint">{label}</dt>
+                <dd className={`mt-0.5 truncate text-sm font-semibold ${accent ? "text-brand" : "text-ink"}`}>
+                  {value || "—"}
+                </dd>
+              </div>
+            </div>
+          ))}
+        </dl>
+      </header>
+
+      <nav
+        aria-label="On this page"
+        className="sticky top-[5.1rem] z-10 -mx-4 mt-6 flex gap-2 overflow-x-auto border-b border-line bg-bg/90 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0 lg:top-[6.3rem]"
+      >
+        {[
+          { id: "about", label: "About", show: true },
+          { id: "eligibility", label: "Eligibility", show: !!exam.eligibility },
+          { id: "practice", label: "Practice", show: practiceTests.length > 0 },
+          { id: "pattern", label: "Pattern", show: !!exam.sections?.length },
+          { id: "syllabus", label: "Syllabus", show: !!exam.syllabus },
+          { id: "cutoffs", label: "Cutoffs", show: cutoffRows.length > 0 },
+          { id: "colleges", label: "Colleges", show: accepting.length > 0 },
+          { id: "faqs", label: "FAQs", show: !!exam.faqs?.length },
+        ]
+          .filter((l) => l.show)
+          .map((l) => (
+            <a
+              key={l.id}
+              href={`#${l.id}`}
+              className="shrink-0 rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-ink-soft transition hover:border-brand hover:bg-brand-soft hover:text-brand-ink"
+            >
+              {l.label}
+            </a>
+          ))}
+      </nav>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
 
           {/* About */}
-          <section id="about">
-            <h2 className="font-display text-xl font-bold text-ink">About {shortName}</h2>
+          <Section id="about">
+            <h2 className={H2}>About {shortName}</h2>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-soft">{exam.description}</p>
-          </section>
+          </Section>
 
           {/* Eligibility, written in the admin */}
           {exam.eligibility && (
-            <section id="eligibility">
-              <h2 className="font-display text-xl font-bold text-ink">{shortName} eligibility</h2>
+            <Section id="eligibility">
+              <h2 className={H2}>{shortName} eligibility</h2>
               <Paragraphs text={exam.eligibility} />
-            </section>
+            </Section>
           )}
 
           {/* Practice */}
           {practiceTests.length > 0 && (
-            <section id="practice">
+            <Section id="practice">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-xl font-bold text-ink">Practice for {shortName}</h2>
+                  <h2 className={H2}>Practice for {shortName}</h2>
                   <p className="mt-1 text-sm text-ink-soft">
                     Mock papers in the real exam interface, with solutions and analysis.
                   </p>
@@ -152,28 +253,28 @@ export default async function ExamDetailPage({
                   <TestCard key={test.slug} test={test} />
                 ))}
               </div>
-            </section>
+            </Section>
           )}
 
           {/* Exam pattern */}
           {exam.sections && exam.sections.length > 0 && (
-            <section id="pattern">
-              <h2 className="font-display text-xl font-bold text-ink">Exam pattern</h2>
+            <Section id="pattern">
+              <h2 className={H2}>Exam pattern</h2>
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[420px] border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
-                      <th scope="col" className="py-2 pr-3 font-semibold">Section</th>
-                      <th scope="col" className="py-2 pr-3 font-semibold">Mode</th>
-                      <th scope="col" className="py-2 font-semibold">Duration</th>
+                    <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
+                      <th scope="col" className="px-3 py-2.5 font-semibold">Section</th>
+                      <th scope="col" className="px-3 py-2.5 font-semibold">Mode</th>
+                      <th scope="col" className="px-3 py-2.5 font-semibold">Duration</th>
                     </tr>
                   </thead>
                   <tbody>
                     {exam.sections.map((section) => (
                       <tr key={section} className="border-b border-line-soft last:border-b-0">
-                        <td className="py-3 pr-3 font-medium text-ink">{section}</td>
-                        <td className="py-3 pr-3 text-ink-soft">{exam.mode ?? "—"}</td>
-                        <td className="py-3 text-ink-soft">
+                        <td className="px-3 py-3 font-medium text-ink">{section}</td>
+                        <td className="px-3 py-3 text-ink-soft">{exam.mode ?? "—"}</td>
+                        <td className="px-3 py-3 text-ink-soft">
                           {exam.durationMinutes
                             ? `${Math.round(exam.durationMinutes / exam.sections!.length)} min`
                             : "—"}
@@ -183,30 +284,30 @@ export default async function ExamDetailPage({
                   </tbody>
                 </table>
               </div>
-            </section>
+            </Section>
           )}
 
           {/* Syllabus, written in the admin */}
           {exam.syllabus && (
-            <section id="syllabus">
-              <h2 className="font-display text-xl font-bold text-ink">{shortName} syllabus</h2>
+            <Section id="syllabus">
+              <h2 className={H2}>{shortName} syllabus</h2>
               <Paragraphs text={exam.syllabus} />
-            </section>
+            </Section>
           )}
 
           {/* Cutoffs */}
           {cutoffRows.length > 0 && (
-            <section id="cutoffs">
-              <h2 className="font-display text-xl font-bold text-ink">
+            <Section id="cutoffs">
+              <h2 className={H2}>
                 {shortName} cutoffs by college
               </h2>
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[520px] border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
-                      <th scope="col" className="py-2 pr-3 font-semibold">College</th>
-                      <th scope="col" className="py-2 pr-3 font-semibold">Category</th>
-                      <th scope="col" className="py-2 font-semibold">Cutoff</th>
+                    <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
+                      <th scope="col" className="px-3 py-2.5 font-semibold">College</th>
+                      <th scope="col" className="px-3 py-2.5 font-semibold">Category</th>
+                      <th scope="col" className="px-3 py-2.5 font-semibold">Cutoff</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -215,7 +316,7 @@ export default async function ExamDetailPage({
                         key={`${college.slug}-${cutoff.category}`}
                         className="border-b border-line-soft last:border-b-0"
                       >
-                        <td className="py-3 pr-3">
+                        <td className="px-3 py-3">
                           <Link
                             href={`/college/${college.slug}`}
                             className="font-medium text-ink hover:text-brand"
@@ -223,25 +324,25 @@ export default async function ExamDetailPage({
                             {college.name}
                           </Link>
                         </td>
-                        <td className="py-3 pr-3 text-ink-soft">{cutoff.category}</td>
-                        <td className="py-3 font-medium text-ink">{cutoff.score}</td>
+                        <td className="px-3 py-3 text-ink-soft">{cutoff.category}</td>
+                        <td className="px-3 py-3 font-medium text-ink">{cutoff.score}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </section>
+            </Section>
           )}
 
           {/* Accepting colleges */}
           {accepting.length > 0 && (
-            <section id="colleges">
-              <h2 className="font-display text-xl font-bold text-ink">
+            <section id="colleges" className="scroll-mt-44">
+              <h2 className={H2}>
                 Colleges accepting {shortName}
               </h2>
               <div className="mt-4 space-y-4">
                 {accepting.map((college) => (
-                  <CollegeCard key={college.slug} college={college} />
+                  <ListingCard key={college.slug} college={college} />
                 ))}
               </div>
             </section>
@@ -249,49 +350,49 @@ export default async function ExamDetailPage({
 
           {/* FAQs, written in the admin */}
           {exam.faqs && exam.faqs.length > 0 && (
-            <section id="faqs">
-              <h2 className="font-display text-xl font-bold text-ink">{shortName} FAQs</h2>
+            <Section id="faqs">
+              <h2 className={H2}>{shortName} FAQs</h2>
               <dl className="mt-4 space-y-4">
                 {exam.faqs.map((faq) => (
-                  <div key={faq.question} className="rounded-xl border border-line bg-surface p-4">
+                  <div key={faq.question} className="rounded-xl bg-bg-alt p-4">
                     <dt className="font-medium text-ink">{faq.question}</dt>
                     <dd className="mt-2 text-sm leading-relaxed text-ink-soft">{faq.answer}</dd>
                   </div>
                 ))}
               </dl>
-            </section>
+            </Section>
           )}
         </div>
 
         {/* Sidebar */}
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl border border-line bg-surface p-5">
-            <p className="font-display font-semibold text-ink">Key dates</p>
-            <dl className="mt-3 space-y-2 text-sm">
+          <div className="rounded-2xl bg-brand-soft p-5">
+            <p className="font-display text-lg font-semibold text-brand-ink">Key dates</p>
+            <dl className="mt-4 space-y-2.5 text-sm">
               <div className="flex justify-between gap-3">
-                <dt className="text-ink-faint">Registration closes</dt>
-                <dd className="font-medium text-ink">{exam.registrationCloses}</dd>
+                <dt className="text-brand-ink/70">Registration closes</dt>
+                <dd className="text-right font-medium text-brand-ink">{exam.registrationCloses}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-ink-faint">Exam date</dt>
-                <dd className="font-medium text-ink">{exam.examDate}</dd>
+                <dt className="text-brand-ink/70">Exam date</dt>
+                <dd className="text-right font-medium text-brand-ink">{exam.examDate}</dd>
               </div>
               {exam.mode && (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-ink-faint">Mode</dt>
-                  <dd className="font-medium text-ink">{exam.mode}</dd>
+                  <dt className="text-brand-ink/70">Mode</dt>
+                  <dd className="text-right font-medium text-brand-ink">{exam.mode}</dd>
                 </div>
               )}
               {exam.frequency && (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-ink-faint">Frequency</dt>
-                  <dd className="font-medium text-ink">{exam.frequency}</dd>
+                  <dt className="text-brand-ink/70">Frequency</dt>
+                  <dd className="text-right font-medium text-brand-ink">{exam.frequency}</dd>
                 </div>
               )}
               {exam.applicationFee && (
                 <div className="flex justify-between gap-3">
-                  <dt className="text-ink-faint">Application fee</dt>
-                  <dd className="font-medium text-ink">{exam.applicationFee}</dd>
+                  <dt className="text-brand-ink/70">Application fee</dt>
+                  <dd className="text-right font-medium text-brand-ink">{exam.applicationFee}</dd>
                 </div>
               )}
             </dl>
@@ -300,16 +401,16 @@ export default async function ExamDetailPage({
                 href={`https://${exam.officialSite}`}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
-                className="mt-4 block truncate text-xs text-brand hover:underline"
+                className="mt-4 block truncate text-xs font-medium text-brand hover:underline"
               >
                 {exam.officialSite}
               </a>
             )}
           </div>
 
-          <div className="rounded-2xl border border-brand/30 bg-brand-soft p-5">
-            <p className="font-display font-semibold text-brand-ink">Predict your college</p>
-            <p className="mt-1 text-xs text-brand-ink/80">
+          <div className="rounded-2xl bg-brand-soft p-5">
+            <p className="font-display text-lg font-semibold text-brand-ink">Predict your college</p>
+            <p className="mt-2 text-sm text-brand-ink/80">
               Tell us your expected {shortName} score and we will shortlist colleges you can target.
             </p>
             <Link

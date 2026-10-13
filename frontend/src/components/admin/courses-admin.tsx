@@ -27,9 +27,9 @@ const STREAMS = [
 ];
 
 /*
-  Only fields the API stores are edited here. Colleges offering a course are
-  counted from the directory, and the status is set by the publish flow, so
-  neither is shown as an input.
+  Only fields the API stores are edited here. "Colleges offering" is counted
+  from the directory unless a figure is typed, which then overrides the count.
+  The status is set by the publish flow, so it is not an input.
 */
 export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
   return (
@@ -58,7 +58,7 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
         { key: "stream", label: "Stream", render: (course) => course.stream },
         { key: "duration", label: "Duration", render: (course) => course.duration },
         { key: "fees", label: "Average fees", render: (course) => course.averageFees ?? "—" },
-        { key: "colleges", label: "Colleges", render: (course) => course.collegeCount.toLocaleString("en-IN") },
+        { key: "colleges", label: "Colleges", render: (course) => course.shownCount.toLocaleString("en-IN") },
       ]}
       renderView={(course) => (
         <div className="space-y-6">
@@ -69,7 +69,7 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
               <Field label="Stream" value={course.stream} />
               <Field label="Duration" value={course.duration} />
               <Field label="Average fees" value={course.averageFees ?? "—"} />
-              <Field label="Colleges offering" value={course.collegeCount.toLocaleString("en-IN")} />
+              <Field label="Colleges offering" value={`${course.shownCount.toLocaleString("en-IN")}${course.collegeCount > 0 ? " (typed)" : " (counted)"}`} />
             </dl>
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">{course.about ?? "—"}</p>
           </AdminSubsection>
@@ -96,6 +96,13 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
               <SelectWithOtherField label="Stream" name="stream" defaultValue={course.stream} options={STREAMS} />
               <TextField label="Duration" name="duration" defaultValue={course.duration} required />
               <TextField label="Average fees" name="averageFees" defaultValue={course.averageFees ?? ""} />
+              <TextField
+                label="Colleges offering (override)"
+                name="collegeCount"
+                type="number"
+                defaultValue={String(course.collegeCount)}
+                hint={`Leave 0 to count from the directory (now ${course.shownCount})`}
+              />
               <TextAreaField
                 label="About"
                 name="about"
@@ -150,6 +157,7 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
           <SelectWithOtherField label="Stream" name="stream" options={STREAMS} />
           <TextField label="Duration" name="duration" placeholder="24 Months" required />
           <TextField label="Average fees" name="averageFees" placeholder="₹4L - 25L" />
+          <TextField label="Colleges offering (override)" name="collegeCount" type="number" placeholder="0" hint="Leave 0 to count from the directory" />
           <TextAreaField label="About" name="about" rows={3} className="sm:col-span-2" />
         </>
       )}

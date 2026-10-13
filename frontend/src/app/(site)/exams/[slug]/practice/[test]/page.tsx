@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { exams } from "@/lib/mock-data";
-import { getPracticeTest, getPracticeTests } from "@/lib/api";
+import { getExam, getPracticeTest, getPracticeTests } from "@/lib/api";
 import { markingSummary, questionCount } from "@/lib/practice-data";
 
 export async function generateStaticParams() {
@@ -46,7 +45,7 @@ export default async function TestInstructionsPage({
   const test = await getPracticeTest(testSlug);
   if (!test || !test.isPublished || test.examSlug !== slug) notFound();
 
-  const exam = exams.find((e) => e.slug === slug);
+  const exam = await getExam(slug).catch(() => null);
   const short = exam?.name.match(/\(([^)]+)\)/)?.[1] ?? exam?.name ?? slug;
   const count = questionCount(test);
 

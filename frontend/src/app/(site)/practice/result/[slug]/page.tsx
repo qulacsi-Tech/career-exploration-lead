@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { getPracticeTest } from "@/lib/api";
-import { exams, colleges } from "@/lib/mock-data";
+import { getColleges, getExam, getPracticeTest } from "@/lib/api";
 import { ResultViewMount } from "@/components/practice/result-view-mount";
 
 export async function generateMetadata({
@@ -39,7 +38,7 @@ export default async function ResultPage({
   const test = await getPracticeTest(slug);
   if (!test || !test.isPublished) notFound();
 
-  const exam = exams.find((e) => e.slug === test.examSlug);
+  const exam = await getExam(test.examSlug).catch(() => null);
 
   /*
     Colleges list the exams they accept by short code — "CAT", "NMAT",
@@ -48,14 +47,10 @@ export default async function ResultPage({
     inside the name covers both spellings without a lookup table to maintain.
   */
   const code = exam?.name.match(/\(([^)]+)\)/)?.[1];
-  const accepting = exam
-    ? colleges.filter((college) =>
-        college.examsAccepted.some(
-          (accepted) =>
-            accepted.toLowerCase() === code?.toLowerCase() ||
-            exam.name.toLowerCase().includes(accepted.toLowerCase()),
-        ),
-      )
+  const accepting = code
+    ? await getColleges({ exam: code, limit: 12 })
+        .then((r) => r.data)
+        .catch(() => [])
     : [];
 
   return (

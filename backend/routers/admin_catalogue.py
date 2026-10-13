@@ -1,7 +1,8 @@
 """Admin catalogue: courses and their specialisations. ADMIN role required on every route.
 
-Only the fields the admin editor edits are accepted. College counts are derived
-from the directory and are not writable here. A specialisation carries its
+Only the fields the admin editor edits are accepted. The "colleges offering"
+count is an editorial figure entered by hand (it is not computed from the
+directory). A specialisation carries its
 parent course's name and stream, so a course rename or stream change is copied
 to its specialisations in the same transaction.
 """
@@ -18,7 +19,9 @@ from core.dependencies import AdminPayload, DbSession
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from models.course_catalogue import CourseCatalogue
 from models.specialisation import Specialisation
+from repositories.course_catalogue import CourseCatalogueRepository
 from schemas.common import SuccessResponse
+from services.course_catalogue import CollegeCounts
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -37,6 +40,7 @@ class CourseCreateBody(BaseModel):
     eligibility: Optional[str] = Field(default=None, max_length=4000)
     averageFees: Optional[str] = Field(default=None, max_length=100)
     examsAccepted: list[str] = Field(default_factory=list, max_length=30)
+    collegeCount: int = Field(default=0, ge=0, le=1_000_000)
     about: Optional[str] = Field(default=None, max_length=4000)
     model_config = ConfigDict(extra="forbid")
 
@@ -51,6 +55,7 @@ class CourseUpdateBody(BaseModel):
     eligibility: Optional[str] = Field(default=None, max_length=4000)
     averageFees: Optional[str] = Field(default=None, max_length=100)
     examsAccepted: Optional[list[str]] = Field(default=None, max_length=30)
+    collegeCount: Optional[int] = Field(default=None, ge=0, le=1_000_000)
     about: Optional[str] = Field(default=None, max_length=4000)
     model_config = ConfigDict(extra="forbid")
 
@@ -61,6 +66,7 @@ class SpecialisationCreateBody(BaseModel):
     courseSlug: str = Field(min_length=2, max_length=200)
     duration: Optional[str] = Field(default=None, max_length=100)
     averageFees: Optional[str] = Field(default=None, max_length=100)
+    collegeCount: int = Field(default=0, ge=0, le=1_000_000)
     about: Optional[str] = Field(default=None, max_length=4000)
     model_config = ConfigDict(extra="forbid")
 
@@ -70,6 +76,7 @@ class SpecialisationUpdateBody(BaseModel):
     courseSlug: Optional[str] = Field(default=None, min_length=2, max_length=200)
     duration: Optional[str] = Field(default=None, max_length=100)
     averageFees: Optional[str] = Field(default=None, max_length=100)
+    collegeCount: Optional[int] = Field(default=None, ge=0, le=1_000_000)
     about: Optional[str] = Field(default=None, max_length=4000)
     model_config = ConfigDict(extra="forbid")
 
@@ -94,7 +101,7 @@ def _validate(model: type[BaseModel], raw: dict) -> BaseModel:
         raise ValidationError(f"{field}: {first['msg']}") from exc
 
 
-def _course_out(c: CourseCatalogue, specs: list[Specialisation]) -> dict:
+def _course_out(c: CourseCatalogue, specs: list[Specialisation], counts: CollegeCounts) -> dict:
     return {
         "id": str(c.id),
         "slug": c.slug,
@@ -108,13 +115,15 @@ def _course_out(c: CourseCatalogue, specs: list[Specialisation]) -> dict:
         "averageFees": c.average_fees,
         "examsAccepted": c.exams_accepted or [],
         "collegeCount": c.college_count,
+        # What the site shows: the typed figure if there is one, else the live count.
+        "shownCount": counts.course(c.name, c.college_count),
         "about": c.about,
         "isPublished": c.is_published,
-        "specialisations": [_spec_out(s) for s in specs],
+        "specialisations": [_spec_out(s, counts) for s in specs],
     }
 
 
-def _spec_out(s: Specialisation) -> dict:
+def _spec_out(s: Specialisation, counts: CollegeCounts) -> dict:
     return {
         "id": str(s.id),
         "slug": s.slug,
@@ -125,6 +134,7 @@ def _spec_out(s: Specialisation) -> dict:
         "duration": s.duration,
         "averageFees": s.average_fees,
         "collegeCount": s.college_count,
+        "shownCount": counts.specialisation(s.name, s.college_count),
         "about": s.about,
     }
 
@@ -151,7 +161,8 @@ async def admin_catalogue(_admin: AdminPayload, db: DbSession):
     by_course: dict[uuid.UUID, list[Specialisation]] = {}
     for s in specs:
         by_course.setdefault(s.course_id, []).append(s)
-    return SuccessResponse[list](data=[_course_out(c, by_course.get(c.id, [])) for c in courses])
+    counts = CollegeCounts(await CourseCatalogueRepository(db).college_course_names())
+    return SuccessResponse[list](data=[_course_out(c, by_course.get(c.id, []), counts) for c in courses])
 
 
 @router.post("/courses", response_model=SuccessResponse[dict], status_code=201)
@@ -173,7 +184,7 @@ async def admin_create_course(_admin: AdminPayload, db: DbSession, body: dict):
         eligibility=data.eligibility,
         average_fees=data.averageFees,
         exams_accepted=data.examsAccepted,
-        college_count=0,
+        college_count=data.collegeCount,
         about=data.about,
         is_published=True,
     )
@@ -192,7 +203,8 @@ async def admin_update_course(slug: str, _admin: AdminPayload, db: DbSession, bo
     mapping = {
         "name": "name", "fullName": "full_name", "level": "level", "stream": "stream",
         "duration": "duration", "modes": "modes", "eligibility": "eligibility",
-        "averageFees": "average_fees", "examsAccepted": "exams_accepted", "about": "about",
+        "averageFees": "average_fees", "examsAccepted": "exams_accepted", "collegeCount": "college_count",
+        "about": "about",
     }
     values = {mapping[k]: v for k, v in changes.items()}
     if not values:
@@ -230,7 +242,7 @@ async def admin_create_specialisation(_admin: AdminPayload, db: DbSession, body:
         stream=course.stream,
         duration=data.duration,
         average_fees=data.averageFees,
-        college_count=0,
+        college_count=data.collegeCount,
         about=data.about,
     )
     db.add(spec)
@@ -254,7 +266,10 @@ async def admin_update_specialisation(slug: str, _admin: AdminPayload, db: DbSes
     else:
         changes.pop("courseSlug", None)
 
-    for key, column in {"name": "name", "duration": "duration", "averageFees": "average_fees", "about": "about"}.items():
+    for key, column in {
+        "name": "name", "duration": "duration", "averageFees": "average_fees",
+        "collegeCount": "college_count", "about": "about",
+    }.items():
         if key in changes:
             setattr(spec, column, changes[key])
     await db.commit()

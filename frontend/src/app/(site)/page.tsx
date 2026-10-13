@@ -131,7 +131,7 @@ export default async function Home() {
           key={collection.id}
           className={`relative overflow-hidden border-b border-line ${index % 2 === 0 ? "bg-bg" : "bg-bg-alt"}`}
         >
-          <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="relative z-10 mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <h2 className="font-display text-3xl font-bold text-ink">
                 {collection.heading || collection.title}
@@ -157,7 +157,7 @@ export default async function Home() {
 
       {/* Top Exams — live from API */}
       <section className="relative overflow-hidden border-b border-line bg-bg-alt">
-        <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="font-display text-3xl font-bold text-ink">
               {copy.topExams.heading}{" "}
@@ -201,7 +201,7 @@ export default async function Home() {
       {/* Explore Careers — live career panels from API */}
       {careerPanels.length > 0 && (
         <section className="relative overflow-hidden border-b border-line bg-bg">
-          <div className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="relative z-10 mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <h2 className="font-display text-3xl font-bold text-ink">
                 {copy.careers.heading}{" "}
@@ -273,7 +273,7 @@ export default async function Home() {
       {/* Data highlights — live from API */}
       {highlights.length > 0 && (
         <section className="relative overflow-hidden border-b border-line bg-bg-tint">
-          <div className="relative z-10 mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="relative z-10 mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <h2 className="font-display text-4xl font-extrabold text-ink sm:text-5xl">
                 {copy.data.heading}{" "}

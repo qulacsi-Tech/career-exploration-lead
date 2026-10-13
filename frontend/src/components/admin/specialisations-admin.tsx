@@ -48,7 +48,7 @@ export function SpecialisationsAdmin({
         { key: "stream", label: "Stream", render: (item) => item.stream },
         { key: "duration", label: "Duration", render: (item) => item.duration ?? "—" },
         { key: "fees", label: "Average fees", render: (item) => item.averageFees ?? "—" },
-        { key: "colleges", label: "Colleges", render: (item) => item.collegeCount.toLocaleString("en-IN") },
+        { key: "colleges", label: "Colleges", render: (item) => item.shownCount.toLocaleString("en-IN") },
       ]}
       renderView={(item) => (
         <div className="space-y-6">
@@ -58,7 +58,7 @@ export function SpecialisationsAdmin({
               <Field label="Stream" value={item.stream} />
               <Field label="Duration" value={item.duration ?? "—"} />
               <Field label="Average fees" value={item.averageFees ?? "—"} />
-              <Field label="Colleges offering" value={item.collegeCount.toLocaleString("en-IN")} />
+              <Field label="Colleges offering" value={`${item.shownCount.toLocaleString("en-IN")}${item.collegeCount > 0 ? " (typed)" : " (counted)"}`} />
               <Field label="Slug" value={item.slug} />
             </dl>
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">{item.about ?? "—"}</p>
@@ -81,6 +81,13 @@ export function SpecialisationsAdmin({
               />
               <TextField label="Duration" name="duration" defaultValue={item.duration ?? ""} />
               <TextField label="Average fees" name="averageFees" defaultValue={item.averageFees ?? ""} />
+              <TextField
+                label="Colleges offering (override)"
+                name="collegeCount"
+                type="number"
+                defaultValue={String(item.collegeCount)}
+                hint={`Leave 0 to count from the directory (now ${item.shownCount})`}
+              />
               <TextAreaField
                 label="About"
                 name="about"
@@ -105,6 +112,7 @@ export function SpecialisationsAdmin({
           />
           <TextField label="Duration" name="duration" placeholder="24 Months" />
           <TextField label="Average fees" name="averageFees" placeholder="₹6L - 24L" />
+          <TextField label="Colleges offering (override)" name="collegeCount" type="number" placeholder="0" hint="Leave 0 to count from the directory" />
           <TextAreaField label="About" name="about" rows={3} className="sm:col-span-2" />
         </>
       )}

@@ -27,7 +27,12 @@ from schemas.common import Meta
 
 def _to_list_schema(college: College) -> CollegeListSchema:
     """Map ORM College → CollegeListSchema (camelCase, frontend-compatible)."""
+    page_record = college.detail if isinstance(college.detail, dict) else {}
     return CollegeListSchema(
+        isFeatured=bool(college.is_featured),
+        viewCount=college.view_count or 0,
+        logo=page_record.get("logo") or "",
+        brochureUrl=page_record.get("brochureUrl") or "",
         slug=college.slug,
         name=college.name,
         city=college.city,
@@ -138,8 +143,6 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
         shortName=extra.shortName,
         tagline=extra.tagline,
         locality=extra.locality,
-        logo=extra.logo,
-        brochureUrl=extra.brochureUrl,
         updatedAt=college.updated_at.date().isoformat() if college.updated_at else "",
         faculty=extra.faculty,
         faqs=extra.faqs,
@@ -192,6 +195,9 @@ class CollegeService:
             raise NotFoundError("College")
         related = await self.repo.get_related(college, limit=limit)
         return [_to_list_schema(c) for c in related]
+
+    async def facets(self) -> dict:
+        return await self.repo.facets()
 
     async def get_all_slugs(self) -> List[str]:
         return await self.repo.get_all_slugs()

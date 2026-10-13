@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { EnquiryForm } from "@/components/enquiry-form";
-import { homeStreams, locations } from "@/lib/mock-data";
+import { getHomeData, getLocations } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Get Free Counselling",
@@ -20,7 +20,13 @@ export const metadata: Metadata = {
  * form cannot drift from the directory. Only the form itself is a client
  * component, because only the form has state.
  */
-export default function EnquiryPage() {
+export default async function EnquiryPage() {
+  // The form still works with no options if either request fails.
+  const [streams, cities] = await Promise.all([
+    getHomeData().then((h) => h.streams.map((s) => ({ slug: s.slug, name: s.name }))).catch(() => []),
+    getLocations().then((l) => l.map((x) => ({ slug: x.slug, name: x.name }))).catch(() => []),
+  ]);
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Get counselling" }]} />
@@ -34,10 +40,7 @@ export default function EnquiryPage() {
         your score, budget and preferred city.
       </p>
 
-      <EnquiryForm
-        streams={homeStreams.map((s) => ({ slug: s.slug, name: s.name }))}
-        cities={locations.map((l) => ({ slug: l.slug, name: l.name }))}
-      />
+      <EnquiryForm streams={streams} cities={cities} />
     </div>
   );
 }

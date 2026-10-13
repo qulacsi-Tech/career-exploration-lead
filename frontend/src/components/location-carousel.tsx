@@ -57,7 +57,7 @@ export function LocationCarousel({
   const scope = locations.map((_, i) => `--hub-${i}`).join(", ");
 
   return (
-    <section className="relative bg-bg pt-12 pb-16 lg:pt-16 lg:pb-20">
+    <section className="relative bg-bg pt-3 pb-3 lg:pt-3 lg:pb-4">
       {/* The heading scrolls away; only the cards pin. */}
       <div className="mx-auto w-[90%] max-w-[1500px] pb-2 sm:pb-3">
         {copy.eyebrow && (

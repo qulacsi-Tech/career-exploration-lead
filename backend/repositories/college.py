@@ -3,16 +3,67 @@
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import Numeric, and_, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from models.college import College
 from models.course import Course
+from models.course_catalogue import CourseCatalogue
+from models.specialisation import Specialisation
 from models.cutoff import Cutoff
 from models.placement import Placement
 from models.review import Review
 from schemas.college import CollegeFilterParams
+
+
+# Course-name patterns behind the level and credential facets. Courses carry no
+# level column, so it is read from the name the way a reader would: "B.Tech" is
+# undergraduate, "MBA" postgraduate, "Ph.D." doctoral.
+_LEVEL_PATTERNS = {
+    "UG": ["B.%", "BBA%", "BCA%", "MBBS%", "BDS%", "B %"],
+    "PG": ["M.%", "MBA%", "MCA%", "PGDM%", "PG %", "MD %", "MS %", "Executive MBA%"],
+    "Doctorate": ["Ph.D%", "PhD%", "Doctor%"],
+}
+_CREDENTIAL_PATTERNS = {
+    "Diploma": ["%diploma%", "PGDM%"],
+    "Doctorate": ["Ph.D%", "PhD%", "Doctor%"],
+}
+
+
+def _min_fee_lakh():
+    """The lowest fee in a college's `fees_range`, in lakh rupees.
+
+    `fees_range` is editor-written text: "₹9.5L - 21L", "₹65K-3L", "INR 4,00,000".
+    The first number is the lowest. Its unit (K, L, Cr) is read from just after
+    it, falling back to the last unit in the text for "₹5-10L"; a bare figure of
+    1000 or more is rupees. Anything unparseable gives NULL, which no fee bound
+    matches.
+    """
+    text = func.replace(College.fees_range, ",", "")
+    num = cast(func.substring(text, r"([0-9]+\.?[0-9]*)"), Numeric)
+    unit = func.upper(
+        func.coalesce(
+            func.substring(text, r"^[^0-9]*[0-9]+\.?[0-9]*\s*([KkLlCc])"),
+            func.substring(text, r"([KkLlCc])[A-Za-z]*\s*$"),
+        )
+    )
+    return case(
+        (unit == "K", num / 100),
+        (unit == "L", num),
+        (unit == "C", num * 100),
+        (num >= 1000, num / 100000),
+        else_=num,
+    )
+
+
+def _course_matches(*conditions):
+    # EXISTS keeps one row per college, unlike a join.
+    return College.courses.any(and_(*conditions))
+
+
+def _name_like(patterns):
+    return or_(*[Course.name.ilike(p) for p in patterns])
 
 
 def _apply_filters(stmt, params: CollegeFilterParams):
@@ -43,6 +94,27 @@ def _apply_filters(stmt, params: CollegeFilterParams):
                 )
             )
         )
+    if params.mode:
+        stmt = stmt.where(_course_matches(Course.mode.ilike(f"%{params.mode}%")))
+    if params.specialisation:
+        stmt = stmt.where(_course_matches(Course.name.ilike(f"%{params.specialisation}%")))
+    if params.level in _LEVEL_PATTERNS:
+        stmt = stmt.where(_course_matches(_name_like(_LEVEL_PATTERNS[params.level])))
+    if params.credential == "Degree":
+        # Everything that is neither a diploma nor a doctorate.
+        stmt = stmt.where(
+            _course_matches(
+                ~_name_like(_CREDENTIAL_PATTERNS["Diploma"] + _CREDENTIAL_PATTERNS["Doctorate"])
+            )
+        )
+    elif params.credential in _CREDENTIAL_PATTERNS:
+        stmt = stmt.where(_course_matches(_name_like(_CREDENTIAL_PATTERNS[params.credential])))
+    if params.fees_min is not None:
+        stmt = stmt.where(_min_fee_lakh() >= params.fees_min)
+    if params.fees_max is not None:
+        stmt = stmt.where(_min_fee_lakh() < params.fees_max)
+    if params.min_rating:
+        stmt = stmt.where(College.rating >= params.min_rating)
     if params.ranking_max:
         stmt = stmt.where(College.ranking_rank <= params.ranking_max)
     if params.q:
@@ -111,6 +183,25 @@ class CollegeRepository:
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().unique())
+
+    async def facets(self) -> dict:
+        """The values the listing's filter menus offer, read from the directory.
+
+        Cities, exams, approvals and modes are whatever colleges actually carry;
+        courses and specialisations come from the published catalogue.
+        """
+        async def column(stmt) -> List[str]:
+            rows = (await self.db.execute(stmt)).scalars()
+            return sorted({str(v).strip() for v in rows if v and str(v).strip()}, key=str.lower)
+
+        return {
+            "cities": await column(select(College.city).distinct()),
+            "exams": await column(select(func.jsonb_array_elements_text(College.exams_accepted)).distinct()),
+            "approvals": await column(select(func.jsonb_array_elements_text(College.approvals)).distinct()),
+            "modes": await column(select(Course.mode).distinct()),
+            "courses": await column(select(CourseCatalogue.name).where(CourseCatalogue.is_published == True)),  # noqa: E712
+            "specialisations": await column(select(Specialisation.name).distinct()),
+        }
 
     async def get_all_slugs(self) -> List[str]:
         """Return every slug — used by Next.js generateStaticParams."""

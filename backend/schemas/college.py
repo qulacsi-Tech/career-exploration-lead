@@ -93,6 +93,12 @@ class CollegeListSchema(BaseModel):
     courses: List[CourseSchema] = []
     # Card and hero photo. Empty: the card shows no photo.
     image: str = ""
+    # The college's logo and brochure, from its page record. Empty: none uploaded.
+    logo: str = ""
+    brochureUrl: str = ""
+    # Listing badges: set in the admin (featured) and counted from page visits (views).
+    isFeatured: bool = False
+    viewCount: int = 0
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -114,8 +120,6 @@ class CollegeDetailSchema(CollegeListSchema):
     shortName: str = ""
     tagline: str = ""
     locality: str = ""
-    logo: str = ""
-    brochureUrl: str = ""
     # When the record was last saved (ISO date).
     updatedAt: str = ""
     faculty: Faculty = Faculty()
@@ -150,6 +154,13 @@ class CollegeFilterParams(BaseModel):
     fees_min: Optional[int] = None
     fees_max: Optional[int] = None
     ranking_max: Optional[int] = None
+    # Listing facets. `specialisation` matches course names ("MBA Finance"),
+    # `level` is UG | PG | Doctorate, `credential` is Degree | Diploma, and the
+    # fee bounds are in lakh rupees against the college's lowest fee.
+    specialisation: Optional[str] = None
+    level: Optional[str] = None
+    credential: Optional[str] = None
+    min_rating: Optional[float] = None
     sort: str = "popularity"
     featured: Optional[bool] = None
     q: Optional[str] = None
