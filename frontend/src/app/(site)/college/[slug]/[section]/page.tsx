@@ -6,12 +6,23 @@ import { Clock, IndianRupee, Layers, MessageSquarePlus } from "lucide-react";
 import { ComparisonTable } from "@/components/comparison-table";
 import { CutoffCards } from "@/components/college/cutoff-cards";
 import {
+  AlertCards,
+  CounsellorBand,
+  CuratedComparisons,
+  FacultyShowcase,
+  NewsTimeline,
+  PressGrid,
+  QaList,
+  SectionSpotlight,
+  VsDuel,
+} from "@/components/college/fancy-sections";
+import { docOutline } from "@/lib/college-outline";
+import {
   BigFigure,
   CardLink,
   ColumnLabel,
   DetailCard,
   EmptyCard,
-  FaqAccordion,
   IconStat,
   MeterList,
   PollStat,
@@ -156,23 +167,37 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
           />
         );
       }
+      const label = sectionBySlug(sectionSlug)?.label ?? "";
+      const outline = docOutline(doc);
       return (
-        <DetailCard
-          footer={
-            sectionSlug === "admission-process" && college.examsAccepted.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-1 text-sm font-semibold text-ink">Exams accepted</span>
-                {college.examsAccepted.map((exam) => (
-                  <Chip key={exam} tone="brand">
-                    {exam}
-                  </Chip>
-                ))}
-              </div>
-            ) : undefined
-          }
-        >
-          <RichText doc={doc} className="max-w-3xl" />
-        </DetailCard>
+        <>
+          <SectionSpotlight
+            icon={RICH_TEXT_ICON[sectionSlug] ?? "grad"}
+            label={label}
+            collegeName={college.name}
+            topics={outline.topics}
+            points={outline.points}
+            words={outline.words}
+          />
+          <DetailCard
+            title="Full Details"
+            footer={
+              sectionSlug === "admission-process" && college.examsAccepted.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="mr-1 text-sm font-semibold text-ink">Exams accepted</span>
+                  {college.examsAccepted.map((exam) => (
+                    <Chip key={exam} tone="brand">
+                      {exam}
+                    </Chip>
+                  ))}
+                </div>
+              ) : undefined
+            }
+          >
+            <RichText doc={doc} className="max-w-3xl" />
+          </DetailCard>
+          <CounsellorBand label={label} collegeName={college.name} />
+        </>
       );
     }
   }
@@ -358,37 +383,12 @@ function Faculty({ college }: { college: College }) {
     <>
       {hasRoster && (
         <DetailCard title="Faculty at a Glance">
-          {hasStats && (
-            <div className="grid gap-8 sm:grid-cols-3">
-              {roster.count !== null && <BigFigure label="Faculty members" value={roster.count.toLocaleString("en-IN")} />}
-              {roster.studentRatio && <BigFigure label="Student to faculty ratio" value={roster.studentRatio} />}
-              {roster.phdPercent !== null && <BigFigure label="Hold a PhD" value={`${roster.phdPercent}%`} />}
-            </div>
-          )}
-          {roster.members.length > 0 && (
-            <div className={`-mx-2 overflow-x-auto px-2 ${hasStats ? "mt-10" : ""}`}>
-              <table className="w-full min-w-[520px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-faint">
-                    <th scope="col" className="py-3 pr-4 font-semibold">Name</th>
-                    <th scope="col" className="py-3 pr-4 font-semibold">Designation</th>
-                    <th scope="col" className="py-3 pr-4 font-semibold">Department</th>
-                    <th scope="col" className="py-3 font-semibold">Qualification</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {roster.members.map((member) => (
-                    <tr key={member.name} className="border-b border-line-soft">
-                      <th scope="row" className="py-4 pr-4 font-semibold text-ink">{member.name}</th>
-                      <td className="py-4 pr-4 text-ink-soft">{member.designation || "—"}</td>
-                      <td className="py-4 pr-4 text-ink-soft">{member.department || "—"}</td>
-                      <td className="py-4 text-ink-soft">{member.qualification || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <FacultyShowcase
+            count={roster.count}
+            ratio={roster.studentRatio}
+            phdPercent={roster.phdPercent}
+            members={roster.members}
+          />
         </DetailCard>
       )}
       {faculty && (
@@ -770,29 +770,28 @@ async function Compare({ college }: { college: College }) {
             </CardLink>
           }
         >
-          <ComparisonTable colleges={[college, ...peers]} />
+          <VsDuel
+            colleges={[college, ...peers].map((c) => ({
+              slug: c.slug,
+              name: c.name,
+              location: `${c.city}, ${c.state}`,
+              rank: c.ranking.rank,
+              authority: c.ranking.authority,
+              rating: c.rating,
+              fees: c.feesRange ?? "",
+            }))}
+          />
+          <div className="mt-8">
+            <ComparisonTable colleges={[college, ...peers]} />
+          </div>
         </DetailCard>
       )}
 
       {curated.length > 0 && (
         <DetailCard title="Which Should You Choose?">
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {curated.map((comparison) => (
-              <li key={comparison.slug}>
-                <Link
-                  href={`/compare/${comparison.slug}`}
-                  className="group block h-full rounded-xl bg-bg-alt p-5 transition hover:bg-brand-soft"
-                >
-                  <h3 className="font-display text-lg font-bold text-ink group-hover:text-brand">
-                    {comparison.title}
-                  </h3>
-                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-ink-soft">
-                    {comparison.intro}
-                  </p>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <CuratedComparisons
+            items={curated.map((c) => ({ slug: c.slug, title: c.title, intro: c.intro }))}
+          />
         </DetailCard>
       )}
     </>
@@ -800,24 +799,7 @@ async function Compare({ college }: { college: College }) {
 }
 
 function QnA({ college }: { college: College }) {
-  return (
-    <DetailCard
-      footer={
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-ink-soft">Have a question that is not answered here?</p>
-          <Link
-            href="/enquiry"
-            className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark"
-          >
-            <MessageSquarePlus className="h-4 w-4" />
-            Ask a question
-          </Link>
-        </div>
-      }
-    >
-      <FaqAccordion faqs={faqsOf(college)} />
-    </DetailCard>
-  );
+  return <QaList faqs={faqsOf(college)} collegeName={college.name} />;
 }
 
 function News({ college }: { college: College }) {
@@ -838,68 +820,41 @@ function News({ college }: { college: College }) {
     <>
       {alerts.length > 0 && (
         <DetailCard title="Alerts">
-          <ul className="space-y-3">
-            {alerts.map((alert) => (
-              <li
-                key={`${alert.date}-${alert.title}`}
-                className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3.5 ${alert.isUrgent ? "bg-brand-soft" : "bg-bg-alt"}`}
-              >
-                <Chip tone={alert.isUrgent ? "brand" : undefined}>{alert.kind}</Chip>
-                <span className="min-w-0 flex-1 font-medium text-ink">
-                  {alert.link ? (
-                    <Link href={alert.link} className="hover:text-brand hover:underline">{alert.title}</Link>
-                  ) : (
-                    alert.title
-                  )}
-                </span>
-                <span className="shrink-0 text-sm text-ink-faint">{longDate(alert.date)}</span>
-              </li>
-            ))}
-          </ul>
+          <AlertCards
+            alerts={alerts.map((a) => ({
+              title: a.title,
+              kind: a.kind,
+              date: longDate(a.date),
+              link: a.link,
+              urgent: a.isUrgent,
+            }))}
+          />
         </DetailCard>
       )}
 
       {articles.length > 0 && (
         <DetailCard title="Latest News">
-          <ul className="divide-y divide-line">
-            {articles.map((article) => (
-              <li key={`${article.date}-${article.title}`} className="py-6 first:pt-0 last:pb-0">
-                <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
-                  {longDate(article.date)} &middot; {article.author}
-                </p>
-                <h3 className="mt-2 font-display text-xl font-bold leading-snug text-ink">{article.title}</h3>
-                {article.summary && <p className="mt-2 text-base leading-relaxed text-ink-soft">{article.summary}</p>}
-                {article.body && (
-                  <div className="mt-3 space-y-3 text-sm leading-relaxed text-ink-soft">
-                    {article.body.split(/\n\s*\n/).map((paragraph, i) => (
-                      <p key={i}>{paragraph}</p>
-                    ))}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+          <NewsTimeline
+            articles={articles.map((a) => ({
+              title: a.title,
+              date: longDate(a.date),
+              author: a.author,
+              summary: a.summary,
+              paragraphs: a.body ? a.body.split(/\n\s*\n/).filter(Boolean) : [],
+            }))}
+          />
         </DetailCard>
       )}
 
       {press.length > 0 && (
         <DetailCard title="In the Press">
-          <ul className="divide-y divide-line">
-            {press.map((item) => (
-              <li key={`${item.date}-${item.title}`} className="py-4 first:pt-0 last:pb-0">
-                <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
-                  {[item.publication, item.date && longDate(item.date)].filter(Boolean).join(" · ")}
-                </p>
-                <p className="mt-1 font-medium text-ink">
-                  {item.link ? (
-                    <a href={item.link} target="_blank" rel="noopener noreferrer nofollow" className="hover:text-brand hover:underline">{item.title}</a>
-                  ) : (
-                    item.title
-                  )}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <PressGrid
+            items={press.map((m) => ({
+              title: m.title,
+              meta: [m.publication, m.date && longDate(m.date)].filter(Boolean).join(" · "),
+              link: m.link,
+            }))}
+          />
         </DetailCard>
       )}
     </>
