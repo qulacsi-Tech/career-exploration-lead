@@ -151,6 +151,7 @@ export function SelectInput({
   placeholder,
   required,
   hint,
+  labels,
 }: {
   id: string;
   label: string;
@@ -160,6 +161,8 @@ export function SelectInput({
   placeholder?: string;
   required?: boolean;
   hint?: string;
+  /** Words to show in place of an option's value, keyed by value. */
+  labels?: Record<string, string>;
 }) {
   // A value saved under a name that is no longer in the list stays selectable.
   const all = value && !options.includes(value) ? [value, ...options] : options;
@@ -169,7 +172,7 @@ export function SelectInput({
         {placeholder !== undefined && <option value="">{placeholder}</option>}
         {all.map((o) => (
           <option key={o} value={o}>
-            {o}
+            {labels?.[o] ?? o}
           </option>
         ))}
       </select>

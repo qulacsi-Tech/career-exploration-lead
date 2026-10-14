@@ -154,6 +154,8 @@ class CollegeFilterParams(BaseModel):
     fees_min: Optional[int] = None
     fees_max: Optional[int] = None
     ranking_max: Optional[int] = None
+    # Slug of a ranking list: only the colleges in it, best rank first when sorted by popularity.
+    ranking_list: Optional[str] = None
     # Listing facets. `specialisation` matches course names ("MBA Finance"),
     # `level` is UG | PG | Doctorate, `credential` is Degree | Diploma, and the
     # fee bounds are in lakh rupees against the college's lowest fee.

@@ -23,7 +23,11 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
         <span className="absolute right-0 top-0 rounded-bl-xl bg-brand-ink px-3 py-1 text-[11px] font-bold tracking-wide text-white">
           #{college.ranking.rank} {college.ranking.authority}
         </span>
-      ) : null}
+      ) : (
+        <span className="absolute right-0 top-0 rounded-bl-xl bg-bg-alt px-3 py-1 text-[11px] font-medium tracking-wide text-ink-faint">
+          Rank not available
+        </span>
+      )}
 
       <div className="p-5">
         <div className="flex items-start gap-4 pr-24 @2xl:pr-28">

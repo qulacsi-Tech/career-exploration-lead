@@ -13,6 +13,7 @@ from models.course_catalogue import CourseCatalogue
 from models.specialisation import Specialisation
 from models.cutoff import Cutoff
 from models.placement import Placement
+from models.ranking import RankingEntry, RankingList
 from models.review import Review
 from schemas.college import CollegeFilterParams
 
@@ -117,6 +118,16 @@ def _apply_filters(stmt, params: CollegeFilterParams):
         stmt = stmt.where(College.rating >= params.min_rating)
     if params.ranking_max:
         stmt = stmt.where(College.ranking_rank <= params.ranking_max)
+    list_rank = None
+    if params.ranking_list:
+        # The college's rank in that list; a college not in it is left out.
+        list_rank = (
+            select(RankingEntry.rank)
+            .join(RankingList, RankingEntry.ranking_list_id == RankingList.id)
+            .where(RankingList.slug == params.ranking_list, RankingEntry.college_slug == College.slug)
+            .scalar_subquery()
+        )
+        stmt = stmt.where(list_rank.is_not(None))
     if params.q:
         term = f"%{params.q}%"
         stmt = stmt.where(
@@ -131,6 +142,8 @@ def _apply_filters(stmt, params: CollegeFilterParams):
     elif params.sort == "name":
         # A tie-break on id keeps the order stable from one page to the next.
         stmt = stmt.order_by(College.name, College.id)
+    elif list_rank is not None:  # popularity inside a ranking list is the list's own order
+        stmt = stmt.order_by(list_rank, College.id)
     else:  # popularity (default)
         stmt = stmt.order_by(College.review_count.desc())
 

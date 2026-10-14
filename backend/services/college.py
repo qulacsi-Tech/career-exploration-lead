@@ -3,11 +3,13 @@
 import math
 from typing import List, Optional, Tuple
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
 from models.college import College
 from models.placement import Placement
+from models.ranking import RankingEntry, RankingList
 from models.review import Review
 from repositories.college import CollegeRepository
 from schemas.college import (
@@ -178,8 +180,20 @@ class CollegeService:
     ) -> Tuple[List[CollegeListSchema], Meta]:
         colleges, total = await self.repo.list(params)
         pages = math.ceil(total / params.limit) if params.limit else 1
+        rows = [_to_list_schema(c) for c in colleges]
+        if params.ranking_list and rows:
+            # Filtering by a ranking list: each card shows its rank in that list, not its headline ranking.
+            found = (await self.repo.db.execute(
+                select(RankingList.authority, RankingEntry.college_slug, RankingEntry.rank)
+                .join(RankingEntry, RankingEntry.ranking_list_id == RankingList.id)
+                .where(RankingList.slug == params.ranking_list, RankingEntry.college_slug.in_([r.slug for r in rows]))
+            )).all()
+            by_slug = {f.college_slug: f for f in found}
+            for row in rows:
+                hit = by_slug.get(row.slug)
+                row.ranking = RankingSchema(authority=hit.authority, rank=hit.rank) if hit else RankingSchema(authority="", rank=0)
         return (
-            [_to_list_schema(c) for c in colleges],
+            rows,
             Meta(total=total, page=params.page, limit=params.limit, pages=pages),
         )
 

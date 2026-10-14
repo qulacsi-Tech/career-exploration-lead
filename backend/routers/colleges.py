@@ -26,6 +26,7 @@ async def list_colleges(
     fees_min: Optional[int] = Query(None),
     fees_max: Optional[int] = Query(None),
     ranking_max: Optional[int] = Query(None),
+    ranking_list: Optional[str] = Query(None),
     specialisation: Optional[str] = Query(None),
     level: Optional[str] = Query(None),
     credential: Optional[str] = Query(None),
@@ -37,7 +38,7 @@ async def list_colleges(
     params = CollegeFilterParams(
         page=page, limit=limit, stream=stream, city=city, state=state,
         ownership=ownership, course=course, mode=mode, approval=approval,
-        exam=exam, fees_min=fees_min, fees_max=fees_max, ranking_max=ranking_max,
+        exam=exam, fees_min=fees_min, fees_max=fees_max, ranking_max=ranking_max, ranking_list=ranking_list,
         specialisation=specialisation, level=level, credential=credential, min_rating=min_rating,
         sort=sort, featured=featured, q=q,
     )

@@ -113,6 +113,88 @@ def _replace_entries(rl: RankingList, entries: list[EntryBody]) -> None:
     ]
 
 
+async def _sync_primary(db, college_slugs) -> None:
+    """Sets each college's headline ranking (the one on its cards) from the lists it is in.
+
+    NIRF comes first when the college is in a NIRF list, then the newest list, then
+    the best rank. A college in no list has its headline ranking cleared.
+    """
+    for slug in set(college_slugs):
+        college = (await db.execute(select(College).where(College.slug == slug))).scalar_one_or_none()
+        if college is None:
+            continue
+        rows = (await db.execute(
+            select(RankingList.authority, RankingList.year, RankingEntry.rank)
+            .join(RankingEntry, RankingEntry.ranking_list_id == RankingList.id)
+            .where(RankingEntry.college_slug == slug)
+        )).all()
+        if not rows:
+            college.ranking_authority = None
+            college.ranking_rank = None
+            continue
+        best = min(rows, key=lambda r: (0 if "nirf" in r.authority.lower() else 1, -r.year, r.rank))
+        college.ranking_authority = best.authority
+        college.ranking_rank = best.rank
+
+
+class PlacementBody(BaseModel):
+    rank: int = Field(ge=1, le=100000)
+    score: Optional[str] = Field(default=None, max_length=50)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.get("/college/{college_slug}", response_model=SuccessResponse[dict])
+async def admin_college_rankings(college_slug: str, _admin: AdminPayload, db: DbSession):
+    """The ranking lists a college is in, and the lists it could still be added to."""
+    lists = (await db.execute(
+        select(RankingList).options(selectinload(RankingList.entries)).order_by(RankingList.year.desc(), RankingList.name)
+    )).scalars().unique().all()
+    mine, available = [], []
+    for rl in lists:
+        entry = next((e for e in rl.entries if e.college_slug == college_slug), None)
+        head = {"slug": rl.slug, "name": rl.name, "authority": rl.authority, "year": rl.year, "stream": rl.stream}
+        if entry:
+            mine.append({**head, "rank": entry.rank, "score": entry.score})
+        else:
+            available.append(head)
+    return SuccessResponse[dict](data={"entries": mine, "available": available})
+
+
+@router.put("/{slug}/entries/{college_slug}", response_model=SuccessResponse[dict])
+async def admin_set_entry(slug: str, college_slug: str, _admin: AdminPayload, db: DbSession, body: dict):
+    """Puts one college in a list at a rank, or changes its rank there."""
+    data = _validate(PlacementBody, body)
+    rl = await _by_slug(db, slug)
+    if (await db.execute(select(College.slug).where(College.slug == college_slug))).scalar_one_or_none() is None:
+        raise NotFoundError("College")
+    clash = next((e for e in rl.entries if e.rank == data.rank and e.college_slug != college_slug), None)
+    if clash is not None:
+        raise ConflictError("RANK_TAKEN", f"Rank {data.rank} in {rl.name} already belongs to another college.")
+    entry = next((e for e in rl.entries if e.college_slug == college_slug), None)
+    if entry is None:
+        db.add(RankingEntry(id=uuid.uuid4(), ranking_list_id=rl.id, college_slug=college_slug, rank=data.rank, score=data.score))
+    else:
+        entry.rank = data.rank
+        entry.score = data.score
+    await db.flush()
+    await _sync_primary(db, [college_slug])
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Saved."})
+
+
+@router.delete("/{slug}/entries/{college_slug}", response_model=SuccessResponse[dict])
+async def admin_remove_entry(slug: str, college_slug: str, _admin: AdminPayload, db: DbSession):
+    rl = await _by_slug(db, slug)
+    entry = next((e for e in rl.entries if e.college_slug == college_slug), None)
+    if entry is None:
+        raise NotFoundError("Ranking entry")
+    await db.delete(entry)
+    await db.flush()
+    await _sync_primary(db, [college_slug])
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Removed."})
+
+
 @router.get("", response_model=SuccessResponse[list])
 async def admin_list_rankings(_admin: AdminPayload, db: DbSession):
     rows = (await db.execute(
@@ -139,6 +221,8 @@ async def admin_create_ranking(_admin: AdminPayload, db: DbSession, body: dict):
     )
     db.add(rl)
     _replace_entries(rl, data.entries)
+    await db.flush()
+    await _sync_primary(db, [e.collegeSlug for e in data.entries])
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Ranking list '{data.slug}' created."})
 
@@ -154,7 +238,10 @@ async def admin_update_ranking(slug: str, _admin: AdminPayload, db: DbSession, b
     rl.authority = data.authority
     rl.year = data.year
     rl.stream = data.stream
+    before = [e.college_slug for e in rl.entries]
     _replace_entries(rl, data.entries)
+    await db.flush()
+    await _sync_primary(db, before + [e.collegeSlug for e in data.entries])
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Ranking list '{slug}' saved."})
 
@@ -171,6 +258,9 @@ async def admin_delete_ranking(slug: str, _admin: AdminPayload, db: DbSession):
             "RANKING_IN_USE",
             f"{using} collection{'s' if using != 1 else ''} order by this list. Change them first.",
         )
+    members = [e.college_slug for e in rl.entries]
     await db.delete(rl)
+    await db.flush()
+    await _sync_primary(db, members)
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Ranking list '{slug}' deleted."})

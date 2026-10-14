@@ -242,8 +242,6 @@ def _check(data: RecordBody) -> None:
     years = [p.year for p in data.placements]
     if len(set(years)) != len(years):
         raise ValidationError("placements: a year appears more than once.")
-    if bool(data.rankingAuthority.strip()) != (data.rankingRank is not None):
-        raise ValidationError("rankingRank: give both the ranking and its rank, or neither.")
     names = [c.name.strip().lower() for c in data.courses]
     if len(set(names)) != len(names):
         raise ValidationError("courses: a programme is listed more than once.")
@@ -279,8 +277,8 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
     row.fees_range = data.feesRange.strip() or None
     row.about = data.about.strip() or None
     row.established = data.established
-    row.ranking_authority = data.rankingAuthority.strip() or None
-    row.ranking_rank = data.rankingRank
+    # The ranking shown on the college's cards comes from the ranking lists (see
+    # routers/admin_rankings.py), so it is not written from the editor.
     row.exams_accepted = [e.strip() for e in data.examsAccepted if e.strip()]
     row.tags = [t.strip() for t in data.tags if t.strip()]
     row.approvals = [a.strip() for a in data.approvals if a.strip()]

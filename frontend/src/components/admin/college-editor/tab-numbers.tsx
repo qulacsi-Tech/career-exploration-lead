@@ -1,6 +1,8 @@
 "use client";
 
-import type { RecordCourse, RecordCutoff, RecordPlacement } from "@/lib/api";
+import { useEffect, useState, useTransition } from "react";
+import type { CollegeRankings, RankingListHead, RecordCourse, RecordCutoff, RecordPlacement } from "@/lib/api";
+import { loadCollegeRankings, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
 import { AmountField } from "@/components/admin/range-field";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { AddButton, Card, ChipInput, EmptyNote, NumberInput, Row, SelectInput, TextInput, move } from "@/components/admin/college-editor/shared";
@@ -13,7 +15,6 @@ import { AddButton, Card, ChipInput, EmptyNote, NumberInput, Row, SelectInput, T
 
 const MODES = ["Full Time", "Part Time", "Weekend", "Online", "Distance"];
 const CATEGORIES = ["General", "OBC", "SC", "ST", "EWS", "PwD", "Other"];
-const RANKINGS = ["NIRF", "QS", "Times Higher Education", "India Today", "Outlook", "The Week", "Business Today", "Careers360"];
 const THIS_YEAR = new Date().getFullYear();
 
 // ── Courses & fees ───────────────────────────────────────────────────────────
@@ -165,22 +166,117 @@ export function CutoffsTab({ record, update, pools }: EditorProps) {
 
 // ── Rankings ─────────────────────────────────────────────────────────────────
 
-export function RankingsTab({ record, update }: EditorProps) {
-  const set = (patch: Partial<typeof record>) => update((r) => ({ ...r, ...patch }));
-  const half = (record.rankingAuthority.trim() === "") !== (record.rankingRank === null);
+/**
+ * The college's place in the ranking lists, as the Rankings page shows it. Nothing is typed in by
+ * hand: the rank on the college's cards is worked out from these. Adding or removing a ranking here
+ * is saved at once (it edits the ranking list), not with the Save button.
+ */
+export function RankingsTab({ slug }: EditorProps) {
+  const [data, setData] = useState<CollegeRankings | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [listSlug, setListSlug] = useState("");
+  const [rank, setRank] = useState<number | null>(null);
+  const [score, setScore] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  const load = () =>
+    loadCollegeRankings(slug).then((result) => {
+      if ("error" in result) return setError(result.error);
+      setError(null);
+      setData(result);
+    });
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  const run = (job: () => Promise<{ ok: true } | { error: string }>, after?: () => void) =>
+    startTransition(async () => {
+      const result = await job();
+      if ("error" in result) return setError(result.error);
+      after?.();
+      await load();
+    });
+
+  const add = () => {
+    if (!listSlug || rank === null) return;
+    run(
+      () => setCollegeRanking(listSlug, slug, rank, score),
+      () => {
+        setListSlug("");
+        setRank(null);
+        setScore("");
+      },
+    );
+  };
+
+  const label = (l: RankingListHead) => `${l.name}${l.name.includes(String(l.year)) ? "" : ` (${l.year})`}`;
 
   return (
-    <Card title="Ranking" description="The college's rank with one ranking body. The Rankings tab sets it among the other colleges of the same category, using the ranks those colleges carry.">
-      <div className="grid max-w-3xl grid-cols-1 gap-5 md:grid-cols-2">
-        <TextInput id="rk-authority" label="Ranking" max={100} list="rankings-pool" value={record.rankingAuthority} onChange={(v) => set({ rankingAuthority: v })} placeholder="e.g. NIRF" hint="Choose a ranking body or type one." />
-        <NumberInput id="rk-rank" label="Rank" min={1} max={10000} value={record.rankingRank} onChange={(v) => set({ rankingRank: v === null ? null : Math.max(1, Math.round(v)) })} />
-      </div>
-      <datalist id="rankings-pool">
-        {RANKINGS.map((r) => (
-          <option key={r} value={r} />
-        ))}
-      </datalist>
-      {half && <p role="alert" className="text-xs text-red-700">Give both the ranking and its rank, or neither.</p>}
+    <Card title="Rankings" description="Where this college stands in each ranking list on the Rankings page. The rank on its cards is taken from these, with NIRF first. Add it to another list below; changes here are saved straight away.">
+      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
+      {!data && !error && <p className="text-sm text-ink-soft">Loading the rankings…</p>}
+
+      {data && (
+        <>
+          {data.entries.length === 0 ? (
+            <EmptyNote>This college is not in any ranking list yet.</EmptyNote>
+          ) : (
+            <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line">
+              {data.entries.map((e) => (
+                <li key={e.slug} className="flex flex-wrap items-center gap-3 bg-bg-alt/40 px-4 py-3">
+                  <span className="grid h-10 min-w-10 place-items-center rounded-lg bg-brand-soft px-2 text-base font-bold text-brand-ink">#{e.rank}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-ink">{label(e)}</p>
+                    <p className="text-xs text-ink-soft">
+                      {e.authority}
+                      {e.stream ? ` · ${e.stream}` : ""}
+                      {e.score ? ` · Score ${e.score}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run(() => removeCollegeRanking(e.slug, slug))}
+                    className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-red-300 hover:text-red-700 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="rounded-lg border border-dashed border-line p-4">
+            <p className="text-sm font-semibold text-ink">Add to another ranking</p>
+            {data.available.length === 0 ? (
+              <p className="mt-1 text-xs text-ink-faint">It is already in every ranking list. Create a new list on the Rankings page in the admin to add more.</p>
+            ) : (
+              <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_120px_140px_auto] md:items-end">
+                <SelectInput
+                  id="rk-list"
+                  label="Ranking list"
+                  value={listSlug}
+                  onChange={setListSlug}
+                  placeholder="Choose a list"
+                  options={data.available.map((l) => l.slug)}
+                  labels={Object.fromEntries(data.available.map((l) => [l.slug, label(l)]))}
+                />
+                <NumberInput id="rk-rank" label="Rank" min={1} max={100000} value={rank} onChange={(v) => setRank(v === null ? null : Math.max(1, Math.round(v)))} />
+                <TextInput id="rk-score" label="Score" max={50} value={score} onChange={setScore} placeholder="Optional" />
+                <button
+                  type="button"
+                  onClick={add}
+                  disabled={pending || !listSlug || rank === null}
+                  className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
+                >
+                  {pending ? "Adding…" : "Add ranking"}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
       <p className="text-xs text-ink-faint">Approvals (AICTE, NAAC and so on) are edited on the College Info tab.</p>
     </Card>
   );

@@ -85,9 +85,6 @@ export function problemsByTab(r: CollegeRecord): Record<TabId, string[]> {
     cuts.add(key);
   });
 
-  // Rankings
-  if ((r.rankingAuthority.trim() === "") !== (r.rankingRank === null)) out.rankings.push("Give both the ranking and its rank, or neither.");
-
   // Gallery
   d.gallery.forEach((g, i) => {
     if (g.alt.trim().length < 3) out.gallery.push(`Photo ${i + 1}: describe what it shows.`);
