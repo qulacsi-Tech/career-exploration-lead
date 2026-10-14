@@ -50,6 +50,7 @@ export function ResourceAdmin<T>({
   onSave,
   onAdd,
   onDelete,
+  headerActions,
 }: {
   title: string;
   description: string;
@@ -70,6 +71,8 @@ export function ResourceAdmin<T>({
   onDelete?: (row: T) => Promise<AdminActionResult>;
   /** Persists a new record. Without it the add form closes without saving. */
   onAdd?: (data: FormData) => Promise<AdminActionResult>;
+  /** Extra buttons beside the Add button in the page header. */
+  headerActions?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [viewing, setViewing] = useState<T | null>(null);
@@ -91,13 +94,16 @@ export function ResourceAdmin<T>({
         title={title}
         description={description}
         actions={
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
-          >
-            {addLabel}
-          </button>
+          <>
+            {headerActions}
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
+            >
+              {addLabel}
+            </button>
+          </>
         }
       />
 

@@ -20,6 +20,13 @@ import {
   adminPutContent,
   adminPutTopExams,
   adminPutHomeCopy,
+  adminGetListingHeader,
+  adminPutListingHeader,
+  adminGetCollegeRankings,
+  adminSetCollegeRanking,
+  adminRemoveCollegeRanking,
+  type ListingHeader,
+  type ListingPage,
   adminUploadImage,
   adminPutHomeLocations,
   adminCreateLocation,
@@ -1018,4 +1025,56 @@ export async function saveCollegeRecord(slug: string, record: CollegeRecord): Pr
     if (err instanceof ApiError) return { error: err.message };
     return { error: "Could not save the college. Try again." };
   }
+}
+
+/** The author and intro shown at the top of a listing page, for its admin dialog. */
+export async function loadListingHeader(page: ListingPage) {
+  const token = await requireAdminToken();
+  try {
+    return await adminGetListingHeader(token, page);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not load the page header. Try again." };
+  }
+}
+
+export async function saveListingHeader(page: ListingPage, value: ListingHeader): Promise<AdminActionResult> {
+  const result = await attempt(`/admin/${page}`, (token) => adminPutListingHeader(token, page, value));
+  if ("ok" in result) revalidatePath(`/${page}`);
+  return result;
+}
+
+// ── A college's rankings, edited from its editor. Each change is saved at once. ──
+
+function refreshRankings(collegeSlug: string) {
+  revalidatePath("/rankings", "layout");
+  revalidatePath("/colleges");
+  revalidatePath(`/college/${collegeSlug}`, "layout");
+  revalidatePath("/", "layout");
+}
+
+export async function loadCollegeRankings(collegeSlug: string) {
+  const token = await requireAdminToken();
+  try {
+    return await adminGetCollegeRankings(token, collegeSlug);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not load the rankings. Try again." };
+  }
+}
+
+export async function setCollegeRanking(listSlug: string, collegeSlug: string, rank: number, score: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/colleges", (token) =>
+    adminSetCollegeRanking(token, listSlug, collegeSlug, { rank, score: score.trim() || null }),
+  );
+  if ("ok" in result) refreshRankings(collegeSlug);
+  return result;
+}
+
+export async function removeCollegeRanking(listSlug: string, collegeSlug: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/colleges", (token) => adminRemoveCollegeRanking(token, listSlug, collegeSlug));
+  if ("ok" in result) refreshRankings(collegeSlug);
+  return result;
 }

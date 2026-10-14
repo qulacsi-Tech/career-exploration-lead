@@ -3,6 +3,7 @@
 import { createCourse, saveCourse } from "@/lib/admin-actions";
 import type { AdminCourse } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
+import { ListingHeaderButton } from "@/components/admin/listing-header-modal";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import {
   TextField,
@@ -37,6 +38,7 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
       title="Courses"
       description="Degree programmes offered across the directory, with eligibility, fees and accepted exams."
       addLabel="Add course"
+      headerActions={<ListingHeaderButton page="courses" label="Courses page header" />}
       addDescription="Basic details now; eligibility and exams on the record afterwards."
       rows={courses}
       getKey={(course) => course.slug}

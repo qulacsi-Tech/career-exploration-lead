@@ -12,6 +12,7 @@ import {
 import { mediaUrl } from "@/lib/media";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { ListingHeaderButton } from "@/components/admin/listing-header-modal";
 import { StateCityFields } from "@/components/admin/state-city-fields";
 import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
@@ -85,13 +86,16 @@ export function CollegesAdmin({ colleges, geo = {} }: { colleges: College[]; geo
         title="Colleges"
         description="Every institute in the directory, with its courses, fees, placements and SEO fields."
         actions={
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
-          >
-            Add college
-          </button>
+          <>
+            <ListingHeaderButton page="colleges" label="Colleges page header" />
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
+            >
+              Add college
+            </button>
+          </>
         }
       />
 

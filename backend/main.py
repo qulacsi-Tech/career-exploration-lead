@@ -16,7 +16,7 @@ from core.exceptions import AppException
 from core.migrate import run_migrations
 from routers import health
 from routers import colleges, exams, locations, articles, programs, leads, search, home, auth
-from routers import courses, rankings, admin as admin_router, sitemap as sitemap_router, study_abroad, admin_study_abroad, collections, admin_dashboard, admin_catalogue, admin_rankings, admin_collections, admin_homepage, admin_content, admin_home_copy, admin_programs, practice, admin_uploads, admin_locations, admin_fields, admin_band_colleges, admin_hero, admin_practice, admin_college_record
+from routers import courses, rankings, admin as admin_router, sitemap as sitemap_router, study_abroad, admin_study_abroad, collections, admin_dashboard, admin_catalogue, admin_rankings, admin_collections, admin_homepage, admin_content, admin_home_copy, listing_header, admin_programs, practice, admin_uploads, admin_locations, admin_fields, admin_band_colleges, admin_hero, admin_practice, admin_college_record
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -124,6 +124,8 @@ app.include_router(admin_collections.router, prefix=V1)
 app.include_router(admin_homepage.router, prefix=V1)
 app.include_router(admin_content.router, prefix=V1)
 app.include_router(admin_home_copy.router, prefix=V1)
+app.include_router(listing_header.router, prefix=V1)
+app.include_router(listing_header.public_router, prefix=V1)
 app.include_router(admin_programs.router, prefix=V1)
 app.include_router(admin_uploads.router, prefix=V1)
 app.include_router(admin_locations.router, prefix=V1)

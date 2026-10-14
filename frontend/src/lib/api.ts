@@ -389,6 +389,7 @@ export type CollegeParams = {
   exam?: string;
   approval?: string;
   ranking_max?: number;
+  ranking_list?: string;
   mode?: string;
   specialisation?: string;
   /** UG | PG | Doctorate */
@@ -419,6 +420,7 @@ export async function getColleges(
   if (params?.exam) qs.set("exam", params.exam);
   if (params?.approval) qs.set("approval", params.approval);
   if (params?.ranking_max) qs.set("ranking_max", String(params.ranking_max));
+  if (params?.ranking_list) qs.set("ranking_list", params.ranking_list);
   if (params?.mode) qs.set("mode", params.mode);
   if (params?.specialisation) qs.set("specialisation", params.specialisation);
   if (params?.level) qs.set("level", params.level);
@@ -1863,4 +1865,40 @@ export async function adminSaveCollegeRecord(token: string, slug: string, body: 
 
 export async function adminGetCollegePools(token: string): Promise<CollegePools> {
   return adminRequest<CollegePools>(token, "GET", "/admin/colleges/pools");
+}
+
+// ── Header of a listing page: the author and the intro text ───────────────
+
+export type ListingPage = "colleges" | "courses";
+/** Empty name: no author row. Empty intro: the page writes its own from its data. Paragraphs are split by a blank line. */
+export type ListingHeader = { name: string; role: string; photo: string; intro: string };
+
+export async function getListingHeader(page: ListingPage): Promise<ListingHeader> {
+  return apiFetch<ListingHeader>(`/listing-header/${page}`);
+}
+
+export async function adminGetListingHeader(token: string, page: ListingPage): Promise<ListingHeader> {
+  return adminRequest<ListingHeader>(token, "GET", `/admin/listing-header/${page}`);
+}
+
+export async function adminPutListingHeader(token: string, page: ListingPage, value: ListingHeader) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/listing-header/${page}`, value);
+}
+
+// ── A college's place in the ranking lists ────────────────────────────────
+
+export type RankingListHead = { slug: string; name: string; authority: string; year: number; stream: string | null };
+export type CollegeRankingEntry = RankingListHead & { rank: number; score: string | null };
+export type CollegeRankings = { entries: CollegeRankingEntry[]; available: RankingListHead[] };
+
+export async function adminGetCollegeRankings(token: string, collegeSlug: string): Promise<CollegeRankings> {
+  return adminRequest<CollegeRankings>(token, "GET", `/admin/rankings/college/${encodeURIComponent(collegeSlug)}`);
+}
+
+export async function adminSetCollegeRanking(token: string, listSlug: string, collegeSlug: string, body: { rank: number; score: string | null }) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/rankings/${encodeURIComponent(listSlug)}/entries/${encodeURIComponent(collegeSlug)}`, body);
+}
+
+export async function adminRemoveCollegeRanking(token: string, listSlug: string, collegeSlug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/rankings/${encodeURIComponent(listSlug)}/entries/${encodeURIComponent(collegeSlug)}`);
 }

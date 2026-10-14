@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Cog, SlidersHorizontal, X } from "lucide-react";
-import { Breadcrumbs } from "@/components/breadcrumbs";
+import { ListingHero, introOf } from "@/components/colleges/listing-hero";
 import { CourseCard } from "@/components/colleges/course-card";
 import { ListingFilters } from "@/components/colleges/listing-filters";
 import { appliedFilters, simple, type FilterGroup } from "@/components/colleges/filter-utils";
-import { getCourses, getHomeData, type CourseCatalogue } from "@/lib/api";
+import { getCourses, getHomeData, getListingHeader, type CourseCatalogue } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Courses: Degrees, Eligibility & Fees",
@@ -52,7 +52,7 @@ export default async function CoursesIndexPage({
   const params = await searchParams;
   const str = (k: string) => (typeof params[k] === "string" ? (params[k] as string) : undefined);
 
-  const [{ data: all }, home] = await Promise.all([getCourses({ limit: 200 }), getHomeData()]);
+  const [{ data: all }, home, header] = await Promise.all([getCourses({ limit: 200 }), getHomeData(), getListingHeader("courses").catch(() => null)]);
 
   const groups: FilterGroup[] = [
     { id: "stream", label: "Stream", options: simple("stream", distinct(all.map((c) => c.stream))) },
@@ -92,25 +92,26 @@ export default async function CoursesIndexPage({
     (level) => [level, all.filter((c) => c.level === level).length] as const,
   );
 
+  const list = (items: string[]) =>
+    items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+  const topStreams = [...streamCounts].sort((a, b) => b.count - a.count).slice(0, 3).map((s) => s.name);
+  const topExams = distinct(all.flatMap((c) => c.examsAccepted)).slice(0, 4);
+  const written = [
+    `Explore ${all.length} programmes across ${streamCounts.length} streams on Top College Path.` +
+      (popular[0] ? ` The most offered is ${popular[0].name}, available at ${popular[0].collegeCount.toLocaleString()} colleges.` : "") +
+      (topStreams.length ? ` Most programmes are in ${list(topStreams)}.` : ""),
+    `Each course lists its duration, average fees, study modes and the entrance exams accepted${topExams.length ? `, such as ${list(topExams)}` : ""}. Use the filters to narrow by stream, level, mode or exam, then open a course to see the colleges that offer it.`,
+  ];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Courses" }]} />
-
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">Courses</h1>
-          <p className="mt-1 text-sm text-ink-soft">
-            {courses.length} {courses.length === 1 ? "programme" : "programmes"}
-            {courses.length !== all.length && ` of ${all.length}`}
-          </p>
-        </div>
-        <Link
-          href="/enquiry"
-          className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
-        >
-          Get Free Counselling
-        </Link>
-      </div>
+      <ListingHero
+        crumbs={[{ label: "Home", href: "/" }, { label: "Courses" }]}
+        title="Courses"
+        countLabel={`${courses.length} ${courses.length === 1 ? "programme" : "programmes"}${courses.length !== all.length ? ` of ${all.length}` : ""}`}
+        intro={introOf(header, written)}
+        author={header}
+      />
 
       <div className="mt-6 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
@@ -147,7 +148,7 @@ export default async function CoursesIndexPage({
         </ul>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)_280px]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <ListingFilters groups={groups} sorts={SORTS} sort={sort} />
         </aside>
@@ -165,52 +166,6 @@ export default async function CoursesIndexPage({
             </div>
           )}
         </div>
-
-        <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-2xl bg-brand-soft p-5">
-            <p className="font-display text-lg font-semibold text-brand-ink">Browse by stream</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {streamCounts.map((s) => (
-                <Link
-                  key={s.name}
-                  href={`/courses?stream=${encodeURIComponent(s.name)}`}
-                  className="rounded-lg bg-white/70 px-3 py-1.5 text-xs font-medium text-brand-ink transition hover:bg-white hover:shadow-sm"
-                >
-                  {s.name}
-                  <span className="ml-1 text-brand">({s.count})</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-brand-soft p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand">Most colleges</p>
-            <p className="mt-1 font-display text-lg font-semibold text-brand-ink">Popular Courses</p>
-            <ul className="mt-4 space-y-2.5 text-sm text-brand-ink/80">
-              {popular.map((c) => (
-                <li key={c.slug} className="flex justify-between gap-3">
-                  <Link href={`/courses/${c.slug}`} className="min-w-0 truncate hover:text-brand">
-                    {c.name}
-                  </Link>
-                  <span className="shrink-0 font-medium">{c.collegeCount.toLocaleString()}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="rounded-2xl bg-brand-soft p-5">
-            <p className="font-display text-lg font-semibold text-brand-ink">Not sure which course?</p>
-            <p className="mt-2 text-sm text-brand-ink/80">
-              Free guidance on eligibility, fees and which colleges to target.
-            </p>
-            <Link
-              href="/enquiry"
-              className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
-            >
-              Request a Callback
-            </Link>
-          </div>
-        </aside>
       </div>
     </div>
   );

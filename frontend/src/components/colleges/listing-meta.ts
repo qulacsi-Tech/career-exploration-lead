@@ -21,6 +21,8 @@ export type ListingFilters = {
   exam?: string;
   approval?: string;
   ranking_max?: number;
+  /** The name of the ranking list picked, e.g. "NIRF Management 2026". */
+  ranking_list_name?: string;
   min_rating?: number;
 };
 
@@ -32,6 +34,7 @@ export function listingTitle(f: ListingFilters): { title: string; filtered: bool
       : (f.specialisation ?? f.course ?? (f.level ? LEVEL_WORD[f.level] : undefined));
 
   const parts = [
+    f.ranking_list_name,
     f.ranking_max ? `NIRF Top ${f.ranking_max}` : undefined,
     f.ownership,
     f.mode,
@@ -132,4 +135,31 @@ export function listingFaqs(title: string, colleges: College[], total: number) {
   }
 
   return faqs;
+}
+
+/** The short guide above the list, written from the colleges on the page. One paragraph, or two with the rest behind "Read More". */
+export function listingIntro(title: string, colleges: College[], total: number): string[] {
+  const name = title === "All Colleges" ? "colleges" : title;
+  const count = total.toLocaleString("en-IN");
+  const first = `Explore ${count} ${name}${title === "All Colleges" ? " listed on Top College Path" : ""}.`;
+  if (colleges.length === 0) return [first];
+
+  const ranked = colleges.filter((c) => c.ranking.rank > 0).sort((a, b) => a.ranking.rank - b.ranking.rank).slice(0, 3);
+  const cities = top(colleges.map((c) => c.city).filter(Boolean), 3).map(([c]) => c);
+  const exams = top(colleges.flatMap((c) => c.examsAccepted), 4).map(([e]) => e);
+  const fees = colleges.find((c) => c.feesRange);
+
+  const lead = [
+    first,
+    ranked.length > 0 ? `Top of the list: ${list(ranked.map((c) => `${c.name} (#${c.ranking.rank} ${c.ranking.authority})`))}.` : "",
+    cities.length > 0 ? `Most are in ${list(cities)}.` : "",
+  ].filter(Boolean).join(" ");
+
+  const rest = [
+    exams.length > 0 ? `Admissions are based on entrance exams such as ${list(exams)}, along with interviews and counselling at some institutes.` : "",
+    fees ? `Total fees vary widely by college and course, for example ${fees.name} at ${fees.feesRange}.` : "",
+    "Use the filters to narrow by location, course, fees, ownership, exam or rating, then compare colleges side by side or download a brochure.",
+  ].filter(Boolean).join(" ");
+
+  return [lead, rest];
 }
