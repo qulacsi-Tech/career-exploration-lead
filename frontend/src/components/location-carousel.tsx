@@ -174,7 +174,7 @@ function DestinationCard({
             priority={index < 2}
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/45" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 via-55% to-black/10" />
 
         {/* A column over the photo (badges, the name, the figures) so a short card never lets them overlap. */}
         <div className="absolute inset-0 flex flex-col p-2.5 sm:p-3">
@@ -196,27 +196,29 @@ function DestinationCard({
           </div>
 
           {/* The college, as a heading in the middle of the photo: where it is, its name, a line about it. */}
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-2 py-2 text-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center gap-2 px-2 pb-3 pt-2 text-center">
             {caption && (
               <>
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2">
                 {highlight && (highlight.stream || highlight.city) && (
-                  <p className="text-[10px] font-light uppercase tracking-[0.28em] text-white/75 sm:text-[11px]">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/90 [text-shadow:0_1px_6px_rgba(0,0,0,0.7)] sm:text-[11px]">
                     {[highlight.stream, highlight.city].filter(Boolean).join("  ·  ")}
                   </p>
                 )}
-                <p className="line-clamp-3 font-display text-xl font-light leading-tight tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.55)] sm:text-2xl lg:text-[1.75rem]">
+                <p className="line-clamp-3 font-display text-xl font-normal leading-tight tracking-tight text-white [text-shadow:0_2px_14px_rgba(0,0,0,0.8)] sm:text-2xl lg:text-[1.75rem]">
                   {caption}
                 </p>
                 {highlight && (
                   <span aria-hidden="true" className="h-px w-10 bg-white/50" />
                 )}
+                </div>
                 {highlight?.about && (
-                  <p className="line-clamp-2 max-w-md text-xs font-light leading-relaxed text-white/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.5)] sm:line-clamp-3 sm:text-[13px]">
+                  <p className="line-clamp-2 max-w-md text-xs font-normal leading-relaxed text-white/95 [text-shadow:0_1px_6px_rgba(0,0,0,0.8)] sm:line-clamp-3 sm:text-[13px]">
                     {highlight.about}
                   </p>
                 )}
                 {highlight && (highlight.established || highlight.ownership) && (
-                  <p className="text-[10px] font-light tracking-[0.18em] text-white/60">
+                  <p className="text-[10px] font-medium tracking-[0.18em] text-white/80 [text-shadow:0_1px_6px_rgba(0,0,0,0.7)]">
                     {[highlight.established ? `Est. ${highlight.established}` : "", highlight.ownership].filter(Boolean).join("  ·  ")}
                   </p>
                 )}

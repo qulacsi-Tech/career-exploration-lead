@@ -200,6 +200,58 @@ export function AutoStoryFrame({
     return () => clearTimeout(timer);
   }, [active, playing, inView, reduceMotion, total]);
 
+  const touchX = useRef<number | null>(null);
+  const pages = Array.from({ length: total }, (_, p) => items.slice(p * perPage, p * perPage + perPage));
+
+  const renderCard = (it: StoryFrameItem, focusable: boolean) => (
+    <div key={it.key}>
+                        <Link
+                          href={it.href}
+      tabIndex={focusable ? undefined : -1}
+                          aria-label={it.headline}
+                          className="group relative block min-h-[400px] overflow-hidden rounded-[26px] bg-brand-ink shadow-[0_30px_70px_-35px_rgba(28,33,40,0.6)] sm:min-h-[440px]"
+                        >
+                          <PhotoCrossfade images={it.images} alt={it.imageAlt} paused={!playing || !inView || !focusable} />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/35" />
+                          <div className="absolute inset-0 flex flex-col p-3 sm:p-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="max-w-[75%] truncate rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink shadow-sm backdrop-blur">
+                                {it.eyebrow}
+                              </span>
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white backdrop-blur-md transition-all duration-300 group-hover:border-transparent group-hover:bg-white group-hover:text-black">
+                                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                              </span>
+                            </div>
+
+                            <div className="mt-auto flex flex-col gap-2 pt-6 text-center">
+                              <h3 className="line-clamp-2 font-display text-2xl font-light leading-tight tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.55)] sm:text-3xl">
+                                {it.headline}
+                              </h3>
+                              <p className="text-sm font-light text-white/80">{it.subline}</p>
+                              <span aria-hidden="true" className="mx-auto h-px w-10 bg-white/50" />
+                              {/* Plain lines, one per mode; a mode with nothing to say is left out. */}
+                              {it.facts.some((fact) => fact.value.trim() !== "") && (
+                                <dl className="mt-1 space-y-1.5 [text-shadow:0_1px_10px_rgba(0,0,0,0.6)]">
+                                  {it.facts
+                                    .filter((fact) => fact.value.trim() !== "")
+                                    .map((fact) => (
+                                      <div key={fact.label} className="flex flex-wrap items-baseline justify-center gap-x-2.5">
+                                        {fact.label && <dt className="text-[10px] font-light uppercase tracking-[0.22em] text-white/60">{fact.label}</dt>}
+                                        <dd className="text-sm font-light text-white sm:text-[15px]">{fact.value}</dd>
+                                      </div>
+                                    ))}
+                                </dl>
+                              )}
+                              <span className="mx-auto mt-2 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-xs font-semibold text-ink transition-colors group-hover:bg-brand group-hover:text-white">
+                                {it.cta}
+                                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+    </div>
+  );
+
   const onBrand = tone === "brand";
   const pageItems = items.slice(active * perPage, active * perPage + perPage);
   const item = items[active];
@@ -324,6 +376,34 @@ export function AutoStoryFrame({
             </AnimatePresence>
             )}
 
+{layout === "split" ? (
+              /* A sliding track: every page sits side by side and the track glides across, with swipe on touch screens. */
+              <div
+                className="-my-6 overflow-hidden py-6"
+                onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+                onTouchEnd={(e) => {
+                  if (touchX.current === null) return;
+                  const dx = e.changedTouches[0].clientX - touchX.current;
+                  touchX.current = null;
+                  if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+                }}
+              >
+                <div
+                  className="flex transition-transform duration-[800ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+                  style={{ transform: `translateX(-${active * 100}%)` }}
+                >
+                  {pages.map((page, p) => (
+                    <div
+                      key={p}
+                      aria-hidden={p !== active || undefined}
+                      className={`grid w-full shrink-0 gap-5 md:gap-6 ${page.length > 1 ? "md:grid-cols-2" : "mx-auto max-w-3xl"}`}
+                    >
+                      {page.map((it) => renderCard(it, p === active))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
             <AnimatePresence mode="wait">
               <motion.div
                 key={pageItems.map((i) => i.key).join("|")}
@@ -333,63 +413,6 @@ export function AutoStoryFrame({
                 variants={{ show: { transition: { staggerChildren: 0.045, delayChildren: 0.05 } } }}
                 className="relative"
               >
-                {layout === "split" ? (
-                  <div className={`grid gap-5 md:gap-6 ${pageItems.length > 1 ? "md:grid-cols-2" : "mx-auto max-w-3xl"}`}>
-                    {pageItems.map((it, n) => (
-                      <motion.div
-                        key={it.key}
-                        variants={{
-                          hidden: { opacity: 0, y: 24, scale: 0.97 },
-                          show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.65, delay: n * 0.12, ease: [0.22, 1, 0.36, 1] } },
-                        }}
-                      >
-                        <Link
-                          href={it.href}
-                          aria-label={it.headline}
-                          className="group relative block min-h-[400px] overflow-hidden rounded-[26px] bg-brand-ink shadow-[0_30px_70px_-35px_rgba(28,33,40,0.6)] sm:min-h-[440px]"
-                        >
-                          <PhotoCrossfade images={it.images} alt={it.imageAlt} paused={!playing || !inView} />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/35" />
-                          <div className="absolute inset-0 flex flex-col p-3 sm:p-4">
-                            <div className="flex items-start justify-between gap-2">
-                              <span className="max-w-[75%] truncate rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink shadow-sm backdrop-blur">
-                                {it.eyebrow}
-                              </span>
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white backdrop-blur-md transition-all duration-300 group-hover:border-transparent group-hover:bg-white group-hover:text-black">
-                                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                              </span>
-                            </div>
-
-                            <div className="mt-auto flex flex-col gap-2 pt-6 text-center">
-                              <h3 className="line-clamp-2 font-display text-2xl font-light leading-tight tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.55)] sm:text-3xl">
-                                {it.headline}
-                              </h3>
-                              <p className="text-sm font-light text-white/80">{it.subline}</p>
-                              <span aria-hidden="true" className="mx-auto h-px w-10 bg-white/50" />
-                              {/* Plain lines, one per mode; a mode with nothing to say is left out. */}
-                              {it.facts.some((fact) => fact.value.trim() !== "") && (
-                                <dl className="mt-1 space-y-1.5 [text-shadow:0_1px_10px_rgba(0,0,0,0.6)]">
-                                  {it.facts
-                                    .filter((fact) => fact.value.trim() !== "")
-                                    .map((fact) => (
-                                      <div key={fact.label} className="flex flex-wrap items-baseline justify-center gap-x-2.5">
-                                        {fact.label && <dt className="text-[10px] font-light uppercase tracking-[0.22em] text-white/60">{fact.label}</dt>}
-                                        <dd className="text-sm font-light text-white sm:text-[15px]">{fact.value}</dd>
-                                      </div>
-                                    ))}
-                                </dl>
-                              )}
-                              <span className="mx-auto mt-2 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-xs font-semibold text-ink transition-colors group-hover:bg-brand group-hover:text-white">
-                                {it.cta}
-                                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                              </span>
-                            </div>
-                          </div>
-                        </Link>
-                      </motion.div>
-                    ))}
-                  </div>
-                ) : (
                 <>
                 {/*
                   The image is floated *inside* the copy, not placed beside it:
@@ -476,9 +499,9 @@ export function AutoStoryFrame({
                 {/* Clears the float so the frame never collapses behind the image */}
                 <div className="clear-both" />
                 </>
-                )}
-              </motion.div>
-            </AnimatePresence>
+                </motion.div>
+              </AnimatePresence>
+            )}
           </div>
         </div>
       </div>
