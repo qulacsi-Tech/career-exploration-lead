@@ -11,11 +11,12 @@ import uuid
 from typing import Literal, Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from core.dependencies import AdminPayload, DbSession
+from core.validation import check_duration, check_fees, validate_body
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from models.course_catalogue import CourseCatalogue
 from models.specialisation import Specialisation
@@ -29,7 +30,21 @@ SLUG = r"^[a-z0-9]+(-[a-z0-9]+)*$"
 Level = Literal["UG", "PG", "Diploma", "Doctorate"]
 
 
-class CourseCreateBody(BaseModel):
+class _FormatChecks(BaseModel):
+    """Duration and fee format rules, shared by the create and update bodies."""
+
+    @field_validator("duration", check_fields=False)
+    @classmethod
+    def _duration(cls, value):
+        return check_duration(value)
+
+    @field_validator("averageFees", check_fields=False)
+    @classmethod
+    def _fees(cls, value):
+        return check_fees(value)
+
+
+class CourseCreateBody(_FormatChecks):
     slug: str = Field(min_length=2, max_length=200, pattern=SLUG)
     name: str = Field(min_length=1, max_length=200)
     fullName: str = Field(min_length=2, max_length=500)
@@ -45,7 +60,7 @@ class CourseCreateBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class CourseUpdateBody(BaseModel):
+class CourseUpdateBody(_FormatChecks):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     fullName: Optional[str] = Field(default=None, min_length=2, max_length=500)
     level: Optional[Level] = None
@@ -60,7 +75,7 @@ class CourseUpdateBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class SpecialisationCreateBody(BaseModel):
+class SpecialisationCreateBody(_FormatChecks):
     slug: str = Field(min_length=2, max_length=200, pattern=SLUG)
     name: str = Field(min_length=1, max_length=200)
     courseSlug: str = Field(min_length=2, max_length=200)
@@ -71,7 +86,7 @@ class SpecialisationCreateBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class SpecialisationUpdateBody(BaseModel):
+class SpecialisationUpdateBody(_FormatChecks):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     courseSlug: Optional[str] = Field(default=None, min_length=2, max_length=200)
     duration: Optional[str] = Field(default=None, max_length=100)
@@ -93,12 +108,7 @@ def _reject_nulls(changes: dict, nullable: set[str]) -> None:
 
 
 def _validate(model: type[BaseModel], raw: dict) -> BaseModel:
-    try:
-        return model.model_validate(raw)
-    except PydanticValidationError as exc:
-        first = exc.errors()[0]
-        field = ".".join(str(p) for p in first["loc"])
-        raise ValidationError(f"{field}: {first['msg']}") from exc
+    return validate_body(model, raw)
 
 
 def _course_out(c: CourseCatalogue, specs: list[Specialisation], counts: CollegeCounts) -> dict:
@@ -146,6 +156,19 @@ async def _course_by_slug(db, slug: str) -> CourseCatalogue:
     return course
 
 
+async def _reject_duplicate(db, name: str, level: str, except_id=None) -> None:
+    """Two courses with the same short name and level are the same course under another address."""
+    stmt = select(CourseCatalogue.slug).where(
+        func.lower(func.trim(CourseCatalogue.name)) == name.strip().lower(),
+        CourseCatalogue.level == level,
+    )
+    if except_id is not None:
+        stmt = stmt.where(CourseCatalogue.id != except_id)
+    existing = (await db.execute(stmt)).scalars().first()
+    if existing is not None:
+        raise ConflictError("COURSE_DUPLICATE", f"A {level} course named '{name.strip()}' already exists ('{existing}').")
+
+
 async def _spec_by_slug(db, slug: str) -> Specialisation:
     spec = (await db.execute(select(Specialisation).where(Specialisation.slug == slug))).scalar_one_or_none()
     if spec is None:
@@ -171,6 +194,7 @@ async def admin_create_course(_admin: AdminPayload, db: DbSession, body: dict):
     taken = (await db.execute(select(CourseCatalogue.id).where(CourseCatalogue.slug == data.slug))).scalar_one_or_none()
     if taken is not None:
         raise ConflictError("COURSE_SLUG_TAKEN", f"A course with slug '{data.slug}' already exists.")
+    await _reject_duplicate(db, data.name, data.level)
 
     course = CourseCatalogue(
         id=uuid.uuid4(),
@@ -193,6 +217,22 @@ async def admin_create_course(_admin: AdminPayload, db: DbSession, body: dict):
     return SuccessResponse[dict](data={"message": f"Course '{data.slug}' created."})
 
 
+class DeleteBody(BaseModel):
+    slugs: list[str] = Field(min_length=1, max_length=200)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.post("/courses/delete", response_model=SuccessResponse[dict])
+async def admin_delete_courses(_admin: AdminPayload, db: DbSession, body: dict):
+    """Deletes the chosen courses, and their specialisations with them (cascade)."""
+    data = _validate(DeleteBody, body)
+    courses = (await db.execute(select(CourseCatalogue).where(CourseCatalogue.slug.in_(data.slugs)))).scalars().all()
+    for course in courses:
+        await db.delete(course)
+    await db.commit()
+    return SuccessResponse[dict](data={"message": f"{len(courses)} course(s) deleted.", "deleted": len(courses)})
+
+
 @router.patch("/courses/{slug}", response_model=SuccessResponse[dict])
 async def admin_update_course(slug: str, _admin: AdminPayload, db: DbSession, body: dict):
     data = _validate(CourseUpdateBody, body)
@@ -209,6 +249,8 @@ async def admin_update_course(slug: str, _admin: AdminPayload, db: DbSession, bo
     values = {mapping[k]: v for k, v in changes.items()}
     if not values:
         return SuccessResponse[dict](data={"message": "Nothing to update."})
+    if "name" in values or "level" in values:
+        await _reject_duplicate(db, values.get("name", course.name), values.get("level", course.level), course.id)
 
     for column, value in values.items():
         setattr(course, column, value)

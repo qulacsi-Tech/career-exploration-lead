@@ -18,10 +18,13 @@ export function UniversityPicker({
   colleges,
   defaultName = "",
   defaultSlug = "",
+  onNameChange,
 }: {
   colleges: UniversityOption[];
   defaultName?: string;
   defaultSlug?: string;
+  /** Called with the university name whenever it changes, so a form can build a slug from it. */
+  onNameChange?: (name: string) => void;
 }) {
   const [name, setName] = useState(defaultName);
   const [slug, setSlug] = useState(defaultSlug);
@@ -48,15 +51,18 @@ export function UniversityPicker({
   const pick = (c: UniversityOption) => {
     setName(c.name);
     setSlug(c.slug);
+    onNameChange?.(c.name);
     setQuery("");
     setOpen(false);
   };
 
   const chooseTyped = () => {
     const typed = query.trim();
-    if (!typed) return;
+    // A name with no English letters has no slug; the editor picks from the list instead.
+    if (!typed || !slugify(typed)) return;
     setName(typed);
     setSlug(slugify(typed));
+    onNameChange?.(typed);
     setQuery("");
     setOpen(false);
   };

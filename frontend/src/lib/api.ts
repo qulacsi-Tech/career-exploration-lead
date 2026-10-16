@@ -716,6 +716,16 @@ export async function getCourse(slug: string): Promise<CourseCatalogue> {
   return apiFetch<CourseCatalogue>(`/courses/${slug}`);
 }
 
+/** An active programme, or null for an unknown or switched-off one. */
+export async function getProgram(slug: string): Promise<RecommendedProgram | null> {
+  try {
+    return await apiFetch<RecommendedProgram>(`/programs/${slug}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export async function getCourseSlugs(): Promise<string[]> {
   return apiFetch<string[]>("/courses/slugs");
 }
@@ -927,6 +937,10 @@ export async function adminGetCatalogue(token: string): Promise<AdminCourse[]> {
 
 export async function adminCreateCourse(token: string, body: Record<string, unknown>) {
   return adminRequest<{ message: string }>(token, "POST", "/admin/courses", body);
+}
+
+export async function adminDeleteCourses(token: string, slugs: string[]) {
+  return adminRequest<{ message: string; deleted: number }>(token, "POST", "/admin/courses/delete", { slugs });
 }
 
 export async function adminUpdateCourse(token: string, slug: string, body: Record<string, unknown>) {
@@ -1412,6 +1426,10 @@ export async function adminSetUniversities(token: string, slugs: string[]) {
 export async function adminDeleteCollection(token: string, slug: string, confirm?: string) {
   const query = confirm ? `?confirm=${encodeURIComponent(confirm)}` : "";
   return adminRequest<{ message: string }>(token, "DELETE", `/admin/collections/${slug}${query}`);
+}
+
+export async function adminDeletePrograms(token: string, slugs: string[]) {
+  return adminRequest<{ message: string; deleted: number }>(token, "POST", "/admin/programs/delete", { slugs });
 }
 
 export async function adminDeleteProgram(token: string, slug: string) {

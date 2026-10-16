@@ -1,6 +1,6 @@
 "use client";
 
-import { createCourse, saveCourse } from "@/lib/admin-actions";
+import { createCourse, deleteCourses, saveCourse } from "@/lib/admin-actions";
 import type { AdminCourse } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ListingHeaderButton } from "@/components/admin/listing-header-modal";
@@ -42,7 +42,7 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
       addDescription="Basic details now; eligibility and exams on the record afterwards."
       rows={courses}
       getKey={(course) => course.slug}
-      searchIn={(course) => [course.name, course.fullName, course.stream, course.level]}
+      searchIn={(course) => [course.name, course.fullName, course.stream, course.level, course.slug]}
       searchPlaceholder="Search name, stream, level"
       columns={[
         {
@@ -92,12 +92,12 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
           label: "Basic details",
           render: (course) => (
             <FieldGrid>
-              <TextField label="Short name" name="name" defaultValue={course.name} required />
-              <TextField label="Full name" name="fullName" defaultValue={course.fullName} required />
+              <TextField label="Short name" name="name" defaultValue={course.name} required maxLength={200} />
+              <TextField label="Full name" name="fullName" defaultValue={course.fullName} required maxLength={500} />
               <SelectField label="Level" name="level" defaultValue={course.level} options={LEVELS} />
               <SelectWithOtherField label="Stream" name="stream" defaultValue={course.stream} options={STREAMS} />
-              <TextField label="Duration" name="duration" defaultValue={course.duration} required />
-              <TextField label="Average fees" name="averageFees" defaultValue={course.averageFees ?? ""} />
+              <TextField label="Duration" name="duration" defaultValue={course.duration} required maxLength={100} hint="A number and a unit, e.g. 4 Years or 24 Months." />
+              <TextField label="Average fees" name="averageFees" defaultValue={course.averageFees ?? ""} maxLength={100} hint="An amount or range, e.g. ₹4L - 25L." />
               <TextField
                 label="Colleges offering (override)"
                 name="collegeCount"
@@ -147,18 +147,20 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
       ]}
       onSave={(course, data) => saveCourse(course.slug, data)}
       onAdd={(data) => createCourse(undefined, data)}
+      onBulkDelete={(rows) => deleteCourses(rows.map((c) => c.slug))}
       renderAddForm={() => (
         <>
           <NameSlugFields
             nameLabel="Short name"
             namePlaceholder="MBA"
+            nameMaxLength={200}
             slugPlaceholder="mba"
           />
-          <TextField label="Full name" name="fullName" placeholder="Master of Business Administration" required />
+          <TextField label="Full name" name="fullName" placeholder="Master of Business Administration" required maxLength={500} />
           <SelectField label="Level" name="level" options={LEVELS} />
           <SelectWithOtherField label="Stream" name="stream" options={STREAMS} />
-          <TextField label="Duration" name="duration" placeholder="24 Months" required />
-          <TextField label="Average fees" name="averageFees" placeholder="₹4L - 25L" />
+          <TextField label="Duration" name="duration" placeholder="24 Months" required maxLength={100} hint="A number and a unit, e.g. 4 Years or 24 Months." />
+          <TextField label="Average fees" name="averageFees" placeholder="₹4L - 25L" maxLength={100} hint="An amount or range, e.g. ₹4L - 25L." />
           <TextField label="Colleges offering (override)" name="collegeCount" type="number" placeholder="0" hint="Leave 0 to count from the directory" />
           <TextAreaField label="About" name="about" rows={3} className="sm:col-span-2" />
         </>

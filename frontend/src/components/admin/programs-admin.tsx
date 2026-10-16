@@ -1,6 +1,8 @@
 "use client";
 
-import { createProgram, deleteProgram, saveProgram } from "@/lib/admin-actions";
+import { useState } from "react";
+
+import { createProgram, deleteProgram, deletePrograms, saveProgram } from "@/lib/admin-actions";
 import type { AdminProgram } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
@@ -8,18 +10,53 @@ import { TextField, NameSlugFields } from "@/components/admin/admin-fields";
 import { UniversityPicker, type UniversityOption } from "@/components/admin/university-picker";
 
 /** The programme fields the homepage row and the programme pages show. */
-function ProgramFields({ program, colleges }: { program: AdminProgram | null; colleges: UniversityOption[] }) {
+function ProgramFields({
+  program,
+  colleges,
+  onUniversityChange,
+}: {
+  program: AdminProgram | null;
+  colleges: UniversityOption[];
+  onUniversityChange?: (name: string) => void;
+}) {
   return (
     <FieldGrid>
       {/* The add form takes the name from the name field beside the slug. */}
-      {program && <TextField label="Programme name" name="name" defaultValue={program.name} required />}
-      <UniversityPicker colleges={colleges} defaultName={program?.universityName ?? ""} defaultSlug={program?.universitySlug ?? ""} />
-      <TextField label="Online duration" name="onlineDuration" defaultValue={program?.onlineDuration ?? ""} placeholder="8 months" />
-      <TextField label="Online fees" name="onlineFees" defaultValue={program?.onlineFees ?? ""} placeholder="INR 4,00,000" />
-      <TextField label="Online fees note" name="onlineFeesNote" defaultValue={program?.onlineFeesNote ?? ""} placeholder="(including taxes)" />
-      <TextField label="On-campus duration" name="onCampusDuration" defaultValue={program?.onCampusDuration ?? ""} placeholder="1 year" />
-      <TextField label="On-campus fees" name="onCampusFees" defaultValue={program?.onCampusFees ?? ""} placeholder="USD 17,000 (indicative)" />
+      {program && <TextField label="Programme name" name="name" defaultValue={program.name} required maxLength={200} />}
+      {program && (
+        <div>
+          <p className="block text-xs font-semibold text-ink">URL slug</p>
+          <p className="mt-1.5 rounded-lg border border-line bg-bg-alt px-3 py-2 text-sm text-ink-soft">{program.slug}</p>
+          <p className="mt-1 text-[11px] text-ink-faint">The programme&rsquo;s address. It cannot be changed here.</p>
+        </div>
+      )}
+      <UniversityPicker colleges={colleges} defaultName={program?.universityName ?? ""} defaultSlug={program?.universitySlug ?? ""} onNameChange={onUniversityChange} />
+      <TextField label="Online duration" name="onlineDuration" defaultValue={program?.onlineDuration ?? ""} placeholder="8 months" maxLength={100} />
+      <TextField label="Online fees" name="onlineFees" defaultValue={program?.onlineFees ?? ""} placeholder="INR 4,00,000" maxLength={200} />
+      <TextField label="Online fees note" name="onlineFeesNote" defaultValue={program?.onlineFeesNote ?? ""} placeholder="(including taxes)" maxLength={200} />
+      <TextField label="On-campus duration" name="onCampusDuration" defaultValue={program?.onCampusDuration ?? ""} placeholder="1 year" maxLength={100} />
+      <TextField label="On-campus fees" name="onCampusFees" defaultValue={program?.onCampusFees ?? ""} placeholder="USD 17,000 (indicative)" maxLength={200} />
     </FieldGrid>
+  );
+}
+
+/** The add form. The slug follows the name and the university, so one programme at two universities gets two slugs. */
+function ProgramAddFields({ colleges }: { colleges: UniversityOption[] }) {
+  const [university, setUniversity] = useState("");
+  return (
+    <>
+      <NameSlugFields
+        nameLabel="Programme name"
+        nameFieldName="name"
+        namePlaceholder="MS in Data Analytics"
+        slugPlaceholder="ms-data-analytics"
+        slugSuffix={university}
+        nameMaxLength={200}
+      />
+      <div className="sm:col-span-2">
+        <ProgramFields program={null} colleges={colleges} onUniversityChange={setUniversity} />
+      </div>
+    </>
   );
 }
 
@@ -41,7 +78,7 @@ export function ProgramsAdmin({
       addDescription="The name, university and fees. The homepage row is chosen separately."
       rows={programs}
       getKey={(p) => p.slug}
-      searchIn={(p) => [p.name, p.universityName]}
+      searchIn={(p) => [p.name, p.universityName, p.slug, p.universitySlug]}
       searchPlaceholder="Search programme or university"
       columns={[
         {
@@ -79,14 +116,8 @@ export function ProgramsAdmin({
       onSave={(p, data) => saveProgram(p.slug, data)}
       onAdd={(data) => createProgram(undefined, data)}
       onDelete={(p) => deleteProgram(p.slug)}
-      renderAddForm={() => (
-        <>
-          <NameSlugFields nameLabel="Programme name" nameFieldName="name" namePlaceholder="MS in Data Analytics" slugPlaceholder="ms-data-analytics" />
-          <div className="sm:col-span-2">
-            <ProgramFields program={null} colleges={colleges} />
-          </div>
-        </>
-      )}
+      onBulkDelete={(rows) => deletePrograms(rows.map((p) => p.slug))}
+      renderAddForm={() => <ProgramAddFields colleges={colleges} />}
     />
   );
 }

@@ -79,6 +79,10 @@ export default async function CourseDetailPage({
   const acceptedExams = examDirectory.data.filter((exam) =>
     course.examsAccepted.some((name) => exam.name.includes(name) || exam.slug === name.toLowerCase()),
   );
+  // Exams the editor listed that the exam directory has no page for: still shown, as plain names.
+  const unlistedExams = course.examsAccepted.filter(
+    (name) => !acceptedExams.some((exam) => exam.name.includes(name) || exam.slug === name.toLowerCase()),
+  );
   const otherCourses = siblings.filter((c) => c.slug !== course.slug).slice(0, 5);
   const courseSpecialisations = course.specialisations ?? [];
 
@@ -92,7 +96,7 @@ export default async function CourseDetailPage({
   const sections = [
     { id: "about", label: "About", show: true },
     { id: "eligibility", label: "Eligibility", show: true },
-    { id: "exams", label: "Exams", show: acceptedExams.length > 0 },
+    { id: "exams", label: "Exams", show: acceptedExams.length + unlistedExams.length > 0 },
     { id: "specialisations", label: "Specialisations", show: courseSpecialisations.length > 0 },
     { id: "colleges", label: "Colleges", show: true },
   ].filter((s) => s.show);
@@ -197,7 +201,7 @@ export default async function CourseDetailPage({
             )}
           </Section>
 
-          {acceptedExams.length > 0 && (
+          {acceptedExams.length + unlistedExams.length > 0 && (
             <Section id="exams" title="Entrance exams accepted">
               <div className="grid gap-3 sm:grid-cols-2">
                 {acceptedExams.map((exam) => (
@@ -214,6 +218,15 @@ export default async function CourseDetailPage({
                   </Link>
                 ))}
               </div>
+              {unlistedExams.length > 0 && (
+                <ul className={`flex flex-wrap gap-2 ${acceptedExams.length > 0 ? "mt-3" : ""}`}>
+                  {unlistedExams.map((name) => (
+                    <li key={name} className="rounded-full border border-line bg-bg-alt px-3 py-1 text-sm text-ink-soft">
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Section>
           )}
 

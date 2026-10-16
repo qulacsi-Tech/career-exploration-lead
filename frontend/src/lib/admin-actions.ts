@@ -64,6 +64,8 @@ import {
   type ArticleInput,
   adminUpdateProgram,
   adminSetRecommendedPrograms,
+  adminDeleteCourses,
+  adminDeletePrograms,
   adminSetUniversities,
   adminDeleteCollection,
   adminDeleteProgram,
@@ -288,7 +290,9 @@ function fieldsBody(form: FormData, fields: readonly string[], nullable: Set<str
   const out: Record<string, unknown> = {};
   for (const field of fields) {
     if (!form.has(field)) continue;
-    const value = String(form.get(field) ?? "").trim();
+    let value = String(form.get(field) ?? "").trim();
+    // "Other" in a select-with-other field: the typed value is posted as `<field>Custom`.
+    if (value === "__other__") value = String(form.get(`${field}Custom`) ?? "").trim();
     if (lists.has(field)) {
       out[field] = value.split(",").map((item) => item.trim()).filter(Boolean);
     } else if (value === "" && nullable.has(field)) {
@@ -323,6 +327,18 @@ export async function createCourse(
     })
   );
   if ("ok" in result) revalidatePath("/courses", "layout");
+  return result;
+}
+
+export async function deleteCourses(slugs: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) => adminDeleteCourses(token, slugs));
+  if ("ok" in result) revalidatePath("/courses", "layout");
+  return result;
+}
+
+export async function deletePrograms(slugs: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/programs", (token) => adminDeletePrograms(token, slugs));
+  if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }
 

@@ -17,6 +17,7 @@ from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
 
 from core.dependencies import AdminPayload, DbSession
+from core.validation import validate_body
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from models.collection import Collection
 from models.college import College
@@ -96,12 +97,7 @@ class CollectionCreateBody(CollectionBody):
 
 
 def _validate(model: type[BaseModel], raw: dict) -> BaseModel:
-    try:
-        return model.model_validate(raw)
-    except PydanticValidationError as exc:
-        first = exc.errors()[0]
-        field = ".".join(str(p) for p in first["loc"])
-        raise ValidationError(f"{field}: {first['msg']}") from exc
+    return validate_body(model, raw)
 
 
 def _intro_doc(text: str) -> dict:

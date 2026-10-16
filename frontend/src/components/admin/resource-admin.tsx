@@ -50,6 +50,7 @@ export function ResourceAdmin<T>({
   onSave,
   onAdd,
   onDelete,
+  onBulkDelete,
   headerActions,
 }: {
   title: string;
@@ -69,6 +70,8 @@ export function ResourceAdmin<T>({
   onSave?: (row: T, data: FormData) => Promise<AdminActionResult>;
   /** Deletes a record from its edit form. The server decides whether it is allowed. */
   onDelete?: (row: T) => Promise<AdminActionResult>;
+  /** Deletes several records at once. Adds a checkbox column and a "Delete selected" bar. */
+  onBulkDelete?: (rows: T[]) => Promise<AdminActionResult>;
   /** Persists a new record. Without it the add form closes without saving. */
   onAdd?: (data: FormData) => Promise<AdminActionResult>;
   /** Extra buttons beside the Add button in the page header. */
@@ -81,12 +84,60 @@ export function ResourceAdmin<T>({
   const router = useRouter();
   const [flash, showFlash, clearFlash] = useFlash();
   const [deleting, startDelete] = useTransition();
+  /*
+    After a save the list is refetched from the server. Until that lands, `rows`
+    still holds the old record, and an Edit opened now would load the old values
+    and write them back over the change just saved. Edit waits for the refetch.
+  */
+  const [refreshing, startRefresh] = useTransition();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, startBulkDelete] = useTransition();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((row) => searchIn(row).some((field) => field.toLowerCase().includes(q)));
+    // "btech" should find "B.Tech": compare again with punctuation and spaces dropped.
+    const squash = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+    const loose = squash(q);
+    return rows.filter((row) =>
+      searchIn(row).some((field) => field.toLowerCase().includes(q) || (loose !== "" && squash(field).includes(loose)))
+    );
   }, [rows, query, searchIn]);
+
+  const shownKeys = filtered.map(getKey);
+  const allShownSelected = shownKeys.length > 0 && shownKeys.every((key) => selected.has(key));
+  const toggle = (key: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  const toggleAll = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const key of shownKeys) {
+        if (allShownSelected) next.delete(key);
+        else next.add(key);
+      }
+      return next;
+    });
+  const deleteSelected = () => {
+    if (!onBulkDelete) return;
+    const chosen = rows.filter((row) => selected.has(getKey(row)));
+    if (chosen.length === 0) return;
+    if (!window.confirm(`Delete ${chosen.length} selected ${title.toLowerCase()}? This cannot be undone.`)) return;
+    clearFlash();
+    startBulkDelete(async () => {
+      const result = await onBulkDelete(chosen);
+      if ("error" in result) {
+        showFlash("error", result.error);
+      } else {
+        showFlash("ok", `${chosen.length} deleted.`);
+        setSelected(new Set());
+        router.refresh();
+      }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -122,11 +173,44 @@ export function ResourceAdmin<T>({
           />
         }
       >
+        {onBulkDelete && selected.size > 0 && (
+          <div className="mb-3 flex items-center justify-between rounded-lg border border-line bg-bg-alt px-3 py-2 text-sm">
+            <span className="text-ink-soft">{selected.size} selected</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSelected(new Set())}
+                className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                disabled={bulkDeleting}
+                onClick={deleteSelected}
+                className="rounded-lg border border-red-700 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+              >
+                {bulkDeleting ? "Deleting…" : "Delete selected"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Wide table on a narrow screen: scroll it rather than wrap the cells. */}
         <div className="-mx-5 overflow-x-auto px-5">
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+                {onBulkDelete && (
+                  <th scope="col" className="w-8 py-2 pr-3">
+                    <input
+                      type="checkbox"
+                      checked={allShownSelected}
+                      onChange={toggleAll}
+                      aria-label={`Select all shown ${title.toLowerCase()}`}
+                    />
+                  </th>
+                )}
                 {columns.map((column) => (
                   <th key={column.key} scope="col" className="py-2 pr-3 font-semibold">
                     {column.label}
@@ -140,6 +224,16 @@ export function ResourceAdmin<T>({
             <tbody>
               {filtered.map((row) => (
                 <tr key={getKey(row)} className="border-b border-line-soft last:border-b-0">
+                  {onBulkDelete && (
+                    <td className="py-3 pr-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(getKey(row))}
+                        onChange={() => toggle(getKey(row))}
+                        aria-label={`Select ${searchIn(row)[0]}`}
+                      />
+                    </td>
+                  )}
                   {columns.map((column) => (
                     <td key={column.key} className={`py-3 pr-3 ${column.className ?? "text-ink-soft"}`}>
                       {column.render(row)}
@@ -157,7 +251,8 @@ export function ResourceAdmin<T>({
                       <button
                         type="button"
                         onClick={() => setEditing(row)}
-                        className="rounded-lg border border-brand px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft"
+                        disabled={refreshing}
+                        className="rounded-lg border border-brand px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft disabled:opacity-50"
                       >
                         Edit
                       </button>
@@ -168,7 +263,7 @@ export function ResourceAdmin<T>({
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length + 1} className="py-10 text-center text-sm text-ink-soft">
+                  <td colSpan={columns.length + (onBulkDelete ? 2 : 1)} className="py-10 text-center text-sm text-ink-soft">
                     Nothing matches “{query}”.
                   </td>
                 </tr>
@@ -261,7 +356,10 @@ export function ResourceAdmin<T>({
             tabs={editTabs}
             row={editing}
             onDone={(saved) => {
-              if (saved) showFlash("ok", `${searchIn(editing)[0]} saved.`);
+              if (saved) {
+                showFlash("ok", `${searchIn(editing)[0]} saved.`);
+                startRefresh(() => router.refresh());
+              }
               setEditing(null);
             }}
             onSave={onSave ? (data) => onSave(editing, data) : undefined}

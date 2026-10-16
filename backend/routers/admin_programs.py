@@ -10,11 +10,12 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import select
 
 from core.dependencies import AdminPayload, DbSession
+from core.validation import check_duration, check_fees, validate_body
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from models.college import College
 from models.course import Course
@@ -30,7 +31,7 @@ ROW_LIMIT = 6  # the homepage row shows up to six
 
 
 class ProgramBody(BaseModel):
-    name: str = Field(min_length=2, max_length=500)
+    name: str = Field(min_length=2, max_length=200)
     universityName: str = Field(min_length=2, max_length=500)
     universitySlug: str = Field(min_length=2, max_length=200, pattern=SLUG)
     onlineDuration: Optional[str] = Field(default=None, max_length=100)
@@ -44,6 +45,23 @@ class ProgramBody(BaseModel):
     # An uploaded photo or a shipped one. Omitted on an update: left as it is.
     image: Optional[str] = Field(default=None, max_length=200)
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("onlineDuration", "onCampusDuration")
+    @classmethod
+    def _duration(cls, value):
+        return check_duration(value)
+
+    @field_validator("onlineFees", "onCampusFees")
+    @classmethod
+    def _fees(cls, value):
+        return check_fees(value)
+
+    @model_validator(mode="after")
+    def _one_mode(self):
+        # A programme with neither mode has nothing to show a student.
+        if not any((v or "").strip() for v in (self.onlineDuration, self.onlineFees, self.onCampusDuration, self.onCampusFees)):
+            raise ValueError("fill in the duration or fees for online or on-campus study.")
+        return self
 
     @field_validator("image")
     @classmethod
@@ -66,12 +84,7 @@ class RowBody(BaseModel):
 
 
 def _validate(model: type[BaseModel], raw: dict) -> BaseModel:
-    try:
-        return model.model_validate(raw)
-    except PydanticValidationError as exc:
-        first = exc.errors()[0]
-        field = ".".join(str(p) for p in first["loc"])
-        raise ValidationError(f"{field}: {first['msg']}") from exc
+    return validate_body(model, raw)
 
 
 def _out(p: Program) -> dict:
@@ -89,6 +102,18 @@ def _out(p: Program) -> dict:
         "isActive": bool(p.is_active),
         "image": p.image or "",
     }
+
+
+async def _check_university(db, data: ProgramBody) -> None:
+    """A slug that belongs to a directory college must go with that college's name.
+
+    A university that is not in the directory is allowed (the picker lets an
+    editor type one), so only a mismatch is rejected: the name of one college
+    with the address of another.
+    """
+    college = (await db.execute(select(College.name).where(College.slug == data.universitySlug))).scalar_one_or_none()
+    if college is not None and college.strip().lower() != data.universityName.strip().lower():
+        raise ValidationError(f"University name: this slug belongs to '{college}'. Pick the university from the list.")
 
 
 def _fields(data: ProgramBody) -> dict:
@@ -151,12 +176,33 @@ async def admin_list_programs(_admin: AdminPayload, db: DbSession):
 @router.post("", response_model=SuccessResponse[dict], status_code=201)
 async def admin_create_program(_admin: AdminPayload, db: DbSession, body: dict):
     data = _validate(ProgramCreateBody, body)
+    await _check_university(db, data)
     taken = (await db.execute(select(Program.id).where(Program.slug == data.slug))).scalar_one_or_none()
     if taken is not None:
         raise ConflictError("PROGRAM_SLUG_TAKEN", f"A programme with slug '{data.slug}' already exists.")
     db.add(Program(id=uuid.uuid4(), slug=data.slug, is_recommended=False, **{'is_active': True, **_fields(data)}))
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Programme '{data.slug}' created."})
+
+
+class DeleteBody(BaseModel):
+    slugs: list[str] = Field(min_length=1, max_length=200)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.post("/delete", response_model=SuccessResponse[dict])
+async def admin_delete_programs(_admin: AdminPayload, db: DbSession, body: dict):
+    """Deletes the chosen programmes. Refuses the whole batch if any is in the homepage row."""
+    data = _validate(DeleteBody, body)
+    row = set(await _row_slugs(db))
+    in_row = [s for s in data.slugs if s in row]
+    if in_row:
+        raise ConflictError("PROGRAM_IN_HOMEPAGE_ROW", f"'{in_row[0]}' is in the homepage row. Remove it there first.")
+    programs = (await db.execute(select(Program).where(Program.slug.in_(data.slugs)))).scalars().all()
+    for program in programs:
+        await db.delete(program)
+    await db.commit()
+    return SuccessResponse[dict](data={"message": f"{len(programs)} programme(s) deleted.", "deleted": len(programs)})
 
 
 @router.put("/recommended", response_model=SuccessResponse[dict])
@@ -185,6 +231,7 @@ async def admin_update_program(slug: str, _admin: AdminPayload, db: DbSession, b
     program = (await db.execute(select(Program).where(Program.slug == slug))).scalar_one_or_none()
     if program is None:
         raise NotFoundError("Programme")
+    await _check_university(db, data)
     for column, value in _fields(data).items():
         setattr(program, column, value)
     await db.commit()

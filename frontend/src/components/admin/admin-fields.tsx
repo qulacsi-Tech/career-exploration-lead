@@ -16,12 +16,15 @@ export function TextField({
   hint,
   labelAction,
   className,
+  maxLength,
 }: {
   label: string;
   name: string;
   placeholder?: string;
   required?: boolean;
   type?: string;
+  /** Matches the API's limit, so an over-long entry is stopped where it is typed. */
+  maxLength?: number;
   /** Controlled only when both value and onChange are given. */
   value?: string;
   defaultValue?: string;
@@ -45,6 +48,7 @@ export function TextField({
         name={name}
         type={type}
         required={required}
+        maxLength={maxLength}
         placeholder={placeholder}
         {...(controlled ? { value, onChange: (e) => onChange(e.target.value) } : { defaultValue })}
         className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
@@ -247,6 +251,8 @@ export function NameSlugFields({
   defaultName = "",
   defaultSlug = "",
   slugPrefix = "",
+  slugSuffix = "",
+  nameMaxLength,
 }: {
   nameLabel?: string;
   namePlaceholder?: string;
@@ -259,6 +265,9 @@ export function NameSlugFields({
   defaultSlug?: string;
   /** Prepended to the generated slug, e.g. the parent course. */
   slugPrefix?: string;
+  /** Appended to the generated slug, e.g. the university, so one programme at two universities gets two slugs. */
+  slugSuffix?: string;
+  nameMaxLength?: number;
 }) {
   const [name, setName] = useState(defaultName);
   const [slug, setSlug] = useState(defaultSlug);
@@ -267,11 +276,16 @@ export function NameSlugFields({
   const generate = (from: string) => {
     const base = slugify(from);
     if (!base) return "";
-    return slugPrefix ? `${slugPrefix}-${base}` : base;
+    const tail = slugify(slugSuffix);
+    const full = [slugPrefix, base, tail].filter(Boolean).join("-");
+    return full.slice(0, 200).replace(/-+$/, "");
   };
 
   const suggestion = generate(name);
-  const canReset = suggestion.length > 0 && slug !== suggestion;
+  // Until the slug is edited by hand it is derived, so it also follows a university picked after the name.
+  const shownSlug = slugEdited ? slug : suggestion;
+  const noLatin = name.trim().length > 0 && suggestion === "";
+  const canReset = suggestion.length > 0 && shownSlug !== suggestion;
 
   return (
     <>
@@ -280,24 +294,25 @@ export function NameSlugFields({
         name={nameFieldName}
         placeholder={namePlaceholder}
         required
+        maxLength={nameMaxLength}
         value={name}
-        onChange={(value) => {
-          setName(value);
-          if (!slugEdited) setSlug(generate(value));
-        }}
+        onChange={setName}
       />
       <TextField
         label={slugLabel}
         name={slugFieldName}
         placeholder={slugPlaceholder}
         required
-        value={slug}
+        value={shownSlug}
         onChange={(value) => {
           setSlug(value);
           setSlugEdited(true);
         }}
+        maxLength={200}
         hint={
-          defaultSlug
+          noLatin && !slugEdited
+            ? "A slug can only use English letters and numbers. Type one here, e.g. mba."
+            : defaultSlug
             ? "Changing this breaks existing links unless a redirect is added."
             : slugEdited
               ? "Edited manually."
@@ -308,7 +323,6 @@ export function NameSlugFields({
             <button
               type="button"
               onClick={() => {
-                setSlug(suggestion);
                 setSlugEdited(false);
               }}
               className="text-[11px] font-medium text-brand hover:underline"

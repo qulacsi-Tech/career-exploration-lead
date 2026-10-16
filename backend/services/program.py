@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,3 +44,12 @@ class ProgramService:
         rows = (await self.repo.db.execute(select(Program).where(Program.slug.in_(slugs), Program.is_active.is_(True)))).scalars().all()
         by_slug = {p.slug: p for p in rows}
         return [_to_schema(by_slug[s]) for s in slugs if s in by_slug]
+
+    async def get_by_slug(self, slug: str) -> Optional[ProgramSchema]:
+        """An active programme, or None. A switched-off programme is hidden like an unknown one."""
+        from sqlalchemy import select
+
+        prog = (await self.repo.db.execute(
+            select(Program).where(Program.slug == slug, Program.is_active.is_(True))
+        )).scalar_one_or_none()
+        return _to_schema(prog) if prog else None

@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from core.dependencies import AdminPayload, DbSession
+from core.validation import validate_body
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from models.collection import Collection
 from models.college import College
@@ -48,12 +49,7 @@ class RankingCreateBody(RankingBody):
 
 
 def _validate(model: type[BaseModel], raw: dict) -> BaseModel:
-    try:
-        return model.model_validate(raw)
-    except PydanticValidationError as exc:
-        first = exc.errors()[0]
-        field = ".".join(str(p) for p in first["loc"])
-        raise ValidationError(f"{field}: {first['msg']}") from exc
+    return validate_body(model, raw)
 
 
 async def _check_entries(db, entries: list[EntryBody]) -> None:
