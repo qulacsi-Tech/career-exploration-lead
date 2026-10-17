@@ -68,7 +68,7 @@ Routes: `/login`, `/register`, `/change-password`, `/account`. API: `POST /auth/
 | AUTH-15 | Google-only account tries a password | Student B before adding a password: sign in with email + any password | "This account uses Google sign-in. Choose Continue with Google." |
 | AUTH-16 | Change password | `/account` as Student A: current, new, confirm | Saved. Old password no longer works; new one does. |
 | AUTH-17 | Lockout | Enter a wrong password **5 times** for one account, then the right one | The right one is refused: "Too many failed sign-in attempts. Try again in N minutes." After 15 minutes (or an admin reset, AUTH-19) it works. A good sign-in resets the count. |
-| AUTH-18 | Temporary password | See ADM-12 and COL-03 | After signing in with a temporary password you are sent to `/change-password`; nothing else opens until it is replaced. |
+| AUTH-18 | Temporary password | See ADM-10 and COL-03 | After signing in with a temporary password you are sent to `/change-password`; nothing else opens until it is replaced. |
 | AUTH-19 | Reset clears a lockout | Lock an account (AUTH-17), then an admin resets its password (ADM-10) | The person can sign in with the temporary password. |
 | AUTH-20 | Idle sign-out | Sign in, do nothing for **3 minutes** (tip: ask a developer to shorten `IDLE_BEFORE_WARNING_MS` in `components/auth/idle-logout.tsx` to test faster) | A dialog "Are you still there?" counts down 60 seconds. **Stay signed in** restarts the clock. Doing nothing signs you out and `/login` says you were signed out for inactivity. **Log out now** works. |
 | AUTH-21 | Idle across tabs | Two tabs signed in. Work in tab 1 only | Tab 2 does not time out while tab 1 is active. Signing out in one tab signs out the other. |
@@ -260,7 +260,7 @@ Routes: bell in the admin top bar and the public header; full pages `/admin/noti
 |---|---|---|---|
 | NAV-01 | Removed items | Check the sidebar as Admin | No **Community**, **SEO**, **Enquiry Forms**, **Integrations**, **Locations** or **Static Pages** entries (their pages never existed). Every remaining link opens a real page. |
 | NAV-02 | Platform menu | Admin sidebar | Overview: Dashboard, **Approvals**, **Messages**, **Notifications**. Leads: Inbox, **Visitor Analytics**. Settings: **Users & Roles**, Site Settings. |
-| NAV-03 | Stored user | Footer of the sidebar | Real name and role label (Super admin / Admin / College admin). |
+| NAV-03 | Signed-in user | Footer of the sidebar | Real name and role label (Super admin / Admin / College admin). |
 
 ## 11. Security and negative tests (please try to break these)
 
