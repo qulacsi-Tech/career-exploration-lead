@@ -39,8 +39,8 @@ export function ConsentBanner() {
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-ink-soft">
-          We would like to record which pages you view and what you click, so we can improve the site and follow up
-          on your enquiries. It is anonymous until you sign in or send an enquiry. See our{" "}
+          We use cookies to understand how you use TopCollegePath, so we can improve your experience and guide you to
+          the right colleges. Read how in our{" "}
           <Link href="/privacy" className="font-semibold text-brand hover:underline">
             privacy policy
           </Link>
