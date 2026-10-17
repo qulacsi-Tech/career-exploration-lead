@@ -488,6 +488,7 @@ async def admin_list_leads(
             "status": lead.status.value if hasattr(lead.status, "value") else lead.status,
             "createdAt": lead.created_at.isoformat() if lead.created_at else None,
             "userId": str(lead.user_id) if lead.user_id else None,
+            "visitorId": str(lead.visitor_id) if lead.visitor_id else None,
             "stream": lead.stream,
             "city": lead.city,
             "message": lead.message,

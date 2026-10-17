@@ -81,7 +81,7 @@ export function RecommendedProgramCard({ program }: { program: RecommendedProgra
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
         <Link
-          href="/enquiry"
+          href="/enquiry" data-track="cta_enquiry"
           className="rounded-md border border-brand px-2 py-2 text-center text-xs font-medium text-brand transition hover:bg-brand-soft sm:px-3"
         >
           Get Counselling

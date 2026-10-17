@@ -6,6 +6,7 @@ import { AlertCircle, ArrowUpRight, CheckCircle2, Loader2 } from "lucide-react";
 import { submitEnquiry } from "@/lib/lead-actions";
 import { getSessionUser } from "@/lib/auth-actions";
 import { USER_HINT_COOKIE } from "@/lib/user-session-cookie";
+import { EVENTS, track } from "@/lib/analytics";
 
 type Option = { slug: string; name: string };
 type FieldErrors = Partial<Record<"name" | "phone" | "email" | "stream" | "consent", string>>;
@@ -73,6 +74,7 @@ export function EnquiryForm({
 
   const formRef = useRef<HTMLFormElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
 
   // Fill the visitor's own details in, but never over something they have already typed.
   useEffect(() => {
@@ -130,6 +132,7 @@ export function EnquiryForm({
     setErrors(found);
 
     if (Object.keys(found).length > 0) {
+      track(EVENTS.formError, { source, fields: Object.keys(found).join(",") });
       // Send focus to the first problem rather than leaving the visitor to
       // hunt for the red text.
       const firstKey = Object.keys(found)[0];
@@ -158,6 +161,7 @@ export function EnquiryForm({
         throw new Error(result.message ?? "Request failed");
       }
 
+      track(EVENTS.formSubmit, { source, college: collegeSlug, program: programName });
       setReference(result.reference);
       setStatus("done");
       // Move focus to the confirmation: the form it replaces is gone, and a
@@ -221,7 +225,16 @@ export function EnquiryForm({
   const busy = status === "submitting";
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} noValidate className={bare ? "" : "mt-8 rounded-2xl border border-line bg-surface p-6"}>
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      // First touch of any field: how many start the form and how many finish it.
+      onFocusCapture={() => {
+        if (started.current) return;
+        started.current = true;
+        track(EVENTS.formStart, { source, college: collegeSlug, program: programName });
+      }}
+      noValidate className={bare ? "" : "mt-8 rounded-2xl border border-line bg-surface p-6"}>
       {formError && (
         <div
           role="alert"

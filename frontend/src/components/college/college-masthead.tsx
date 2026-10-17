@@ -338,6 +338,7 @@ export function CollegeMasthead({
             </button>
             <Link
               href={brochureHref}
+              data-track="cta_brochure"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark"
             >
               <Download className="h-4 w-4" />
@@ -386,13 +387,14 @@ export function CollegeMasthead({
                 </div>
                 <Link
                   href={brochureHref}
+              data-track="cta_brochure"
                   className="hidden shrink-0 items-center gap-2 rounded-full border border-ink/70 px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand hover:text-brand sm:inline-flex"
                 >
                   <Download className="h-4 w-4" />
                   Brochure
                 </Link>
                 <Link
-                  href="/enquiry"
+                  href="/enquiry" data-track="cta_enquiry"
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark"
                 >
                   Apply Now

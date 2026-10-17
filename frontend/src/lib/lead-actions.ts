@@ -1,8 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { submitLead } from "@/lib/api";
 import { getUserToken } from "@/lib/user-session";
+import { CONSENT_COOKIE, VISITOR_COOKIE } from "@/lib/analytics-cookies";
 
 export type EnquiryErrors = Partial<Record<"name" | "phone" | "email" | "stream" | "consent", string>>;
 
@@ -62,6 +63,9 @@ export async function submitEnquiry(input: Record<string, unknown>): Promise<Enq
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
   const source = str("source") || "enquiry-page";
+  // The browser behind this lead, so the team can see what led up to it. Only when the visitor agreed to analytics.
+  const jar = await cookies();
+  const visitorId = jar.get(CONSENT_COOKIE)?.value === "granted" ? jar.get(VISITOR_COOKIE)?.value : undefined;
   try {
     const lead = await submitLead(
       {
@@ -77,6 +81,7 @@ export async function submitEnquiry(input: Record<string, unknown>): Promise<Enq
         source,
         sourceUrl: str("sourceUrl") || undefined,
         consent: true,
+        visitorId,
       },
       await getUserToken(),
     );

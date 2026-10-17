@@ -43,6 +43,7 @@ class LeadService:
             source_url=data.sourceUrl,
             consent=data.consent,
             consent_at=datetime.now(timezone.utc) if data.consent else None,
+            visitor_id=UUID(data.visitorId) if data.visitorId else None,
         )
         return LeadResponseSchema(id=str(lead.id), message=THANKS)
 

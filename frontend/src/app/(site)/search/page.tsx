@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { TrackOnMount } from "@/components/analytics/track-on-mount";
+import { EVENTS } from "@/lib/analytics";
 import { search, type SearchResults } from "@/lib/api";
 
 type SearchParams = Promise<{ q?: string }>;
@@ -29,6 +31,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Search" }]} />
+
+      {term && <TrackOnMount key={term} name={EVENTS.search} props={{ query: term.slice(0, 100), results: total }} />}
 
       <h1 className="mt-4 font-display text-2xl font-bold text-ink sm:text-3xl">
         {term ? `Results for “${term}”` : "Search"}

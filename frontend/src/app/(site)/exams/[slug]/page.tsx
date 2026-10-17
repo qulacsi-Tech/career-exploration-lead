@@ -158,7 +158,7 @@ export default async function ExamDetailPage({
                 </Link>
               )}
               <Link
-                href="/enquiry"
+                href="/enquiry" data-track="cta_enquiry"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
               >
                 Get Exam Alerts
@@ -414,7 +414,7 @@ export default async function ExamDetailPage({
               Tell us your expected {shortName} score and we will shortlist colleges you can target.
             </p>
             <Link
-              href="/enquiry"
+              href="/enquiry" data-track="cta_enquiry"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Get a Shortlist

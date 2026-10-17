@@ -10,7 +10,15 @@
  * Server component: everything it needs is static, and the per-bar tooltip is a
  * native SVG <title>, so no client JS ships for it.
  */
-export function LeadsChart({ data }: { data: { date: string; count: number }[] }) {
+export function LeadsChart({
+  data,
+  noun = "enquiries",
+}: {
+  data: { date: string; count: number }[];
+  /** What the bars count, in the plural, for the tooltip and the screen-reader table. */
+  noun?: string;
+}) {
+  const Noun = noun.charAt(0).toUpperCase() + noun.slice(1);
   const width = 720;
   const height = 200;
   const padding = { top: 16, right: 8, bottom: 26, left: 32 };
@@ -18,7 +26,8 @@ export function LeadsChart({ data }: { data: { date: string; count: number }[] }
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
 
-  const max = Math.max(...data.map((d) => d.count));
+  // At least 1, so a quiet period draws an empty chart instead of dividing by zero.
+  const max = Math.max(1, ...data.map((d) => d.count));
   // Round the axis up to a clean step so the gridlines read as round numbers.
   const step = max <= 20 ? 5 : max <= 50 ? 10 : 25;
   const axisMax = Math.ceil(max / step) * step;
@@ -38,7 +47,7 @@ export function LeadsChart({ data }: { data: { date: string; count: number }[] }
         viewBox={`0 0 ${width} ${height}`}
         className="h-auto w-full"
         role="img"
-        aria-label={`Enquiries per day over the last ${data.length} days. Peak of ${max} on ${data[peakIndex].date}.`}
+        aria-label={`${Noun} per day over the last ${data.length} days. Peak of ${max} on ${data[peakIndex].date}.`}
       >
         {/* Recessive gridlines and value axis. */}
         {ticks.map((tick) => {
@@ -87,7 +96,7 @@ export function LeadsChart({ data }: { data: { date: string; count: number }[] }
             <g key={entry.date}>
               <path d={path} fill="var(--color-brand)" />
               {/* Native tooltip: hover detail without shipping a client bundle. */}
-              <title>{`${entry.date}: ${entry.count} enquiries`}</title>
+              <title>{`${entry.date}: ${entry.count} ${noun}`}</title>
 
               {/* Label the peak only — a number on every bar is noise. */}
               {index === peakIndex && (
@@ -129,11 +138,11 @@ export function LeadsChart({ data }: { data: { date: string; count: number }[] }
       {/* The same numbers as a table, for screen readers and anyone who wants
           the values rather than the shape. */}
       <table className="sr-only">
-        <caption>Enquiries per day</caption>
+        <caption>{Noun} per day</caption>
         <thead>
           <tr>
             <th scope="col">Date</th>
-            <th scope="col">Enquiries</th>
+            <th scope="col">{Noun}</th>
           </tr>
         </thead>
         <tbody>

@@ -601,6 +601,7 @@ export type LeadInput = {
   source?: string;
   sourceUrl?: string;
   consent?: boolean;
+  visitorId?: string;
 };
 
 /**
@@ -837,7 +838,7 @@ export type MyLead = {
 };
 
 export type MyActivity = {
-  kind: "account_created" | "login" | "enquiry_sent" | "reply_received";
+  kind: "account_created" | "login" | "enquiry_sent" | "reply_received" | "page_view" | "click";
   title: string;
   detail: string | null;
   href: string | null;
@@ -1733,6 +1734,7 @@ export type AdminLead = {
   status: LeadStatus;
   createdAt: string | null;
   userId: string | null;
+  visitorId: string | null;
   stream: string | null;
   city: string | null;
   message: string | null;
@@ -1789,6 +1791,98 @@ export async function adminUpdateLeadStatus(token: string, id: string, status: L
 /** Admin: send a reply the lead's owner sees under My account. */
 export async function adminReplyToLead(token: string, id: string, body: string) {
   return adminRequest<{ message: string }>(token, "POST", `/admin/leads/${id}/replies`, { body });
+}
+
+export type AdminAnalytics = {
+  days: number;
+  totals: { visitors: number; sessions: number; pageViews: number; leads: number; signups: number };
+  byDay: { date: string; visitors: number; pageViews: number }[];
+  topPages: { path: string; views: number; visitors: number }[];
+  topCtas: { cta: string; label: string | null; clicks: number; visitors: number }[];
+  topColleges: { slug: string; views: number; visitors: number }[];
+  sources: { source: string; visitors: number; sessions: number }[];
+  devices: { device: string; visitors: number }[];
+  funnel: { step: string; count: number }[];
+};
+
+export type TrackedEvent = {
+  id: number;
+  name: string;
+  path: string | null;
+  properties: Record<string, unknown>;
+  at: string | null;
+};
+
+export type LeadJourney = {
+  visitor: {
+    firstSeenAt: string | null;
+    firstReferrer: string | null;
+    firstLandingPath: string | null;
+    utmSource: string | null;
+    utmCampaign: string | null;
+    device: string | null;
+    browser: string | null;
+    os: string | null;
+  } | null;
+  events: TrackedEvent[];
+};
+
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone: string | null;
+  city: string | null;
+  state: string | null;
+  authProvider: string;
+  isActive: boolean;
+  createdAt: string | null;
+  lastLoginAt: string | null;
+  leadCount: number;
+};
+
+export type AdminUserDetail = AdminUser & {
+  preferredStream: string | null;
+  targetExam: string | null;
+  marketingConsent: boolean;
+  sessions: number;
+  leads: { id: string; type: string; status: LeadStatus; collegeSlug: string | null; programName: string | null; createdAt: string | null }[];
+  events: TrackedEvent[];
+};
+
+export const adminGetAnalytics = (token: string, days = 14) =>
+  adminRequest<AdminAnalytics>(token, "GET", `/admin/analytics?days=${days}`);
+
+export const adminLeadJourney = (token: string, leadId: string) =>
+  adminRequest<LeadJourney>(token, "GET", `/admin/leads/${leadId}/journey`);
+
+export const adminGetUser = (token: string, id: string) =>
+  adminRequest<AdminUserDetail>(token, "GET", `/admin/users/${id}`);
+
+export const adminSetUserActive = (token: string, id: string, isActive: boolean) =>
+  adminRequest<AdminUser>(token, "PATCH", `/admin/users/${id}`, { isActive });
+
+/** Admin: one page of student accounts, newest first. */
+export async function adminListUsers(
+  token: string,
+  params: { page?: number; limit?: number; q?: string } = {}
+): Promise<{ data: AdminUser[]; meta: PaginationMeta }> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.q) qs.set("q", params.q);
+  const query = qs.toString() ? `?${qs}` : "";
+  const res = await fetch(`${API_BASE}/admin/users${query}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: AdminUser[]; meta: PaginationMeta }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    const message = json && json.success === false ? json.error?.message : undefined;
+    throw new ApiError(res.status, message ?? `Admin users API ${res.status}`);
+  }
+  return { data: json.data, meta: json.meta };
 }
 
 /** Admin: the figures for the dashboard, computed by the API from the database. */

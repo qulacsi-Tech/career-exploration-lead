@@ -130,7 +130,7 @@ export default async function ExamsIndexPage({
           </p>
         </div>
         <Link
-          href="/enquiry"
+          href="/enquiry" data-track="cta_enquiry"
           className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
           Get Exam Alerts
@@ -233,7 +233,7 @@ export default async function ExamsIndexPage({
               Get registration and result alerts for the exams you are targeting.
             </p>
             <Link
-              href="/enquiry"
+              href="/enquiry" data-track="cta_enquiry"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Get Exam Alerts

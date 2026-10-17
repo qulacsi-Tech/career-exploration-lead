@@ -16,6 +16,7 @@ class LeadCreateSchema(BaseModel):
     source: Optional[str] = None
     sourceUrl: Optional[str] = None
     consent: bool = False
+    visitorId: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -28,6 +29,18 @@ class LeadCreateSchema(BaseModel):
     @classmethod
     def trim_message(cls, v: Optional[str]) -> Optional[str]:
         return v.strip()[:1000] if v and v.strip() else None
+
+    @field_validator("visitorId")
+    @classmethod
+    def valid_visitor(cls, v: Optional[str]) -> Optional[str]:
+        import uuid
+
+        if not v:
+            return None
+        try:
+            return str(uuid.UUID(v))
+        except ValueError:
+            return None
 
     @field_validator("sourceUrl")
     @classmethod

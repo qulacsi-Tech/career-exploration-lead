@@ -45,6 +45,8 @@ class Lead(Base):
     source_url = Column(String(500), nullable=True)
     consent = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_at = Column(DateTime(timezone=True), nullable=True)
+    # The browser it came from, so an admin can read what led up to it.
+    visitor_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     # How many times the same visitor asked the same thing again after the first.
     repeat_count = Column(Integer, nullable=False, default=0, server_default="0")
 

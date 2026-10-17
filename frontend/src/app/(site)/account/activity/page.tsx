@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LogIn, MessageSquare, Send, UserPlus, type LucideIcon } from "lucide-react";
+import { Eye, LogIn, MessageSquare, MousePointerClick, Send, UserPlus, type LucideIcon } from "lucide-react";
 import { getMyActivity, type MyActivity } from "@/lib/api";
 import { getUserToken } from "@/lib/user-session";
 import { formatFull } from "@/lib/lead-labels";
@@ -15,6 +15,8 @@ const ICON: Record<MyActivity["kind"], LucideIcon> = {
   login: LogIn,
   enquiry_sent: Send,
   reply_received: MessageSquare,
+  page_view: Eye,
+  click: MousePointerClick,
 };
 
 /** A timeline of what the student has done on the site, newest first. */

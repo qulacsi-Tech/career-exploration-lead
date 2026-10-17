@@ -334,7 +334,7 @@ export default async function CollegeOverviewPage({
               Talk to an admission counsellor about fees, cut-offs and your chances — free.
             </p>
             <Link
-              href="/enquiry"
+              href="/enquiry" data-track="cta_enquiry"
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-dark"
             >
               <PhoneCall className="h-4 w-4" />

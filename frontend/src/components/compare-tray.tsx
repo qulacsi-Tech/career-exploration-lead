@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ComparePicker } from "@/components/compare-picker";
 import { MAX_COMPARE, compareUrl } from "@/lib/comparison-data";
+import { EVENTS, track } from "@/lib/analytics";
 
 /**
  * The compare tray: pick 2–3 colleges anywhere on the site, then open the
@@ -119,12 +120,17 @@ export function useCompare() {
     isFull: selection.length >= MAX_COMPARE,
     toggle: (entry: CompareEntry) => {
       if (slugs.includes(entry.slug)) {
+        track(EVENTS.compareRemove, { college: entry.slug });
         setEntries(selection.filter((e) => e.slug !== entry.slug));
       } else if (selection.length < MAX_COMPARE) {
+        track(EVENTS.compareAdd, { college: entry.slug });
         setEntries([...selection, entry]);
       }
     },
-    remove: (slug: string) => setEntries(selection.filter((e) => e.slug !== slug)),
+    remove: (slug: string) => {
+      track(EVENTS.compareRemove, { college: slug });
+      setEntries(selection.filter((e) => e.slug !== slug));
+    },
     /**
      * Replaces the whole selection. The comparison board changes two or three
      * colleges at once when it navigates, and doing that through `toggle` would

@@ -164,7 +164,7 @@ export default async function ArticlePage({
               Talk to an admission counsellor about the colleges in this article.
             </p>
             <Link
-              href="/enquiry"
+              href="/enquiry" data-track="cta_enquiry"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Get Free Counselling

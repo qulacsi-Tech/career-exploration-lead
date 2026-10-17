@@ -80,7 +80,7 @@ export default async function ProgramPage({ params }: { params: Promise<{ slug: 
         </div>
         <div className="mt-5">
           <Link
-            href="/enquiry"
+            href="/enquiry" data-track="cta_enquiry"
             className="inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
           >
             Get free counselling

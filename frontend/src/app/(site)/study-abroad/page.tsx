@@ -189,7 +189,7 @@ export default async function StudyAbroadPage() {
         </div>
 
         <Link
-          href="/enquiry"
+          href="/enquiry" data-track="cta_enquiry"
           className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand-soft"
         >
           Request a call back

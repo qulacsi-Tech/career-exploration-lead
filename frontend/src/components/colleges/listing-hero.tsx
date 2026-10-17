@@ -87,7 +87,7 @@ export function ListingHero({
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/70 bg-surface/60 px-5 py-2.5">
         <ShareLinks title={title} />
         <Link
-          href="/enquiry"
+          href="/enquiry" data-track="cta_enquiry"
           className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
         >
           Get Free Counselling

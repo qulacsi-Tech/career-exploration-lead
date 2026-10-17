@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  adminLeadJourney,
   adminReplyToLead,
+  adminSetUserActive,
   ApiError,
   adminCreateCollege,
   adminListPracticeTests,
@@ -274,6 +276,22 @@ export async function replyToLead(id: string, body: string): Promise<AdminAction
   const text = body.trim();
   if (text.length < 2) return { error: "Write a reply first." };
   return attempt("/admin/leads", (token) => adminReplyToLead(token, id, text));
+}
+
+/** Turns a student account off or back on. */
+export async function setUserActive(id: string, isActive: boolean): Promise<AdminActionResult> {
+  return attempt("/admin/users", (token) => adminSetUserActive(token, id, isActive));
+}
+
+/** What the person behind a lead did on the site. Read on demand, when an admin opens the details. */
+export async function loadLeadJourney(id: string): Promise<{ journey: Awaited<ReturnType<typeof adminLeadJourney>> } | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return { journey: await adminLeadJourney(token, id) };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: "Could not load their activity." };
+  }
 }
 
 // ── Courses and specialisations ──────────────────────────────────────────────

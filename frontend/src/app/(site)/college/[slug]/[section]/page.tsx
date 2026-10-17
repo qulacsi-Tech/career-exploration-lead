@@ -274,7 +274,7 @@ function Courses({ college }: { college: College }) {
                   {shortFee(course.fees).replace("₹", "")}
                 </p>
                 <Link
-                  href="/enquiry"
+                  href="/enquiry" data-track="cta_enquiry"
                   className="rounded-full border-2 border-brand px-4 py-1.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white"
                 >
                   Apply
@@ -469,7 +469,7 @@ function Reviews({ college }: { college: College }) {
         title={`Reviews from ${college.name} Students`}
         action={
           <Link
-            href="/enquiry"
+            href="/enquiry" data-track="cta_enquiry"
             className="inline-flex items-center gap-2 rounded-full border-2 border-brand px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white"
           >
             <MessageSquarePlus className="h-4 w-4" />

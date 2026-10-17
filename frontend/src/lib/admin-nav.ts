@@ -87,6 +87,7 @@ export const adminNav: AdminNavSection[] = [
     icon: "leads",
     items: [
       { label: "Inbox", href: "/admin/leads", phase: 1 },
+      { label: "Visitor Analytics", href: "/admin/analytics", phase: 1 },
       { label: "Enquiry Forms", href: "/admin/leads/forms", phase: 1 },
       { label: "Integrations", href: "/admin/leads/integrations", phase: 2 },
     ],

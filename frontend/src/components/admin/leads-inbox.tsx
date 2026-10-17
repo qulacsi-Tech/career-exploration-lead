@@ -4,9 +4,10 @@ import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
-import { replyToLead, updateLeadStatus } from "@/lib/admin-actions";
+import { loadLeadJourney, replyToLead, updateLeadStatus } from "@/lib/admin-actions";
+import { EventTimeline } from "@/components/admin/event-timeline";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
-import { LEAD_STATUSES, type AdminLead, type LeadStatus, type PaginationMeta } from "@/lib/api";
+import { LEAD_STATUSES, type AdminLead, type LeadJourney, type LeadStatus, type PaginationMeta } from "@/lib/api";
 import {
   LEAD_STATUS_LABEL,
   LEAD_STATUS_STYLE,
@@ -86,6 +87,9 @@ function LeadDetail({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [body, setBody] = useState("");
+  const [journey, setJourney] = useState<LeadJourney | null>(null);
+  const [journeyPending, startJourney] = useTransition();
+  const canShowJourney = !!(lead.visitorId || lead.userId);
 
   const facts: [string, string | null][] = [
     ["Stream", lead.stream],
@@ -173,6 +177,40 @@ function LeadDetail({
           </p>
         )}
       </div>
+
+      {canShowJourney && (
+        <div className="md:col-span-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Before they got in touch</h3>
+          {journey ? (
+            <div className="mt-2 space-y-3">
+              {journey.visitor && (
+                <p className="text-xs text-ink-soft">
+                  First visit {formatFull(journey.visitor.firstSeenAt)}
+                  {journey.visitor.firstReferrer ? ` from ${journey.visitor.firstReferrer}` : " (came directly)"}
+                  {journey.visitor.utmSource ? ` · campaign ${journey.visitor.utmSource}` : ""}
+                  {journey.visitor.device ? ` · ${journey.visitor.device}, ${journey.visitor.browser}` : ""}
+                </p>
+              )}
+              <EventTimeline events={journey.events} />
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={journeyPending}
+              onClick={() =>
+                startJourney(async () => {
+                  const result = await loadLeadJourney(lead.id);
+                  if ("error" in result) onError(result.error);
+                  else setJourney(result.journey);
+                })
+              }
+              className="mt-2 rounded-full border border-line px-4 py-1.5 text-sm font-semibold text-ink-soft transition hover:border-brand hover:text-brand disabled:opacity-60"
+            >
+              {journeyPending ? "Loading…" : "Show pages and clicks"}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

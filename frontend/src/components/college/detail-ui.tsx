@@ -602,7 +602,7 @@ export function ReviewSnippet({ review, clamp = false }: { review: ReviewSnippet
           <ThumbsUp className="h-4 w-4" />
           Helpful
         </span>
-        <Link href="/enquiry" className="text-ink-faint hover:text-brand">
+        <Link href="/enquiry" data-track="cta_enquiry" className="text-ink-faint hover:text-brand">
           Report
         </Link>
       </div>
@@ -632,7 +632,7 @@ export function EmptyCard({ icon, title, body }: { icon: IconName; title: string
         <h3 className="mt-5 font-display text-xl font-bold text-ink">{title}</h3>
         <p className="mt-2 max-w-md text-base leading-relaxed text-ink-soft">{body}</p>
         <Link
-          href="/enquiry"
+          href="/enquiry" data-track="cta_enquiry"
           className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark"
         >
           Ask a counsellor

@@ -2,9 +2,11 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter
+from sqlalchemy import select
 from pydantic import BaseModel, ConfigDict
 
 from core.dependencies import CurrentUserId, DbSession
+from models.tracking import Event
 from repositories.lead import LeadRepository
 from repositories.user import UserRepository
 from schemas.auth import ProfileSchema, ProfileUpdateSchema
@@ -39,7 +41,7 @@ class MyLeadSchema(BaseModel):
 
 
 class ActivitySchema(BaseModel):
-    kind: str  # account_created | login | enquiry_sent | reply_received
+    kind: str  # account_created | login | enquiry_sent | reply_received | page_view | click
     title: str
     detail: Optional[str] = None
     href: Optional[str] = None
@@ -49,6 +51,10 @@ class ActivitySchema(BaseModel):
 
 def _iso(value: Optional[datetime]) -> Optional[str]:
     return value.isoformat() if value else None
+
+
+def _pretty(slug: str) -> str:
+    return " ".join(word.capitalize() for word in slug.split("-") if word)
 
 
 def _value(enum_or_str) -> str:
@@ -132,5 +138,42 @@ async def my_activity(user_id: CurrentUserId, db: DbSession):
                 href="/account/replies",
                 at=_iso(reply.created_at),
             ))
+
+    # What they looked at and clicked, once they agreed to analytics. Pages about a college, exam or
+    # programme and clicks on tracked buttons only; ordinary navigation would drown the rest.
+    events = (await db.execute(
+        select(Event)
+        .where(Event.user_id == user_id, Event.name.in_(("page_view", "click_cta")))
+        .order_by(Event.occurred_at.desc())
+        .limit(200)
+    )).scalars().all()
+    last_page = None
+    shown = 0
+    for event in events:
+        if shown >= 60:
+            break
+        if event.name == "page_view":
+            slug = event.college_slug or event.exam_slug or event.program_slug
+            if not slug or event.path == last_page:
+                continue
+            last_page = event.path
+            kind = "College" if event.college_slug else "Exam" if event.exam_slug else "Programme"
+            items.append(ActivitySchema(
+                kind="page_view",
+                title=f"Viewed {kind.lower()}: {_pretty(slug)}",
+                href=event.path,
+                at=_iso(event.occurred_at),
+            ))
+        else:
+            props = event.properties or {}
+            label = (props.get("label") or props.get("cta") or "a button")
+            items.append(ActivitySchema(
+                kind="click",
+                title=f"Clicked “{str(label)[:60]}”",
+                href=event.path,
+                at=_iso(event.occurred_at),
+            ))
+        shown += 1
+
     items.sort(key=lambda i: i.at or "", reverse=True)
     return SuccessResponse[list[ActivitySchema]](data=items)

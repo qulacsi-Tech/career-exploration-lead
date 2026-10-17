@@ -142,7 +142,7 @@ export default async function CourseDetailPage({
                 View Colleges
               </Link>
               <Link
-                href="/enquiry"
+                href="/enquiry" data-track="cta_enquiry"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
               >
                 Get Free Counselling
@@ -308,7 +308,7 @@ export default async function CourseDetailPage({
               Compare {course.name} against other {course.stream.toLowerCase()} programmes with a counsellor.
             </p>
             <Link
-              href="/enquiry"
+              href="/enquiry" data-track="cta_enquiry"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Request a Callback

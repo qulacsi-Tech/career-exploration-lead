@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-17
 **Scope:** student login (email and Google), the user profile, leads, and a record of who visited the site and what they clicked.
-**Status:** Phase 1 (student login, Google, session) and Phase 2 (lead capture, replies, account tabs) are built, not yet run end to end against a database. Phase 3 (visitor and click tracking) and the rest are not started. Activity on the account page is built from stored records (sign-up, enquiries, replies) until Phase 3 adds click events.
+**Status:** Phases 1 to 3 and most of 4 are built (the CSV export of leads is not), but not yet run end to end against a database: student login and Google, lead capture and replies, account tabs, visitor and click tracking with a consent banner, and the admin views (visitor analytics, users, lead journey). Phase 5 (password reset and email verification, login lockout, OTP, optional GA4) is not started.
 
 ---
 

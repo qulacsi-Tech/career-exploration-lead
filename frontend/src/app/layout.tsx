@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { defaultTheme } from "@/lib/themes";
+import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
+import { ConsentBanner } from "@/components/analytics/consent-banner";
 
 /*
   Self-hosted rather than pulled from `next/font/google`. The Google loader
@@ -66,7 +68,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         layout per group — means moving between them is still a client-side
         navigation instead of a full page load.
       */}
-      <body className="min-h-full font-sans">{children}</body>
+      <body className="min-h-full font-sans">
+        {children}
+        {/* Both stay quiet until the visitor accepts analytics, and skip /admin. */}
+        <AnalyticsProvider />
+        <ConsentBanner />
+      </body>
     </html>
   );
 }

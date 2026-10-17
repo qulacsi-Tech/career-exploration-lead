@@ -51,7 +51,7 @@ export function CollegeListing({
           <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>
         </div>
         <Link
-          href="/enquiry"
+          href="/enquiry" data-track="cta_enquiry"
           className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
           Get Free Counselling
@@ -103,7 +103,7 @@ export function CounsellingCard({ context }: { context: string }) {
         Free guidance on {context} — fees, cutoffs and which colleges to target.
       </p>
       <Link
-        href="/enquiry"
+        href="/enquiry" data-track="cta_enquiry"
         className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
       >
         Request a Callback

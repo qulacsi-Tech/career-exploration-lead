@@ -156,7 +156,7 @@ export function CounsellorBand({ label, collegeName }: { label: string; collegeN
           </p>
         </div>
         <Link
-          href="/enquiry"
+          href="/enquiry" data-track="cta_enquiry"
           className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-brand transition hover:-translate-y-0.5 hover:shadow-lg"
         >
           <Phone className="h-4 w-4" />
@@ -459,7 +459,7 @@ export function QaList({ faqs, collegeName }: { faqs: { question: string; answer
             <p className="mt-1 text-sm text-white/80">Ask us and a counsellor will get back to you.</p>
           </div>
           <Link
-            href="/enquiry"
+            href="/enquiry" data-track="cta_enquiry"
             className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-brand transition hover:-translate-y-0.5 hover:shadow-lg"
           >
             <MessageSquarePlus className="h-4 w-4" />
