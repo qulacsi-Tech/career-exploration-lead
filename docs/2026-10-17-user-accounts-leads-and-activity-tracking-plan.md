@@ -243,3 +243,14 @@ Rough effort (one developer, including testing): P1 3-4 days, P2 2-3 days, P3 4-
 - **Accuracy of "who":** anonymous visitors are only a cookie id until they identify themselves. Clearing cookies or switching devices splits a person in two. That is normal, and only stitching on login or lead can join them.
 - **Existing data:** old leads have no user or source, so the new columns are nullable and old rows stay as they are.
 - **Next.js 16** differs from older versions (see `frontend/AGENTS.md`). Read the relevant guide in `node_modules/next/dist/docs/` before touching `proxy.ts`, route handlers, cookies or the root layout.
+
+---
+
+## 11. Admin sidebar: deferred items
+
+Removed from the sidebar on 2026-10-17 because their pages do not exist (each led to a 404). They are in the client's proposal and should come back with their pages:
+
+- **Community:** Reviews (moderation, with a way for students to submit), Questions & Answers.
+- **SEO:** Metadata (per-page title and description), Redirects, Sitemaps.
+- **Content:** Locations (currently edited under Sections, Location Page), Static Pages.
+- **Leads:** Enquiry Forms, Integrations (CRM and WhatsApp).

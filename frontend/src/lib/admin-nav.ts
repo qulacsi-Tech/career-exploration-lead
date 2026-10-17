@@ -40,6 +40,12 @@ export type AdminNavSection = {
   items: AdminNavItem[];
 };
 
+/*
+  Left out until their pages exist, so no sidebar link leads to a 404: Community
+  (Reviews, Questions & Answers), SEO (Metadata, Redirects, Sitemaps), and Content
+  → Locations and Static Pages. All are in the client's proposal; add each back
+  with its page. The "community" and "seo" icons are kept for that.
+*/
 export const adminNav: AdminNavSection[] = [
   {
     id: "overview",
@@ -67,9 +73,7 @@ export const adminNav: AdminNavSection[] = [
         edited from a screen named after a page it does not appear on.
       */
       { label: "Collections", href: "/admin/collections", phase: 1 },
-      { label: "Locations", href: "/admin/locations", phase: 1 },
       { label: "Articles", href: "/admin/articles", phase: 1 },
-      { label: "Static Pages", href: "/admin/pages", phase: 1 },
     ],
   },
   {
@@ -88,27 +92,6 @@ export const adminNav: AdminNavSection[] = [
     items: [
       { label: "Inbox", href: "/admin/leads", phase: 1 },
       { label: "Visitor Analytics", href: "/admin/analytics", phase: 1 },
-      { label: "Enquiry Forms", href: "/admin/leads/forms", phase: 1 },
-      { label: "Integrations", href: "/admin/leads/integrations", phase: 2 },
-    ],
-  },
-  {
-    id: "community",
-    label: "Community",
-    icon: "community",
-    items: [
-      { label: "Reviews", href: "/admin/reviews", phase: 2 },
-      { label: "Questions & Answers", href: "/admin/questions", phase: 2 },
-    ],
-  },
-  {
-    id: "seo",
-    label: "SEO",
-    icon: "seo",
-    items: [
-      { label: "Metadata", href: "/admin/seo", phase: 1 },
-      { label: "Redirects", href: "/admin/seo/redirects", phase: 1 },
-      { label: "Sitemaps", href: "/admin/seo/sitemaps", phase: 1 },
     ],
   },
   {
