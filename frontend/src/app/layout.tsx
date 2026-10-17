@@ -4,6 +4,7 @@ import "./globals.css";
 import { defaultTheme } from "@/lib/themes";
 import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
 import { ConsentBanner } from "@/components/analytics/consent-banner";
+import { IdleLogout } from "@/components/auth/idle-logout";
 
 /*
   Self-hosted rather than pulled from `next/font/google`. The Google loader
@@ -73,6 +74,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Both stay quiet until the visitor accepts analytics, and skip /admin. */}
         <AnalyticsProvider />
         <ConsentBanner />
+        {/* Signs a signed-in visitor out after 3 idle minutes, with a warning first. */}
+        <IdleLogout />
       </body>
     </html>
   );

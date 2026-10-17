@@ -177,6 +177,13 @@ export async function markRepliesSeen(): Promise<void> {
   if (token) await markRepliesRead(token).catch(() => undefined);
 }
 
+/** Ends every session after a period of inactivity, and tells the login page why. */
+export async function signOutIdle() {
+  await clearAdminSession();
+  await clearUserSession();
+  redirect("/login?idle=1");
+}
+
 /** Ends every session and returns to the login screen. */
 export async function signOut() {
   await clearAdminSession();

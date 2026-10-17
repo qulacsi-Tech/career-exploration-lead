@@ -15,7 +15,7 @@ import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
  * URL and out of browser-readable storage; a GET form would put it in history
  * and server logs.
  */
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, idle = false }: { next?: string; idle?: boolean }) {
   const [state, formAction, pending] = useActionState(signIn, undefined);
 
   return (
@@ -24,6 +24,12 @@ export function LoginForm({ next }: { next?: string }) {
       <p className="mt-1 text-sm text-ink-soft">
         Save colleges, track applications and pick up where you left off.
       </p>
+
+      {idle && (
+        <p role="status" className="mt-4 rounded-lg border border-line bg-bg-alt px-3 py-2 text-sm text-ink-soft">
+          You were signed out because you were inactive. Log in again to continue.
+        </p>
+      )}
 
       <form className="mt-6 space-y-4" action={formAction}>
         {next && <input type="hidden" name="next" value={next} />}

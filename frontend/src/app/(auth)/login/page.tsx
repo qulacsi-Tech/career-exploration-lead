@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   team — so it stays a single form rather than a separate admin login.
 */
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const { next } = await searchParams;
-  return <LoginForm next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined} />;
+  const { next, idle } = await searchParams;
+  return (
+    <LoginForm
+      next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined}
+      idle={idle === "1"}
+    />
+  );
 }
