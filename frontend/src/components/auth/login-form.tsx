@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-actions";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import { PasswordInput } from "@/components/ui/password-input";
 
 /**
  * Login form.
@@ -57,10 +58,9 @@ export function LoginForm({ next, idle = false }: { next?: string; idle?: boolea
               Forgot password?
             </Link>
           </div>
-          <input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="current-password"
             required
             className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none"

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { PasswordInput } from "@/components/ui/password-input";
 import { createAdministrator } from "@/lib/admin-actions";
 
 const INPUT =
@@ -71,10 +72,9 @@ export function CreateAdministrator() {
             <label htmlFor="adm-password" className="block text-xs font-semibold text-ink">
               Temporary password
             </label>
-            <input
+            <PasswordInput
               id="adm-password"
               name="password"
-              type="password"
               required
               minLength={8}
               autoComplete="new-password"

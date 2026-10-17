@@ -17,6 +17,7 @@ from schemas.auth import (
     GoogleLoginSchema,
     LoginSchema,
     PasswordChangeSchema,
+    PasswordSetSchema,
     ProfileSchema,
     ProfileUpdateSchema,
     RegisterSchema,
@@ -53,6 +54,7 @@ def profile_of(user: User) -> ProfileSchema:
         marketingConsent=bool(user.marketing_consent),
         collegeSlug=getattr(user, "_college_slug", None),
         mustChangePassword=bool(user.must_change_password),
+        hasPassword=bool(user.password_hash),
     )
 
 
@@ -146,6 +148,18 @@ class AuthService:
             college = await self.repo.db.get(College, user.college_id)
             user._college_slug = college.slug if college else None  # read by profile_of
         return profile_of(user)
+
+    async def set_password(self, user_id: UUID, data: PasswordSetSchema) -> None:
+        """
+        Adds a password to an account that has none, so a Google sign-up can also sign in with its
+        email and a password of its own. The account stays linked to Google; both ways work.
+        """
+        user = await self._active_user(user_id)
+        if user.password_hash:
+            raise ConflictError("PASSWORD_ALREADY_SET", "This account already has a password. Use change password instead.")
+        user.password_hash = hash_password(data.newPassword)
+        user.must_change_password = False
+        await self.repo.save(user)
 
     async def change_password(self, user_id: UUID, data: PasswordChangeSchema) -> None:
         """Replaces the password. Needs the current one, which for a new college admin is the temporary one."""

@@ -9,6 +9,7 @@ import {
   setCollegeAdminActive,
 } from "@/lib/admin-actions";
 import type { CollegeAdminAccount } from "@/lib/api";
+import { PasswordInput } from "@/components/ui/password-input";
 import { formatFull } from "@/lib/lead-labels";
 
 const INPUT =
@@ -105,7 +106,7 @@ export function AdministrativeTab({ slug, institutionType }: { slug: string; ins
             <label htmlFor="ca-password" className="block text-xs font-semibold text-ink">
               Temporary password
             </label>
-            <input id="ca-password" name="password" type="password" required minLength={8} autoComplete="new-password" className={INPUT} />
+            <PasswordInput id="ca-password" name="password" required minLength={8} autoComplete="new-password" className={INPUT} />
             <p className="mt-1 text-[11px] text-ink-faint">
               At least 8 characters, with a letter and a number. They must replace it when they first sign in.
             </p>
@@ -167,7 +168,9 @@ export function AdministrativeTab({ slug, institutionType }: { slug: string; ins
                 <label htmlFor="ca-reset" className="block text-xs font-semibold text-ink">
                   New temporary password
                 </label>
-                <input id="ca-reset" name="password" type="password" required minLength={8} autoComplete="new-password" className={`${INPUT} w-64`} />
+                <div className="w-64">
+                  <PasswordInput id="ca-reset" name="password" required minLength={8} autoComplete="new-password" className={INPUT} />
+                </div>
               </div>
               <button type="submit" disabled={pending} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
                 {pending ? "Saving…" : "Set password"}

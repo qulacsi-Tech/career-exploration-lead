@@ -9,7 +9,7 @@ from core.dependencies import CurrentUserId, DbSession
 from models.tracking import Event
 from repositories.lead import LeadRepository
 from repositories.user import UserRepository
-from schemas.auth import PasswordChangeSchema, ProfileSchema, ProfileUpdateSchema
+from schemas.auth import PasswordChangeSchema, PasswordSetSchema, ProfileSchema, ProfileUpdateSchema
 from schemas.common import SuccessResponse
 from services.auth import AuthService
 
@@ -75,6 +75,13 @@ async def update_me(data: ProfileUpdateSchema, user_id: CurrentUserId, db: DbSes
 async def change_password(data: PasswordChangeSchema, user_id: CurrentUserId, db: DbSession):
     """Sets a new password. Also how a college admin replaces the temporary one they were given."""
     await AuthService(db).change_password(user_id, data)
+    return SuccessResponse[dict](data={"ok": True})
+
+
+@router.post("/password/set", response_model=SuccessResponse[dict])
+async def set_password(data: PasswordSetSchema, user_id: CurrentUserId, db: DbSession):
+    """Adds a password to a Google account, so it can also sign in with email and password."""
+    await AuthService(db).set_password(user_id, data)
     return SuccessResponse[dict](data={"ok": True})
 
 

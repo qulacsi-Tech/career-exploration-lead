@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CheckCircle2 } from "lucide-react";
+import { PasswordCard } from "@/components/account/password-card";
 import { ProfileForm } from "@/components/account/profile-form";
 import { getExams, getHomeData, getIndiaGeo } from "@/lib/api";
 import { getCurrentUser } from "@/lib/user-session";
@@ -53,6 +54,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
       )}
 
       <ProfileForm profile={user} geo={geo} streams={streams} exams={exams} />
+      <PasswordCard email={user.email} hasPassword={user.hasPassword} />
     </>
   );
 }

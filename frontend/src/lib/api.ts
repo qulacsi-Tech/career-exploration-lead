@@ -812,6 +812,8 @@ export type Profile = {
   /** For a college admin: the college they look after. */
   collegeSlug: string | null;
   mustChangePassword: boolean;
+  /** False for an account made with Google that has not added a password yet. */
+  hasPassword: boolean;
 };
 
 export type ProfileUpdate = Partial<
@@ -1925,6 +1927,18 @@ export async function collegeListLeads(
     throw new ApiError(res.status, message ?? `College leads API ${res.status}`);
   }
   return { data: json.data, meta: json.meta };
+}
+
+/** Adds a password to an account that has none (a Google sign-up), so it can also sign in with email and password. */
+export async function setMyPassword(token: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/me/password/set`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ newPassword }),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) throw new Error(json?.error?.message ?? "Could not set the password");
 }
 
 /** Replaces the password. A college admin on a temporary one does this first. */

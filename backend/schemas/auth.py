@@ -93,8 +93,24 @@ class ProfileSchema(BaseModel):
     # For a college admin: the college they look after.
     collegeSlug: Optional[str] = None
     mustChangePassword: bool = False
+    # False for an account created with Google that has not added a password yet.
+    hasPassword: bool = True
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class PasswordSetSchema(BaseModel):
+    """For an account with no password yet (it signed up with Google), so there is no current one to give."""
+    newPassword: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("newPassword")
+    @classmethod
+    def validate_new(cls, v: str) -> str:
+        if len(v) < 8 or not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
+            raise ValueError("The password needs at least 8 characters, with a letter and a number.")
+        return v
 
 
 class PasswordChangeSchema(BaseModel):

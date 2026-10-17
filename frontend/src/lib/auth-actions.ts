@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { loginUser, loginWithGoogle, markRepliesRead, registerUser, updateMe, type AuthResult, type ProfileUpdate } from "@/lib/api";
+import { changeMyPassword, loginUser, loginWithGoogle, markRepliesRead, registerUser, setMyPassword, updateMe, type AuthResult, type ProfileUpdate } from "@/lib/api";
 import { clearAdminSession, setAdminSession } from "@/lib/admin-session";
 import { canUsePanel } from "@/lib/roles";
 import { clearUserSession, getCurrentUser, getUserToken, setUserSession } from "@/lib/user-session";
@@ -181,6 +182,52 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 export async function markRepliesSeen(): Promise<void> {
   const token = await getUserToken();
   if (token) await markRepliesRead(token).catch(() => undefined);
+}
+
+export type PasswordFormState = { error?: string; saved?: number } | undefined;
+
+const PASSWORD_RULE = "The password needs at least 8 characters, with a letter and a number.";
+const passwordOk = (p: string) => p.length >= 8 && /[a-zA-Z]/.test(p) && /\d/.test(p);
+
+/** Changes the signed-in person's password. For an account that already has one. */
+export async function changeOwnPassword(_prev: PasswordFormState, formData: FormData): Promise<PasswordFormState> {
+  const token = await getUserToken();
+  if (!token) redirect("/login?next=/account");
+
+  const current = String(formData.get("current") ?? "");
+  const next = String(formData.get("next") ?? "");
+  if (!current) return { error: "Enter your current password." };
+  if (!passwordOk(next)) return { error: PASSWORD_RULE };
+  if (next !== String(formData.get("confirm") ?? "")) return { error: "The two new passwords do not match." };
+
+  try {
+    await changeMyPassword(token, current, next);
+  } catch (err) {
+    return { error: messageOf(err, "Could not change the password. Try again.") };
+  }
+  return { saved: Date.now() };
+}
+
+/**
+ * Adds a password to an account made with Google. They can then sign in with their email and that
+ * password as well as with Google. The session they are in proves who they are, so no current
+ * password is asked for: there is none.
+ */
+export async function setOwnPassword(_prev: PasswordFormState, formData: FormData): Promise<PasswordFormState> {
+  const token = await getUserToken();
+  if (!token) redirect("/login?next=/account");
+
+  const next = String(formData.get("next") ?? "");
+  if (!passwordOk(next)) return { error: PASSWORD_RULE };
+  if (next !== String(formData.get("confirm") ?? "")) return { error: "The two passwords do not match." };
+
+  try {
+    await setMyPassword(token, next);
+  } catch (err) {
+    return { error: messageOf(err, "Could not set the password. Try again.") };
+  }
+  revalidatePath("/account");
+  return { saved: Date.now() };
 }
 
 /** Ends every session after a period of inactivity, and tells the login page why. */
