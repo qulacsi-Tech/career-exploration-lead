@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { LeadsChart, SourceBars } from "@/components/admin/leads-chart";
-import { adminGetDashboard } from "@/lib/api";
+import { CollegeDashboardView } from "@/components/admin/college-dashboard";
+import { adminGetDashboard, collegeGetDashboard, getMe } from "@/lib/api";
+import { isCollegeAdmin } from "@/lib/roles";
 import { withAdminToken } from "@/lib/admin-session";
 import { LEAD_STATUS_LABEL, LEAD_STATUS_STYLE, LEAD_TYPE_LABEL, formatReceived } from "@/lib/lead-labels";
 
@@ -10,6 +12,13 @@ import { LEAD_STATUS_LABEL, LEAD_STATUS_STYLE, LEAD_TYPE_LABEL, formatReceived }
   database. Nothing on this page is sample data.
 */
 export default async function AdminDashboard() {
+  // A college admin has a dashboard of their own: their college's enquiries and page views.
+  const mine = await withAdminToken(async (token) => {
+    const me = await getMe(token);
+    return isCollegeAdmin(me.role) ? collegeGetDashboard(token) : null;
+  });
+  if (mine) return <CollegeDashboardView data={mine} />;
+
   const dashboard = await withAdminToken((token) => adminGetDashboard(token));
   const { totals, leadsByDay, leadSources, recentLeads } = dashboard;
   const hasEnquiries = leadsByDay.some((day) => day.count > 0);

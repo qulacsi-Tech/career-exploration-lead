@@ -1,7 +1,7 @@
 # College / University Admin: plan
 
 **Date:** 2026-10-17
-**Status:** plan only, for review. No code written. Revised after review: edits go through approval (confirmed), and notifications, real-time delivery and messaging were added (section 11).
+**Status:** Phase A built (not yet run end to end). Phases N and B are planned. Revised after review: edits go through approval (confirmed), and notifications, real-time delivery and messaging were added (section 11).
 **Builds on:** the client's notes of 19 Sep (`2026-09-19-client-mom-implementation-plan.md`, sections 1.2 to 1.7 and workstreams J and K), the Super Admin role added today, and the college editor in `components/admin/college-editor/`.
 
 ---

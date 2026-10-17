@@ -70,6 +70,8 @@ class AuthResponseSchema(BaseModel):
     user: UserSchema
     # True when this request created the account (first Google sign-in, or register).
     isNewUser: bool = False
+    # True when the person is on a temporary password and must choose their own before anything else.
+    mustChangePassword: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -88,8 +90,25 @@ class ProfileSchema(BaseModel):
     preferredStream: Optional[str] = None
     targetExam: Optional[str] = None
     marketingConsent: bool = False
+    # For a college admin: the college they look after.
+    collegeSlug: Optional[str] = None
+    mustChangePassword: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class PasswordChangeSchema(BaseModel):
+    currentPassword: str
+    newPassword: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("newPassword")
+    @classmethod
+    def validate_new(cls, v: str) -> str:
+        if len(v) < 8 or not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
+            raise ValueError("The new password needs at least 8 characters, with a letter and a number.")
+        return v
 
 
 class ProfileUpdateSchema(BaseModel):

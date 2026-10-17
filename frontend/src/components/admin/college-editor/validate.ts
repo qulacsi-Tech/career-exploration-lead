@@ -21,7 +21,8 @@ export type TabId =
   | "qna"
   | "scholarships"
   | "news"
-  | "seo";
+  | "seo"
+  | "administrative";
 
 const THIS_YEAR = new Date().getFullYear();
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -32,7 +33,7 @@ const RATIO = /^(\d{1,3}\s*:\s*\d{1,3})?$/;
 export function problemsByTab(r: CollegeRecord): Record<TabId, string[]> {
   const out: Record<TabId, string[]> = {
     info: [], courses: [], reviews: [], admissions: [], placements: [], cutoffs: [], rankings: [],
-    gallery: [], infrastructure: [], faculty: [], compare: [], qna: [], scholarships: [], news: [], seo: [],
+    gallery: [], infrastructure: [], faculty: [], compare: [], qna: [], scholarships: [], news: [], seo: [], administrative: [],
   };
   const d = r.detail;
 

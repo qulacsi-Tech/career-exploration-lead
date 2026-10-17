@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { collegeAdminMayOpen } from "@/lib/roles";
 
 /*
   Keeps the admin session alive. When the access token is about to expire, the
   proxy swaps it for a fresh one through the backend's refresh endpoint and sets
   the new cookie on the response. Server components cannot set cookies, which is
   why this runs here rather than in the admin layout.
+
+  A college admin is also kept to their own few pages (see below).
 
   The token's signature is not checked here. That is the backend's job on every
   request. This only reads the expiry to decide whether to refresh. A token that
@@ -22,21 +25,33 @@ const REFRESH_WITHIN_SECONDS = 5 * 60;
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
-/** The `exp` claim of a JWT, read without verifying it. Null when unreadable. */
-function tokenExpiry(token: string): number | null {
+/** A JWT's claims, read without verifying the signature. Null when unreadable. */
+function tokenClaims(token: string): { exp?: unknown; role?: unknown } | null {
   try {
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const claims = JSON.parse(atob(padded)) as { exp?: unknown };
-    return typeof claims.exp === "number" ? claims.exp : null;
+    return JSON.parse(atob(padded)) as { exp?: unknown; role?: unknown };
   } catch {
     return null;
   }
 }
 
+/** The `exp` claim of a JWT. Null when unreadable. */
+function tokenExpiry(token: string): number | null {
+  const exp = tokenClaims(token)?.exp;
+  return typeof exp === "number" ? exp : null;
+}
+
 export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   if (!token) return NextResponse.next();
+
+  // A college admin has a few admin pages. Anything else goes back to their dashboard. This only
+  // decides where to send them: the API refuses what they may not do whatever the address bar says,
+  // and the signature is checked there, not here.
+  if (tokenClaims(token)?.role === "COLLEGE_ADMIN" && !collegeAdminMayOpen(request.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
 
   const exp = tokenExpiry(token);
   const now = Math.floor(Date.now() / 1000);

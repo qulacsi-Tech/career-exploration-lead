@@ -3,19 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { adminNav, findActiveItem, type AdminNavIcon } from "@/lib/admin-nav";
+import { adminNav, collegeAdminNav, findActiveItem, type AdminNavIcon } from "@/lib/admin-nav";
+import { isCollegeAdmin, roleLabel } from "@/lib/roles";
 import { signOut } from "@/lib/auth-actions";
 
-/*
-  Stand-in for the signed-in user. There is no auth yet — the backend has no
-  user model — so this is hard-coded rather than read from a session. When auth
-  lands, pass the real user in as a prop; nothing else here needs to change.
-*/
-const currentUser = {
-  name: "Asha Menon",
-  role: "Administrator",
-  initials: "AM",
-};
+export type SidebarUser = { name: string; role: string };
+
+const initialsOf = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "?";
 
 /**
  * Sidebar nav: one collapsible group per section, sub-sections inside.
@@ -27,9 +27,10 @@ const currentUser = {
  * opens. Deriving it means the active section opens on every navigation, while
  * a section the user explicitly toggled keeps their choice.
  */
-export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function AdminSidebar({ user, onNavigate }: { user: SidebarUser; onNavigate?: () => void }) {
   const pathname = usePathname();
-  const active = findActiveItem(pathname);
+  const nav = isCollegeAdmin(user.role) ? collegeAdminNav : adminNav;
+  const active = findActiveItem(pathname, nav);
   const activeSectionId = active?.section.id ?? "overview";
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
 
@@ -40,7 +41,7 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <nav aria-label="Admin sections" className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
-      {adminNav.map((section) => {
+      {nav.map((section) => {
         const open = isOpen(section.id);
         const hasActive = active?.section.id === section.id;
 
@@ -134,17 +135,17 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
             aria-hidden="true"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white"
           >
-            {currentUser.initials}
+            {initialsOf(user.name)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-ink">{currentUser.name}</p>
-            <p className="truncate text-xs text-ink-faint">{currentUser.role}</p>
+            <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
+            <p className="truncate text-xs text-ink-faint">{roleLabel(user.role)}</p>
           </div>
           {/* Clears the admin session cookie, then returns to the login screen. */}
           <form action={signOut}>
             <button
               type="submit"
-              aria-label={`Log out, ${currentUser.name}`}
+              aria-label={`Log out, ${user.name}`}
               title="Log out"
               className="shrink-0 rounded-md border border-line p-1.5 text-ink-faint transition hover:border-brand hover:text-brand"
             >

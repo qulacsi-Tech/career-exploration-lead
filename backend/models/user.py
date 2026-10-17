@@ -1,7 +1,7 @@
 import uuid
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, String, func
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -12,10 +12,13 @@ class UserRole(str, enum.Enum):
     USER = "USER"
     ADMIN = "ADMIN"
     SUPER_ADMIN = "SUPER_ADMIN"
+    COLLEGE_ADMIN = "COLLEGE_ADMIN"
 
 
-# Roles that can use the admin panel. Only a super admin manages other administrators.
+# The platform team: Admin and Super Admin. Only a super admin manages other administrators.
 ADMIN_ROLES = (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+# Everyone who can open the admin panel. A college admin sees only their own college there.
+PANEL_ROLES = (*ADMIN_ROLES, UserRole.COLLEGE_ADMIN)
 
 
 class User(Base):
@@ -38,6 +41,10 @@ class User(Base):
     state = Column(String(100), nullable=True)
     preferred_stream = Column(String(100), nullable=True)
     target_exam = Column(String(100), nullable=True)
+    # The one college a COLLEGE_ADMIN looks after. Null for everyone else.
+    college_id = Column(UUID(as_uuid=True), ForeignKey("colleges.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Set when a platform admin gives out a temporary password; cleared when the person chooses their own.
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default="false")
     marketing_consent = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

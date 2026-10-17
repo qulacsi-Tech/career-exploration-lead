@@ -477,38 +477,12 @@ async def admin_list_leads(
     leads = result.scalars().all()
     pages = max(1, -(-total // limit))
 
-    return ListResponse[dict](meta=Meta(total=total, page=page, limit=limit, pages=pages), data=[
-        {
-            "id": str(lead.id),
-            "name": lead.name,
-            "phone": lead.phone,
-            "email": lead.email,
-            "collegeSlug": lead.college_slug,
-            "type": lead.type.value if hasattr(lead.type, "value") else lead.type,
-            "status": lead.status.value if hasattr(lead.status, "value") else lead.status,
-            "createdAt": lead.created_at.isoformat() if lead.created_at else None,
-            "userId": str(lead.user_id) if lead.user_id else None,
-            "visitorId": str(lead.visitor_id) if lead.visitor_id else None,
-            "stream": lead.stream,
-            "city": lead.city,
-            "message": lead.message,
-            "programName": lead.program_name,
-            "source": lead.source,
-            "sourceUrl": lead.source_url,
-            "consent": bool(lead.consent),
-            "repeatCount": lead.repeat_count or 0,
-            "replies": [
-                {
-                    "id": str(r.id),
-                    "authorName": r.author_name,
-                    "body": r.body,
-                    "createdAt": r.created_at.isoformat() if r.created_at else None,
-                }
-                for r in lead.replies
-            ],
-        }
-        for lead in leads
-    ])
+    from services.lead_view import lead_json
+
+    return ListResponse[dict](
+        meta=Meta(total=total, page=page, limit=limit, pages=pages),
+        data=[lead_json(lead) for lead in leads],
+    )
 
 
 class LeadReplyBody(BaseModel):

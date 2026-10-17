@@ -1,5 +1,6 @@
-import { adminListLeads, LEAD_STATUSES, type LeadStatus } from "@/lib/api";
+import { adminListLeads, collegeListLeads, getMe, LEAD_STATUSES, type LeadStatus } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
+import { isCollegeAdmin } from "@/lib/roles";
 import { LeadsInbox } from "@/components/admin/leads-inbox";
 
 const PAGE_SIZE = 25;
@@ -18,9 +19,14 @@ export default async function AdminLeadsPage({ searchParams }: { searchParams: S
     : undefined;
   const pageNumber = Math.max(1, Number.parseInt(page ?? "1", 10) || 1);
 
-  const result = await withAdminToken((token) =>
-    adminListLeads(token, { status: filter, page: pageNumber, limit: PAGE_SIZE }),
-  );
+  // A college admin's inbox is their own college's leads, read through the college endpoint.
+  const result = await withAdminToken(async (token) => {
+    const me = await getMe(token);
+    const forCollege = isCollegeAdmin(me.role);
+    const list = forCollege ? collegeListLeads : adminListLeads;
+    const page = await list(token, { status: filter, page: pageNumber, limit: PAGE_SIZE });
+    return { ...page, scope: forCollege ? ("college" as const) : ("platform" as const) };
+  });
 
-  return <LeadsInbox leads={result.data} meta={result.meta} status={filter} />;
+  return <LeadsInbox leads={result.data} meta={result.meta} status={filter} scope={result.scope} />;
 }

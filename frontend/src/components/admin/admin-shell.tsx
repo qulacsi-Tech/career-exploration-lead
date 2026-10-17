@@ -3,8 +3,9 @@
 import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { findActiveItem } from "@/lib/admin-nav";
+import { AdminSidebar, type SidebarUser } from "@/components/admin/admin-sidebar";
+import { adminNav, collegeAdminNav, findActiveItem } from "@/lib/admin-nav";
+import { isCollegeAdmin } from "@/lib/roles";
 
 /**
  * Admin chrome: a persistent sidebar from `lg` up, a drawer below it.
@@ -13,10 +14,10 @@ import { findActiveItem } from "@/lib/admin-nav";
  * The page content itself is passed through as `children`, so individual admin
  * pages stay server components.
  */
-export function AdminShell({ children }: { children: ReactNode }) {
+export function AdminShell({ children, user }: { children: ReactNode; user: SidebarUser }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const active = findActiveItem(pathname);
+  const active = findActiveItem(pathname, isCollegeAdmin(user.role) ? collegeAdminNav : adminNav);
 
   // The drawer overlays the page, so the body behind it should not scroll.
   useEffect(() => {
@@ -66,7 +67,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <div className="flex">
         {/* Desktop sidebar. Sticky under the 56px top bar. */}
         <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-64 shrink-0 overflow-hidden border-r border-line bg-surface lg:block">
-          <AdminSidebar />
+          <AdminSidebar user={user} />
         </aside>
 
         {/* Mobile drawer */}
@@ -95,7 +96,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 </button>
               </div>
               <div className="min-h-0 flex-1">
-                <AdminSidebar onNavigate={() => setDrawerOpen(false)} />
+                <AdminSidebar user={user} onNavigate={() => setDrawerOpen(false)} />
               </div>
             </div>
           </div>

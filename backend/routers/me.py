@@ -9,7 +9,7 @@ from core.dependencies import CurrentUserId, DbSession
 from models.tracking import Event
 from repositories.lead import LeadRepository
 from repositories.user import UserRepository
-from schemas.auth import ProfileSchema, ProfileUpdateSchema
+from schemas.auth import PasswordChangeSchema, ProfileSchema, ProfileUpdateSchema
 from schemas.common import SuccessResponse
 from services.auth import AuthService
 
@@ -69,6 +69,13 @@ async def get_me(user_id: CurrentUserId, db: DbSession):
 @router.patch("", response_model=SuccessResponse[ProfileSchema])
 async def update_me(data: ProfileUpdateSchema, user_id: CurrentUserId, db: DbSession):
     return SuccessResponse[ProfileSchema](data=await AuthService(db).update_profile(user_id, data))
+
+
+@router.post("/password", response_model=SuccessResponse[dict])
+async def change_password(data: PasswordChangeSchema, user_id: CurrentUserId, db: DbSession):
+    """Sets a new password. Also how a college admin replaces the temporary one they were given."""
+    await AuthService(db).change_password(user_id, data)
+    return SuccessResponse[dict](data={"ok": True})
 
 
 @router.get("/leads", response_model=SuccessResponse[list[MyLeadSchema]])

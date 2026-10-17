@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSessionUser, signOut, type SessionUser } from "@/lib/auth-actions";
 import { USER_HINT_COOKIE } from "@/lib/user-session-cookie";
-import { isAdminRole } from "@/lib/roles";
+import { canUsePanel } from "@/lib/roles";
 
 function ArrowIcon({ className }: { className?: string }) {
   return (
@@ -104,7 +104,7 @@ export function HeaderAccount() {
           <Link role="menuitem" href="/account" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-ink hover:bg-bg-alt">
             My account
           </Link>
-          {isAdminRole(user.role) && (
+          {canUsePanel(user.role) && (
             <Link role="menuitem" href="/admin" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-ink hover:bg-bg-alt">
               Admin panel
             </Link>

@@ -106,13 +106,23 @@ export const adminNav: AdminNavSection[] = [
 ];
 
 /**
+ * What a college admin sees: their own college, and the enquiries sent to it. Nothing else exists
+ * for them. The proxy sends them back to the dashboard if they type another admin address.
+ */
+export const collegeAdminNav: AdminNavSection[] = [
+  { id: "overview", label: "Overview", icon: "overview", items: [{ label: "Dashboard", href: "/admin", phase: 1 }] },
+  { id: "content", label: "My college", icon: "content", items: [{ label: "College record", href: "/admin/college", phase: 1 }] },
+  { id: "leads", label: "Leads", icon: "leads", items: [{ label: "Inbox", href: "/admin/leads", phase: 1 }] },
+];
+
+/**
  * Longest-prefix match, so /admin/leads/forms highlights Enquiry Forms rather
  * than Inbox. "/admin" is exact-only — every route starts with it.
  */
-export function findActiveItem(pathname: string) {
+export function findActiveItem(pathname: string, nav: AdminNavSection[] = adminNav) {
   let best: { section: AdminNavSection; item: AdminNavItem } | null = null;
 
-  for (const section of adminNav) {
+  for (const section of nav) {
     for (const item of section.items) {
       const matches =
         item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);

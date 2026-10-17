@@ -23,6 +23,7 @@ from sqlalchemy import func, or_, select
 from core.dependencies import AdminPayload, DbSession
 from core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from core.security import hash_password
+from models.college import College
 from models.lead import Lead
 from models.tracking import Event, VisitSession
 from models.user import ADMIN_ROLES, User, UserRole
@@ -30,7 +31,7 @@ from schemas.common import ListResponse, Meta, SuccessResponse
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-Group = Literal["general", "administrative"]
+Group = Literal["general", "administrative", "college"]
 
 
 def _iso(value: Optional[datetime]) -> Optional[str]:
@@ -42,14 +43,16 @@ def _role(value) -> str:
 
 
 def _can_manage(actor_role: str, target: User) -> bool:
-    """Super admins manage everyone; admins manage general accounts only."""
+    """Super admins manage everyone; admins manage general and college accounts, not other administrators."""
     if actor_role == UserRole.SUPER_ADMIN.value:
         return True
-    return target.role == UserRole.USER
+    return target.role in (UserRole.USER, UserRole.COLLEGE_ADMIN)
 
 
-def _user_json(user: User, actor_role: str, lead_count: int = 0) -> dict:
+def _user_json(user: User, actor_role: str, lead_count: int = 0, college: Optional[tuple] = None) -> dict:
     return {
+        "collegeSlug": college[0] if college else None,
+        "collegeName": college[1] if college else None,
         "id": str(user.id),
         "name": user.name,
         "email": user.email,
@@ -67,7 +70,11 @@ def _user_json(user: User, actor_role: str, lead_count: int = 0) -> dict:
 
 
 def _in_group(group: Group):
-    return User.role.in_(ADMIN_ROLES) if group == "administrative" else User.role == UserRole.USER
+    if group == "administrative":
+        return User.role.in_(ADMIN_ROLES)
+    if group == "college":
+        return User.role == UserRole.COLLEGE_ADMIN
+    return User.role == UserRole.USER
 
 
 @router.get("/users/counts", response_model=SuccessResponse[dict])
@@ -75,7 +82,8 @@ async def user_counts(_admin: AdminPayload, db: DbSession):
     """How many accounts are in each group, for the tab labels."""
     general = (await db.execute(select(func.count()).select_from(User).where(_in_group("general")))).scalar_one()
     administrative = (await db.execute(select(func.count()).select_from(User).where(_in_group("administrative")))).scalar_one()
-    return SuccessResponse[dict](data={"general": general, "administrative": administrative})
+    college = (await db.execute(select(func.count()).select_from(User).where(_in_group("college")))).scalar_one()
+    return SuccessResponse[dict](data={"general": general, "administrative": administrative, "college": college})
 
 
 @router.get("/users", response_model=ListResponse[dict])
@@ -94,22 +102,26 @@ async def list_users(
         .subquery()
     )
     stmt = (
-        select(User, func.coalesce(lead_counts.c.n, 0))
+        select(User, func.coalesce(lead_counts.c.n, 0), College.slug, College.name)
         .outerjoin(lead_counts, lead_counts.c.uid == User.id)
+        .outerjoin(College, College.id == User.college_id)
         .where(_in_group(group))
     )
+    count = select(func.count()).select_from(User).where(_in_group(group))
     if q:
         like = f"%{q.strip()}%"
-        stmt = stmt.where(or_(User.name.ilike(like), User.email.ilike(like)))
+        search = or_(User.name.ilike(like), User.email.ilike(like))
+        stmt = stmt.where(search)
+        count = count.where(search)
 
-    total = (await db.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))).scalar_one()
+    total = (await db.execute(count)).scalar_one()
     rows = (await db.execute(
         stmt.order_by(User.created_at.desc()).offset((page - 1) * limit).limit(limit)
     )).all()
     pages = max(1, -(-total // limit))
     return ListResponse[dict](
         meta=Meta(total=total, page=page, limit=limit, pages=pages),
-        data=[_user_json(user, admin["role"], n) for user, n in rows],
+        data=[_user_json(user, admin["role"], n, (slug, name) if slug else None) for user, n, slug, name in rows],
     )
 
 

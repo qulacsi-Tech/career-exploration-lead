@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { loadLeadJourney, replyToLead, updateLeadStatus } from "@/lib/admin-actions";
+import { collegeReply, collegeSetLeadStatus } from "@/lib/college-actions";
 import { EventTimeline } from "@/components/admin/event-timeline";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { LEAD_STATUSES, type AdminLead, type LeadJourney, type LeadStatus, type PaginationMeta } from "@/lib/api";
@@ -29,12 +30,17 @@ function inboxHref(status: LeadStatus | undefined, page: number) {
   return query ? `/admin/leads?${query}` : "/admin/leads";
 }
 
+/** "college" is a college admin's inbox: their own college's leads, with no browsing history. */
+export type InboxScope = "platform" | "college";
+
 function StatusControl({
   lead,
+  scope,
   onError,
   onSaved,
 }: {
   lead: AdminLead;
+  scope: InboxScope;
   onError: (message: string) => void;
   onSaved: (message: string) => void;
 }) {
@@ -55,7 +61,7 @@ function StatusControl({
         onChange={(e) => {
           const next = e.target.value;
           startTransition(async () => {
-            const result = await updateLeadStatus(lead.id, next);
+            const result = await (scope === "college" ? collegeSetLeadStatus(lead.id, next) : updateLeadStatus(lead.id, next));
             if ("error" in result) onError(result.error);
             else {
               onSaved(`${lead.name} marked ${LEAD_STATUS_LABEL[next as LeadStatus]}.`);
@@ -77,10 +83,12 @@ function StatusControl({
 
 function LeadDetail({
   lead,
+  scope,
   onError,
   onSaved,
 }: {
   lead: AdminLead;
+  scope: InboxScope;
   onError: (message: string) => void;
   onSaved: (message: string) => void;
 }) {
@@ -89,7 +97,8 @@ function LeadDetail({
   const [body, setBody] = useState("");
   const [journey, setJourney] = useState<LeadJourney | null>(null);
   const [journeyPending, startJourney] = useTransition();
-  const canShowJourney = !!(lead.visitorId || lead.userId);
+  // What a visitor did before enquiring stays with the platform team.
+  const canShowJourney = scope === "platform" && !!(lead.visitorId || lead.userId);
 
   const facts: [string, string | null][] = [
     ["Stream", lead.stream],
@@ -141,7 +150,7 @@ function LeadDetail({
             onSubmit={(e) => {
               e.preventDefault();
               startTransition(async () => {
-                const result = await replyToLead(lead.id, body);
+                const result = await (scope === "college" ? collegeReply(lead.id, body) : replyToLead(lead.id, body));
                 if ("error" in result) onError(result.error);
                 else {
                   setBody("");
@@ -219,10 +228,12 @@ export function LeadsInbox({
   leads,
   meta,
   status,
+  scope = "platform",
 }: {
   leads: AdminLead[];
   meta: PaginationMeta;
   status: LeadStatus | undefined;
+  scope?: InboxScope;
 }) {
   const [flash, showFlash] = useFlash();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -231,7 +242,7 @@ export function LeadsInbox({
     <div className="space-y-6">
       <AdminPageHeader
         title="Leads"
-        description="Enquiries, callback requests and brochure downloads from the site, newest first."
+        description={scope === "college" ? "Enquiries sent to your college by people who agreed to be contacted, newest first." : "Enquiries, callback requests and brochure downloads from the site, newest first."}
       />
 
       <nav aria-label="Filter by status" className="flex flex-wrap gap-2">
@@ -292,6 +303,7 @@ export function LeadsInbox({
                         <td className="py-3 pr-3">
                           <StatusControl
                             lead={lead}
+                            scope={scope}
                             onError={(text) => showFlash("error", text)}
                             onSaved={(text) => showFlash("ok", text)}
                           />
@@ -313,6 +325,7 @@ export function LeadsInbox({
                           <td colSpan={8} className="pb-4">
                             <LeadDetail
                               lead={lead}
+                              scope={scope}
                               onError={(text) => showFlash("error", text)}
                               onSaved={(text) => showFlash("ok", text)}
                             />

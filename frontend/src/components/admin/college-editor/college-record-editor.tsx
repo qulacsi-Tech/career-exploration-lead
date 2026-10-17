@@ -12,6 +12,7 @@ import {
   MessagesSquare,
   Newspaper,
   Search,
+  ShieldCheck,
   Star,
   Target,
   TrendingUp,
@@ -20,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { loadCollegePools, loadCollegeRecord, saveCollegeRecord } from "@/lib/admin-actions";
+import { loadMyCollegePools, loadMyCollegeRecord } from "@/lib/college-actions";
 import type { CollegePools, CollegeRecord, LoadedCollegeRecord } from "@/lib/api";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { InfoTab, type EditorProps } from "@/components/admin/college-editor/tab-info";
@@ -28,6 +30,7 @@ import { CompareTab, FacultyTab, FaqTab, ReviewsTab } from "@/components/admin/c
 import { GalleryTab, VideosTab } from "@/components/admin/college-editor/tab-media";
 import { NewsTab } from "@/components/admin/college-editor/tab-news";
 import { SeoTab, WrittenTab } from "@/components/admin/college-editor/tab-written";
+import { AdministrativeTab } from "@/components/admin/college-editor/tab-administrative";
 import { problemsByTab, type TabId } from "@/components/admin/college-editor/validate";
 
 /*
@@ -58,6 +61,8 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "scholarships", label: "Scholarships", icon: Award },
   { id: "news", label: "News", icon: Newspaper },
   { id: "seo", label: "SEO", icon: Search },
+  // Who looks after this college in the panel. Platform team only; acts at once, outside Save.
+  { id: "administrative", label: "Administrative", icon: ShieldCheck },
 ];
 
 const WRITTEN: Record<"admissions" | "infrastructure" | "scholarships", { slug: string; title: string; description: string }> = {
@@ -73,7 +78,24 @@ const stripped = (r: LoadedCollegeRecord): CollegeRecord => {
   return record;
 };
 
-export function CollegeRecordEditor({ slug, onClose, onSaved }: { slug: string; onClose: () => void; onSaved?: (name: string) => void }) {
+/**
+ * `full` is the platform admin's editor. `readonly` is a college admin looking at their own
+ * college: the same screens with every field switched off, no Save, no Administrative tab, and
+ * data read through the college endpoints, which only ever return their college.
+ */
+export function CollegeRecordEditor({
+  slug,
+  onClose,
+  onSaved,
+  mode = "full",
+}: {
+  slug: string;
+  onClose: () => void;
+  onSaved?: (name: string) => void;
+  mode?: "full" | "readonly";
+}) {
+  const readonly = mode === "readonly";
+  const tabs = readonly ? TABS.filter((t) => t.id !== "administrative") : TABS;
   const [initial, setInitial] = useState<CollegeRecord | null>(null);
   const [record, setRecord] = useState<CollegeRecord | null>(null);
   const [pools, setPools] = useState<CollegePools | null>(null);
@@ -85,7 +107,7 @@ export function CollegeRecordEditor({ slug, onClose, onSaved }: { slug: string; 
 
   useEffect(() => {
     let alive = true;
-    Promise.all([loadCollegeRecord(slug), loadCollegePools()]).then(([rec, poolList]) => {
+    Promise.all(readonly ? [loadMyCollegeRecord(), loadMyCollegePools()] : [loadCollegeRecord(slug), loadCollegePools()]).then(([rec, poolList]) => {
       if (!alive) return;
       if ("error" in rec) return setLoadError(rec.error);
       if ("error" in poolList) return setLoadError(poolList.error);
@@ -97,7 +119,7 @@ export function CollegeRecordEditor({ slug, onClose, onSaved }: { slug: string; 
     return () => {
       alive = false;
     };
-  }, [slug]);
+  }, [slug, readonly]);
 
   const update: EditorProps["update"] = (change) => {
     setRecord((r) => (r ? change(r) : r));
@@ -141,6 +163,7 @@ export function CollegeRecordEditor({ slug, onClose, onSaved }: { slug: string; 
       case "qna": return <FaqTab {...props} />;
       case "news": return <NewsTab {...props} />;
       case "seo": return <SeoTab {...props} />;
+      case "administrative": return <AdministrativeTab slug={slug} institutionType={props.record.institutionType} />;
       case "admissions":
       case "infrastructure":
       case "scholarships": {
@@ -151,9 +174,18 @@ export function CollegeRecordEditor({ slug, onClose, onSaved }: { slug: string; 
   };
 
   const firstProblemTab = problems ? TABS.find((t) => problems[t.id].length > 0) : undefined;
-  const shownProblems = problems ? problems[tab] : [];
+  const shownProblems = problems && !readonly ? problems[tab] : [];
 
-  const footer = (
+  const readonlyFooter = (
+    <div className="flex w-full flex-wrap items-center gap-3">
+      <p className="text-xs text-ink-soft">View only. Changes you send for approval arrive with the next update.</p>
+      <button type="button" onClick={onClose} className="ml-auto rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-brand">
+        Close
+      </button>
+    </div>
+  );
+
+  const footer = readonly ? readonlyFooter : (
     <div className="flex w-full flex-wrap items-center gap-3">
       {error && <p role="alert" className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
       {confirmingClose && (
@@ -183,7 +215,7 @@ export function CollegeRecordEditor({ slug, onClose, onSaved }: { slug: string; 
       open
       onClose={requestClose}
       size="full"
-      title={record ? `Edit — ${record.name || slug}` : "Edit college"}
+      title={record ? `${readonly ? "Your college" : "Edit"} — ${record.name || slug}` : "Edit college"}
       description={record ? `${record.city}, ${record.state} · /college/${slug}` : "Loading…"}
       footer={footer}
     >
@@ -193,9 +225,9 @@ export function CollegeRecordEditor({ slug, onClose, onSaved }: { slug: string; 
       {props && problems && (
         <>
           <div role="tablist" aria-label="College sections" className="-mt-1 mb-6 flex gap-1 overflow-x-auto border-b border-line">
-            {TABS.map((t) => {
+            {tabs.map((t) => {
               const active = tab === t.id;
-              const count = problems[t.id].length;
+              const count = readonly ? 0 : problems[t.id].length;
               return (
                 <button
                   key={t.id}
@@ -225,7 +257,10 @@ export function CollegeRecordEditor({ slug, onClose, onSaved }: { slug: string; 
           )}
 
           <div role="tabpanel" id={`ce-panel-${tab}`} aria-labelledby={`ce-tab-${tab}`}>
-            {body()}
+            {/* A disabled fieldset switches off every input, select and button inside it. */}
+            <fieldset disabled={readonly} className="min-w-0 border-0 p-0">
+              {body()}
+            </fieldset>
           </div>
         </>
       )}

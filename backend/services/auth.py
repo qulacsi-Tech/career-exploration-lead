@@ -8,6 +8,7 @@ from core.config import settings
 from core.exceptions import AppException, ConflictError, ForbiddenError, NotFoundError, UnauthorizedError, ValidationError
 from data.india_districts import INDIA_DISTRICTS
 from core.security import create_access_token, hash_password, verify_password
+from models.college import College
 from models.user import User
 from repositories.lead import LeadRepository
 from repositories.user import UserRepository
@@ -15,6 +16,7 @@ from schemas.auth import (
     AuthResponseSchema,
     GoogleLoginSchema,
     LoginSchema,
+    PasswordChangeSchema,
     ProfileSchema,
     ProfileUpdateSchema,
     RegisterSchema,
@@ -31,6 +33,7 @@ def _auth_response(user: User, is_new: bool = False) -> AuthResponseSchema:
         accessToken=token,
         user=UserSchema(id=str(user.id), name=user.name, email=user.email, role=user.role.value),
         isNewUser=is_new,
+        mustChangePassword=bool(user.must_change_password),
     )
 
 
@@ -48,6 +51,8 @@ def profile_of(user: User) -> ProfileSchema:
         preferredStream=user.preferred_stream,
         targetExam=user.target_exam,
         marketingConsent=bool(user.marketing_consent),
+        collegeSlug=getattr(user, "_college_slug", None),
+        mustChangePassword=bool(user.must_change_password),
     )
 
 
@@ -136,7 +141,22 @@ class AuthService:
         return _auth_response(user, is_new=created)
 
     async def get_profile(self, user_id: UUID) -> ProfileSchema:
-        return profile_of(await self._active_user(user_id))
+        user = await self._active_user(user_id)
+        if user.college_id:
+            college = await self.repo.db.get(College, user.college_id)
+            user._college_slug = college.slug if college else None  # read by profile_of
+        return profile_of(user)
+
+    async def change_password(self, user_id: UUID, data: PasswordChangeSchema) -> None:
+        """Replaces the password. Needs the current one, which for a new college admin is the temporary one."""
+        user = await self._active_user(user_id)
+        if not user.password_hash or not verify_password(data.currentPassword, user.password_hash):
+            raise UnauthorizedError("The current password is not right.")
+        if verify_password(data.newPassword, user.password_hash):
+            raise ValidationError("Choose a password you have not used for this account just now.")
+        user.password_hash = hash_password(data.newPassword)
+        user.must_change_password = False
+        await self.repo.save(user)
 
     async def update_profile(self, user_id: UUID, data: ProfileUpdateSchema) -> ProfileSchema:
         user = await self._active_user(user_id)

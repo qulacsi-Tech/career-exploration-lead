@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   adminCreateAdministrator,
+  adminCreateCollegeAdmin,
+  adminGetCollegeAdmin,
+  adminRemoveCollegeAdmin,
+  adminResetCollegeAdminPassword,
+  adminSetCollegeAdminActive,
+  type CollegeAdminAccount,
   adminLeadJourney,
   adminReplyToLead,
   adminSetUserActive,
@@ -293,6 +299,57 @@ export async function createAdministrator(form: FormData): Promise<AdminActionRe
   return attempt("/admin/users", (token) =>
     adminCreateAdministrator(token, { name: str("name"), email: str("email").toLowerCase(), password, role }),
   );
+}
+
+// ── A college's admin account ────────────────────────────────────────────────
+
+type CollegeAdminResult = { admin: CollegeAdminAccount | null } | { error: string };
+
+/** Runs a call that returns the college's admin account, turning API failures into a message. */
+async function collegeAdminCall(
+  call: (token: string) => Promise<{ admin: CollegeAdminAccount | null }>,
+  fallback: string,
+): Promise<CollegeAdminResult> {
+  const token = await requireAdminToken();
+  try {
+    return { admin: (await call(token)).admin };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: fallback };
+  }
+}
+
+const PASSWORD_RULE = "The password needs at least 8 characters, with a letter and a number.";
+const passwordOk = (p: string) => p.length >= 8 && /[a-zA-Z]/.test(p) && /\d/.test(p);
+
+export async function loadCollegeAdmin(slug: string): Promise<CollegeAdminResult> {
+  return collegeAdminCall((token) => adminGetCollegeAdmin(token, slug), "Could not load the college admin.");
+}
+
+export async function createCollegeAdmin(slug: string, form: FormData): Promise<CollegeAdminResult> {
+  const str = (key: string) => String(form.get(key) ?? "").trim();
+  const password = String(form.get("password") ?? "");
+  if (str("name").length < 2) return { error: "Enter their full name." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(str("email"))) return { error: "Enter a valid email address." };
+  if (!passwordOk(password)) return { error: PASSWORD_RULE };
+  return collegeAdminCall(
+    (token) => adminCreateCollegeAdmin(token, slug, { name: str("name"), email: str("email").toLowerCase(), password }),
+    "Could not create the account.",
+  );
+}
+
+export async function resetCollegeAdminPassword(slug: string, password: string): Promise<CollegeAdminResult> {
+  if (!passwordOk(password)) return { error: PASSWORD_RULE };
+  return collegeAdminCall((token) => adminResetCollegeAdminPassword(token, slug, password), "Could not reset the password.");
+}
+
+export async function setCollegeAdminActive(slug: string, isActive: boolean): Promise<CollegeAdminResult> {
+  return collegeAdminCall((token) => adminSetCollegeAdminActive(token, slug, isActive), "Could not change the account.");
+}
+
+export async function removeCollegeAdmin(slug: string): Promise<CollegeAdminResult> {
+  return collegeAdminCall((token) => adminRemoveCollegeAdmin(token, slug), "Could not remove the account.");
 }
 
 /** Turns an account off or back on. */

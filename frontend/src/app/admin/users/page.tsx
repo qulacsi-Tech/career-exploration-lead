@@ -12,6 +12,7 @@ const PAGE_SIZE = 25;
 const TABS: { group: UserGroup; label: string; blurb: string }[] = [
   { group: "general", label: "General accounts", blurb: "Students and visitors who signed up on the site, by email or with Google." },
   { group: "administrative", label: "Administrative accounts", blurb: "Admins and super admins who can use this panel." },
+  { group: "college", label: "College accounts", blurb: "One admin per college or university, who sees only their own college and its enquiries. Create them from the Administrative tab of a college." },
 ];
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
@@ -26,7 +27,8 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 */
 export default async function AdminUsersPage({ searchParams }: PageProps<"/admin/users">) {
   const params = await searchParams;
-  const group: UserGroup = first(params.tab) === "administrative" ? "administrative" : "general";
+  const tab = first(params.tab);
+  const group: UserGroup = tab === "administrative" || tab === "college" ? tab : "general";
   const q = first(params.q)?.trim() || undefined;
   const page = Math.max(1, Number.parseInt(first(params.page) ?? "1", 10) || 1);
 
@@ -48,7 +50,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
     <div className="space-y-6">
       <AdminPageHeader
         title="Users"
-        description="Open an account to see its enquiries and activity."
+        description="Open an account to see its enquiries and activity. Create a college admin from the Administrative tab of a college."
         actions={superAdmin ? <CreateAdministrator /> : undefined}
       />
 
@@ -107,7 +109,9 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
                   <th scope="col" className="py-2 pr-3 font-semibold">Name</th>
                   <th scope="col" className="py-2 pr-3 font-semibold">Email</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">{group === "administrative" ? "Role" : "Signed up with"}</th>
+                  <th scope="col" className="py-2 pr-3 font-semibold">
+                    {group === "administrative" ? "Role" : group === "college" ? "College" : "Signed up with"}
+                  </th>
                   <th scope="col" className="py-2 pr-3 font-semibold">Joined</th>
                   <th scope="col" className="py-2 pr-3 font-semibold">Last sign-in</th>
                   {group === "general" && <th scope="col" className="py-2 pr-3 text-right font-semibold">Enquiries</th>}
@@ -136,6 +140,14 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                         >
                           {roleLabel(user.role)}
                         </span>
+                      ) : group === "college" ? (
+                        user.collegeSlug ? (
+                          <Link href={`/college/${user.collegeSlug}`} className="hover:text-brand hover:underline">
+                            {user.collegeName ?? user.collegeSlug}
+                          </Link>
+                        ) : (
+                          "None"
+                        )
                       ) : user.authProvider === "google" ? (
                         "Google"
                       ) : (

@@ -718,7 +718,7 @@ export type RankingList = {
 // ── Auth types ────────────────────────────────────────────────────────────
 
 export type AuthUser = { id: string; name: string; email: string; role: string };
-export type AuthResult = { accessToken: string; user: AuthUser; isNewUser?: boolean };
+export type AuthResult = { accessToken: string; user: AuthUser; isNewUser?: boolean; mustChangePassword?: boolean };
 
 // ── Course Catalogue functions ────────────────────────────────────────────
 
@@ -809,6 +809,9 @@ export type Profile = {
   preferredStream: string | null;
   targetExam: string | null;
   marketingConsent: boolean;
+  /** For a college admin: the college they look after. */
+  collegeSlug: string | null;
+  mustChangePassword: boolean;
 };
 
 export type ProfileUpdate = Partial<
@@ -1842,9 +1845,12 @@ export type AdminUser = {
   leadCount: number;
   /** Whether the admin who asked may enable or disable this account. The API enforces it too. */
   canManage: boolean;
+  /** Set for college admins. */
+  collegeSlug: string | null;
+  collegeName: string | null;
 };
 
-export type UserGroup = "general" | "administrative";
+export type UserGroup = "general" | "administrative" | "college";
 
 export type AdminUserDetail = AdminUser & {
   preferredStream: string | null;
@@ -1854,6 +1860,84 @@ export type AdminUserDetail = AdminUser & {
   leads: { id: string; type: string; status: LeadStatus; collegeSlug: string | null; programName: string | null; createdAt: string | null }[];
   events: TrackedEvent[];
 };
+
+// ── College admin: the account, as a platform admin manages it ───────────
+
+export type CollegeAdminAccount = {
+  id: string;
+  name: string;
+  email: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string | null;
+  lastLoginAt: string | null;
+};
+
+export const adminGetCollegeAdmin = (token: string, slug: string) =>
+  adminRequest<{ admin: CollegeAdminAccount | null }>(token, "GET", `/admin/colleges/${encodeURIComponent(slug)}/admin`);
+
+export const adminCreateCollegeAdmin = (token: string, slug: string, body: { name: string; email: string; password: string }) =>
+  adminRequest<{ admin: CollegeAdminAccount }>(token, "POST", `/admin/colleges/${encodeURIComponent(slug)}/admin`, body);
+
+export const adminResetCollegeAdminPassword = (token: string, slug: string, password: string) =>
+  adminRequest<{ admin: CollegeAdminAccount }>(token, "POST", `/admin/colleges/${encodeURIComponent(slug)}/admin/reset-password`, { password });
+
+export const adminSetCollegeAdminActive = (token: string, slug: string, isActive: boolean) =>
+  adminRequest<{ admin: CollegeAdminAccount }>(token, "PATCH", `/admin/colleges/${encodeURIComponent(slug)}/admin`, { isActive });
+
+export const adminRemoveCollegeAdmin = (token: string, slug: string) =>
+  adminRequest<{ admin: null }>(token, "DELETE", `/admin/colleges/${encodeURIComponent(slug)}/admin`);
+
+// ── College portal: what a college admin sees, all about their one college ─
+
+export type CollegeDashboard = {
+  college: { slug: string; name: string };
+  totals: { leads: number; newLeads: number; pageViews: number; visitors: number; ctaClicks: number };
+  byDay: { date: string; leads: number; views: number; visitors: number }[];
+  days: number;
+};
+
+export const collegeGetDashboard = (token: string) => adminRequest<CollegeDashboard>(token, "GET", "/college/dashboard");
+export const collegeGetRecord = (token: string) => adminRequest<LoadedCollegeRecord>(token, "GET", "/college/record");
+export const collegeGetPools = (token: string) => adminRequest<CollegePools>(token, "GET", "/college/pools");
+export const collegeUpdateLeadStatus = (token: string, id: string, status: LeadStatus) =>
+  adminRequest<{ message: string }>(token, "PATCH", `/college/leads/${id}`, { status });
+export const collegeReplyToLead = (token: string, id: string, body: string) =>
+  adminRequest<{ message: string }>(token, "POST", `/college/leads/${id}/replies`, { body });
+
+/** One page of the college's own leads. Same shape as the platform inbox. */
+export async function collegeListLeads(
+  token: string,
+  params: { page?: number; limit?: number; status?: LeadStatus } = {}
+): Promise<{ data: AdminLead[]; meta: PaginationMeta }> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.status) qs.set("status", params.status);
+  const query = qs.toString() ? `?${qs}` : "";
+  const res = await fetch(`${API_BASE}/college/leads${query}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: AdminLead[]; meta: PaginationMeta }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    const message = json && json.success === false ? json.error?.message : undefined;
+    throw new ApiError(res.status, message ?? `College leads API ${res.status}`);
+  }
+  return { data: json.data, meta: json.meta };
+}
+
+/** Replaces the password. A college admin on a temporary one does this first. */
+export async function changeMyPassword(token: string, currentPassword: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/me/password`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) throw new Error(json?.error?.message ?? "Could not change the password");
+}
 
 export const adminUserCounts = (token: string) =>
   adminRequest<Record<UserGroup, number>>(token, "GET", "/admin/users/counts");

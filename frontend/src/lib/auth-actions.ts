@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { loginUser, loginWithGoogle, markRepliesRead, registerUser, updateMe, type AuthResult, type ProfileUpdate } from "@/lib/api";
 import { clearAdminSession, setAdminSession } from "@/lib/admin-session";
-import { isAdminRole } from "@/lib/roles";
+import { canUsePanel } from "@/lib/roles";
 import { clearUserSession, getCurrentUser, getUserToken, setUserSession } from "@/lib/user-session";
 
 export type SignInState = { error?: string } | undefined;
@@ -26,7 +26,12 @@ async function startSession(result: AuthResult, remember: boolean, next: string 
   // The role is what the backend returned, never anything the form sent.
   // An admin also gets a student session so the public site knows who they are.
   await setUserSession(result.accessToken, remember);
-  if (isAdminRole(result.user.role)) {
+  // A temporary password has to be replaced before anything else: a new college admin lands here first.
+  if (result.mustChangePassword) {
+    if (canUsePanel(result.user.role)) await setAdminSession(result.accessToken, remember);
+    return "/change-password";
+  }
+  if (canUsePanel(result.user.role)) {
     await setAdminSession(result.accessToken, remember);
     return next?.startsWith("/admin") ? next : "/admin";
   }
