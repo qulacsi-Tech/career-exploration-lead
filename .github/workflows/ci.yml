@@ -63,6 +63,12 @@ jobs:
           ADMIN_NAME: CI Admin
         run: python seed.py
 
+      - name: Tests (who may see and change what)
+        # Against the migrated, seeded database above, through the real app with real tokens.
+        run: |
+          pip install -r requirements-dev.txt
+          python -m pytest -q
+
       - name: Boot the API and call it
         run: |
           python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
