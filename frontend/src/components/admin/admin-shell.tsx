@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AdminSidebar, type SidebarUser } from "@/components/admin/admin-sidebar";
 import { adminNav, collegeAdminNav, findActiveItem } from "@/lib/admin-nav";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { isCollegeAdmin } from "@/lib/roles";
 
 /**
@@ -55,6 +56,7 @@ export function AdminShell({ children, user }: { children: ReactNode; user: Side
 
         {/* Identity lives in the sidebar profile block, not up here as well. */}
         <div className="ml-auto flex items-center gap-3">
+          <NotificationBell viewAllHref="/admin/notifications" />
           <Link
             href="/"
             className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"

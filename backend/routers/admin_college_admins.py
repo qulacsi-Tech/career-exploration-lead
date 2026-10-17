@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from sqlalchemy import select
 
 from core.dependencies import AdminPayload, DbSession
+from services.notify import notify, platform_admin_ids
 from core.exceptions import ConflictError, NotFoundError
 from core.security import hash_password
 from models.college import College
@@ -102,7 +103,7 @@ async def get_college_admin(slug: str, _admin: AdminPayload, db: DbSession):
 
 
 @router.post("/{slug}/admin", response_model=SuccessResponse[dict], status_code=201)
-async def create_college_admin(slug: str, body: CreateBody, _admin: AdminPayload, db: DbSession):
+async def create_college_admin(slug: str, body: CreateBody, admin: AdminPayload, db: DbSession):
     college = await _college(db, slug)
     if await _college_admin(db, college):
         raise ConflictError("COLLEGE_ADMIN_EXISTS", "This college already has an admin. Remove them first to add someone else.")
@@ -126,6 +127,15 @@ async def create_college_admin(slug: str, body: CreateBody, _admin: AdminPayload
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    await notify(
+        db,
+        await platform_admin_ids(db),
+        kind="college_admin.created",
+        title=f"A college admin was added for {college.name}",
+        body=f"{user.name} ({user.email})",
+        link="/admin/users?tab=college",
+        exclude=uuid.UUID(admin["sub"]),
+    )
     return SuccessResponse[dict](data={"admin": _json(user)})
 
 
@@ -152,11 +162,22 @@ async def set_college_admin_active(slug: str, body: ActiveBody, _admin: AdminPay
 
 
 @router.delete("/{slug}/admin", response_model=SuccessResponse[dict])
-async def remove_college_admin(slug: str, _admin: AdminPayload, db: DbSession):
+async def remove_college_admin(slug: str, admin: AdminPayload, db: DbSession):
     """Removes the account, so the college can be given to someone else."""
-    user = await _college_admin(db, await _college(db, slug))
+    college = await _college(db, slug)
+    user = await _college_admin(db, college)
     if user is None:
         raise NotFoundError("College admin")
+    who = f"{user.name} ({user.email})"
     await db.delete(user)
     await db.commit()
+    await notify(
+        db,
+        await platform_admin_ids(db),
+        kind="college_admin.removed",
+        title=f"The college admin of {college.name} was removed",
+        body=who,
+        link="/admin/users?tab=college",
+        exclude=uuid.UUID(admin["sub"]),
+    )
     return SuccessResponse[dict](data={"admin": None})

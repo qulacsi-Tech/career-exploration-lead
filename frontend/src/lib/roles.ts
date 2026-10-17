@@ -36,7 +36,7 @@ export function roleLabel(role: string): string {
  * the platform team. This only decides where to send them (see proxy.ts); the
  * API refuses what they may not do whatever the address bar says.
  */
-export const COLLEGE_ADMIN_PATHS = ["/admin", "/admin/college", "/admin/leads"] as const;
+export const COLLEGE_ADMIN_PATHS = ["/admin", "/admin/college", "/admin/leads", "/admin/notifications"] as const;
 
 export function collegeAdminMayOpen(pathname: string): boolean {
   const path = pathname.replace(/\/+$/, "") || "/admin";

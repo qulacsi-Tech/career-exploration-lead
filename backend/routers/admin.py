@@ -510,11 +510,21 @@ async def admin_reply_to_lead(lead_id: str, body: LeadReplyBody, admin: AdminPay
         raise ValidationError("lead_id: not a valid id.") from exc
 
     leads = LeadRepository(db)
-    if not await leads.get(lead_uuid):
+    lead = await leads.get(lead_uuid)
+    if not lead:
         raise NotFoundError("Lead")
 
     author = await UserRepository(db).find_by_id(uuid.UUID(admin["sub"]))
     await leads.add_reply(lead_uuid, author.name if author else "TopCollegePath team", body.body)
+
+    # The student sees it under My account, and is told. A failure to notify must not undo the reply.
+    if lead.user_id:
+        try:
+            from services.notify import notify
+
+            await notify(db, [lead.user_id], kind="lead.reply", title="You have a reply to your enquiry", body=body.body[:200], link="/account/replies")
+        except Exception:  # noqa: BLE001
+            pass
     return SuccessResponse[MessageResponse](data=MessageResponse(message="Reply sent."))
 
 

@@ -181,4 +181,10 @@ async def college_reply(lead_id: str, body: ReplyBody, scope: CollegeAdminScope,
     # The student sees who wrote it and for which college.
     author = f"{scope['name']}, {scope['college_name']}"
     await LeadRepository(db).add_reply(lead.id, author[:200], body.body)
+    try:
+        from services.notify import notify
+
+        await notify(db, [lead.user_id], kind="lead.reply", title=f"{scope['college_name']} replied to your enquiry", body=body.body[:200], link="/account/replies")
+    except Exception:  # noqa: BLE001 - the reply is already saved
+        pass
     return SuccessResponse[dict](data={"message": "Reply sent."})

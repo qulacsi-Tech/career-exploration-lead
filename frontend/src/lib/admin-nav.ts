@@ -51,7 +51,10 @@ export const adminNav: AdminNavSection[] = [
     id: "overview",
     label: "Overview",
     icon: "overview",
-    items: [{ label: "Dashboard", href: "/admin", phase: 1 }],
+    items: [
+      { label: "Dashboard", href: "/admin", phase: 1 },
+      { label: "Notifications", href: "/admin/notifications", phase: 1 },
+    ],
   },
   {
     id: "content",
@@ -110,7 +113,15 @@ export const adminNav: AdminNavSection[] = [
  * for them. The proxy sends them back to the dashboard if they type another admin address.
  */
 export const collegeAdminNav: AdminNavSection[] = [
-  { id: "overview", label: "Overview", icon: "overview", items: [{ label: "Dashboard", href: "/admin", phase: 1 }] },
+  {
+    id: "overview",
+    label: "Overview",
+    icon: "overview",
+    items: [
+      { label: "Dashboard", href: "/admin", phase: 1 },
+      { label: "Notifications", href: "/admin/notifications", phase: 1 },
+    ],
+  },
   { id: "content", label: "My college", icon: "content", items: [{ label: "College record", href: "/admin/college", phase: 1 }] },
   { id: "leads", label: "Leads", icon: "leads", items: [{ label: "Inbox", href: "/admin/leads", phase: 1 }] },
 ];

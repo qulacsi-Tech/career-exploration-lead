@@ -45,7 +45,30 @@ class LeadService:
             consent_at=datetime.now(timezone.utc) if data.consent else None,
             visitor_id=UUID(data.visitorId) if data.visitorId else None,
         )
+        await self._tell_college(lead, data)
         return LeadResponseSchema(id=str(lead.id), message=THANKS)
+
+    async def _tell_college(self, lead, data: LeadCreateSchema) -> None:
+        """A new enquiry for a college goes to that college's admin, if it has one. Never allowed to fail the enquiry."""
+        if not (lead.college_slug and lead.consent):
+            return  # only enquiries the sender agreed to share are shown to a college
+        try:
+            from services.notify import college_admin_id, notify
+
+            admin_id = await college_admin_id(self.repo.db, lead.college_slug)
+            if admin_id:
+                await notify(
+                    self.repo.db,
+                    [admin_id],
+                    kind="lead.new",
+                    title=f"New enquiry from {lead.name}",
+                    body=(data.programName or data.message or "")[:200] or None,
+                    link="/admin/leads",
+                )
+        except Exception:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).exception("could not notify the college admin of a new lead")
 
 
 class NewsletterService:

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSessionUser, signOut, type SessionUser } from "@/lib/auth-actions";
 import { USER_HINT_COOKIE } from "@/lib/user-session-cookie";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { canUsePanel } from "@/lib/roles";
 
 function ArrowIcon({ className }: { className?: string }) {
@@ -77,7 +78,9 @@ export function HeaderAccount() {
   const firstName = user.name.trim().split(/\s+/)[0] || "Account";
 
   return (
-    <div ref={menuRef} className="relative ml-auto shrink-0 lg:ml-0">
+    <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
+    <NotificationBell viewAllHref={canUsePanel(user.role) ? "/admin/notifications" : "/account/notifications"} />
+    <div ref={menuRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -116,6 +119,7 @@ export function HeaderAccount() {
           </form>
         </div>
       )}
+    </div>
     </div>
   );
 }

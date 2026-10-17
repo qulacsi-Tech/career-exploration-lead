@@ -2243,3 +2243,44 @@ export async function adminSetCollegeRanking(token: string, listSlug: string, co
 export async function adminRemoveCollegeRanking(token: string, listSlug: string, collegeSlug: string) {
   return adminRequest<{ message: string }>(token, "DELETE", `/admin/rankings/${encodeURIComponent(listSlug)}/entries/${encodeURIComponent(collegeSlug)}`);
 }
+
+// ── Notifications ─────────────────────────────────────────────────────────
+
+export type NotificationItem = {
+  id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  requiresAck: boolean;
+  read: boolean;
+  acknowledgedAt: string | null;
+  /** Set when someone else on the team dealt with it first. */
+  handledBy: string | null;
+  createdAt: string | null;
+};
+
+export type NotificationCount = { unread: number; pendingAck: number };
+
+async function notificationCall<T>(token: string, method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}`, ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) throw new ApiError(res.status, json?.error?.message ?? `API ${res.status} on ${path}`);
+  return json.data as T;
+}
+
+export const getNotifications = (token: string, limit = 20) =>
+  notificationCall<NotificationItem[]>(token, "GET", `/notifications?limit=${limit}`);
+export const getNotificationCount = (token: string) => notificationCall<NotificationCount>(token, "GET", "/notifications/count");
+export const markNotificationsRead = (token: string) => notificationCall<{ ok: true }>(token, "POST", "/notifications/read", {});
+export const acknowledgeNotification = (token: string, id: string) =>
+  notificationCall<{ ok: true }>(token, "POST", `/notifications/${id}/acknowledge`);
+export const acknowledgeAllNotifications = (token: string) => notificationCall<{ ok: true }>(token, "POST", "/notifications/acknowledge-all");
+export const clearNotification = (token: string, id: string) => notificationCall<{ ok: true }>(token, "POST", `/notifications/${id}/clear`);
+export const clearAllNotifications = (token: string) => notificationCall<{ ok: true }>(token, "POST", "/notifications/clear-all");
+export const createSocketTicket = (token: string) => notificationCall<{ ticket: string }>(token, "POST", "/ws/ticket");
