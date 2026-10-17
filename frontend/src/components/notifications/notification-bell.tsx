@@ -11,12 +11,13 @@ import { useNotifications } from "@/lib/use-notifications";
  *
  * Opening it marks everything as seen, but anything that still asks for an acknowledgement keeps
  * the count up (and the badge red) until it is acknowledged. `viewAllHref` is the full page for
- * this audience: the admin panel's or the student's.
+ * this audience: the admin panel's or the student's. `live` keeps a socket open for instant updates;
+ * pass it for staff only (see use-notifications.ts for why).
  */
-export function NotificationBell({ viewAllHref, tone = "light" }: { viewAllHref: string; tone?: "light" | "plain" }) {
+export function NotificationBell({ viewAllHref, live: keepSocket, tone = "light" }: { viewAllHref: string; live: boolean; tone?: "light" | "plain" }) {
   const [open, setOpen] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
-  const live = useNotifications({ enabled: true, withList: open });
+  const live = useNotifications({ enabled: true, live: keepSocket, withList: open });
 
   const badge = Math.max(live.count.unread, live.count.pendingAck);
 

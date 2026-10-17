@@ -27,8 +27,10 @@ type QueuedEvent = { name: string; path: string; ts: number; props: TrackProps }
 
 const SESSION_KEY = "tcp_session";
 const SESSION_IDLE_MS = 30 * 60 * 1000;
-const FLUSH_AFTER_MS = 3000;
-const FLUSH_AT = 10;
+// Batches, not one request per click. A quiet batch waits this long; a busy one goes at FLUSH_AT events;
+// whatever is left goes when the page is hidden or closed, so waiting longer loses nothing.
+const FLUSH_AFTER_MS = 15_000;
+const FLUSH_AT = 25;
 const MAX_QUEUE = 100;
 const COLLECT_URL = "/collect";
 

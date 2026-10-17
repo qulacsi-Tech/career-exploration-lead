@@ -79,7 +79,7 @@ export function HeaderAccount() {
 
   return (
     <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
-    <NotificationBell viewAllHref={canUsePanel(user.role) ? "/admin/notifications" : "/account/notifications"} />
+    <NotificationBell viewAllHref={canUsePanel(user.role) ? "/admin/notifications" : "/account/notifications"} live={canUsePanel(user.role)} />
     <div ref={menuRef} className="relative">
       <button
         type="button"

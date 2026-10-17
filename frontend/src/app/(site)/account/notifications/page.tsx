@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Replies to enquiries and other news for the student, kept live. The layout has already required a session. */
+/** Replies to enquiries and other news for the student. Read when the page opens, with no socket. The layout has already required a session. */
 export default function AccountNotificationsPage() {
-  return <NotificationCenter />;
+  return <NotificationCenter live={false} />;
 }

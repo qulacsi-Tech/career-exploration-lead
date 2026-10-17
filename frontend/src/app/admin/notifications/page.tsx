@@ -9,7 +9,7 @@ export default function AdminNotificationsPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader title="Notifications" description="What needs your attention. Some ask you to acknowledge them." />
-      <NotificationCenter />
+      <NotificationCenter live />
     </div>
   );
 }

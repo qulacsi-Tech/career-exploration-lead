@@ -4,8 +4,8 @@ import { NotificationList } from "@/components/notifications/notification-list";
 import { useNotifications } from "@/lib/use-notifications";
 
 /** The full notifications page, for the admin panel and for students. Shows the latest 50, kept live. */
-export function NotificationCenter() {
-  const live = useNotifications({ enabled: true, withList: true, limit: 50 });
+export function NotificationCenter({ live: keepSocket }: { live: boolean }) {
+  const live = useNotifications({ enabled: true, live: keepSocket, withList: true, limit: 50 });
 
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">

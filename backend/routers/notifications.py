@@ -79,12 +79,13 @@ async def list_notifications(
 
 @router.get("/notifications/count", response_model=SuccessResponse[dict])
 async def notification_count(user_id: CurrentUserId, db: DbSession):
-    unread = (await db.execute(
-        select(func.count()).select_from(Notification).where(*_mine(user_id), Notification.read_at.is_(None))
-    )).scalar_one()
-    pending = (await db.execute(
-        select(func.count()).select_from(Notification).where(*_mine(user_id), _waiting_for_ack())
-    )).scalar_one()
+    # One pass over their notifications for both numbers.
+    unread, pending = (await db.execute(
+        select(
+            func.count().filter(Notification.read_at.is_(None)),
+            func.count().filter(_waiting_for_ack()),
+        ).where(*_mine(user_id))
+    )).one()
     return SuccessResponse[dict](data={"unread": unread, "pendingAck": pending})
 
 

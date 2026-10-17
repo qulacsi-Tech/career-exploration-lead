@@ -56,7 +56,7 @@ export function AdminShell({ children, user }: { children: ReactNode; user: Side
 
         {/* Identity lives in the sidebar profile block, not up here as well. */}
         <div className="ml-auto flex items-center gap-3">
-          <NotificationBell viewAllHref="/admin/notifications" />
+          <NotificationBell viewAllHref="/admin/notifications" live />
           <Link
             href="/"
             className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"
