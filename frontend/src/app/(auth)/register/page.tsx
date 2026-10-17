@@ -15,6 +15,7 @@ export const metadata: Metadata = {
  * Server component so it can export metadata; the form is a client component
  * because it validates, tracks password strength and posts.
  */
-export default function RegisterPage() {
-  return <RegisterForm />;
+export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
+  const { next } = await searchParams;
+  return <RegisterForm next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined} />;
 }

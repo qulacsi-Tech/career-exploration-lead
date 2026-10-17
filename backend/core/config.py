@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: str = "http://localhost:3000"
+    # The OAuth client ID from Google Cloud. Sign-in with Google is off while this is empty.
+    GOOGLE_CLIENT_ID: str = ""
     MEILISEARCH_URL: str = "http://localhost:7700"
     MEILISEARCH_API_KEY: str = ""
     # Where admin-uploaded images are kept. Point this at any disk or mounted

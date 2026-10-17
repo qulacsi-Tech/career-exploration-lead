@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  adminReplyToLead,
   ApiError,
   adminCreateCollege,
   adminListPracticeTests,
@@ -266,6 +267,13 @@ export async function updateLeadStatus(id: string, status: string): Promise<Admi
   );
   if ("ok" in result) revalidatePath("/admin");
   return result;
+}
+
+/** Replies to a lead. The person sees it under My account → Replies. */
+export async function replyToLead(id: string, body: string): Promise<AdminActionResult> {
+  const text = body.trim();
+  if (text.length < 2) return { error: "Write a reply first." };
+  return attempt("/admin/leads", (token) => adminReplyToLead(token, id, text));
 }
 
 // ── Courses and specialisations ──────────────────────────────────────────────

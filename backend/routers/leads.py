@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from core.dependencies import DbSession
+from core.dependencies import DbSession, OptionalUserId
 from schemas.common import SuccessResponse
 from schemas.lead import (
     LeadCreateSchema,
@@ -14,9 +14,10 @@ router = APIRouter(tags=["leads"])
 
 
 @router.post("/leads", response_model=SuccessResponse[LeadResponseSchema], status_code=201)
-async def create_lead(data: LeadCreateSchema, db: DbSession):
+async def create_lead(data: LeadCreateSchema, db: DbSession, user_id: OptionalUserId):
+    """Open to anyone. A signed-in student's token, when sent, ties the lead to their account."""
     svc = LeadService(db)
-    result = await svc.create_lead(data)
+    result = await svc.create_lead(data, user_id)
     return SuccessResponse[LeadResponseSchema](data=result)
 
 

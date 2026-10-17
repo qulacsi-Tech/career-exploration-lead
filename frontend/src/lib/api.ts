@@ -588,21 +588,37 @@ export async function getArticleSlugs(): Promise<string[]> {
 
 // ── Mutations (POST — used from Client Components / Route Handlers) ────────
 
-/** Submit a lead (callback, counselling, brochure, enquiry). */
-export async function submitLead(data: {
+export type LeadInput = {
   name: string;
   phone: string;
   email?: string;
   collegeSlug?: string;
   type: "callback" | "counselling" | "brochure" | "enquiry";
-}): Promise<{ id: string; message: string }> {
+  stream?: string;
+  city?: string;
+  message?: string;
+  programName?: string;
+  source?: string;
+  sourceUrl?: string;
+  consent?: boolean;
+};
+
+/**
+ * Submit a lead (callback, counselling, brochure, enquiry). With a student's
+ * token the API ties the lead to their account; without one it stays anonymous.
+ */
+export async function submitLead(
+  data: LeadInput,
+  token?: string | null
+): Promise<{ id: string; message: string; repeat: boolean }> {
   const res = await fetch(`${API_BASE}/leads`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(data),
+    cache: "no-store",
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error?.message ?? "Failed to submit");
+  const json = await res.json().catch(() => null);
+  if (!json?.success) throw new Error(json?.error?.message ?? "Failed to submit");
   return json.data;
 }
 
@@ -625,14 +641,22 @@ export async function registerUser(data: {
   name: string;
   email: string;
   password: string;
+  phone?: string;
+  marketingConsent?: boolean;
 }): Promise<{ accessToken: string; user: { id: string; name: string; email: string; role: string } }> {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+    cache: "no-store",
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error?.message ?? "Registration failed");
+  const json = await res.json().catch(() => null);
+  if (!json?.success) {
+    // The caller tells a taken email apart from other failures by this code.
+    const error = new Error(json?.error?.message ?? "Registration failed") as Error & { code?: string };
+    error.code = json?.error?.code;
+    throw error;
+  }
   return json.data;
 }
 
@@ -693,7 +717,7 @@ export type RankingList = {
 // ── Auth types ────────────────────────────────────────────────────────────
 
 export type AuthUser = { id: string; name: string; email: string; role: string };
-export type AuthResult = { accessToken: string; user: AuthUser };
+export type AuthResult = { accessToken: string; user: AuthUser; isNewUser?: boolean };
 
 // ── Course Catalogue functions ────────────────────────────────────────────
 
@@ -754,6 +778,94 @@ export async function loginUser(data: {
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error?.message ?? "Login failed");
+  return json.data;
+}
+
+/** Exchange a Google ID token for our own access token. Creates the account on first use. */
+export async function loginWithGoogle(idToken: string): Promise<AuthResult> {
+  const res = await fetch(`${API_BASE}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+    cache: "no-store",
+  });
+  const json = await res.json().catch(() => null);
+  if (!json?.success) throw new Error(json?.error?.message ?? "Google sign-in failed");
+  return json.data;
+}
+
+/** The signed-in student's own record. */
+export type Profile = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone: string | null;
+  avatarUrl: string | null;
+  authProvider: "password" | "google";
+  city: string | null;
+  state: string | null;
+  preferredStream: string | null;
+  targetExam: string | null;
+  marketingConsent: boolean;
+};
+
+export type ProfileUpdate = Partial<
+  Pick<Profile, "name" | "phone" | "city" | "state" | "preferredStream" | "targetExam" | "marketingConsent">
+>;
+
+export async function getMe(token: string): Promise<Profile> {
+  const res = await fetch(`${API_BASE}/me`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new ApiError(res.status, `API ${res.status} on /me`);
+  return ((await res.json()) as ApiResponse<Profile>).data;
+}
+
+export type MyReply = { id: string; authorName: string; body: string; createdAt: string | null; read: boolean };
+
+export type MyLead = {
+  id: string;
+  type: string;
+  status: LeadStatus;
+  collegeSlug: string | null;
+  programName: string | null;
+  stream: string | null;
+  city: string | null;
+  message: string | null;
+  source: string | null;
+  createdAt: string | null;
+  replies: MyReply[];
+};
+
+export type MyActivity = {
+  kind: "account_created" | "login" | "enquiry_sent" | "reply_received";
+  title: string;
+  detail: string | null;
+  href: string | null;
+  at: string | null;
+};
+
+async function meGet<T>(token: string, path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new ApiError(res.status, `API ${res.status} on ${path}`);
+  return ((await res.json()) as ApiResponse<T>).data;
+}
+
+export const getMyLeads = (token: string) => meGet<MyLead[]>(token, "/me/leads");
+export const getMyActivity = (token: string) => meGet<MyActivity[]>(token, "/me/activity");
+
+export async function markRepliesRead(token: string): Promise<void> {
+  await fetch(`${API_BASE}/me/replies/read`, { method: "POST", cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+}
+
+export async function updateMe(token: string, data: ProfileUpdate): Promise<Profile> {
+  const res = await fetch(`${API_BASE}/me`, {
+    method: "PATCH",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.success) throw new Error(json?.error?.message ?? "Could not save your details");
   return json.data;
 }
 
@@ -1301,6 +1413,11 @@ export async function adminDeleteField(token: string, slug: string) {
 /** Every state or union territory with its districts, for the location form's dropdowns. */
 export type IndiaGeo = Record<string, string[]>;
 
+/** The same state and district lists, for the public site (the profile form). */
+export async function getIndiaGeo(): Promise<IndiaGeo> {
+  return (await apiFetch<{ states: IndiaGeo }>("/geo/india")).states;
+}
+
 export async function adminGetGeo(token: string): Promise<IndiaGeo> {
   const data = await adminRequest<{ states: IndiaGeo }>(token, "GET", "/admin/locations/geo");
   return data.states;
@@ -1615,6 +1732,16 @@ export type AdminLead = {
   type: string;
   status: LeadStatus;
   createdAt: string | null;
+  userId: string | null;
+  stream: string | null;
+  city: string | null;
+  message: string | null;
+  programName: string | null;
+  source: string | null;
+  sourceUrl: string | null;
+  consent: boolean;
+  repeatCount: number;
+  replies: { id: string; authorName: string; body: string; createdAt: string | null }[];
 };
 
 export type AdminDashboard = {
@@ -1657,6 +1784,11 @@ export async function adminListLeads(
 /** Admin: set a lead's status. */
 export async function adminUpdateLeadStatus(token: string, id: string, status: LeadStatus) {
   return adminRequest<{ message: string }>(token, "PATCH", `/admin/leads/${id}`, { status });
+}
+
+/** Admin: send a reply the lead's owner sees under My account. */
+export async function adminReplyToLead(token: string, id: string, body: string) {
+  return adminRequest<{ message: string }>(token, "POST", `/admin/leads/${id}/replies`, { body });
 }
 
 /** Admin: the figures for the dashboard, computed by the API from the database. */

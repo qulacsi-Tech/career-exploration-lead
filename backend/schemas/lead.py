@@ -9,8 +9,30 @@ class LeadCreateSchema(BaseModel):
     email: Optional[EmailStr] = None
     collegeSlug: Optional[str] = None
     type: str  # callback | counselling | brochure | enquiry
+    stream: Optional[str] = None
+    city: Optional[str] = None
+    message: Optional[str] = None
+    programName: Optional[str] = None
+    source: Optional[str] = None
+    sourceUrl: Optional[str] = None
+    consent: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("stream", "city", "programName", "source")
+    @classmethod
+    def trim_short(cls, v: Optional[str]) -> Optional[str]:
+        return v.strip()[:200] if v and v.strip() else None
+
+    @field_validator("message")
+    @classmethod
+    def trim_message(cls, v: Optional[str]) -> Optional[str]:
+        return v.strip()[:1000] if v and v.strip() else None
+
+    @field_validator("sourceUrl")
+    @classmethod
+    def trim_url(cls, v: Optional[str]) -> Optional[str]:
+        return v.strip()[:500] if v and v.strip() else None
 
     @field_validator("name")
     @classmethod
@@ -40,6 +62,8 @@ class LeadCreateSchema(BaseModel):
 class LeadResponseSchema(BaseModel):
     id: str
     message: str
+    # True when this was the same request as one already received, so nothing new was stored.
+    repeat: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
 

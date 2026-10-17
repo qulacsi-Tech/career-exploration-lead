@@ -45,15 +45,13 @@ services:
         # Public address the browser will call, baked in at build time.
         NEXT_PUBLIC_API_URL: https://${DOMAIN}/api/v1
         NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        # Sign in with Google. Empty hides the button. The same ID goes in backend.env as GOOGLE_CLIENT_ID.
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
         # While building, pages are prerendered from the public API. Map the domain to
         # this host so the build reaches Caddy here, not the internet. Needs Docker 20.10+.
       extra_hosts:
         - "${DOMAIN}:host-gateway"
     restart: unless-stopped
-    environment:
-      # Server-side form forwarding goes straight to the backend on the internal network.
-      ENQUIRY_FORWARD_URL: http://backend:8000/api/v1/leads
-      REGISTER_FORWARD_URL: http://backend:8000/api/v1/auth/register
     depends_on:
       - backend
     expose:

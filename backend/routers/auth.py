@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from core.dependencies import DbSession
 from core.exceptions import UnauthorizedError
 from core.security import create_access_token, decode_access_token
-from schemas.auth import AuthResponseSchema, LoginSchema, RegisterSchema, UserSchema
+from schemas.auth import AuthResponseSchema, GoogleLoginSchema, LoginSchema, RegisterSchema, UserSchema
 from schemas.common import SuccessResponse
 from services.auth import AuthService
 
@@ -38,6 +38,14 @@ async def login(data: LoginSchema, db: DbSession):
     return SuccessResponse[AuthResponseSchema](data=result)
 
 
+@router.post("/google", response_model=SuccessResponse[AuthResponseSchema])
+async def login_with_google(data: GoogleLoginSchema, db: DbSession):
+    """Exchange a Google ID token for our own access token, creating the account on first use."""
+    svc = AuthService(db)
+    result = await svc.login_with_google(data)
+    return SuccessResponse[AuthResponseSchema](data=result)
+
+
 @router.post("/refresh", response_model=SuccessResponse[RefreshResponse])
 async def refresh(body: RefreshRequest, db: DbSession):
     """
@@ -58,7 +66,7 @@ async def refresh(body: RefreshRequest, db: DbSession):
     import uuid as _uuid
     repo = UserRepository(db)
     user = await repo.find_by_id(_uuid.UUID(payload["sub"]))
-    if not user:
+    if not user or not user.is_active:
         raise UnauthorizedError("Account not found.")
 
     new_token = create_access_token(

@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
+import { signUp } from "@/lib/auth-actions";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 
 type FieldErrors = Partial<
   Record<"name" | "email" | "phone" | "password" | "confirm" | "terms", string>
@@ -47,20 +49,22 @@ function strength(password: string) {
  * The header has advertised "Login / Register" from the start and the login
  * screen links here, but the route did not exist — both went to a 404.
  *
- * Validation mirrors `/api/auth/register`, for the same reason the enquiry form
+ * Validation mirrors the `signUp` action, for the same reason the enquiry form
  * does: the message beside the input needs to be local, and the server cannot
  * trust the client. Values survive a failed submit; focus moves to the first
  * problem, and to the confirmation once it succeeds.
  */
-export function RegisterForm() {
-  const [status, setStatus] = useState<"idle" | "submitting" | "done">("idle");
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+export function RegisterForm({ next }: { next?: string }) {
+  const [state, formAction, busy] = useActionState(signUp, undefined);
+  const [clientErrors, setClientErrors] = useState<FieldErrors>({});
   const [password, setPassword] = useState("");
   const [revealed, setRevealed] = useState(false);
 
-  const successRef = useRef<HTMLDivElement>(null);
   const meter = strength(password);
+  // What the server rejected shows until the visitor submits again; what the
+  // browser caught shows first, so a typo never costs a round trip.
+  const errors: FieldErrors = { ...(state?.errors as FieldErrors | undefined), ...clientErrors };
+  const formError = state?.error ?? null;
 
   const validate = (data: Record<string, FormDataEntryValue | null>): FieldErrors => {
     const next: FieldErrors = {};
@@ -84,89 +88,22 @@ export function RegisterForm() {
       next.password = "Include at least one letter and one number.";
 
     if (String(data.confirm ?? "") !== pass) next.confirm = "Both passwords must match.";
-    if (data.terms === null) next.terms = "Accept the terms to create an account.";
+    if (data.terms == null) next.terms = "Accept the terms to create an account.";
 
     return next;
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setFormError(null);
-
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     const form = event.currentTarget;
-    const raw = Object.fromEntries(new FormData(form).entries());
-
-    const found = validate(raw);
-    setErrors(found);
+    const found = validate(Object.fromEntries(new FormData(form).entries()));
+    setClientErrors(found);
 
     if (Object.keys(found).length > 0) {
+      // Stop the action; the browser's own checks have already told the visitor what to fix.
+      event.preventDefault();
       form.querySelector<HTMLElement>(`[name="${Object.keys(found)[0]}"]`)?.focus();
-      return;
-    }
-
-    setStatus("submitting");
-
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...raw, terms: raw.terms !== null }),
-      });
-
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        if (payload.errors) {
-          setErrors(payload.errors as FieldErrors);
-          setStatus("idle");
-          return;
-        }
-        throw new Error(payload.message ?? "Request failed");
-      }
-
-      setStatus("done");
-      requestAnimationFrame(() => successRef.current?.focus());
-    } catch (error) {
-      console.error("Registration failed", error);
-      setFormError("We could not create that account just now. Please try again.");
-      setStatus("idle");
     }
   };
-
-  if (status === "done") {
-    return (
-      <div
-        ref={successRef}
-        tabIndex={-1}
-        className="rounded-2xl border border-brand/30 bg-brand-soft p-6 focus:outline-none sm:p-8"
-      >
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white">
-          <CheckCircle2 className="h-5 w-5" />
-        </span>
-
-        <h1 className="mt-4 font-display text-xl font-bold text-brand-ink">Account created</h1>
-        <p className="mt-2 text-sm leading-relaxed text-brand-ink/90">
-          You can sign in and start shortlisting colleges, saving comparisons and tracking the exams
-          you are preparing for.
-        </p>
-
-        <Link
-          href="/login"
-          className="mt-6 inline-block rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
-        >
-          Go to sign in
-        </Link>
-
-        {/* Honest about the build stage: accounts are not stored until the
-            admin module ships. One line to delete when they are. */}
-        <p className="mt-5 text-[11px] text-brand-ink/70">
-          Accounts are not stored in this build — sign-in goes live with the admin module.
-        </p>
-      </div>
-    );
-  }
-
-  const busy = status === "submitting";
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
@@ -185,7 +122,8 @@ export function RegisterForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
+      <form action={formAction} onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
+        {next && <input type="hidden" name="next" value={next} />}
         <div>
           <label htmlFor="reg-name" className="block text-xs font-semibold text-ink">
             Full name
@@ -351,6 +289,15 @@ export function RegisterForm() {
           )}
         </div>
 
+        <label className="flex items-start gap-2 text-xs text-ink-soft">
+          <input
+            type="checkbox"
+            name="marketing"
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-line text-brand focus:ring-brand"
+          />
+          <span>Send me admission updates, exam alerts and counselling offers (optional).</span>
+        </label>
+
         <button
           type="submit"
           disabled={busy}
@@ -361,9 +308,13 @@ export function RegisterForm() {
         </button>
       </form>
 
+      <div className="mt-5">
+        <GoogleSignInButton next={next} text="signup_with" />
+      </div>
+
       <p className="mt-6 text-center text-sm text-ink-soft">
         Already have an account?{" "}
-        <Link href="/login" className="font-semibold text-brand hover:underline">
+        <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-semibold text-brand hover:underline">
           Log in
         </Link>
       </p>

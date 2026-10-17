@@ -1,8 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowUpRight, CheckCircle2, Loader2 } from "lucide-react";
+import { submitEnquiry } from "@/lib/lead-actions";
+import { getSessionUser } from "@/lib/auth-actions";
+import { USER_HINT_COOKIE } from "@/lib/user-session-cookie";
 
 type Option = { slug: string; name: string };
 type FieldErrors = Partial<Record<"name" | "phone" | "email" | "stream" | "consent", string>>;
@@ -20,8 +23,9 @@ function fieldClass(invalid?: string) {
 /**
  * The counselling enquiry form.
  *
- * Previously a static `<form>` that posted nowhere and admitted so in small
- * print. It now posts JSON to `/api/enquiry` and reports what happened.
+ * Submits through the `submitEnquiry` Server Action and reports what happened.
+ * A signed-in student's details fill the empty fields on load, and the lead is
+ * tied to their account.
  *
  * ## Validation runs here *and* on the server
  *
@@ -44,6 +48,7 @@ export function EnquiryForm({
   defaultStream = "",
   defaultMessage = "",
   source = "enquiry-page",
+  programName,
   bare = false,
 }: {
   streams: Option[];
@@ -56,6 +61,8 @@ export function EnquiryForm({
   defaultMessage?: string;
   /** Where on the site the enquiry came from. */
   source?: string;
+  /** The programme the visitor asked about, when they came from one. */
+  programName?: string;
   /** Inside a dialog that already has its own frame: no outer card and no top margin. */
   bare?: boolean;
 }) {
@@ -66,6 +73,29 @@ export function EnquiryForm({
 
   const formRef = useRef<HTMLFormElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
+
+  // Fill the visitor's own details in, but never over something they have already typed.
+  useEffect(() => {
+    if (!document.cookie.split("; ").includes(`${USER_HINT_COOKIE}=1`)) return;
+    let cancelled = false;
+    getSessionUser()
+      .then((user) => {
+        const form = formRef.current;
+        if (cancelled || !user || !form) return;
+        const fill = (name: string, value: string | null) => {
+          const field = form.elements.namedItem(name);
+          if (value && (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) && !field.value) field.value = value;
+        };
+        fill("name", user.name);
+        fill("email", user.email);
+        fill("phone", user.phone);
+        if (!defaultStream) fill("stream", user.preferredStream);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [defaultStream]);
 
   const validate = (data: Record<string, FormDataEntryValue | null>): FieldErrors => {
     const next: FieldErrors = {};
@@ -84,7 +114,7 @@ export function EnquiryForm({
       next.email = "That does not look like a valid email.";
 
     if (!str("stream")) next.stream = "Pick the stream you are interested in.";
-    if (data.consent === null) next.consent = "We need your consent before a counsellor can call.";
+    if (data.consent == null) next.consent = "We need your consent before a counsellor can call.";
 
     return next;
   };
@@ -110,24 +140,25 @@ export function EnquiryForm({
     setStatus("submitting");
 
     try {
-      const response = await fetch("/api/enquiry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...raw, consent: raw.consent !== null, source, ...(collegeSlug && { collegeSlug }) }),
+      const result = await submitEnquiry({
+        ...raw,
+        consent: raw.consent !== undefined && raw.consent !== null,
+        source,
+        sourceUrl: window.location.pathname,
+        ...(collegeSlug && { collegeSlug }),
+        ...(programName && { programName }),
       });
 
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        if (payload.errors) {
-          setErrors(payload.errors as FieldErrors);
+      if (!result.ok) {
+        if (result.errors) {
+          setErrors(result.errors as FieldErrors);
           setStatus("idle");
           return;
         }
-        throw new Error(payload.message ?? "Request failed");
+        throw new Error(result.message ?? "Request failed");
       }
 
-      setReference(payload.reference ?? null);
+      setReference(result.reference);
       setStatus("done");
       // Move focus to the confirmation: the form it replaces is gone, and a
       // screen reader would otherwise be left on a button that no longer exists.

@@ -17,22 +17,37 @@ import type { IndiaGeo } from "@/lib/api";
 const box = "mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
 const OTHER = "__other__";
 
-export function StateCityFields({ geo }: { geo: IndiaGeo }) {
+export function StateCityFields({
+  geo,
+  defaultState = "",
+  defaultCity = "",
+  required = true,
+}: {
+  geo: IndiaGeo;
+  /** What the two start on, when editing a saved record. */
+  defaultState?: string;
+  defaultCity?: string;
+  /** False where both are optional, such as a student's profile. */
+  required?: boolean;
+}) {
   const states = Object.keys(geo).sort();
-  const [state, setState] = useState("");
-  const [choice, setChoice] = useState(""); // a district, OTHER, or "" for none yet
-  const [typed, setTyped] = useState("");
+  const [state, setState] = useState(defaultState in geo ? defaultState : "");
+  // A saved city that is a district of the saved state is picked; anything else was typed under "Other".
+  const savedIsDistrict = !!defaultCity && (geo[defaultState] ?? []).includes(defaultCity);
+  const [choice, setChoice] = useState(savedIsDistrict ? defaultCity : defaultCity && defaultState in geo ? OTHER : ""); // a district, OTHER, or "" for none yet
+  const [typed, setTyped] = useState(defaultCity && !savedIsDistrict ? defaultCity : "");
+  const star = required ? <span className="text-brand">*</span> : null;
 
   if (states.length === 0) {
     return (
       <>
         <div>
-          <label htmlFor="city" className="block text-xs font-semibold text-ink">City <span className="text-brand">*</span></label>
-          <input id="city" name="city" required placeholder="Bengaluru" className={box} />
+          <label htmlFor="city" className="block text-xs font-semibold text-ink">City {star}</label>
+          <input id="city" name="city" required={required} defaultValue={defaultCity} placeholder="Bengaluru" className={box} />
         </div>
         <div>
-          <label htmlFor="state" className="block text-xs font-semibold text-ink">State <span className="text-brand">*</span></label>
-          <input id="state" name="state" required placeholder="Karnataka" className={box} />
+          <label htmlFor="state" className="block text-xs font-semibold text-ink">State {star}</label>
+          <input id="state" name="state" required={required} defaultValue={defaultState} placeholder="Karnataka" className={box} />
         </div>
       </>
     );
@@ -45,11 +60,11 @@ export function StateCityFields({ geo }: { geo: IndiaGeo }) {
     <>
       <div>
         <label htmlFor="state-pick" className="block text-xs font-semibold text-ink">
-          State <span className="text-brand">*</span>
+          State {star}
         </label>
         <select
           id="state-pick"
-          required
+          required={required}
           value={state}
           onChange={(e) => {
             setState(e.target.value);
@@ -69,11 +84,11 @@ export function StateCityFields({ geo }: { geo: IndiaGeo }) {
 
       <div>
         <label htmlFor="city-pick" className="block text-xs font-semibold text-ink">
-          City <span className="text-brand">*</span>
+          City {star}
         </label>
         <select
           id="city-pick"
-          required
+          required={required}
           disabled={!state}
           value={choice}
           onChange={(e) => setChoice(e.target.value)}
@@ -88,7 +103,7 @@ export function StateCityFields({ geo }: { geo: IndiaGeo }) {
         {choice === OTHER && (
           <input
             aria-label="City name"
-            required
+            required={required}
             autoFocus
             value={typed}
             onChange={(e) => setTyped(e.target.value)}

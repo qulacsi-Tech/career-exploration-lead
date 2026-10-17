@@ -15,7 +15,7 @@ from core.database import engine
 from core.exceptions import AppException
 from core.migrate import run_migrations
 from routers import health
-from routers import colleges, exams, locations, articles, programs, leads, search, home, auth
+from routers import colleges, exams, locations, articles, programs, leads, search, home, auth, me, geo
 from routers import courses, rankings, admin as admin_router, sitemap as sitemap_router, study_abroad, admin_study_abroad, collections, admin_dashboard, admin_catalogue, admin_rankings, admin_collections, admin_homepage, admin_content, admin_home_copy, listing_header, admin_programs, practice, admin_uploads, admin_locations, admin_fields, admin_band_colleges, admin_hero, admin_practice, admin_college_record
 
 logger = logging.getLogger(__name__)
@@ -109,6 +109,8 @@ app.include_router(locations.router, prefix=V1)
 app.include_router(articles.router, prefix=V1)
 app.include_router(programs.router, prefix=V1)
 app.include_router(leads.router, prefix=V1)
+app.include_router(me.router, prefix=V1)
+app.include_router(geo.router, prefix=V1)
 app.include_router(search.router, prefix=V1)
 app.include_router(home.router, prefix=V1)
 app.include_router(auth.router, prefix=V1)

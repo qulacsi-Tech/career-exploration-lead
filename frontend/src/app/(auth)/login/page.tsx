@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   Two audiences share this screen — students saving shortlists, and the admin
   team — so it stays a single form rather than a separate admin login.
 */
-export default function LoginPage() {
-  return <LoginForm />;
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const { next } = await searchParams;
+  return <LoginForm next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined} />;
 }

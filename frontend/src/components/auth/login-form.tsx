@@ -3,17 +3,19 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-actions";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 
 /**
  * Login form.
  *
  * Posts to the signIn Server Action. The action checks the account against the
- * API, stores the admin session in an httpOnly cookie, and redirects to /admin.
+ * API, stores the session in an httpOnly cookie, and redirects: admins to /admin,
+ * students to where they were going (`next`) or their account page.
  * A form action rather than a client-side fetch keeps the password out of the
  * URL and out of browser-readable storage; a GET form would put it in history
  * and server logs.
  */
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(signIn, undefined);
 
   return (
@@ -24,6 +26,7 @@ export function LoginForm() {
       </p>
 
       <form className="mt-6 space-y-4" action={formAction}>
+        {next && <input type="hidden" name="next" value={next} />}
         <div>
           <label htmlFor="email" className="block text-xs font-semibold text-ink">
             Email
@@ -82,22 +85,13 @@ export function LoginForm() {
         </button>
       </form>
 
-      <div className="mt-6 flex items-center gap-3 text-xs text-ink-faint">
-        <span className="h-px flex-1 bg-line" />
-        or
-        <span className="h-px flex-1 bg-line" />
+      <div className="mt-6">
+        <GoogleSignInButton next={next} text="continue_with" />
       </div>
-
-      <button
-        type="button"
-        className="mt-4 w-full rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink transition hover:border-brand hover:text-brand"
-      >
-        Continue with Google
-      </button>
 
       <p className="mt-6 text-center text-sm text-ink-soft">
         New here?{" "}
-        <Link href="/register" className="font-semibold text-brand hover:underline">
+        <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="font-semibold text-brand hover:underline">
           Create an account
         </Link>
       </p>

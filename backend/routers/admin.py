@@ -460,6 +460,7 @@ async def admin_list_leads(
 ):
     """List all leads for the admin inbox."""
     from sqlalchemy import select, func
+    from sqlalchemy.orm import selectinload
     from models.lead import Lead
 
     stmt = select(Lead).order_by(Lead.created_at.desc())
@@ -472,7 +473,7 @@ async def admin_list_leads(
     total: int = (await db.execute(count_stmt)).scalar_one()
 
     offset = (page - 1) * limit
-    result = await db.execute(stmt.offset(offset).limit(limit))
+    result = await db.execute(stmt.options(selectinload(Lead.replies)).offset(offset).limit(limit))
     leads = result.scalars().all()
     pages = max(1, -(-total // limit))
 
@@ -486,9 +487,60 @@ async def admin_list_leads(
             "type": lead.type.value if hasattr(lead.type, "value") else lead.type,
             "status": lead.status.value if hasattr(lead.status, "value") else lead.status,
             "createdAt": lead.created_at.isoformat() if lead.created_at else None,
+            "userId": str(lead.user_id) if lead.user_id else None,
+            "stream": lead.stream,
+            "city": lead.city,
+            "message": lead.message,
+            "programName": lead.program_name,
+            "source": lead.source,
+            "sourceUrl": lead.source_url,
+            "consent": bool(lead.consent),
+            "repeatCount": lead.repeat_count or 0,
+            "replies": [
+                {
+                    "id": str(r.id),
+                    "authorName": r.author_name,
+                    "body": r.body,
+                    "createdAt": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in lead.replies
+            ],
         }
         for lead in leads
     ])
+
+
+class LeadReplyBody(BaseModel):
+    body: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("body")
+    @classmethod
+    def validate_body(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 2 or len(v) > 2000:
+            raise ValueError("A reply must be between 2 and 2000 characters.")
+        return v
+
+
+@router.post("/leads/{lead_id}/replies", response_model=SuccessResponse[MessageResponse], status_code=201)
+async def admin_reply_to_lead(lead_id: str, body: LeadReplyBody, admin: AdminPayload, db: DbSession):
+    """Send a reply the lead's owner sees under My account → Replies."""
+    from repositories.lead import LeadRepository
+    from repositories.user import UserRepository
+
+    try:
+        lead_uuid = uuid.UUID(lead_id)
+    except ValueError as exc:
+        raise ValidationError("lead_id: not a valid id.") from exc
+
+    leads = LeadRepository(db)
+    if not await leads.get(lead_uuid):
+        raise NotFoundError("Lead")
+
+    author = await UserRepository(db).find_by_id(uuid.UUID(admin["sub"]))
+    await leads.add_reply(lead_uuid, author.name if author else "TopCollegePath team", body.body)
+    return SuccessResponse[MessageResponse](data=MessageResponse(message="Reply sent."))
 
 
 @router.patch("/leads/{lead_id}", response_model=SuccessResponse[MessageResponse])

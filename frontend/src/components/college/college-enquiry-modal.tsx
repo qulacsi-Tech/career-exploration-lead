@@ -95,6 +95,7 @@ export function CollegeEnquiryModal({
             defaultStream={match?.slug ?? ""}
             defaultMessage={message}
             source="college-programme"
+            programName={program || undefined}
           />
         </div>
       </div>
