@@ -37,13 +37,34 @@ async function run<T>(call: (token: string) => Promise<T>): Promise<Result<T>> {
   }
 }
 
-export const fetchNotifications = (limit = 20): Promise<Result<NotificationItem[]>> => run((t) => getNotifications(t, limit));
-export const fetchNotificationCount = (): Promise<Result<NotificationCount>> => run(getNotificationCount);
-export const markAllNotificationsRead = () => run(markNotificationsRead);
-export const acknowledgeOne = (id: string) => run((t) => acknowledgeNotification(t, id));
-export const acknowledgeAll = () => run(acknowledgeAllNotifications);
-export const clearOne = (id: string) => run((t) => clearNotification(t, id));
-export const clearAll = () => run(clearAllNotifications);
+// Each is an `async function`: a Server Actions file may export nothing else.
+export async function fetchNotifications(limit = 20): Promise<Result<NotificationItem[]>> {
+  return run((t) => getNotifications(t, limit));
+}
+
+export async function fetchNotificationCount(): Promise<Result<NotificationCount>> {
+  return run(getNotificationCount);
+}
+
+export async function markAllNotificationsRead(): Promise<Result<{ ok: true }>> {
+  return run(markNotificationsRead);
+}
+
+export async function acknowledgeOne(id: string): Promise<Result<{ ok: true }>> {
+  return run((t) => acknowledgeNotification(t, id));
+}
+
+export async function acknowledgeAll(): Promise<Result<{ ok: true }>> {
+  return run(acknowledgeAllNotifications);
+}
+
+export async function clearOne(id: string): Promise<Result<{ ok: true }>> {
+  return run((t) => clearNotification(t, id));
+}
+
+export async function clearAll(): Promise<Result<{ ok: true }>> {
+  return run(clearAllNotifications);
+}
 
 /** A one-minute ticket for opening the live-update socket. Null when nobody is signed in. */
 export async function getSocketTicket(): Promise<string | null> {
