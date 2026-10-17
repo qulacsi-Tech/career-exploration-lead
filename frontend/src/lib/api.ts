@@ -1840,7 +1840,11 @@ export type AdminUser = {
   createdAt: string | null;
   lastLoginAt: string | null;
   leadCount: number;
+  /** Whether the admin who asked may enable or disable this account. The API enforces it too. */
+  canManage: boolean;
 };
+
+export type UserGroup = "general" | "administrative";
 
 export type AdminUserDetail = AdminUser & {
   preferredStream: string | null;
@@ -1850,6 +1854,14 @@ export type AdminUserDetail = AdminUser & {
   leads: { id: string; type: string; status: LeadStatus; collegeSlug: string | null; programName: string | null; createdAt: string | null }[];
   events: TrackedEvent[];
 };
+
+export const adminUserCounts = (token: string) =>
+  adminRequest<Record<UserGroup, number>>(token, "GET", "/admin/users/counts");
+
+export const adminCreateAdministrator = (
+  token: string,
+  body: { name: string; email: string; password: string; role: "ADMIN" | "SUPER_ADMIN" }
+) => adminRequest<AdminUser>(token, "POST", "/admin/users", body);
 
 export const adminGetAnalytics = (token: string, days = 14) =>
   adminRequest<AdminAnalytics>(token, "GET", `/admin/analytics?days=${days}`);
@@ -1866,9 +1878,10 @@ export const adminSetUserActive = (token: string, id: string, isActive: boolean)
 /** Admin: one page of student accounts, newest first. */
 export async function adminListUsers(
   token: string,
-  params: { page?: number; limit?: number; q?: string } = {}
+  params: { group?: UserGroup; page?: number; limit?: number; q?: string } = {}
 ): Promise<{ data: AdminUser[]; meta: PaginationMeta }> {
   const qs = new URLSearchParams();
+  if (params.group) qs.set("group", params.group);
   if (params.page) qs.set("page", String(params.page));
   if (params.limit) qs.set("limit", String(params.limit));
   if (params.q) qs.set("q", params.q);

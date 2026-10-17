@@ -11,6 +11,11 @@ from core.database import Base
 class UserRole(str, enum.Enum):
     USER = "USER"
     ADMIN = "ADMIN"
+    SUPER_ADMIN = "SUPER_ADMIN"
+
+
+# Roles that can use the admin panel. Only a super admin manages other administrators.
+ADMIN_ROLES = (UserRole.ADMIN, UserRole.SUPER_ADMIN)
 
 
 class User(Base):

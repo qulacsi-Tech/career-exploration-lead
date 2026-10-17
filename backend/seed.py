@@ -924,7 +924,8 @@ async def _seed_admin(session: AsyncSession) -> None:
         name=os.environ.get("ADMIN_NAME", "Admin"),
         email=email,
         password_hash=hash_password(password),
-        role=UserRole.ADMIN,
+        # The first administrator is the super admin, who creates the others from the Users page.
+        role=UserRole.SUPER_ADMIN,
         is_verified=True,
     ))
     await session.commit()

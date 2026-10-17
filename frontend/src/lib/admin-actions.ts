@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  adminCreateAdministrator,
   adminLeadJourney,
   adminReplyToLead,
   adminSetUserActive,
@@ -278,7 +279,23 @@ export async function replyToLead(id: string, body: string): Promise<AdminAction
   return attempt("/admin/leads", (token) => adminReplyToLead(token, id, text));
 }
 
-/** Turns a student account off or back on. */
+/** Creates an Admin or Super Admin account. The API allows this for a super admin only. */
+export async function createAdministrator(form: FormData): Promise<AdminActionResult> {
+  const str = (key: string) => String(form.get(key) ?? "").trim();
+  const role = str("role") === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN";
+  const password = String(form.get("password") ?? "");
+
+  if (str("name").length < 2) return { error: "Enter their full name." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(str("email"))) return { error: "Enter a valid email address." };
+  if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password))
+    return { error: "The password needs at least 8 characters, with a letter and a number." };
+
+  return attempt("/admin/users", (token) =>
+    adminCreateAdministrator(token, { name: str("name"), email: str("email").toLowerCase(), password, role }),
+  );
+}
+
+/** Turns an account off or back on. */
 export async function setUserActive(id: string, isActive: boolean): Promise<AdminActionResult> {
   return attempt("/admin/users", (token) => adminSetUserActive(token, id, isActive));
 }

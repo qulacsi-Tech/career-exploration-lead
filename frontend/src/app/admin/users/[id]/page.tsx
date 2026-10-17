@@ -3,16 +3,18 @@ import { notFound } from "next/navigation";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { EventTimeline } from "@/components/admin/event-timeline";
 import { UserActiveToggle } from "@/components/admin/user-active-toggle";
-import { ApiError, adminGetUser } from "@/lib/api";
+import { ApiError, adminGetUser, getMe } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
+import { roleLabel } from "@/lib/roles";
 import { LEAD_STATUS_LABEL, LEAD_STATUS_STYLE, LEAD_TYPE_LABEL, formatFull, prettySlug } from "@/lib/lead-labels";
 
 export default async function AdminUserPage({ params }: PageProps<"/admin/users/[id]">) {
   const { id } = await params;
-  const user = await withAdminToken((token) => adminGetUser(token, id)).catch((err) => {
+  const [user, me] = await withAdminToken((token) => Promise.all([adminGetUser(token, id), getMe(token)])).catch((err) => {
     if (err instanceof ApiError && (err.status === 404 || err.status === 400)) notFound();
     throw err;
   });
+  const administrative = user.role !== "USER";
 
   const facts: [string, string | null][] = [
     ["Email", user.email],
@@ -31,13 +33,13 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
     <div className="space-y-6">
       <AdminPageHeader
         title={user.name}
-        description={user.role === "ADMIN" ? "Administrator account." : "Student account."}
+        description={administrative ? `${roleLabel(user.role)} account.` : "Student account."}
         actions={
           <>
-            <Link href="/admin/users" className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-brand hover:text-brand">
-              All users
+            <Link href={administrative ? "/admin/users?tab=administrative" : "/admin/users"} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-brand hover:text-brand">
+              {administrative ? "Administrative accounts" : "General accounts"}
             </Link>
-            <UserActiveToggle id={user.id} isActive={user.isActive} name={user.name} />
+            {user.canManage && user.id !== me.id && <UserActiveToggle id={user.id} isActive={user.isActive} name={user.name} />}
           </>
         }
       />
