@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  adminApproveRequest,
+  adminRejectRequest,
+  adminReplyThread,
+  adminResolveThread,
+  type ThreadDetail,
   adminCreateAdministrator,
   adminCreateCollegeAdmin,
   adminGetCollegeAdmin,
@@ -1193,4 +1198,55 @@ export async function removeCollegeRanking(listSlug: string, collegeSlug: string
   const result = await attempt("/admin/colleges", (token) => adminRemoveCollegeRanking(token, listSlug, collegeSlug));
   if ("ok" in result) refreshRankings(collegeSlug);
   return result;
+}
+
+// ── Reviewing college admins' changes, and answering their messages ──────────
+
+/** Approving writes the edit to the live college, so the public pages are refreshed straight away. */
+export async function approveChangeRequest(
+  id: string,
+  acknowledgeStale = false,
+): Promise<{ ok: true; collegeSlug: string } | { error: string; stale?: boolean }> {
+  const token = await requireAdminToken();
+  try {
+    const result = await adminApproveRequest(token, id, acknowledgeStale);
+    revalidatePath(`/college/${result.collegeSlug}`, "layout");
+    revalidatePath("/colleges");
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/approvals");
+    return { ok: true, collegeSlug: result.collegeSlug };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message, stale: err.status === 409 && /changed after/i.test(err.message) };
+    return { error: "Could not approve. Try again." };
+  }
+}
+
+export async function rejectChangeRequest(id: string, note: string): Promise<AdminActionResult> {
+  if (note.trim().length < 3) return { error: "Say why, so the college admin knows what to fix." };
+  return attempt("/admin/approvals", (token) => adminRejectRequest(token, id, note.trim()));
+}
+
+type ThreadResult = { thread: ThreadDetail } | { error: string };
+
+async function threadCall(call: (token: string) => Promise<ThreadDetail>, fallback: string): Promise<ThreadResult> {
+  const token = await requireAdminToken();
+  try {
+    const thread = await call(token);
+    revalidatePath("/admin/messages");
+    return { thread };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: fallback };
+  }
+}
+
+export async function replyToThread(id: string, body: string): Promise<ThreadResult> {
+  if (body.trim().length < 2) return { error: "Write your reply first." };
+  return threadCall((t) => adminReplyThread(t, id, body.trim()), "Could not send the reply.");
+}
+
+export async function resolveThreadAction(id: string): Promise<ThreadResult> {
+  return threadCall((t) => adminResolveThread(t, id), "Could not mark it handled.");
 }

@@ -53,6 +53,8 @@ export const adminNav: AdminNavSection[] = [
     icon: "overview",
     items: [
       { label: "Dashboard", href: "/admin", phase: 1 },
+      { label: "Approvals", href: "/admin/approvals", phase: 1 },
+      { label: "Messages", href: "/admin/messages", phase: 1 },
       { label: "Notifications", href: "/admin/notifications", phase: 1 },
     ],
   },
@@ -122,7 +124,16 @@ export const collegeAdminNav: AdminNavSection[] = [
       { label: "Notifications", href: "/admin/notifications", phase: 1 },
     ],
   },
-  { id: "content", label: "My college", icon: "content", items: [{ label: "College record", href: "/admin/college", phase: 1 }] },
+  {
+    id: "content",
+    label: "My college",
+    icon: "content",
+    items: [
+      { label: "College record", href: "/admin/college", phase: 1 },
+      { label: "My requests", href: "/admin/requests", phase: 1 },
+      { label: "Messages", href: "/admin/messages", phase: 1 },
+    ],
+  },
   { id: "leads", label: "Leads", icon: "leads", items: [{ label: "Inbox", href: "/admin/leads", phase: 1 }] },
 ];
 

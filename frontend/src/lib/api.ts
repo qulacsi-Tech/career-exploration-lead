@@ -2284,3 +2284,97 @@ export const acknowledgeAllNotifications = (token: string) => notificationCall<{
 export const clearNotification = (token: string, id: string) => notificationCall<{ ok: true }>(token, "POST", `/notifications/${id}/clear`);
 export const clearAllNotifications = (token: string) => notificationCall<{ ok: true }>(token, "POST", "/notifications/clear-all");
 export const createSocketTicket = (token: string) => notificationCall<{ ticket: string }>(token, "POST", "/ws/ticket");
+
+// ── Change requests and messages ──────────────────────────────────────────
+
+export type ChangeRequestStatus = "pending" | "approved" | "rejected" | "withdrawn";
+
+export type ChangeRequestItem = {
+  id: string;
+  kind: "edit" | "delete";
+  status: ChangeRequestStatus;
+  note: string | null;
+  requestedBy: string;
+  reviewedBy: string | null;
+  reviewNote: string | null;
+  createdAt: string | null;
+  decidedAt: string | null;
+  collegeSlug: string | null;
+  collegeName: string | null;
+};
+
+export type FieldChange = { path: string; before: unknown; after: unknown };
+
+export type ChangeRequestDetail = ChangeRequestItem & {
+  diff: FieldChange[];
+  /** The live college was saved after the college admin began, so approving would overwrite that. */
+  stale: boolean;
+  threadId: string | null;
+};
+
+export type ThreadSummary = {
+  id: string;
+  subject: string;
+  status: "open" | "resolved";
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  changeRequestId: string | null;
+  collegeSlug: string | null;
+  collegeName: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  messageCount: number;
+  last: { side: "college" | "platform"; sender: string; body: string; at: string | null } | null;
+};
+
+export type ThreadMessage = { id: string; sender: string; side: "college" | "platform"; body: string; at: string | null };
+export type ThreadDetail = ThreadSummary & { messages: ThreadMessage[] };
+
+/** A paged admin list (the admin endpoints that return `{data, meta}`). */
+async function pagedList<T>(
+  token: string,
+  path: string,
+  params: Record<string, string | number | undefined>
+): Promise<{ data: T[]; meta: PaginationMeta }> {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") qs.set(key, String(value));
+  const query = qs.toString() ? `?${qs}` : "";
+  const res = await fetch(`${API_BASE}${path}${query}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: T[]; meta: PaginationMeta }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    const message = json && json.success === false ? json.error?.message : undefined;
+    throw new ApiError(res.status, message ?? `API ${res.status} on ${path}`);
+  }
+  return { data: json.data, meta: json.meta };
+}
+
+// College admin
+export const collegeSubmitRequest = (token: string, body: { kind: "edit" | "delete"; record?: CollegeRecord; note?: string }) =>
+  adminRequest<ChangeRequestItem>(token, "POST", "/college/change-requests", body);
+export const collegeListRequests = (token: string) => adminRequest<ChangeRequestItem[]>(token, "GET", "/college/change-requests");
+export const collegeWithdrawRequest = (token: string, id: string) =>
+  adminRequest<ChangeRequestItem>(token, "POST", `/college/change-requests/${id}/withdraw`);
+export const collegeListThreads = (token: string) => adminRequest<ThreadSummary[]>(token, "GET", "/college/threads");
+export const collegeGetThread = (token: string, id: string) => adminRequest<ThreadDetail>(token, "GET", `/college/threads/${id}`);
+export const collegeStartThread = (token: string, body: { subject: string; body: string; changeRequestId?: string }) =>
+  adminRequest<ThreadDetail>(token, "POST", "/college/threads", body);
+export const collegeReplyThread = (token: string, id: string, body: string) =>
+  adminRequest<ThreadDetail>(token, "POST", `/college/threads/${id}/messages`, { body });
+
+// Platform team
+export const adminListRequests = (token: string, params: { status?: "pending" | "decided" | "all"; page?: number; limit?: number }) =>
+  pagedList<ChangeRequestItem>(token, "/admin/change-requests", params);
+export const adminGetRequest = (token: string, id: string) => adminRequest<ChangeRequestDetail>(token, "GET", `/admin/change-requests/${id}`);
+export const adminApproveRequest = (token: string, id: string, acknowledgeStale: boolean) =>
+  adminRequest<{ status: string; kind: string; collegeSlug: string }>(token, "POST", `/admin/change-requests/${id}/approve`, { acknowledgeStale });
+export const adminRejectRequest = (token: string, id: string, note: string) =>
+  adminRequest<{ status: string }>(token, "POST", `/admin/change-requests/${id}/reject`, { note });
+export const adminListThreads = (token: string, params: { status?: "open" | "resolved" | "all"; page?: number; limit?: number }) =>
+  pagedList<ThreadSummary>(token, "/admin/threads", params);
+export const adminGetThread = (token: string, id: string) => adminRequest<ThreadDetail>(token, "GET", `/admin/threads/${id}`);
+export const adminReplyThread = (token: string, id: string, body: string) =>
+  adminRequest<ThreadDetail>(token, "POST", `/admin/threads/${id}/messages`, { body });
+export const adminResolveThread = (token: string, id: string) => adminRequest<ThreadDetail>(token, "POST", `/admin/threads/${id}/resolve`);

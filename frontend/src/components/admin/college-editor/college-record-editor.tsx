@@ -21,7 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { loadCollegePools, loadCollegeRecord, saveCollegeRecord } from "@/lib/admin-actions";
-import { loadMyCollegePools, loadMyCollegeRecord } from "@/lib/college-actions";
+import { collegeSubmitEdit, loadMyCollegePools, loadMyCollegeRecord } from "@/lib/college-actions";
 import type { CollegePools, CollegeRecord, LoadedCollegeRecord } from "@/lib/api";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { InfoTab, type EditorProps } from "@/components/admin/college-editor/tab-info";
@@ -92,10 +92,14 @@ export function CollegeRecordEditor({
   slug: string;
   onClose: () => void;
   onSaved?: (name: string) => void;
-  mode?: "full" | "readonly";
+  mode?: "full" | "readonly" | "submit";
 }) {
   const readonly = mode === "readonly";
-  const tabs = readonly ? TABS.filter((t) => t.id !== "administrative") : TABS;
+  // A college admin, whether looking or editing, reads through the college endpoints and has no Administrative tab.
+  const forCollege = mode !== "full";
+  const submitting = mode === "submit";
+  const tabs = forCollege ? TABS.filter((t) => t.id !== "administrative") : TABS;
+  const [note, setNote] = useState("");
   const [initial, setInitial] = useState<CollegeRecord | null>(null);
   const [record, setRecord] = useState<CollegeRecord | null>(null);
   const [pools, setPools] = useState<CollegePools | null>(null);
@@ -107,7 +111,7 @@ export function CollegeRecordEditor({
 
   useEffect(() => {
     let alive = true;
-    Promise.all(readonly ? [loadMyCollegeRecord(), loadMyCollegePools()] : [loadCollegeRecord(slug), loadCollegePools()]).then(([rec, poolList]) => {
+    Promise.all(forCollege ? [loadMyCollegeRecord(), loadMyCollegePools()] : [loadCollegeRecord(slug), loadCollegePools()]).then(([rec, poolList]) => {
       if (!alive) return;
       if ("error" in rec) return setLoadError(rec.error);
       if ("error" in poolList) return setLoadError(poolList.error);
@@ -119,7 +123,7 @@ export function CollegeRecordEditor({
     return () => {
       alive = false;
     };
-  }, [slug, readonly]);
+  }, [slug, forCollege]);
 
   const update: EditorProps["update"] = (change) => {
     setRecord((r) => (r ? change(r) : r));
@@ -146,6 +150,18 @@ export function CollegeRecordEditor({
     });
   };
 
+  /** A college admin does not save: the edit goes to the platform team, and the live college stays as it is. */
+  const submitForApproval = () => {
+    if (!record) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await collegeSubmitEdit(record, note);
+      if ("error" in result) return setError(result.error);
+      onSaved?.(record.name);
+      onClose();
+    });
+  };
+
   const props: EditorProps | null = record && pools ? { record, update, pools, slug } : null;
 
   const body = (): ReactNode => {
@@ -153,7 +169,13 @@ export function CollegeRecordEditor({
     switch (tab) {
       case "info": return <InfoTab {...props} />;
       case "courses": return <CoursesTab {...props} />;
-      case "reviews": return <ReviewsTab {...props} />;
+      case "reviews":
+        return (
+          <>
+            {forCollege && <p className="mb-4 rounded-lg bg-bg-alt px-4 py-3 text-sm text-ink-soft">Reviews are written by students. They can be read here but not changed.</p>}
+            <ReviewsTab {...props} />
+          </>
+        );
       case "placements": return <PlacementsTab {...props} />;
       case "cutoffs": return <CutoffsTab {...props} />;
       case "rankings": return <RankingsTab {...props} />;
@@ -178,14 +200,48 @@ export function CollegeRecordEditor({
 
   const readonlyFooter = (
     <div className="flex w-full flex-wrap items-center gap-3">
-      <p className="text-xs text-ink-soft">View only. Changes you send for approval arrive with the next update.</p>
+      <p className="text-xs text-ink-soft">View only while a request of yours is waiting for review.</p>
       <button type="button" onClick={onClose} className="ml-auto rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-brand">
         Close
       </button>
     </div>
   );
 
-  const footer = readonly ? readonlyFooter : (
+  const submitFooter = (
+    <div className="flex w-full flex-wrap items-center gap-3">
+      {error && <p role="alert" className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
+      {confirmingClose && (
+        <p role="alert" className="w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+          You have changes that are not sent. Close anyway?{" "}
+          <button type="button" onClick={onClose} className="font-semibold underline underline-offset-2">Yes, discard them</button>{" "}
+          <button type="button" onClick={() => setConfirmingClose(false)} className="font-semibold underline underline-offset-2">Keep editing</button>
+        </p>
+      )}
+      <label className="sr-only" htmlFor="submit-note">What did you change?</label>
+      <input
+        id="submit-note"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={2000}
+        placeholder="What did you change? (optional, for the reviewer)"
+        className="min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+      />
+      <div className="ml-auto flex flex-wrap items-center gap-3">
+        {totalProblems > 0 && firstProblemTab && (
+          <button type="button" onClick={() => setTab(firstProblemTab.id)} className="text-xs text-red-700 underline-offset-2 hover:underline">
+            {totalProblems} thing{totalProblems === 1 ? "" : "s"} to fix, starting on {firstProblemTab.label}
+          </button>
+        )}
+        <span className="text-xs text-ink-soft">Goes live only after the team approves it.</span>
+        <button type="button" onClick={requestClose} disabled={pending} className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-brand disabled:opacity-50">Cancel</button>
+        <button type="button" onClick={submitForApproval} disabled={!record || !dirty || totalProblems > 0 || pending} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50">
+          {pending ? "Sending…" : "Submit for approval"}
+        </button>
+      </div>
+    </div>
+  );
+
+  const footer = readonly ? readonlyFooter : submitting ? submitFooter : (
     <div className="flex w-full flex-wrap items-center gap-3">
       {error && <p role="alert" className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
       {confirmingClose && (
@@ -258,7 +314,7 @@ export function CollegeRecordEditor({
 
           <div role="tabpanel" id={`ce-panel-${tab}`} aria-labelledby={`ce-tab-${tab}`}>
             {/* A disabled fieldset switches off every input, select and button inside it. */}
-            <fieldset disabled={readonly} className="min-w-0 border-0 p-0">
+            <fieldset disabled={readonly || (forCollege && tab === "reviews")} className="min-w-0 border-0 p-0">
               {body()}
             </fieldset>
           </div>

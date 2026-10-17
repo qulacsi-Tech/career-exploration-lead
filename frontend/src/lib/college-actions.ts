@@ -7,8 +7,15 @@ import {
   changeMyPassword,
   collegeGetPools,
   collegeGetRecord,
+  collegeGetThread,
+  collegeReplyThread,
   collegeReplyToLead,
+  collegeStartThread,
+  collegeSubmitRequest,
   collegeUpdateLeadStatus,
+  collegeWithdrawRequest,
+  type CollegeRecord,
+  type ThreadDetail,
   LEAD_STATUSES,
   type CollegePools,
   type LeadStatus,
@@ -86,4 +93,62 @@ export async function changePassword(_prev: PasswordState, formData: FormData): 
     return { error: err instanceof Error ? err.message : "Could not change the password." };
   }
   redirect("/admin");
+}
+
+// ── Change requests and messages ─────────────────────────────────────────────
+
+/** Sends the edited college for approval. Nothing on the live college changes until the platform team approves. */
+export async function collegeSubmitEdit(record: CollegeRecord, note: string): Promise<Result> {
+  const result = await run(
+    (token) => collegeSubmitRequest(token, { kind: "edit", record, note: note.trim() || undefined }),
+    "Could not send your changes. Try again.",
+  );
+  if ("error" in result) return result;
+  revalidatePath("/admin/requests");
+  revalidatePath("/admin/college");
+  return { ok: true };
+}
+
+export async function collegeRequestRemoval(reason: string): Promise<Result> {
+  if (reason.trim().length < 5) return { error: "Tell us why you want the college removed." };
+  const result = await run((token) => collegeSubmitRequest(token, { kind: "delete", note: reason.trim() }), "Could not send the request. Try again.");
+  if ("error" in result) return result;
+  revalidatePath("/admin/requests");
+  revalidatePath("/admin/college");
+  return { ok: true };
+}
+
+export async function collegeWithdraw(id: string): Promise<Result> {
+  const result = await run((token) => collegeWithdrawRequest(token, id), "Could not withdraw it. Try again.");
+  if ("error" in result) return result;
+  revalidatePath("/admin/requests");
+  revalidatePath("/admin/college");
+  return { ok: true };
+}
+
+type ThreadResult = { thread: ThreadDetail } | { error: string };
+
+export async function collegeNewThread(subject: string, body: string, changeRequestId?: string): Promise<ThreadResult> {
+  if (subject.trim().length < 3) return { error: "Give the message a subject." };
+  if (body.trim().length < 2) return { error: "Write your message first." };
+  const result = await run(
+    (token) => collegeStartThread(token, { subject: subject.trim(), body: body.trim(), changeRequestId }),
+    "Could not send the message. Try again.",
+  );
+  if ("error" in result) return result;
+  revalidatePath("/admin/messages");
+  return { thread: result.data };
+}
+
+export async function collegeSendMessage(threadId: string, body: string): Promise<ThreadResult> {
+  if (body.trim().length < 2) return { error: "Write your message first." };
+  const result = await run((token) => collegeReplyThread(token, threadId, body.trim()), "Could not send the message. Try again.");
+  if ("error" in result) return result;
+  revalidatePath("/admin/messages");
+  return { thread: result.data };
+}
+
+export async function collegeLoadThread(threadId: string): Promise<ThreadResult> {
+  const result = await run((token) => collegeGetThread(token, threadId), "Could not load the conversation.");
+  return "error" in result ? result : { thread: result.data };
 }

@@ -24,3 +24,4 @@ from models.home_field import HomeField  # noqa: F401
 from models.hero_item import HeroItem  # noqa: F401
 from models.tracking import Visitor, VisitSession, Event  # noqa: F401
 from models.notification import Notification  # noqa: F401
+from models.collab import ChangeRequest, MessageThread, ThreadMessage  # noqa: F401
