@@ -134,6 +134,20 @@ async def college_leads(
     )
 
 
+@router.get("/leads/export.csv")
+async def college_export_leads(scope: CollegeAdminScope, db: DbSession, status: Optional[str] = Query(None)):
+    """Their college's leads as a spreadsheet file. Same rules as the list: only consented leads, only their college."""
+    from services.lead_export import MAX_ROWS, leads_csv_response
+
+    stmt = select(Lead).where(*_mine(scope)).order_by(Lead.created_at.desc()).limit(MAX_ROWS)
+    if status:
+        if status not in {s.value for s in LeadStatus}:
+            raise ValidationError("status: not a known status.")
+        stmt = stmt.where(Lead.status == status)
+    leads = (await db.execute(stmt.options(selectinload(Lead.replies)))).scalars().all()
+    return leads_csv_response(list(leads), for_college=True)
+
+
 async def _own_lead(scope: dict, db, lead_id: str) -> Lead:
     try:
         lead_uuid = uuid.UUID(lead_id)

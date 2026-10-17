@@ -282,5 +282,8 @@ async def reset_user_password(user_id: str, body: ResetPasswordBody, admin: Admi
 
     user.password_hash = hash_password(body.password)
     user.must_change_password = True
+    # A reset is also how someone locked out for too many attempts gets back in.
+    user.failed_logins = 0
+    user.locked_until = None
     await db.commit()
     return SuccessResponse[dict](data=_user_json(user, admin["role"]))

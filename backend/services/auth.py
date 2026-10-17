@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,6 +66,12 @@ def _verify_google_token(token: str) -> dict:
     return id_token.verify_oauth2_token(token, google_requests.Request(), settings.GOOGLE_CLIENT_ID)
 
 
+# After this many wrong passwords in a row the account is paused for a while. Not forever: a stranger
+# must not be able to lock someone out for good. Resetting the password (by the team) clears it.
+MAX_FAILED_LOGINS = 5
+LOCKOUT = timedelta(minutes=15)
+
+
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.repo = UserRepository(db)
@@ -88,14 +94,27 @@ class AuthService:
 
     async def login(self, data: LoginSchema) -> AuthResponseSchema:
         user = await self.repo.find_by_email(str(data.email).lower())
+        now = datetime.now(timezone.utc)
+        # Checked before the password, so a paused account cannot be guessed at while it waits.
+        if user and user.locked_until and user.locked_until > now:
+            minutes = max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
+            raise AppException(429, "TOO_MANY_ATTEMPTS", f"Too many failed sign-in attempts. Try again in {minutes} minute{'s' if minutes != 1 else ''}.")
         if user and not user.password_hash:
             raise UnauthorizedError("This account uses Google sign-in. Choose “Continue with Google”.")
         if not user or not verify_password(data.password, user.password_hash):
+            if user:
+                user.failed_logins = (user.failed_logins or 0) + 1
+                if user.failed_logins >= MAX_FAILED_LOGINS:
+                    user.locked_until = now + LOCKOUT
+                    user.failed_logins = 0
+                await self.repo.save(user)
             raise UnauthorizedError("Invalid email or password.")
         if not user.is_active:
             raise ForbiddenError("This account has been disabled.")
 
-        user.last_login_at = datetime.now(timezone.utc)
+        user.failed_logins = 0
+        user.locked_until = None
+        user.last_login_at = now
         await self.repo.save(user)
         return _auth_response(user)
 
@@ -159,6 +178,8 @@ class AuthService:
             raise ConflictError("PASSWORD_ALREADY_SET", "This account already has a password. Use change password instead.")
         user.password_hash = hash_password(data.newPassword)
         user.must_change_password = False
+        user.failed_logins = 0
+        user.locked_until = None
         await self.repo.save(user)
 
     async def change_password(self, user_id: UUID, data: PasswordChangeSchema) -> None:
@@ -170,6 +191,8 @@ class AuthService:
             raise ValidationError("Choose a password you have not used for this account just now.")
         user.password_hash = hash_password(data.newPassword)
         user.must_change_password = False
+        user.failed_logins = 0
+        user.locked_until = None
         await self.repo.save(user)
 
     async def update_profile(self, user_id: UUID, data: ProfileUpdateSchema) -> ProfileSchema:

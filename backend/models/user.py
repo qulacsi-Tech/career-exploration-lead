@@ -1,7 +1,7 @@
 import uuid
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -45,6 +45,9 @@ class User(Base):
     college_id = Column(UUID(as_uuid=True), ForeignKey("colleges.id", ondelete="SET NULL"), nullable=True, index=True)
     # Set when a platform admin gives out a temporary password; cleared when the person chooses their own.
     must_change_password = Column(Boolean, nullable=False, default=False, server_default="false")
+    # Wrong passwords in a row. After too many the account is paused until `locked_until`.
+    failed_logins = Column(Integer, nullable=False, default=0, server_default="0")
+    locked_until = Column(DateTime(timezone=True), nullable=True)
     marketing_consent = Column(Boolean, nullable=False, default=False, server_default="false")
     consent_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

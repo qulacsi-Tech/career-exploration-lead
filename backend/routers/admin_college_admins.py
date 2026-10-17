@@ -147,6 +147,8 @@ async def reset_college_admin_password(slug: str, body: ResetBody, _admin: Admin
         raise NotFoundError("College admin")
     user.password_hash = hash_password(body.password)
     user.must_change_password = True
+    user.failed_logins = 0
+    user.locked_until = None
     await db.commit()
     return SuccessResponse[dict](data={"admin": _json(user)})
 

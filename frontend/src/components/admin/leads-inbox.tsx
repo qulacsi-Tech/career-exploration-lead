@@ -243,6 +243,15 @@ export function LeadsInbox({
       <AdminPageHeader
         title="Leads"
         description={scope === "college" ? "Enquiries sent to your college by people who agreed to be contacted, newest first." : "Enquiries, callback requests and brochure downloads from the site, newest first."}
+        actions={
+          // A plain link: the file is sent as a download, and the filter in view is the one exported.
+          <a
+            href={status ? `/admin/leads/export?status=${status}` : "/admin/leads/export"}
+            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand"
+          >
+            Export CSV{status ? ` (${LEAD_STATUS_LABEL[status].toLowerCase()})` : ""}
+          </a>
+        }
       />
 
       <nav aria-label="Filter by status" className="flex flex-wrap gap-2">

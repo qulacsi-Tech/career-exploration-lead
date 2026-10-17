@@ -485,6 +485,28 @@ async def admin_list_leads(
     )
 
 
+@router.get("/leads/export.csv")
+async def admin_export_leads(
+    _admin: AdminPayload,
+    db: DbSession,
+    status: Optional[str] = Query(None),
+    lead_type: Optional[str] = Query(None),
+):
+    """Every lead matching the filters, as a spreadsheet file."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from models.lead import Lead
+    from services.lead_export import MAX_ROWS, leads_csv_response
+
+    stmt = select(Lead).order_by(Lead.created_at.desc()).limit(MAX_ROWS)
+    if status:
+        stmt = stmt.where(Lead.status == status)
+    if lead_type:
+        stmt = stmt.where(Lead.type == lead_type)
+    leads = (await db.execute(stmt.options(selectinload(Lead.replies)))).scalars().all()
+    return leads_csv_response(list(leads), for_college=False)
+
+
 class LeadReplyBody(BaseModel):
     body: str
     model_config = ConfigDict(populate_by_name=True)
