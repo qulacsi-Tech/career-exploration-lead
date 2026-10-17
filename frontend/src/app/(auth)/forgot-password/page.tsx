@@ -1,11 +1,10 @@
-import type { Metadata } from "next";
-import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Reset your password — TopCollegePath",
-  robots: { index: false, follow: false },
-};
-
+/**
+ * Passwords are not reset by email yet. An old bookmark or link to this page goes to the login
+ * screen. Until email is set up, a person who cannot sign in asks the team, who set a new
+ * temporary password for them from the admin panel.
+ */
 export default function ForgotPasswordPage() {
-  return <ForgotPasswordForm />;
+  redirect("/login");
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { EventTimeline } from "@/components/admin/event-timeline";
+import { ResetUserPassword } from "@/components/admin/reset-user-password";
 import { UserActiveToggle } from "@/components/admin/user-active-toggle";
 import { ApiError, adminGetUser, getMe } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
@@ -39,7 +40,12 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
             <Link href={administrative ? "/admin/users?tab=administrative" : "/admin/users"} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-brand hover:text-brand">
               {administrative ? "Administrative accounts" : "General accounts"}
             </Link>
-            {user.canManage && user.id !== me.id && <UserActiveToggle id={user.id} isActive={user.isActive} name={user.name} />}
+            {user.canManage && user.id !== me.id && (
+              <>
+                <ResetUserPassword id={user.id} name={user.name} />
+                <UserActiveToggle id={user.id} isActive={user.isActive} name={user.name} />
+              </>
+            )}
           </>
         }
       />

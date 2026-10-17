@@ -69,6 +69,13 @@ def _user_json(user: User, actor_role: str, lead_count: int = 0, college: Option
     }
 
 
+def _parse_id(value: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(value)
+    except ValueError as exc:
+        raise ValidationError("user_id: not a valid id.") from exc
+
+
 def _in_group(group: Group):
     if group == "administrative":
         return User.role.in_(ADMIN_ROLES)
@@ -240,5 +247,40 @@ async def update_user(user_id: str, body: UserUpdateBody, admin: AdminPayload, d
         raise ForbiddenError("Only a super admin can change an administrator account.")
 
     user.is_active = body.isActive
+    await db.commit()
+    return SuccessResponse[dict](data=_user_json(user, admin["role"]))
+
+
+class ResetPasswordBody(BaseModel):
+    password: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8 or not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
+            raise ValueError("The password needs at least 8 characters, with a letter and a number.")
+        return v
+
+
+@router.post("/users/{user_id}/reset-password", response_model=SuccessResponse[dict])
+async def reset_user_password(user_id: str, body: ResetPasswordBody, admin: AdminPayload, db: DbSession):
+    """
+    Sets a temporary password for someone who cannot sign in. There is no reset by email yet, so the
+    team does it here and passes the password on. The person must choose their own at next sign-in.
+    Same rule as enabling or disabling: a super admin for anyone, an admin for students and college
+    admins. Nobody resets their own here (they change it from My account).
+    """
+    uid = _parse_id(user_id)
+    if str(uid) == admin.get("sub"):
+        raise ForbiddenError("Change your own password from My account.")
+    user = await db.get(User, uid)
+    if not user:
+        raise NotFoundError("User")
+    if not _can_manage(admin["role"], user):
+        raise ForbiddenError("Only a super admin can reset an administrator's password.")
+
+    user.password_hash = hash_password(body.password)
+    user.must_change_password = True
     await db.commit()
     return SuccessResponse[dict](data=_user_json(user, admin["role"]))

@@ -1970,6 +1970,9 @@ export const adminLeadJourney = (token: string, leadId: string) =>
 export const adminGetUser = (token: string, id: string) =>
   adminRequest<AdminUserDetail>(token, "GET", `/admin/users/${id}`);
 
+export const adminResetUserPassword = (token: string, id: string, password: string) =>
+  adminRequest<AdminUser>(token, "POST", `/admin/users/${id}/reset-password`, { password });
+
 export const adminSetUserActive = (token: string, id: string, isActive: boolean) =>
   adminRequest<AdminUser>(token, "PATCH", `/admin/users/${id}`, { isActive });
 

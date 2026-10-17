@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  adminResetUserPassword,
   adminApproveRequest,
   adminRejectRequest,
   adminReplyThread,
@@ -355,6 +356,13 @@ export async function setCollegeAdminActive(slug: string, isActive: boolean): Pr
 
 export async function removeCollegeAdmin(slug: string): Promise<CollegeAdminResult> {
   return collegeAdminCall((token) => adminRemoveCollegeAdmin(token, slug), "Could not remove the account.");
+}
+
+/** Sets a temporary password for someone who cannot sign in. They must choose their own at next sign-in. */
+export async function resetUserPassword(id: string, password: string): Promise<AdminActionResult> {
+  if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password))
+    return { error: "The password needs at least 8 characters, with a letter and a number." };
+  return attempt("/admin/users", (token) => adminResetUserPassword(token, id, password));
 }
 
 /** Turns an account off or back on. */

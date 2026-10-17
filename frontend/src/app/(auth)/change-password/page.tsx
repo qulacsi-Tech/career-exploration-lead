@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { getAdminToken } from "@/lib/admin-session";
+import { getUserToken } from "@/lib/user-session";
 
 export const metadata: Metadata = {
   title: "Choose a new password — TopCollegePath",
@@ -9,11 +10,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Where a new college admin lands first. Their account was created with a temporary
- * password; the panel stays closed until they replace it. It sits outside /admin so
+ * Where someone lands first after signing in with a temporary password: a new college admin, or
+ * anyone whose password the team reset. The panel stays closed until they replace it. It sits outside /admin so
  * the admin layout's own redirect to here cannot loop.
  */
 export default async function ChangePasswordPage() {
-  if (!(await getAdminToken())) redirect("/login");
+  // Anyone given a temporary password lands here: a student, or a college admin or other staff.
+  if (!(await getUserToken()) && !(await getAdminToken())) redirect("/login");
   return <ChangePasswordForm />;
 }

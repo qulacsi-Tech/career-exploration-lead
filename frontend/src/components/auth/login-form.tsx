@@ -50,14 +50,9 @@ export function LoginForm({ next, idle = false }: { next?: string; idle?: boolea
         </div>
 
         <div>
-          <div className="flex items-baseline justify-between">
-            <label htmlFor="password" className="block text-xs font-semibold text-ink">
-              Password
-            </label>
-            <Link href="/forgot-password" className="text-xs font-medium text-brand hover:underline">
-              Forgot password?
-            </Link>
-          </div>
+          <label htmlFor="password" className="block text-xs font-semibold text-ink">
+            Password
+          </label>
           <PasswordInput
             id="password"
             name="password"

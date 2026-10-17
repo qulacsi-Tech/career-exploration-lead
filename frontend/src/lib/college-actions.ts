@@ -9,6 +9,7 @@ import {
   collegeGetRecord,
   collegeGetThread,
   collegeReplyThread,
+  getMe,
   collegeReplyToLead,
   collegeStartThread,
   collegeSubmitRequest,
@@ -21,7 +22,9 @@ import {
   type LeadStatus,
   type LoadedCollegeRecord,
 } from "@/lib/api";
-import { requireAdminToken } from "@/lib/admin-session";
+import { getAdminToken, requireAdminToken } from "@/lib/admin-session";
+import { getUserToken } from "@/lib/user-session";
+import { canUsePanel } from "@/lib/roles";
 
 /**
  * What a college admin can do from the panel. Each call goes to an endpoint that
@@ -75,7 +78,7 @@ export async function collegeReply(id: string, body: string): Promise<Result> {
 
 export type PasswordState = { error?: string } | undefined;
 
-/** Replaces the password: how a college admin leaves their temporary one behind. */
+/** Replaces the password: how anyone given a temporary one (a new college admin, or after the team reset it) leaves it behind. */
 export async function changePassword(_prev: PasswordState, formData: FormData): Promise<PasswordState> {
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("next") ?? "");
@@ -86,13 +89,18 @@ export async function changePassword(_prev: PasswordState, formData: FormData): 
     return { error: "The new password needs at least 8 characters, with a letter and a number." };
   if (next !== confirm) return { error: "The two new passwords do not match." };
 
-  const token = await requireAdminToken();
+  // A student has the student session, staff have it too (and the admin one): either proves who they are.
+  const token = (await getUserToken()) ?? (await getAdminToken());
+  if (!token) redirect("/login");
+
+  let destination = "/account";
   try {
     await changeMyPassword(token, current, next);
+    destination = canUsePanel((await getMe(token)).role) ? "/admin" : "/account";
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Could not change the password." };
   }
-  redirect("/admin");
+  redirect(destination);
 }
 
 // ── Change requests and messages ─────────────────────────────────────────────

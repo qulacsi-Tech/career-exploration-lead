@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
 import { CreateAdministrator } from "@/components/admin/create-administrator";
+import { ResetUserPassword } from "@/components/admin/reset-user-password";
 import { UserActiveToggle } from "@/components/admin/user-active-toggle";
 import { adminListUsers, adminUserCounts, getMe, type UserGroup } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
@@ -168,7 +169,10 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                     </td>
                     <td className="py-3">
                       {user.canManage && user.id !== me.id && (
-                        <UserActiveToggle id={user.id} isActive={user.isActive} name={user.name} compact />
+                        <div className="flex flex-wrap items-start gap-2">
+                          <ResetUserPassword id={user.id} name={user.name} compact />
+                          <UserActiveToggle id={user.id} isActive={user.isActive} name={user.name} compact />
+                        </div>
                       )}
                     </td>
                   </tr>
