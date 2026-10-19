@@ -115,21 +115,28 @@ class RejectBody(BaseModel):
 
 async def _claim(db, cr: ChangeRequest, admin: dict, status: str, note: Optional[str]) -> None:
     """Takes the decision, or says who already did. Nothing is committed here."""
+    # Read what is needed before anything can be rolled back: a rollback expires every loaded object,
+    # and reading an expired attribute in async code is an error, not a quiet reload.
+    request_id = cr.id
+    reviewer_id = uuid.UUID(admin["sub"])
+    reviewer_name = (await db.get(User, reviewer_id)).name
+
     result = await db.execute(
         update(ChangeRequest)
-        .where(ChangeRequest.id == cr.id, ChangeRequest.status == "pending")
+        .where(ChangeRequest.id == request_id, ChangeRequest.status == "pending")
         .values(
             status=status,
-            reviewed_by=uuid.UUID(admin["sub"]),
-            reviewed_by_name=(await db.get(User, uuid.UUID(admin["sub"]))).name,
+            reviewed_by=reviewer_id,
+            reviewed_by_name=reviewer_name,
             review_note=note,
             decided_at=datetime.now(timezone.utc),
         )
     )
     if result.rowcount == 0:
         await db.rollback()
-        latest = await db.get(ChangeRequest, cr.id)
-        raise ConflictError("ALREADY_DECIDED", f"Already {latest.status}{' by ' + latest.reviewed_by_name if latest.reviewed_by_name else ''}.")
+        latest = await db.get(ChangeRequest, request_id)
+        by = f" by {latest.reviewed_by_name}" if latest.reviewed_by_name else ""
+        raise ConflictError("ALREADY_DECIDED", f"Already {latest.status}{by}.")
 
 
 async def _tell_college(db, cr: ChangeRequest, college_name: str, outcome: str, note: Optional[str]) -> None:

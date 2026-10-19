@@ -341,4 +341,4 @@ Please do a quick pass on these, because shared code changed.
 
 ## Appendix C: automated tests
 
-20 backend tests cover the access rules (college admin walls, role matrix, lockout, socket ticket, CSV safety, change-request flow, messages). They run in CI after the seed step (`pytest` in `backend/`). They have not been run yet; if one fails in CI, that is a lead for manual testing of the same area.
+19 backend tests cover the access rules (college admin walls, role matrix, lockout, socket ticket, CSV safety, change-request flow, messages). They run in CI after the seed step (`pytest` in `backend/`). They have not been run yet; if one fails in CI, that is a lead for manual testing of the same area.
