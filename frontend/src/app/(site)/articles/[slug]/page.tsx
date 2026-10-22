@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { ShareLinks } from "@/components/colleges/share-links";
 import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
 import { ArticleSections } from "@/components/article-sections";
@@ -86,13 +87,18 @@ export default async function ArticlePage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Breadcrumbs
-        items={[
-          { label: "Home", href: "/" },
-          { label: "Articles", href: "/articles" },
-          { label: article.title },
-        ]}
-      />
+      {/* The trail on the left, bolder than elsewhere, and the share buttons at the right-hand end. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <Breadcrumbs
+          emphasis
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Articles", href: "/articles" },
+            { label: article.title },
+          ]}
+        />
+        <ShareLinks title={article.title} />
+      </div>
 
       <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <article className="min-w-0">
