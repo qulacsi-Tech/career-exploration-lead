@@ -1,9 +1,12 @@
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { Cog, SlidersHorizontal, X } from "lucide-react";
+import { Eye, Flame, SearchX, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { ListingHero, introOf } from "@/components/colleges/listing-hero";
 import { ListingCard } from "@/components/colleges/listing-card";
 import { ListingFilters } from "@/components/colleges/listing-filters";
-import { appliedFilters, simple, type FilterGroup } from "@/components/colleges/filter-utils";
+import { FilterStrip, PromoBanner } from "@/components/colleges/listing-extras";
+import { Reveal } from "@/components/college/reveal";
+import { appliedFilters, simple, toggleHref, type FilterGroup } from "@/components/colleges/filter-utils";
 import { getCollegeFacets, getColleges, getListingHeader, getRankings, type CollegeFacets, type CollegeParams, type RankingList } from "@/lib/api";
 import { badgesFor, listingFaqs, listingIntro, listingTitle } from "@/components/colleges/listing-meta";
 
@@ -127,6 +130,29 @@ export default async function CollegesListingPage({
     next.set("page", String(p));
     return `?${next.toString()}`;
   };
+
+  /** One-tap chips for a filter group: the same URLs the sidebar produces, so they keep the other filters. */
+  const chipsFor = (groupId: string, limit: number) => {
+    const group = groups.find((g) => g.id === groupId);
+    if (!group) return [];
+    return group.options.slice(0, limit).map((o) => ({ label: o.label, href: toggleHref("/colleges", search, group, o) }));
+  };
+
+  /**
+   * What goes between the colleges, after the Shiksha page the client pointed at: a banner or a strip
+   * of filters every few rows, in a repeating order. Keyed by the row it follows, and never placed
+   * after the last row, so the list does not end on an advertisement.
+   */
+  const between: Record<number, ReactNode> = {
+    1: <PromoBanner variant="compare" />,
+    4: <FilterStrip kind="location" chips={chipsFor("location", 10)} />,
+    7: <PromoBanner variant="counselling" />,
+    10: <FilterStrip kind="ownership" chips={chipsFor("ownership", 4)} />,
+    13: <PromoBanner variant="exams" />,
+    16: <FilterStrip kind="fees" chips={chipsFor("fees", 4)} />,
+  };
+  const sortLabel = SORTS.find((s) => s.key === sort)?.label ?? "Popularity";
+  const shownFrom = (page - 1) * 20 + 1;
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <ListingHero
@@ -167,27 +193,57 @@ export default async function CollegesListingPage({
             </Link>
           )}
         </div>
-        <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-ink-soft">
-          <li className="inline-flex items-center gap-1.5"><Cog className="h-4 w-4 text-amber-500" />Featured ({badgeCounts.featured})</li>
-          <li className="inline-flex items-center gap-1.5"><Cog className="h-4 w-4 text-brand" />Top Rated ({badgeCounts.topRated})</li>
-          <li className="inline-flex items-center gap-1.5"><Cog className="h-4 w-4 text-emerald-600" />Most Viewed ({badgeCounts.mostViewed})</li>
+        <ul className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-3 py-1 text-gold"><Sparkles className="h-4 w-4" aria-hidden="true" />Featured ({badgeCounts.featured})</li>
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-brand-ink"><Flame className="h-4 w-4" aria-hidden="true" />Top rated ({badgeCounts.topRated})</li>
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700"><Eye className="h-4 w-4" aria-hidden="true" />Most viewed ({badgeCounts.mostViewed})</li>
         </ul>
       </div>
 
+      {/* A line of plain-spoken context, so the page says where you are and what to do next. */}
+      <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-ink">
+        <span className="tcp-live-dot inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+        {meta.total > 0 ? (
+          <>
+            Showing <strong className="font-bold">{shownFrom}&ndash;{shownFrom + colleges.length - 1}</strong> of{" "}
+            <strong className="font-bold">{meta.total}</strong> colleges, sorted by <strong className="font-bold">{sortLabel.toLowerCase()}</strong>.
+            <span className="text-ink-soft">Hover a card, peek inside, add two to Compare. Nothing bites.</span>
+          </>
+        ) : (
+          <>No colleges to show for these filters.</>
+        )}
+      </p>
+
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="mb-3 rounded-2xl bg-gradient-to-br from-brand-soft to-bg-alt px-4 py-3">
+            <p className="font-display text-lg font-extrabold uppercase tracking-wide text-brand-ink">Filters</p>
+            <p className="text-sm text-ink-soft">Narrow it down. We will keep the list tidy.</p>
+          </div>
           <ListingFilters groups={groups} sorts={SORTS} sort={sort} />
         </aside>
 
         <div className="min-w-0">
-          <div className="space-y-4">
-            {colleges.map((college) => (
-              <ListingCard key={college.slug} college={college} badges={badgeOf(college)} />
+          <div className="space-y-5">
+            {colleges.map((college, i) => (
+              <Fragment key={college.slug}>
+                <Reveal amount={0.12}>
+                  <ListingCard college={college} badges={badgeOf(college)} />
+                </Reveal>
+                {i < colleges.length - 1 && between[i] && <Reveal amount={0.2}>{between[i]}</Reveal>}
+              </Fragment>
             ))}
             {colleges.length === 0 && (
               <div className="rounded-2xl border border-dashed border-line bg-bg-alt px-6 py-14 text-center">
-                <p className="text-sm text-ink-soft">No colleges match these filters.</p>
-                <Link href="/colleges" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">
+                <SearchX className="tcp-float mx-auto h-12 w-12 text-brand/60" aria-hidden="true" />
+                <p className="mt-4 font-display text-xl font-bold text-ink">Hmm, nothing here.</p>
+                <p className="mx-auto mt-1 max-w-md text-base text-ink-soft">
+                  Even our best detective found no colleges for those filters. Loosen one and try again?
+                </p>
+                <Link
+                  href="/colleges"
+                  className="tcp-wiggle mt-5 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark"
+                >
                   Clear filters
                 </Link>
               </div>
@@ -196,21 +252,26 @@ export default async function CollegesListingPage({
 
           {/* Crawlable pagination */}
           {meta.pages > 1 && (
-            <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-2 text-sm">
+            <nav aria-label="Pagination" className="mt-10 flex flex-wrap items-center justify-center gap-2 text-base">
+              <span className="mr-1 text-sm text-ink-soft">More colleges this way:</span>
               {Array.from({ length: Math.min(meta.pages, 5) }, (_, i) => i + 1).map((p) => (
                 <Link
                   key={p}
                   href={pageHref(p)}
-                  className={`rounded-full border px-3 py-1.5 ${
-                    p === page ? "border-brand bg-brand-soft text-brand-ink" : "border-line text-ink-soft hover:border-brand"
+                  aria-current={p === page ? "page" : undefined}
+                  className={`grid h-10 min-w-10 place-items-center rounded-full border px-3 font-semibold transition hover:-translate-y-0.5 ${
+                    p === page ? "border-brand bg-brand text-white shadow-sm" : "border-line text-ink-soft hover:border-brand hover:text-brand"
                   }`}
                 >
                   {p}
                 </Link>
               ))}
               {page < meta.pages && (
-                <Link href={pageHref(page + 1)} className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand">
-                  Next &rarr;
+                <Link
+                  href={pageHref(page + 1)}
+                  className="rounded-full border border-brand px-5 py-2 font-semibold text-brand transition hover:-translate-y-0.5 hover:bg-brand hover:text-white"
+                >
+                  Next page &rarr;
                 </Link>
               )}
             </nav>

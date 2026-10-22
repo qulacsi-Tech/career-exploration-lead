@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, Sparkles } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareLinks } from "@/components/colleges/share-links";
 import { mediaUrl } from "@/lib/media";
@@ -39,7 +39,7 @@ export function ListingHero({
       <div className="grid gap-x-8 gap-y-3 px-5 py-4 lg:grid-cols-[250px_minmax(0,1fr)]">
         <div className="min-w-0">
           <Breadcrumbs items={crumbs} />
-          <p className="mt-1 text-xs text-ink-faint">Updated on {updated}</p>
+          <p className="mt-1 text-sm text-ink-soft">Updated on {updated}</p>
           {author?.name && (
             <div className="mt-3 inline-flex items-center gap-3 rounded-full border border-line bg-surface/80 py-1.5 pl-1.5 pr-4 shadow-sm">
               {author.photo ? (
@@ -62,13 +62,17 @@ export function ListingHero({
         </div>
 
         <div className="min-w-0">
-          <h1 className="font-display text-xl font-bold text-ink sm:text-2xl">
+          <p className="mb-1.5 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-brand">
+            <Sparkles className="tcp-wiggle h-3.5 w-3.5" aria-hidden="true" />
+            Your shortlist starts here
+          </p>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
             {title}{" "}
             <span className="ml-1 inline-block rounded-full bg-brand-soft px-2.5 py-0.5 align-middle text-xs font-semibold text-brand-ink">
               {countLabel}
             </span>
           </h1>
-          <div className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+          <div className="mt-2 text-base leading-relaxed text-ink">
             <p>{intro[0]}</p>
             {intro.length > 1 && (
               <details className="group">
@@ -88,7 +92,7 @@ export function ListingHero({
         <ShareLinks title={title} />
         <Link
           href="/enquiry" data-track="cta_enquiry"
-          className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
+          className="tcp-wiggle rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
         >
           Get Free Counselling
         </Link>
