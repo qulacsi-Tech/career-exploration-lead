@@ -48,7 +48,13 @@ import {
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
 import { comparisonsFeaturing, compareUrl } from "@/lib/comparison-data";
 import { collegesBySlugs, similarColleges } from "@/lib/comparison-resolve";
-import { getCollegeOrNull, getColleges, getCollegeSlugs, type CollegeDetail as College } from "@/lib/api";
+import {
+  getCollegeOrNull,
+  getColleges,
+  getCollegeSlugs,
+  type College as CollegeBase,
+  type CollegeDetail as College,
+} from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { emptyDoc, isRichTextEmpty } from "@/lib/rich-text";
 
@@ -745,13 +751,13 @@ function Gallery({ college }: { college: College }) {
 
 async function Compare({ college }: { college: College }) {
   // Colleges the editor pinned as similar, else the nearest by stream and rank.
-  let pinned: CollegeDetail[] = [];
+  let pinned: CollegeBase[] = [];
   try {
     pinned = college.similarSlugs.length > 0 ? await collegesBySlugs(college.similarSlugs.slice(0, 2)) : [];
   } catch {
     pinned = [];
   }
-  let peers: CollegeDetail[] = [];
+  let peers: CollegeBase[] = [];
   try {
     peers = pinned.length > 0 ? pinned : await similarColleges(college, 2);
   } catch {
