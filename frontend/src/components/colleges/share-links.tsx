@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Mail } from "lucide-react";
+
+const emptySubscribe = () => () => {};
 
 /** "Share this": four small coloured buttons that share the page being viewed. */
 export function ShareLinks({ title }: { title: string }) {
-  const [url] = useState(() => (typeof window !== "undefined" ? window.location.href : ""));
+  const url = useSyncExternalStore(
+    emptySubscribe,
+    () => (typeof window !== "undefined" ? window.location.href : ""),
+    () => ""
+  );
 
   const u = encodeURIComponent(url);
   const t = encodeURIComponent(title);
@@ -23,6 +29,7 @@ export function ShareLinks({ title }: { title: string }) {
         <a
           key={s.label}
           href={s.href}
+          suppressHydrationWarning
           target={s.label === "Email" ? undefined : "_blank"}
           rel="noopener noreferrer"
           aria-label={`Share on ${s.label}`}
