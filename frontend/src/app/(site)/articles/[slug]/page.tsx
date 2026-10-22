@@ -120,7 +120,7 @@ export default async function ArticlePage({
           {picture && (
             // Plain img: an uploaded picture comes from the API's origin, and its height is not known.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={mediaUrl(picture)} alt={article.title} className="mt-6 aspect-[2/1] w-full max-w-3xl rounded-xl border border-line object-cover" />
+            <img src={mediaUrl(picture)} alt={article.title} className="mt-6 aspect-[20/9] w-full max-w-3xl rounded-xl border border-line object-cover" />
           )}
 
           {sections.length > 0 && <ArticleSections sections={sections} />}

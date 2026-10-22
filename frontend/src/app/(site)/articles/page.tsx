@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Cog, SlidersHorizontal, X } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { ShareLinks } from "@/components/colleges/share-links";
 import { NewsCard } from "@/components/colleges/news-card";
 import { ListingFilters } from "@/components/colleges/listing-filters";
 import { appliedFilters, simple, type FilterGroup } from "@/components/colleges/filter-utils";
@@ -87,15 +88,20 @@ export default async function ArticlesIndexPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Breadcrumbs
-        items={[
-          { label: "Home", href: "/" },
-          { label: "News", href: category ? "/articles" : undefined },
-          ...(category ? [{ label: category }] : []),
-        ]}
-      />
+      {/* The same bar as on a story's own page: the trail, bolder than elsewhere, and the share buttons. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-2xl border border-line bg-gradient-to-r from-brand-soft via-bg-alt to-surface px-5 py-3.5 shadow-sm">
+        <Breadcrumbs
+          emphasis
+          items={[
+            { label: "Home", href: "/" },
+            { label: "News", href: category ? "/articles" : undefined },
+            ...(category ? [{ label: category }] : []),
+          ]}
+        />
+        <ShareLinks title={category ? `${category} News` : "News & Admission Guides"} />
+      </div>
 
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">
             {category ? `${category} News` : "News & Admission Guides"}

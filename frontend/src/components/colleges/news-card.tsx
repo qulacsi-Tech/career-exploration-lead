@@ -4,7 +4,10 @@ import type { Article } from "@/lib/api";
 import { articleImage } from "@/lib/article-images";
 import { mediaUrl } from "@/lib/media";
 
-/** A story on the news listing, styled to match the college, course and exam cards. */
+/**
+ * A story on the news listing, styled to match the college, course and exam cards. The picture is 20:9
+ * when stacked (a fifth less tall than the 16:9 it was); beside the text it simply fills the card.
+ */
 export function NewsCard({ article, lead = false }: { article: Article; lead?: boolean }) {
   const href = `/articles/${article.slug}`;
   const image = articleImage(article.slug, article.image);
@@ -23,7 +26,7 @@ export function NewsCard({ article, lead = false }: { article: Article; lead?: b
           tabIndex={-1}
           aria-hidden
           className={`relative block shrink-0 overflow-hidden bg-brand-soft ${
-            lead ? "aspect-[16/9] @2xl:aspect-auto @2xl:w-[44%]" : "aspect-[16/9] @2xl:aspect-auto @2xl:w-56"
+            lead ? "aspect-[20/9] @2xl:aspect-auto @2xl:w-[44%]" : "aspect-[20/9] @2xl:aspect-auto @2xl:w-56"
           }`}
         >
           {image ? (

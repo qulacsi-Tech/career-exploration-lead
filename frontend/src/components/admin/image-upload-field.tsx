@@ -98,11 +98,12 @@ const SLOTS: Record<Slot["kind"], Slot> = {
   article: {
     kind: "article",
     label: "Article picture",
-    recommended: [1600, 800],
-    minimum: [800, 400],
-    previewClass: "aspect-[2/1]",
+    recommended: [1600, 720],
+    minimum: [800, 360],
+    previewClass: "aspect-[20/9]",
     notes: [
-      "The picture runs wide above the lead story on the homepage news, about 800 by 400 px, in muted tones, and across the top of the article's own page. It is cropped to fit, so keep the subject in the middle.",
+      "A wide 20:9 picture. It tops the story's card on the News page (about 780 by 350 px) and runs across the top of the story's own page. It is cropped to fit, so keep the subject in the middle.",
+      "The homepage news strip crops it a little narrower, to the middle band, so keep the subject there too.",
       "Do not put text or logos in the picture. They would be cropped.",
     ],
   },

@@ -41,7 +41,7 @@ MIN_SIZE = {
     # Diagrams and option pictures can be small.
     "practice": (40, 40),
     "program": (800, 520),
-    "article": (800, 400),
+    "article": (800, 360),
     # A picture inside an article. It may be small (a headshot, a diagram).
     "article_figure": (200, 200),
     "logo": (120, 120),
