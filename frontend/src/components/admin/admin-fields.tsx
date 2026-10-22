@@ -9,6 +9,7 @@ export function TextField({
   name,
   placeholder,
   required,
+  disabled,
   type = "text",
   value,
   defaultValue,
@@ -17,14 +18,21 @@ export function TextField({
   labelAction,
   className,
   maxLength,
+  min,
+  max,
+  step,
 }: {
   label: string;
   name: string;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
   type?: string;
   /** Matches the API's limit, so an over-long entry is stopped where it is typed. */
   maxLength?: number;
+  min?: number | string;
+  max?: number | string;
+  step?: number | string;
   /** Controlled only when both value and onChange are given. */
   value?: string;
   defaultValue?: string;
@@ -48,10 +56,14 @@ export function TextField({
         name={name}
         type={type}
         required={required}
+        disabled={disabled}
         maxLength={maxLength}
+        min={min}
+        max={max}
+        step={step}
         placeholder={placeholder}
         {...(controlled ? { value, onChange: (e) => onChange(e.target.value) } : { defaultValue })}
-        className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+        className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none disabled:bg-bg-alt disabled:text-ink-muted disabled:cursor-not-allowed"
       />
       {hint && <p className="mt-1 text-[11px] text-ink-faint">{hint}</p>}
     </div>
@@ -65,6 +77,10 @@ export function SelectField({
   defaultValue,
   className,
   labelFor,
+  placeholder,
+  required,
+  value,
+  onChange,
 }: {
   label: string;
   name: string;
@@ -73,7 +89,13 @@ export function SelectField({
   className?: string;
   /** Text shown for an option whose value is a key, such as a course slug. */
   labelFor?: (option: string) => string;
+  placeholder?: string;
+  required?: boolean;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
+  const controlled = value !== undefined && onChange !== undefined;
+
   return (
     <div className={className}>
       <label htmlFor={name} className="block text-xs font-semibold text-ink">
@@ -82,9 +104,17 @@ export function SelectField({
       <select
         id={name}
         name={name}
-        defaultValue={defaultValue}
+        required={required}
+        {...(controlled
+          ? { value, onChange: (e) => onChange(e.target.value) }
+          : { defaultValue: defaultValue ?? (placeholder ? "" : undefined) })}
         className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
       >
+        {placeholder && (
+          <option value="" disabled={required}>
+            {placeholder}
+          </option>
+        )}
         {options.map((option) => (
           <option key={option} value={option}>
             {labelFor ? labelFor(option) : option}
@@ -103,6 +133,8 @@ export function TextAreaField({
   defaultValue,
   hint,
   className,
+  required,
+  maxLength,
 }: {
   label: string;
   name: string;
@@ -111,6 +143,8 @@ export function TextAreaField({
   defaultValue?: string;
   hint?: string;
   className?: string;
+  required?: boolean;
+  maxLength?: number;
 }) {
   return (
     <div className={className}>
@@ -121,6 +155,8 @@ export function TextAreaField({
         id={name}
         name={name}
         rows={rows}
+        required={required}
+        maxLength={maxLength}
         defaultValue={defaultValue}
         placeholder={placeholder}
         className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"

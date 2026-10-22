@@ -7,8 +7,8 @@ const navLinks = [
   { label: "Courses", href: "/courses" },
   { label: "Top Ranked Colleges", href: "/colleges?sort=ranking" },
   { label: "Compare", href: "/compare" },
-  { label: "More", href: "/articles" },
-  { label: "Study Abroad", href: "/study-abroad" },
+  { label: "News", href: "/articles" },
+  // { label: "Study Abroad", href: "/study-abroad" },
 ];
 
 export function SiteHeader() {

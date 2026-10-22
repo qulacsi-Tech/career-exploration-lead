@@ -26,8 +26,8 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
       onSave={(exam, data) => saveExam(exam.slug, data)}
       onAdd={(data) => createExam(undefined, data)}
       getKey={(exam) => exam.slug}
-      searchIn={(exam) => [exam.name, exam.conductingBody, exam.level]}
-      searchPlaceholder="Search name, body, level"
+      searchIn={(exam) => [exam.name, exam.conductingBody, exam.level, exam.mode ?? "", exam.slug]}
+      searchPlaceholder="Search name, body, level, mode"
       columns={[
         {
           key: "name",
@@ -96,6 +96,12 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
             ) : (
               <p className="mt-2 text-xs text-ink-faint">No sections recorded.</p>
             )}
+            {exam.syllabus ? (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-ink-faint uppercase">Syllabus outline</p>
+                <p className="mt-1 text-xs leading-relaxed text-ink-soft whitespace-pre-wrap">{exam.syllabus}</p>
+              </div>
+            ) : null}
           </AdminSubsection>
         </div>
       )}
@@ -105,18 +111,24 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           label: "Basic details",
           render: (exam) => (
             <FieldGrid>
-              <NameSlugFields nameLabel="Exam name" defaultName={exam.name} defaultSlug={exam.slug} />
+              <NameSlugFields
+                nameLabel="Exam name"
+                defaultName={exam.name}
+                defaultSlug={exam.slug}
+                nameMaxLength={200}
+              />
               <TextField
                 label="Conducting body"
                 name="conductingBody"
                 defaultValue={exam.conductingBody}
+                required
+                maxLength={200}
               />
-              <SelectWithOtherField
+              <SelectField
                 label="Level"
                 name="level"
                 defaultValue={exam.level}
                 options={["National", "State"]}
-                customPlaceholder="e.g. University, International"
               />
               <SelectField
                 label="Mode"
@@ -132,6 +144,8 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
                 defaultValue={exam.description}
                 className="sm:col-span-2 lg:col-span-3"
                 hint="Shown on the exam page and used for the search snippet."
+                required
+                maxLength={4000}
               />
             </FieldGrid>
           ),
@@ -153,6 +167,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
               <TextField
                 label="Application fee"
                 name="applicationFee"
+                placeholder="e.g. ₹2,000"
                 defaultValue={exam.applicationFee ?? ""}
               />
             </FieldGrid>
@@ -182,6 +197,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
                 rows={6}
                 className="sm:col-span-2 lg:col-span-3"
                 placeholder="Topic breakdown per section."
+                defaultValue={exam.syllabus ?? ""}
               />
             </FieldGrid>
           ),
@@ -197,6 +213,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
                 placeholder={`${exam.name} — Dates, Pattern & Results`}
                 className="sm:col-span-2"
                 hint="Around 60 characters."
+                maxLength={60}
               />
               <TextField label="Canonical URL" name="canonical" placeholder={`/exams/${exam.slug}`} />
               <TextAreaField
@@ -230,9 +247,10 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
             nameLabel="Exam name"
             namePlaceholder="Common Admission Test (CAT)"
             slugPlaceholder="common-admission-test-cat"
+            nameMaxLength={200}
           />
-          <TextField label="Conducting body" name="conductingBody" placeholder="IIM" />
-          <SelectWithOtherField label="Level" name="level" options={["National", "State"]} />
+          <TextField label="Conducting body" name="conductingBody" placeholder="IIM" required maxLength={200} />
+          <SelectField label="Level" name="level" options={["National", "State"]} />
           <SelectField label="Mode" name="mode" options={["Online", "Offline", "Hybrid"]} />
           <FormDateField id="new-exam-date" label="Exam date" name="examDate" />
           <TextAreaField
@@ -241,6 +259,8 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
             rows={3}
             className="sm:col-span-2"
             placeholder="Short description used on the exam page and in search results."
+            required
+            maxLength={4000}
           />
         </>
       )}

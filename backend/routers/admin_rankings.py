@@ -7,10 +7,11 @@ still orders by cannot be deleted.
 """
 
 import uuid
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -34,14 +35,38 @@ class EntryBody(BaseModel):
     score: Optional[str] = Field(default=None, max_length=50)
     model_config = ConfigDict(extra="forbid")
 
+    @field_validator("score", mode="before")
+    @classmethod
+    def _validate_score(cls, v):
+        if v is None:
+            return None
+        s = str(v).strip()
+        if not s:
+            return None
+        try:
+            val = float(s)
+        except (ValueError, TypeError):
+            raise ValueError("Score must be a number between 0 and 100.")
+        if val < 0 or val > 100:
+            raise ValueError("Score must be between 0 and 100.")
+        return f"{val:g}"
+
 
 class RankingBody(BaseModel):
     name: str = Field(min_length=2, max_length=300)
     authority: str = Field(min_length=2, max_length=200)
-    year: int = Field(ge=1990, le=2100)
+    year: int = Field(ge=1990)
     stream: Optional[str] = Field(default=None, max_length=100)
     entries: list[EntryBody] = Field(default_factory=list, max_length=500)
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("year")
+    @classmethod
+    def _validate_year(cls, v: int) -> int:
+        max_year = datetime.now().year + 1
+        if v > max_year:
+            raise ValueError(f"Year cannot be in the future (max {max_year}).")
+        return v
 
 
 class RankingCreateBody(RankingBody):

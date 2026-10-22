@@ -129,9 +129,10 @@ const COLLEGE_CREATE_FIELDS = [
 const EXAM_EDIT_FIELDS = [
   "name", "conductingBody", "description", "registrationCloses", "examDate",
   "mode", "frequency", "applicationFee", "officialSite",
+  "durationMinutes", "sections", "syllabus",
 ] as const;
 
-const LIST_FIELDS: ReadonlySet<string> = new Set(["examsAccepted", "tags", "approvals"]);
+const LIST_FIELDS: ReadonlySet<string> = new Set(["examsAccepted", "tags", "approvals", "sections"]);
 
 function text(form: FormData, key: string): string | undefined {
   const value = String(form.get(key) ?? "").trim();
@@ -188,22 +189,42 @@ export async function createCollege(
 }
 
 export async function saveExam(slug: string, form: FormData): Promise<AdminActionResult> {
-  return attempt("/admin/exams", (token) =>
-    adminUpdateExam(token, slug, body(form, EXAM_EDIT_FIELDS))
+  const payload = body(form, EXAM_EDIT_FIELDS);
+  if (typeof payload.durationMinutes === "string") {
+    const parsed = parseInt(payload.durationMinutes, 10);
+    payload.durationMinutes = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+  const result = await attempt("/admin/exams", (token) =>
+    adminUpdateExam(token, slug, payload)
   );
+  if ("ok" in result) {
+    revalidatePath("/exams");
+    revalidatePath(`/exams/${slug}`);
+  }
+  return result;
 }
 
 export async function createExam(
   _prev: AdminActionResult | undefined,
   form: FormData
 ): Promise<AdminActionResult> {
-  return attempt("/admin/exams", (token) =>
+  const payload = body(form, EXAM_EDIT_FIELDS);
+  if (typeof payload.durationMinutes === "string") {
+    const parsed = parseInt(payload.durationMinutes, 10);
+    payload.durationMinutes = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+  const result = await attempt("/admin/exams", (token) =>
     adminCreateExam(token, {
-      ...body(form, ["name", "conductingBody", "level", "description", "mode", "examDate"]),
+      ...payload,
       slug: text(form, "slug"),
+      level: text(form, "level") || "National",
     })
   );
+  if ("ok" in result) revalidatePath("/exams");
+  return result;
 }
+
+
 
 // ── Study abroad content ─────────────────────────────────────────────────────
 

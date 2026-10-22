@@ -12,6 +12,9 @@ export default async function AdminRankingsPage() {
     withAdminToken((token) => adminGetRankings(token)),
     getColleges({ limit: 100 }),
   ]);
-  const colleges = directory.data.map((c) => ({ slug: c.slug, name: c.name }));
+  const colleges = directory.data
+    .filter((c) => !c.name.toLowerCase().includes("qa-") && !c.name.toLowerCase().includes("qa demo"))
+    .map((c) => ({ slug: c.slug, name: c.name, stream: c.stream }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   return <RankingsAdmin lists={lists} colleges={colleges} />;
 }

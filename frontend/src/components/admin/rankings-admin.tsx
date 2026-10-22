@@ -17,9 +17,11 @@ type Row = { collegeSlug: string; rank: string; score: string };
 function EntriesEditor({
   colleges,
   initial,
+  stream,
 }: {
-  colleges: { slug: string; name: string }[];
+  colleges: { slug: string; name: string; stream?: string }[];
   initial: AdminRankingEntry[];
+  stream?: string;
 }) {
   const [rows, setRows] = useState<Row[]>(() =>
     initial.map((e) => ({ collegeSlug: e.collegeSlug, rank: String(e.rank), score: e.score ?? "" })),
@@ -63,7 +65,8 @@ function EntriesEditor({
               </label>
               <input
                 id={`entry-${index}-rank`}
-                inputMode="numeric"
+                type="number"
+                min="1"
                 value={row.rank}
                 onChange={(e) => update(index, { rank: e.target.value })}
                 className="mt-1.5 w-full rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none"
@@ -75,6 +78,11 @@ function EntriesEditor({
               </label>
               <input
                 id={`entry-${index}-score`}
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                placeholder="0–100"
                 value={row.score}
                 onChange={(e) => update(index, { score: e.target.value })}
                 className="mt-1.5 w-full rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none"
@@ -94,6 +102,7 @@ function EntriesEditor({
 
       <AddEntry
         available={available}
+        stream={stream}
         onAdd={(slug) => setRows((prev) => [...prev, { collegeSlug: slug, rank: String(prev.length + 1), score: "" }])}
       />
     </div>
@@ -102,18 +111,26 @@ function EntriesEditor({
 
 function AddEntry({
   available,
+  stream,
   onAdd,
 }: {
-  available: { slug: string; name: string }[];
+  available: { slug: string; name: string; stream?: string }[];
+  stream?: string;
   onAdd: (slug: string) => void;
 }) {
   const [picking, setPicking] = useState("");
+  // If the ranking list is stream-scoped, offer matching stream colleges first
+  const filtered = stream
+    ? available.filter((c) => !c.stream || c.stream.toLowerCase() === stream.toLowerCase())
+    : available;
+  const list = filtered.length > 0 ? filtered : available;
+
   if (available.length === 0) return <p className="text-xs text-ink-faint">Every college is already in this list.</p>;
   return (
     <div className="flex flex-wrap items-end gap-2">
       <div className="min-w-60 flex-1">
         <label className="block text-xs font-semibold text-ink" htmlFor="entry-add">
-          Add a college
+          Add a college {stream ? `(${stream})` : ""}
         </label>
         <select
           id="entry-add"
@@ -122,9 +139,9 @@ function AddEntry({
           className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
         >
           <option value="">Choose a college</option>
-          {available.map((c) => (
+          {list.map((c) => (
             <option key={c.slug} value={c.slug}>
-              {c.name}
+              {c.name}{c.stream && c.stream !== stream ? ` (${c.stream})` : ""}
             </option>
           ))}
         </select>
@@ -157,8 +174,9 @@ export function RankingsAdmin({
   colleges,
 }: {
   lists: AdminRanking[];
-  colleges: { slug: string; name: string }[];
+  colleges: { slug: string; name: string; stream?: string }[];
 }) {
+  const currentYear = new Date().getFullYear();
   return (
     <ResourceAdmin<AdminRanking>
       title="Rankings"
@@ -188,6 +206,27 @@ export function RankingsAdmin({
       ]}
       renderView={(list) => (
         <div className="space-y-6">
+          <AdminSubsection title="List details">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
+              <div>
+                <dt className="text-xs text-ink-faint">Authority</dt>
+                <dd className="mt-0.5 font-medium text-ink">{list.authority}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-ink-faint">Year</dt>
+                <dd className="mt-0.5 font-medium text-ink">{list.year}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-ink-faint">Stream</dt>
+                <dd className="mt-0.5 font-medium text-ink">{list.stream ?? "Overall"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-ink-faint">Colleges</dt>
+                <dd className="mt-0.5 font-medium text-ink">{list.entries.length}</dd>
+              </div>
+            </dl>
+          </AdminSubsection>
+
           <AdminSubsection title="Ordered colleges">
             {list.entries.length === 0 ? (
               <p className="text-sm text-ink-soft">No colleges in this list yet.</p>
@@ -214,12 +253,20 @@ export function RankingsAdmin({
           render: (list) => (
             <div className="space-y-6">
               <FieldGrid>
-                <TextField label="Name" name="name" defaultValue={list.name} required />
-                <TextField label="Authority" name="authority" defaultValue={list.authority} required />
-                <TextField label="Year" name="year" type="number" defaultValue={String(list.year)} required />
+                <TextField label="Name" name="name" defaultValue={list.name} required maxLength={300} />
+                <TextField label="Authority" name="authority" defaultValue={list.authority} required maxLength={200} />
+                <TextField
+                  label="Year"
+                  name="year"
+                  type="number"
+                  defaultValue={String(list.year)}
+                  min={1990}
+                  max={currentYear + 1}
+                  required
+                />
                 <SelectField label="Stream" name="stream" defaultValue={list.stream ?? ""} options={["", ...STREAMS]} />
               </FieldGrid>
-              <EntriesEditor colleges={colleges} initial={list.entries} />
+              <EntriesEditor colleges={colleges} initial={list.entries} stream={list.stream ?? undefined} />
             </div>
           ),
         },
@@ -228,9 +275,17 @@ export function RankingsAdmin({
       onAdd={(data) => createRanking(undefined, data)}
       renderAddForm={() => (
         <>
-          <NameSlugFields nameLabel="Name" namePlaceholder="NIRF Management Rankings 2026" slugPlaceholder="nirf-management-2026" />
-          <TextField label="Authority" name="authority" placeholder="NIRF" required />
-          <TextField label="Year" name="year" type="number" placeholder="2026" required />
+          <NameSlugFields nameLabel="Name" namePlaceholder="NIRF Management Rankings 2026" slugPlaceholder="nirf-management-2026" nameMaxLength={300} />
+          <TextField label="Authority" name="authority" placeholder="NIRF" required maxLength={200} />
+          <TextField
+            label="Year"
+            name="year"
+            type="number"
+            placeholder={String(currentYear)}
+            min={1990}
+            max={currentYear + 1}
+            required
+          />
           <SelectField label="Stream" name="stream" options={["", ...STREAMS]} />
           <div className="sm:col-span-2">
             <EntriesEditor colleges={colleges} initial={[]} />

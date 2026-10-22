@@ -142,6 +142,15 @@ def _apply_filters(stmt, params: CollegeFilterParams):
     elif params.sort == "name":
         # A tie-break on id keeps the order stable from one page to the next.
         stmt = stmt.order_by(College.name, College.id)
+    elif params.sort == "ranking":
+        stmt = stmt.order_by(
+            case(
+                (or_(College.ranking_rank.is_(None), College.ranking_rank <= 0), 1),
+                else_=0,
+            ),
+            College.ranking_rank.asc(),
+            College.review_count.desc(),
+        )
     elif list_rank is not None:  # popularity inside a ranking list is the list's own order
         stmt = stmt.order_by(list_rank, College.id)
     else:  # popularity (default)

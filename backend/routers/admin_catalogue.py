@@ -59,6 +59,13 @@ class CourseCreateBody(_FormatChecks):
     about: Optional[str] = Field(default=None, max_length=4000)
     model_config = ConfigDict(extra="forbid")
 
+    @field_validator("stream", check_fields=False)
+    @classmethod
+    def _stream(cls, value):
+        if value is not None and value.strip() == "__other__":
+            raise ValueError("please specify a custom stream.")
+        return value
+
 
 class CourseUpdateBody(_FormatChecks):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
@@ -73,6 +80,13 @@ class CourseUpdateBody(_FormatChecks):
     collegeCount: Optional[int] = Field(default=None, ge=0, le=1_000_000)
     about: Optional[str] = Field(default=None, max_length=4000)
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("stream", check_fields=False)
+    @classmethod
+    def _stream(cls, value):
+        if value is not None and value.strip() == "__other__":
+            raise ValueError("please specify a custom stream.")
+        return value
 
 
 class SpecialisationCreateBody(_FormatChecks):
@@ -274,6 +288,15 @@ async def admin_create_specialisation(_admin: AdminPayload, db: DbSession, body:
         raise ConflictError("SPECIALISATION_SLUG_TAKEN", f"A specialisation with slug '{data.slug}' already exists.")
     course = await _course_by_slug(db, data.courseSlug)
 
+    dup = (await db.execute(
+        select(Specialisation.id).where(
+            Specialisation.course_id == course.id,
+            func.lower(Specialisation.name) == data.name.strip().lower()
+        )
+    )).scalar_one_or_none()
+    if dup is not None:
+        raise ConflictError("SPECIALISATION_EXISTS", f"A specialisation named '{data.name}' already exists under '{course.name}'.")
+
     spec = Specialisation(
         id=uuid.uuid4(),
         slug=data.slug,
@@ -299,14 +322,28 @@ async def admin_update_specialisation(slug: str, _admin: AdminPayload, db: DbSes
     changes = data.model_dump(exclude_unset=True)
     _reject_nulls(changes, NULLABLE_SPEC_FIELDS)
 
+    target_course_id = spec.course_id
     if "courseSlug" in changes and changes["courseSlug"] is not None:
         course = await _course_by_slug(db, changes.pop("courseSlug"))
         spec.course_id = course.id
         spec.course_slug = course.slug
         spec.course_name = course.name
         spec.stream = course.stream
+        target_course_id = course.id
     else:
         changes.pop("courseSlug", None)
+
+    target_name = changes.get("name", spec.name)
+    if "name" in changes or "courseSlug" in changes:
+        dup = (await db.execute(
+            select(Specialisation.id).where(
+                Specialisation.course_id == target_course_id,
+                func.lower(Specialisation.name) == target_name.strip().lower(),
+                Specialisation.id != spec.id
+            )
+        )).scalar_one_or_none()
+        if dup is not None:
+            raise ConflictError("SPECIALISATION_EXISTS", f"A specialisation named '{target_name}' already exists under this course.")
 
     for key, column in {
         "name": "name", "duration": "duration", "averageFees": "average_fees",

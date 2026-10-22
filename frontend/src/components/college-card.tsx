@@ -63,9 +63,11 @@ export function CollegeCard({ college }: { college: College }) {
               >
                 {college.name}
               </Link>
-              <Chip tone="gold">
-                #{college.ranking.rank} {college.ranking.authority}
-              </Chip>
+              {Boolean(college.ranking?.rank && college.ranking.rank > 0) && (
+                <Chip tone="gold">
+                  #{college.ranking.rank} {college.ranking.authority}
+                </Chip>
+              )}
             </div>
 
             <p className="mt-1 text-sm text-ink-soft">

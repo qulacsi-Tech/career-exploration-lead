@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Mail } from "lucide-react";
 
 /** "Share this": four small coloured buttons that share the page being viewed. */
 export function ShareLinks({ title }: { title: string }) {
-  const [url, setUrl] = useState("");
-  useEffect(() => setUrl(window.location.href), []);
+  const [url] = useState(() => (typeof window !== "undefined" ? window.location.href : ""));
 
   const u = encodeURIComponent(url);
   const t = encodeURIComponent(title);

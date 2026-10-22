@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { createSpecialisation, saveSpecialisation } from "@/lib/admin-actions";
 import type { AdminCourse, AdminSpecialisation } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
@@ -11,6 +12,48 @@ import {
   Field,
   NameSlugFields,
 } from "@/components/admin/admin-fields";
+
+function SpecialisationAddFields({
+  courseOptions,
+  courseLabel,
+}: {
+  courseOptions: string[];
+  courseLabel: (slug: string) => string;
+}) {
+  const [selectedCourse, setSelectedCourse] = useState("");
+
+  return (
+    <>
+      <SelectField
+        label="Parent course"
+        name="courseSlug"
+        placeholder="Select course"
+        required
+        value={selectedCourse}
+        onChange={setSelectedCourse}
+        options={courseOptions}
+        labelFor={courseLabel}
+      />
+      <NameSlugFields
+        nameLabel="Name"
+        namePlaceholder="Finance"
+        slugPlaceholder="mba-finance"
+        slugPrefix={selectedCourse}
+        nameMaxLength={200}
+      />
+      <TextField label="Duration" name="duration" placeholder="e.g. 24 Months" />
+      <TextField label="Average fees" name="averageFees" placeholder="e.g. ₹6L - 24L" />
+      <TextField
+        label="Colleges offering (override)"
+        name="collegeCount"
+        type="number"
+        placeholder="0"
+        hint="Leave 0 to count from the directory"
+      />
+      <TextAreaField label="About" name="about" rows={3} className="sm:col-span-2" maxLength={4000} />
+    </>
+  );
+}
 
 /**
  * A specialisation belongs to one course. The course's name and stream are copied
@@ -35,8 +78,8 @@ export function SpecialisationsAdmin({
       addDescription="Pick the parent course first. The stream follows from it."
       rows={specialisations}
       getKey={(item) => item.slug}
-      searchIn={(item) => [item.name, item.courseName, item.stream]}
-      searchPlaceholder="Search name or course"
+      searchIn={(item) => [item.name, item.courseName, item.stream, item.slug]}
+      searchPlaceholder="Search name, course, stream, slug"
       columns={[
         {
           key: "name",
@@ -71,16 +114,24 @@ export function SpecialisationsAdmin({
           label: "Details",
           render: (item) => (
             <FieldGrid>
-              <TextField label="Name" name="name" defaultValue={item.name} required />
+              <TextField label="Name" name="name" defaultValue={item.name} required maxLength={200} />
+              <TextField
+                label="URL slug"
+                name="slug"
+                defaultValue={item.slug}
+                disabled
+                hint="The URL address of this specialisation cannot be changed."
+              />
               <SelectField
                 label="Parent course"
                 name="courseSlug"
                 defaultValue={item.courseSlug}
                 options={courseOptions}
                 labelFor={courseLabel}
+                required
               />
-              <TextField label="Duration" name="duration" defaultValue={item.duration ?? ""} />
-              <TextField label="Average fees" name="averageFees" defaultValue={item.averageFees ?? ""} />
+              <TextField label="Duration" name="duration" defaultValue={item.duration ?? ""} placeholder="e.g. 24 Months" />
+              <TextField label="Average fees" name="averageFees" defaultValue={item.averageFees ?? ""} placeholder="e.g. ₹6L - 24L" />
               <TextField
                 label="Colleges offering (override)"
                 name="collegeCount"
@@ -94,6 +145,7 @@ export function SpecialisationsAdmin({
                 defaultValue={item.about ?? ""}
                 rows={4}
                 className="sm:col-span-2 lg:col-span-3"
+                maxLength={4000}
               />
             </FieldGrid>
           ),
@@ -102,19 +154,7 @@ export function SpecialisationsAdmin({
       onSave={(item, data) => saveSpecialisation(item.slug, data)}
       onAdd={(data) => createSpecialisation(undefined, data)}
       renderAddForm={() => (
-        <>
-          <NameSlugFields nameLabel="Name" namePlaceholder="Finance" slugPlaceholder="mba-finance" />
-          <SelectField
-            label="Parent course"
-            name="courseSlug"
-            options={courseOptions}
-            labelFor={courseLabel}
-          />
-          <TextField label="Duration" name="duration" placeholder="24 Months" />
-          <TextField label="Average fees" name="averageFees" placeholder="₹6L - 24L" />
-          <TextField label="Colleges offering (override)" name="collegeCount" type="number" placeholder="0" hint="Leave 0 to count from the directory" />
-          <TextAreaField label="About" name="about" rows={3} className="sm:col-span-2" />
-        </>
+        <SpecialisationAddFields courseOptions={courseOptions} courseLabel={courseLabel} />
       )}
     />
   );

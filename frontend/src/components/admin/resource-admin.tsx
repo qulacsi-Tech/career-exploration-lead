@@ -7,6 +7,32 @@ import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section"
 import { AdminModal } from "@/components/admin/admin-modal";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 
+/** Humanizes raw API error strings into clear messages for editors. */
+export function humanizeError(raw: string): string {
+  const msg = raw.replace(/^body\s*(→|\.)\s*/, "");
+  if (/^conductingBody:\s*Field required/i.test(msg)) return "Conducting body is required.";
+  if (/^description:\s*Field required/i.test(msg)) return "Description is required.";
+  if (/^name:\s*Field required/i.test(msg)) return "Name is required.";
+  if (/^entries\.\d+\.rank:\s*Input should be greater than or equal to 1/i.test(msg)) return "Rank must be 1 or greater.";
+  if (/^year:\s*Input should be greater than or equal to (\d+)/i.test(msg)) {
+    const min = msg.match(/\d+/)?.[0] ?? "1990";
+    return `Year must be ${min} or later.`;
+  }
+  if (/^year:\s*Input should be less than or equal to (\d+)/i.test(msg)) {
+    const max = msg.match(/\d+/)?.[0] ?? "";
+    return `Year cannot be in the future (max ${max}).`;
+  }
+  if (/^name:\s*String should have at least (\d+) characters?/i.test(msg)) {
+    const count = msg.match(/\d+/)?.[0] ?? "2";
+    return `Name must have at least ${count} characters.`;
+  }
+  if (/^name:\s*String should have at most (\d+) characters?/i.test(msg)) {
+    const count = msg.match(/\d+/)?.[0] ?? "300";
+    return `Name must have at most ${count} characters.`;
+  }
+  return msg;
+}
+
 /**
  * The shared shell for a CMS module: header, search, table, and the add / view /
  * edit dialogs.
@@ -81,13 +107,21 @@ export function ResourceAdmin<T>({
   const [viewing, setViewing] = useState<T | null>(null);
   const [editing, setEditing] = useState<T | null>(null);
   const [adding, setAdding] = useState(false);
+  const [prevRows, setPrevRows] = useState<T[]>(rows);
+  const [localRows, setLocalRows] = useState<T[]>(rows);
+
+  if (rows !== prevRows) {
+    setPrevRows(rows);
+    setLocalRows(rows);
+  }
+
   const router = useRouter();
   const [flash, showFlash, clearFlash] = useFlash();
   const [deleting, startDelete] = useTransition();
   /*
-    After a save the list is refetched from the server. Until that lands, `rows`
-    still holds the old record, and an Edit opened now would load the old values
-    and write them back over the change just saved. Edit waits for the refetch.
+    After a save the list is refetched from the server. Until that lands, `localRows`
+    is updated optimistically so an Edit opened immediately loads the fresh values
+    and does not write back stale values over the change just saved.
   */
   const [refreshing, startRefresh] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -95,14 +129,14 @@ export function ResourceAdmin<T>({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
+    if (!q) return localRows;
     // "btech" should find "B.Tech": compare again with punctuation and spaces dropped.
     const squash = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
     const loose = squash(q);
-    return rows.filter((row) =>
+    return localRows.filter((row) =>
       searchIn(row).some((field) => field.toLowerCase().includes(q) || (loose !== "" && squash(field).includes(loose)))
     );
-  }, [rows, query, searchIn]);
+  }, [localRows, query, searchIn]);
 
   const shownKeys = filtered.map(getKey);
   const allShownSelected = shownKeys.length > 0 && shownKeys.every((key) => selected.has(key));
@@ -355,9 +389,33 @@ export function ResourceAdmin<T>({
             id="resource-edit-form"
             tabs={editTabs}
             row={editing}
-            onDone={(saved) => {
+            onDone={(saved, data) => {
               if (saved) {
                 showFlash("ok", `${searchIn(editing)[0]} saved.`);
+                if (data) {
+                  setLocalRows((prev) =>
+                    prev.map((r) => {
+                      if (getKey(r) === getKey(editing)) {
+                        const updated: Record<string, unknown> = { ...(r as Record<string, unknown>) };
+                        for (const [key, val] of data.entries()) {
+                          if (typeof val === "string") {
+                            if (key === "entries") {
+                              try {
+                                updated[key] = JSON.parse(val);
+                              } catch {
+                                updated[key] = val;
+                              }
+                            } else {
+                              updated[key] = val;
+                            }
+                          }
+                        }
+                        return updated as T;
+                      }
+                      return r;
+                    })
+                  );
+                }
                 startRefresh(() => router.refresh());
               }
               setEditing(null);
@@ -430,7 +488,7 @@ function AddForm({
         const data = new FormData(e.currentTarget);
         startTransition(async () => {
           const result = await onAdd(data);
-          if ("error" in result) setError(result.error);
+          if ("error" in result) setError(humanizeError(result.error));
           else onDone(true);
         });
       }}
@@ -458,13 +516,12 @@ function TabbedForm<T>({
   tabs: ResourceEditTab<T>[];
   row: T;
   /** `saved` is false when the form closed without a save handler. */
-  onDone: (saved: boolean) => void;
+  onDone: (saved: boolean, data?: FormData) => void;
   onSave?: (data: FormData) => Promise<AdminActionResult>;
 }) {
   const [active, setActive] = useState(tabs[0].id);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const current = tabs.find((tab) => tab.id === active) ?? tabs[0];
 
   return (
     <form
@@ -479,8 +536,8 @@ function TabbedForm<T>({
         const data = new FormData(e.currentTarget);
         startTransition(async () => {
           const result = await onSave(data);
-          if ("error" in result) setError(result.error);
-          else onDone(true);
+          if ("error" in result) setError(humanizeError(result.error));
+          else onDone(true, data);
         });
       }}
       className="flex h-full flex-col"
@@ -516,16 +573,20 @@ function TabbedForm<T>({
         ))}
       </div>
 
-      {/* Keyed for the same reason as the page-section tabs: one position,
-          so React would otherwise reuse the previous tab's inputs. */}
-      <div
-        key={current.id}
-        role="tabpanel"
-        id={`panel-${current.id}`}
-        aria-labelledby={`tab-${current.id}`}
-        className="min-h-0 flex-1 overflow-y-auto py-5"
-      >
-        {current.render(row)}
+      {/* Keep all tabs mounted in the DOM with hidden toggle so multi-tab edits
+          are not lost when FormData is collected on form submission. */}
+      <div className="min-h-0 flex-1 overflow-y-auto py-5">
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            role="tabpanel"
+            id={`panel-${tab.id}`}
+            aria-labelledby={`tab-${tab.id}`}
+            className={active === tab.id ? "" : "hidden"}
+          >
+            {tab.render(row)}
+          </div>
+        ))}
       </div>
     </form>
   );

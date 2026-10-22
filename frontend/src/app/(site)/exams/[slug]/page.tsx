@@ -371,11 +371,11 @@ export default async function ExamDetailPage({
             <dl className="mt-4 space-y-2.5 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-brand-ink/70">Registration closes</dt>
-                <dd className="text-right font-medium text-brand-ink">{exam.registrationCloses}</dd>
+                <dd className="text-right font-medium text-brand-ink">{exam.registrationCloses || "To be announced"}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-brand-ink/70">Exam date</dt>
-                <dd className="text-right font-medium text-brand-ink">{exam.examDate}</dd>
+                <dd className="text-right font-medium text-brand-ink">{exam.examDate || "To be announced"}</dd>
               </div>
               {exam.mode && (
                 <div className="flex justify-between gap-3">
@@ -398,12 +398,16 @@ export default async function ExamDetailPage({
             </dl>
             {exam.officialSite && (
               <a
-                href={`https://${exam.officialSite}`}
+                href={
+                  /^https?:\/\//i.test(exam.officialSite)
+                    ? exam.officialSite
+                    : `https://${exam.officialSite}`
+                }
                 target="_blank"
                 rel="noopener noreferrer nofollow"
                 className="mt-4 block truncate text-xs font-medium text-brand hover:underline"
               >
-                {exam.officialSite}
+                {exam.officialSite.replace(/^https?:\/\//i, "")}
               </a>
             )}
           </div>

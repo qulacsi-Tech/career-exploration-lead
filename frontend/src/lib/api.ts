@@ -1631,24 +1631,36 @@ async function adminRequest<T>(
   body?: unknown
 ): Promise<T> {
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    method,
-    cache: "no-store",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const json = (await res.json().catch(() => null)) as
-    | { success: true; data: T }
-    | { success: false; error?: { message?: string } }
-    | null;
-  if (!res.ok || !json || json.success !== true) {
-    const message = json && json.success === false ? json.error?.message : undefined;
-    throw new ApiError(res.status, message ?? `Admin API ${res.status}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(url, {
+      method,
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const json = (await res.json().catch(() => null)) as
+      | { success: true; data: T }
+      | { success: false; error?: { message?: string } }
+      | null;
+    if (!res.ok || !json || json.success !== true) {
+      const message = json && json.success === false ? json.error?.message : undefined;
+      throw new ApiError(res.status, message ?? `Admin API ${res.status}`);
+    }
+    return json.data;
+  } catch (err: unknown) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError(408, "Request timed out after 10 seconds. Please try again.");
+    }
+    throw err;
   }
-  return json.data;
 }
 
 /** Admin: create a college. The slug must be new. */
