@@ -135,6 +135,11 @@ export type College = {
   /** Featured in the admin, and how many times the page has been viewed. */
   isFeatured?: boolean;
   viewCount?: number;
+  /** Listing-only extras for the /colleges card. */
+  foundedYear?: number | null;
+  studentRatings?: RatingBreakdown[];
+  avgPackage?: string;
+  avgPackageYear?: number | null;
 };
 
 export type Exam = {

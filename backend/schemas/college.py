@@ -99,6 +99,12 @@ class CollegeListSchema(BaseModel):
     # Listing badges: set in the admin (featured) and counted from page visits (views).
     isFeatured: bool = False
     viewCount: int = 0
+    # Extras for the /colleges listing card, filled only by the listing endpoint (see services.college).
+    # Named apart from the detail schema's own fields so the two never collide.
+    foundedYear: Optional[int] = None
+    studentRatings: List[RatingBreakdownSchema] = []
+    avgPackage: str = ""
+    avgPackageYear: Optional[int] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
