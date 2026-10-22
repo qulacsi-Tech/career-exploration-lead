@@ -87,8 +87,9 @@ export default async function ArticlePage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* The trail on the left, bolder than elsewhere, and the share buttons at the right-hand end. */}
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+      {/* One tinted bar from edge to edge: the trail on the left, bolder than elsewhere, and the share
+          buttons at the right-hand end, so the row reads as filled and not as a few items in white space. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-2xl border border-line bg-gradient-to-r from-brand-soft via-bg-alt to-surface px-5 py-3.5 shadow-sm">
         <Breadcrumbs
           emphasis
           items={[
