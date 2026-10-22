@@ -277,28 +277,35 @@ class CollegeRepository:
     async def get_similar(self, college: College, limit: int = 8) -> List[College]:
         """Return colleges similar to the given one — same stream first,
         sorted by rating proximity, excluding the college itself."""
-        stmt = (
-            select(College)
-            .options(selectinload(College.courses))
-            .where(College.stream == college.stream, College.id != college.id)
-            .order_by(College.rating.desc())
-            .limit(limit)
-        )
-        result = await self.db.execute(stmt)
-        same_stream = list(result.scalars().unique())
+        try:
+            conditions = [College.id != college.id]
+            if college.stream:
+                conditions.append(College.stream == college.stream)
 
-        # If we still need more, top up from other streams
-        if len(same_stream) < limit:
-            needed = limit - len(same_stream)
-            existing_ids = [c.id for c in same_stream] + [college.id]
-            stmt2 = (
+            stmt = (
                 select(College)
                 .options(selectinload(College.courses))
-                .where(College.id.notin_(existing_ids))
+                .where(*conditions)
                 .order_by(College.rating.desc())
-                .limit(needed)
+                .limit(limit)
             )
-            result2 = await self.db.execute(stmt2)
-            same_stream.extend(result2.scalars().unique())
+            result = await self.db.execute(stmt)
+            same_stream = list(result.scalars().unique())
 
-        return same_stream[:limit]
+            # If we still need more, top up from other streams
+            if len(same_stream) < limit:
+                needed = limit - len(same_stream)
+                existing_ids = [c.id for c in same_stream] + [college.id]
+                stmt2 = (
+                    select(College)
+                    .options(selectinload(College.courses))
+                    .where(College.id.notin_(existing_ids))
+                    .order_by(College.rating.desc())
+                    .limit(needed)
+                )
+                result2 = await self.db.execute(stmt2)
+                same_stream.extend(result2.scalars().unique())
+
+            return same_stream[:limit]
+        except Exception:
+            return []

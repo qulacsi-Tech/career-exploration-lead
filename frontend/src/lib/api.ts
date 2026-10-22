@@ -51,22 +51,57 @@ export class ApiError extends Error {
  */
 const PUBLIC_REVALIDATE_SECONDS = 60;
 
-async function apiFetch<T>(path: string): Promise<T> {
+async function apiFetch<T>(path: string, retries = 2): Promise<T> {
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
-  if (!res.ok) throw new ApiError(res.status, `API ${res.status} on ${url}`);
-  const json = (await res.json()) as ApiResponse<T>;
-  return json.data;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
+      if (!res.ok) {
+        if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          continue;
+        }
+        throw new ApiError(res.status, `API ${res.status} on ${url}`);
+      }
+      const json = (await res.json()) as ApiResponse<T>;
+      return json.data;
+    } catch (err) {
+      if (attempt < retries && !(err instanceof ApiError && err.status === 404)) {
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new ApiError(500, `API failed on ${url}`);
 }
 
 async function apiListFetch<T>(
-  path: string
+  path: string,
+  retries = 2
 ): Promise<{ data: T[]; meta: PaginationMeta }> {
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
-  if (!res.ok) throw new ApiError(res.status, `API ${res.status} on ${url}`);
-  const json = (await res.json()) as ApiListResponse<T>;
-  return { data: json.data, meta: json.meta };
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
+      if (!res.ok) {
+        if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          continue;
+        }
+        throw new ApiError(res.status, `API ${res.status} on ${url}`);
+      }
+      const json = (await res.json()) as ApiListResponse<T>;
+      return { data: json.data, meta: json.meta };
+    } catch (err) {
+      if (attempt < retries && !(err instanceof ApiError && err.status === 404)) {
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new ApiError(500, `API failed on ${url}`);
 }
 
 // ── Types — mirror of frontend mock-data.ts and articles-data.ts ──────────
@@ -508,7 +543,11 @@ export async function getRelatedColleges(
   slug: string,
   limit = 3
 ): Promise<College[]> {
-  return apiFetch<College[]>(`/colleges/${slug}/related?limit=${limit}`);
+  try {
+    return await apiFetch<College[]>(`/colleges/${encodeURIComponent(slug)}/related?limit=${limit}`);
+  } catch {
+    return [];
+  }
 }
 
 /** Similar colleges for the peer-grid on the college detail page. */
@@ -516,7 +555,11 @@ export async function getSimilarColleges(
   slug: string,
   limit = 8
 ): Promise<College[]> {
-  return apiFetch<College[]>(`/colleges/similar?slug=${encodeURIComponent(slug)}&limit=${limit}`);
+  try {
+    return await apiFetch<College[]>(`/colleges/similar?slug=${encodeURIComponent(slug)}&limit=${limit}`);
+  } catch {
+    return [];
+  }
 }
 
 /** All college slugs — used by generateStaticParams at build time. */

@@ -688,9 +688,8 @@ function Gallery({ college }: { college: College }) {
             {photos.map((image, i) => (
               <figure
                 key={image.src}
-                className={`group relative overflow-hidden rounded-xl bg-bg-alt ${
-                  i === 0 ? "sm:col-span-2 sm:row-span-2" : ""
-                }`}
+                className={`group relative overflow-hidden rounded-xl bg-bg-alt ${i === 0 ? "sm:col-span-2 sm:row-span-2" : ""
+                  }`}
               >
                 <div className={`relative ${i === 0 ? "aspect-[16/10] h-full" : "aspect-[4/3]"}`}>
                   <Image
@@ -746,8 +745,18 @@ function Gallery({ college }: { college: College }) {
 
 async function Compare({ college }: { college: College }) {
   // Colleges the editor pinned as similar, else the nearest by stream and rank.
-  const pinned = college.similarSlugs.length > 0 ? await collegesBySlugs(college.similarSlugs.slice(0, 2)) : [];
-  const peers = pinned.length > 0 ? pinned : await similarColleges(college, 2);
+  let pinned: CollegeDetail[] = [];
+  try {
+    pinned = college.similarSlugs.length > 0 ? await collegesBySlugs(college.similarSlugs.slice(0, 2)) : [];
+  } catch {
+    pinned = [];
+  }
+  let peers: CollegeDetail[] = [];
+  try {
+    peers = pinned.length > 0 ? pinned : await similarColleges(college, 2);
+  } catch {
+    peers = [];
+  }
   const curated = comparisonsFeaturing(college.slug);
   if (peers.length === 0 && curated.length === 0) {
     return (
