@@ -164,10 +164,10 @@ Decisions taken: D1 yes (Draft / Published / Archived), D2 platform admins publi
 | A: list order | **Done** | 6da7b7e | 1, 16 (order) |
 | B: one validation layer | **Done** | 6da7b7e | 3, 4, 7, 9, 13, 21, 25, 26, 27, 28, 29, 35, 36, 38, 39, 40, 41, 43, 44, 52, 53, 55, 57, 58, 59, 60, 62 |
 | C: Add College form | **Done** | 6da7b7e | 5, 6, 8, 14, 15, 20 |
-| E: status model | **Done**, needs the migration run (`037`) | 16... see `git log` | 10, 12, 47, 48 |
+| E: status model | **Done**, needs the migration run (`037`) | cf82b9b | 10, 12, 47, 48 |
 | F: public college page | **Done** | cc6bec1 | 11, 30, 32, 37, 56, 65, 66 |
-| D: list UI | **Done** | see `git log` | 16 (sortable), 17, 18 |
-| G: editor polish | **Done** | see `git log` | 19, 31, 33, 42, 50, 51, 54, 61, 63, 64, 67, 68, 71 |
+| D: list UI | **Done** | 9ca2531 | 16 (sortable), 17, 18 |
+| G: editor polish | **Done** | 519c711 | 19, 31, 33, 42, 50, 51, 54, 61, 63, 64, 67, 68, 71 |
 | H: data cleanup | **Not started**, needs your database | n/a | 21 (stored values), 22, 47/48 (run the script), 69, 70 |
 
 Notes for the tester:
