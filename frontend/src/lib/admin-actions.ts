@@ -1,5 +1,6 @@
 "use server";
 
+import { getCollegesMenu } from "@/components/colleges-menu-data";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -38,6 +39,11 @@ import {
   adminPutHomeCopy,
   adminGetListingHeader,
   adminPutListingHeader,
+  adminResetListingHeader,
+  adminListingHeaderScopes,
+  adminGetListingSlots,
+  adminPutListingSlots,
+  type ListingSlot,
   adminGetCollegeRankings,
   adminSetCollegeRanking,
   adminRemoveCollegeRanking,
@@ -1177,11 +1183,11 @@ export async function saveCollegeRecord(slug: string, record: CollegeRecord): Pr
   }
 }
 
-/** The author and intro shown at the top of a listing page, for its admin dialog. */
-export async function loadListingHeader(page: ListingPage) {
+/** The header of a listing page, or of one selection from the colleges menu (`scope`, e.g. "course=MBA"), for its admin dialog. */
+export async function loadListingHeader(page: ListingPage, scope?: string) {
   const token = await requireAdminToken();
   try {
-    return await adminGetListingHeader(token, page);
+    return await adminGetListingHeader(token, page, scope);
   } catch (err) {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
     if (err instanceof ApiError) return { error: err.message };
@@ -1189,8 +1195,46 @@ export async function loadListingHeader(page: ListingPage) {
   }
 }
 
-export async function saveListingHeader(page: ListingPage, value: ListingHeader): Promise<AdminActionResult> {
-  const result = await attempt(`/admin/${page}`, (token) => adminPutListingHeader(token, page, value));
+export async function saveListingHeader(page: ListingPage, value: ListingHeader, scope?: string): Promise<AdminActionResult> {
+  const result = await attempt(`/admin/${page}`, (token) => adminPutListingHeader(token, page, value, scope));
+  if ("ok" in result) revalidatePath(`/${page}`);
+  return result;
+}
+
+/** Give a selection back the page's own header. */
+export async function resetListingHeader(page: ListingPage, scope: string): Promise<AdminActionResult> {
+  const result = await attempt(`/admin/${page}`, (token) => adminResetListingHeader(token, page, scope));
+  if ("ok" in result) revalidatePath(`/${page}`);
+  return result;
+}
+
+/** What the header dialog offers to edit: every selection in the colleges menu, and which already have their own header. */
+export async function loadHeaderTargets(page: ListingPage) {
+  const token = await requireAdminToken();
+  try {
+    const [groups, custom] = await Promise.all([getCollegesMenu(Infinity), adminListingHeaderScopes(token, page)]);
+    return { groups, custom };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: "Could not load the menu selections. Try again." };
+  }
+}
+
+/** The banners, filter strips and ads between the colleges, for the manager dialog (with the menu's options, for the preview chips). */
+export async function loadListingSlots(page: ListingPage) {
+  const token = await requireAdminToken();
+  try {
+    const [{ slots }, groups] = await Promise.all([adminGetListingSlots(token, page), getCollegesMenu(8)]);
+    return { slots, groups };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not load the banners and ads. Try again." };
+  }
+}
+
+export async function saveListingSlots(page: ListingPage, slots: ListingSlot[]): Promise<AdminActionResult> {
+  const result = await attempt(`/admin/${page}`, (token) => adminPutListingSlots(token, page, slots));
   if ("ok" in result) revalidatePath(`/${page}`);
   return result;
 }

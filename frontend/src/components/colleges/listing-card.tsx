@@ -16,11 +16,9 @@ import { CompareButton } from "@/components/colleges/compare-button";
  */
 export type CardBadges = { featured: boolean; topRated: boolean; mostViewed: boolean };
 
-/** Where a shortcut goes: `/college/<slug>/<section>`. The slugs are the ones in lib/college-sections.ts. */
+/** Courses and fees are left out: the Courses and Total fees tiles above already say so. Where a shortcut goes: `/college/<slug>/<section>`. The slugs are the ones in lib/college-sections.ts. */
 const SHORTCUTS = [
   { label: "Admissions", section: "admission-process" },
-  { label: "Courses", section: "courses" },
-  { label: "Fees", section: "fees" },
   { label: "Placements", section: "placements" },
   { label: "Cut-offs", section: "cutoffs" },
 ] as const;
@@ -54,6 +52,7 @@ function Pill({ icon: Icon, tone, children }: { icon: typeof Star; tone: "gold" 
 export function ListingCard({ college, badges }: { college: College; badges?: CardBadges }) {
   const exams = college.examsAccepted;
   const extra = Math.max(0, exams.length - 2);
+  const courses = college.courses ?? [];
   const href = `/college/${college.slug}`;
   const rank = college.ranking?.rank;
   const stars = Math.round(college.rating);
@@ -155,8 +154,31 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
           </div>
 
           <div className="mt-5 flex flex-col gap-4 @2xl:flex-row @2xl:items-stretch @2xl:justify-between">
-            <dl className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 @md:grid-cols-3">
-              <Fact icon={BookOpen} label="Courses" hint={courseHint(college.coursesOffered)} inline>
+            <dl className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 @md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)_minmax(0,1fr)]">
+              <Fact
+                icon={BookOpen}
+                label="Courses"
+                hint={courseHint(college.coursesOffered)}
+                inline
+                popup={
+                  courses.length > 0 && (
+                    <>
+                      <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-faint">Courses offered</p>
+                      <ul className="max-h-60 space-y-1 overflow-y-auto">
+                        {courses.map((course) => (
+                          <li key={course.name} className="flex items-baseline justify-between gap-4 text-sm">
+                            <span className="font-semibold text-ink">
+                              {course.name}
+                              {course.duration && <span className="font-normal text-ink-soft"> · {course.duration}</span>}
+                            </span>
+                            {course.fees && <span className="shrink-0 font-bold text-brand-ink">{course.fees}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )
+                }
+              >
                 <Link
                   href={`${href}/courses`}
                   aria-label={`${college.coursesOffered} ${college.coursesOffered === 1 ? "course" : "courses"}`}
@@ -165,15 +187,34 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
                   {college.coursesOffered}
                 </Link>
               </Fact>
-              <Fact icon={IndianRupee} label="Total fees" hint="Your budget check">
-                {college.feesRange || "Ask the college"}
+              <Fact icon={IndianRupee} label="Total fees" hint="Your budget check" small>
+                <span className="whitespace-nowrap">{college.feesRange || "Ask the college"}</span>
               </Fact>
-              <Fact icon={GraduationCap} label="Exams accepted" hint="Your entry pass">
+              <Fact
+                icon={GraduationCap}
+                label="Exams accepted"
+                hint="Your entry pass"
+                small
+                popup={
+                  exams.length > 0 && (
+                    <>
+                      <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-faint">Exams accepted</p>
+                      <ul className="flex flex-wrap gap-1.5">
+                        {exams.map((exam) => (
+                          <li key={exam} className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand-ink">
+                            {exam}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )
+                }
+              >
                 {exams.length ? (
-                  <>
+                  <span className="block truncate">
                     {exams.slice(0, 2).join(", ")}
                     {extra > 0 && <span className="text-brand"> +{extra} more</span>}
-                  </>
+                  </span>
                 ) : (
                   "Not listed yet"
                 )}
@@ -233,16 +274,33 @@ function Fact({
   label,
   hint,
   inline = false,
+  small = false,
+  popup,
   children,
 }: {
   icon: typeof Star;
   label: string;
   hint?: string;
   inline?: boolean;
+  /** Smaller figure text, for values that are long (a fee range, a list of exams). */
+  small?: boolean;
+  /** Shown in a bubble above the tile while it is hovered or focused. */
+  popup?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl bg-bg-alt px-3.5 py-3 transition group-hover:bg-brand-soft/50">
+    <div
+      tabIndex={popup ? 0 : undefined}
+      className="group/fact relative flex min-w-0 items-center gap-3 rounded-xl bg-bg-alt px-3.5 py-3 outline-none transition group-hover:bg-brand-soft/50"
+    >
+      {popup && (
+        <div
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 w-max max-w-[24rem] translate-y-1 rounded-xl border border-line bg-surface p-3 opacity-0 shadow-lg transition group-hover/fact:translate-y-0 group-hover/fact:opacity-100 group-focus/fact:translate-y-0 group-focus/fact:opacity-100"
+        >
+          {popup}
+        </div>
+      )}
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-surface text-brand shadow-sm transition duration-300 group-hover:scale-105">
         <Icon className="h-5 w-5" aria-hidden="true" />
       </span>
@@ -255,7 +313,7 @@ function Fact({
         ) : (
           <>
             <dt className="text-xs font-bold uppercase tracking-wider text-ink-faint">{label}</dt>
-            <dd className="mt-0.5 font-display text-xl font-extrabold leading-tight text-ink">{children}</dd>
+            <dd className={`mt-0.5 font-display font-extrabold leading-tight text-ink ${small ? "text-lg" : "text-xl"}`}>{children}</dd>
           </>
         )}
         {hint && <p className="mt-0.5 text-xs italic text-brand-ink/70">{hint}</p>}

@@ -2,16 +2,21 @@ import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
 import { MobileNav } from "@/components/mobile-nav";
 import { HeaderAccount } from "@/components/header-account";
+import { CollegesMenu } from "@/components/colleges-menu";
+import { getCollegesMenu } from "@/components/colleges-menu-data";
+
+const COLLEGES_LINK = { label: "Top Ranked Colleges", href: "/colleges" };
 
 const navLinks = [
   { label: "Courses", href: "/courses" },
-  { label: "Top Ranked Colleges", href: "/colleges?sort=ranking" },
+  COLLEGES_LINK,
   { label: "Compare", href: "/compare" },
   { label: "News", href: "/articles" },
   // { label: "Study Abroad", href: "/study-abroad" },
 ];
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const collegesMenu = await getCollegesMenu();
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
@@ -26,11 +31,15 @@ export function SiteHeader() {
         </Link>
 
         <nav className="ml-auto hidden items-center gap-6 text-sm font-medium text-ink-soft lg:flex">
-          {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-brand">
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) =>
+            link === COLLEGES_LINK ? (
+              <CollegesMenu key={link.href} label={link.label} href={link.href} groups={collegesMenu} />
+            ) : (
+              <Link key={link.href} href={link.href} className="hover:text-brand">
+                {link.label}
+              </Link>
+            ),
+          )}
         </nav>
 
         {/* In flow so the header sizes to it; ml-auto pins it right on the
@@ -39,7 +48,7 @@ export function SiteHeader() {
         <HeaderAccount />
 
         {/* Below lg the links above are hidden, so they move in here. */}
-        <MobileNav links={navLinks} />
+        <MobileNav links={navLinks} menuHref={COLLEGES_LINK.href} menu={collegesMenu} />
       </div>
     </header>
   );

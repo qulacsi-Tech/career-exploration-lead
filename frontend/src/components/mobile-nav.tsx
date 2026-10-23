@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import type { MenuGroup } from "@/components/colleges-menu";
 
 /**
  * The nav links below the `lg` breakpoint, behind a hamburger.
@@ -13,7 +14,16 @@ import Link from "next/link";
  * already a containing block, so `top-full` drops it directly under the bar
  * without the header needing a `relative` of its own.
  */
-export function MobileNav({ links }: { links: { label: string; href: string }[] }) {
+export function MobileNav({
+  links,
+  menuHref,
+  menu = [],
+}: {
+  links: { label: string; href: string }[];
+  /** The link that opens as an expandable list of `menu` groups instead of a plain link. */
+  menuHref?: string;
+  menu?: MenuGroup[];
+}) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -64,7 +74,31 @@ export function MobileNav({ links }: { links: { label: string; href: string }[] 
         className="absolute inset-x-0 top-full border-b border-line bg-surface shadow-lg lg:hidden"
       >
         <nav className="mx-auto flex max-w-7xl flex-col px-4 py-2 sm:px-6">
-          {links.map((link) => (
+          {links.map((link) =>
+            link.href === menuHref && menu.length > 0 ? (
+              <details key={link.href} className="border-b border-line-soft">
+                <summary className="cursor-pointer py-3 text-sm font-medium text-ink-soft hover:text-brand">{link.label}</summary>
+                <div className="pb-2 pl-3">
+                  {menu.map((group) => (
+                    <details key={group.label}>
+                      <summary className="cursor-pointer py-2 text-sm text-ink-soft hover:text-brand">{group.label}</summary>
+                      <ul className="max-h-60 overflow-y-auto pb-2 pl-3">
+                        {group.items.map((item) => (
+                          <li key={item.href}>
+                            <Link href={item.href} onClick={() => setOpen(false)} className="block py-1.5 text-sm text-ink-soft hover:text-brand">
+                              {item.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  ))}
+                  <Link href={link.href} onClick={() => setOpen(false)} className="block py-2 text-sm font-semibold text-brand">
+                    View all colleges &rarr;
+                  </Link>
+                </div>
+              </details>
+            ) : (
             <Link
               key={link.href}
               href={link.href}
@@ -73,7 +107,8 @@ export function MobileNav({ links }: { links: { label: string; href: string }[] 
             >
               {link.label}
             </Link>
-          ))}
+            ),
+          )}
         </nav>
       </div>
     </>

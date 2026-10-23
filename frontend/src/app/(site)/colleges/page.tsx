@@ -1,13 +1,14 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
 import { Eye, Flame, SearchX, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { ListingHero, introOf } from "@/components/colleges/listing-hero";
 import { ListingCard } from "@/components/colleges/listing-card";
 import { ListingFilters } from "@/components/colleges/listing-filters";
-import { FilterStrip, PromoBanner } from "@/components/colleges/listing-extras";
+import { ListingSlotView } from "@/components/colleges/listing-slot";
 import { Reveal } from "@/components/college/reveal";
 import { appliedFilters, simple, toggleHref, type FilterGroup } from "@/components/colleges/filter-utils";
-import { getCollegeFacets, getColleges, getListingHeader, getRankings, type CollegeFacets, type CollegeParams, type RankingList } from "@/lib/api";
+import { getCollegeFacets, getColleges, getListingHeader, getListingSlots, getRankings, type ListingSlot, type CollegeFacets, type CollegeParams, type RankingList } from "@/lib/api";
+import { scopeFromParams } from "@/lib/listing-scope";
 import { badgesFor, listingFaqs, listingIntro, listingTitle } from "@/components/colleges/listing-meta";
 
 /**
@@ -94,12 +95,14 @@ export default async function CollegesListingPage({
   let meta = { total: 0, page: 1, limit: 20, pages: 1 };
 
   // The filter menu is secondary: if its request fails the listing still renders.
-  const [list, facets, header, rankingLists] = await Promise.all([
+  const [list, facets, header, rankingLists, slots] = await Promise.all([
     getColleges({ page, limit: 20, sort, ...query }).catch(() => null),
     getCollegeFacets().catch(() => NO_FACETS),
-    getListingHeader("colleges").catch(() => null),
+    getListingHeader("colleges", scopeFromParams(str)).catch(() => null),
     getRankings().catch(() => [] as RankingList[]),
+    getListingSlots("colleges").catch(() => null),
   ]);
+  const slotList = slots?.slots ?? [];
   const groups = filterGroups(facets, rankingLists);
   const pickedList = rankingLists.find((l) => l.slug === query.ranking_list);
   const applied = appliedFilters("/colleges", groups, search);
@@ -108,11 +111,15 @@ export default async function CollegesListingPage({
     meta = list.meta;
   }
 
-  const { title, filtered } = listingTitle({
+  const { title: autoTitle, filtered } = listingTitle({
     q: query.q, city: query.city, course: query.course, specialisation: query.specialisation,
     level: query.level, credential: query.credential, mode: query.mode, ownership: query.ownership,
     exam: query.exam, approval: query.approval, ranking_max: query.ranking_max, ranking_list_name: pickedList?.name, min_rating: query.min_rating,
   });
+  // A heading the admin wrote applies to the page it was written for: a selection's own header on
+  // that selection alone, the page's on the unfiltered page.
+  const written = header?.title && (scopeFromParams(str) ? header.custom && applied.length === 1 : !filtered) ? header.title : "";
+  const title = written || autoTitle;
   const badgeOf = badgesFor(colleges);
   const badgeCounts = colleges.reduce(
     (n, c) => {
@@ -139,22 +146,19 @@ export default async function CollegesListingPage({
   };
 
   /**
-   * What goes between the colleges, after the Shiksha page the client pointed at: a banner or a strip
-   * of filters every few rows, in a repeating order. Keyed by the row it follows, and never placed
-   * after the last row, so the list does not end on an advertisement.
+   * What goes between the colleges: the banners, filter strips and ads set in the admin's Banners &
+   * ads. Each slot is shown after `after` colleges on the page, and again every `every` more. It is
+   * never placed after the last college, so the list does not end on an advertisement.
    */
-  const between: Record<number, ReactNode> = {
-    1: <PromoBanner variant="compare" />,
-    4: <FilterStrip kind="location" chips={chipsFor("location", 10)} />,
-    7: <PromoBanner variant="counselling" />,
-    10: <FilterStrip kind="ownership" chips={chipsFor("ownership", 4)} />,
-    13: <PromoBanner variant="exams" />,
-    16: <FilterStrip kind="fees" chips={chipsFor("fees", 4)} />,
-  };
-  const sortLabel = SORTS.find((s) => s.key === sort)?.label ?? "Popularity";
-  const shownFrom = (page - 1) * 20 + 1;
+  const between = new Map<number, ListingSlot[]>();
+  for (const slot of slotList) {
+    if (!slot.enabled) continue;
+    for (let at = slot.after; at < colleges.length; at += slot.every || colleges.length) {
+      between.set(at, [...(between.get(at) ?? []), slot]);
+    }
+  }
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[96rem] px-4 py-5 sm:px-6 lg:px-8">
       <ListingHero
         crumbs={[
           { label: "Home", href: "/" },
@@ -168,7 +172,7 @@ export default async function CollegesListingPage({
       />
 
       {/* Filter bar: applied filters on the left, badge legend on the right */}
-      <div className="mt-6 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-3 flex flex-col gap-3 border-b border-line pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 pr-2 text-sm font-medium text-ink">
             <SlidersHorizontal className="h-4 w-4 text-brand" />
@@ -200,21 +204,7 @@ export default async function CollegesListingPage({
         </ul>
       </div>
 
-      {/* A line of plain-spoken context, so the page says where you are and what to do next. */}
-      <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-ink">
-        <span className="tcp-live-dot inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
-        {meta.total > 0 ? (
-          <>
-            Showing <strong className="font-bold">{shownFrom}&ndash;{shownFrom + colleges.length - 1}</strong> of{" "}
-            <strong className="font-bold">{meta.total}</strong> colleges, sorted by <strong className="font-bold">{sortLabel.toLowerCase()}</strong>.
-            <span className="text-ink-soft">Hover a card, peek inside, add two to Compare. Nothing bites.</span>
-          </>
-        ) : (
-          <>No colleges to show for these filters.</>
-        )}
-      </p>
-
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="mb-3 rounded-2xl bg-gradient-to-br from-brand-soft to-bg-alt px-4 py-3">
             <p className="font-display text-lg font-extrabold uppercase tracking-wide text-brand-ink">Filters</p>
@@ -230,7 +220,11 @@ export default async function CollegesListingPage({
                 <Reveal amount={0.12}>
                   <ListingCard college={college} badges={badgeOf(college)} />
                 </Reveal>
-                {i < colleges.length - 1 && between[i] && <Reveal amount={0.2}>{between[i]}</Reveal>}
+                {between.get(i + 1)?.map((slot) => (
+                  <Reveal key={slot.id} amount={0.2}>
+                    <ListingSlotView slot={slot} chips={slot.type === "filter" ? chipsFor(slot.group, slot.limit) : []} />
+                  </Reveal>
+                ))}
               </Fragment>
             ))}
             {colleges.length === 0 && (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BadgeCheck, Sparkles } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { HeroIntro } from "@/components/colleges/hero-intro";
 import { ShareLinks } from "@/components/colleges/share-links";
 import { mediaUrl } from "@/lib/media";
 import type { ListingHeader } from "@/lib/api";
@@ -31,17 +32,19 @@ export function ListingHero({
   intro: string[];
   author?: ListingHeader | null;
 }) {
+  const hasAuthor = Boolean(author?.name);
   const updated = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
   return (
     <section className="relative overflow-hidden rounded-xl border border-line bg-gradient-to-br from-surface via-surface to-brand-soft/60 shadow-sm">
       <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-brand" />
-      <div className="grid gap-x-8 gap-y-3 px-5 py-4 lg:grid-cols-[250px_minmax(0,1fr)]">
-        <div className="min-w-0">
+      <div className={`grid gap-x-8 gap-y-3 px-5 py-3 ${hasAuthor ? "lg:grid-cols-[250px_minmax(0,1fr)]" : ""}`}>
+        {/* With no author the left column goes away: the crumbs sit above the heading and the text starts at the left edge. */}
+        <div className={hasAuthor ? "min-w-0" : "flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1"}>
           <Breadcrumbs items={crumbs} />
-          <p className="mt-1 text-sm text-ink-soft">Updated on {updated}</p>
-          {author?.name && (
-            <div className="mt-3 inline-flex items-center gap-3 rounded-full border border-line bg-surface/80 py-1.5 pl-1.5 pr-4 shadow-sm">
+          <p className={`text-sm text-ink-soft ${hasAuthor ? "mt-1" : ""}`}>Updated on {updated}</p>
+          {hasAuthor && author && (
+            <div className="mt-2 inline-flex items-center gap-3 rounded-full border border-line bg-surface/80 py-1.5 pl-1.5 pr-4 shadow-sm">
               {author.photo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={mediaUrl(author.photo)} alt={author.name} className="h-10 w-10 rounded-full object-cover ring-2 ring-brand-soft" />
@@ -72,27 +75,15 @@ export function ListingHero({
               {countLabel}
             </span>
           </h1>
-          <div className="mt-2 text-base leading-relaxed text-ink">
-            <p>{intro[0]}</p>
-            {intro.length > 1 && (
-              <details className="group">
-                <summary className="cursor-pointer list-none font-medium text-brand hover:underline group-open:hidden">
-                  Read More
-                </summary>
-                {intro.slice(1).map((paragraph) => (
-                  <p key={paragraph} className="mt-1">{paragraph}</p>
-                ))}
-              </details>
-            )}
-          </div>
+          <HeroIntro paragraphs={intro} />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/70 bg-surface/60 px-5 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/70 bg-surface/60 px-5 py-2">
         <ShareLinks title={title} />
         <Link
           href="/enquiry" data-track="cta_enquiry"
-          className="tcp-wiggle rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
+          className="tcp-wiggle rounded-full bg-brand px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
         >
           Get Free Counselling
         </Link>

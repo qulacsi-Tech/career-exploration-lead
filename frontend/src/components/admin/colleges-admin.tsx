@@ -13,6 +13,7 @@ import { mediaUrl } from "@/lib/media";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { ListingHeaderButton } from "@/components/admin/listing-header-modal";
+import { ListingSlotsButton } from "@/components/admin/listing-slots-modal";
 import { StateCityFields } from "@/components/admin/state-city-fields";
 import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
@@ -87,7 +88,8 @@ export function CollegesAdmin({ colleges, geo = {} }: { colleges: College[]; geo
         description="Every institute in the directory, with its courses, fees, placements and SEO fields."
         actions={
           <>
-            <ListingHeaderButton page="colleges" label="Colleges page header" />
+            <ListingHeaderButton page="colleges" label="Header management" />
+            <ListingSlotsButton page="colleges" label="Banners, filters & ads" />
             <button
               type="button"
               onClick={() => setAdding(true)}

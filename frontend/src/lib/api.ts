@@ -2283,19 +2283,83 @@ export async function adminGetCollegePools(token: string): Promise<CollegePools>
 // ── Header of a listing page: the author and the intro text ───────────────
 
 export type ListingPage = "colleges" | "courses";
-/** Empty name: no author row. Empty intro: the page writes its own from its data. Paragraphs are split by a blank line. */
-export type ListingHeader = { name: string; role: string; photo: string; intro: string };
+/**
+ * Empty name: no author row. Empty intro: the page writes its own from its data. Paragraphs are split
+ * by a blank line. Empty title: the heading is written from the filters picked.
+ */
+export type ListingHeader = { name: string; role: string; photo: string; intro: string; title: string };
+/** What the API returns: `custom` is true when this selection (or the page, with no selection) has a header of its own. */
+export type ListingHeaderRecord = ListingHeader & { custom: boolean };
 
-export async function getListingHeader(page: ListingPage): Promise<ListingHeader> {
-  return apiFetch<ListingHeader>(`/listing-header/${page}`);
+/** A scope is one selection from the colleges menu, written as its filter: "course=MBA". */
+const scopeQuery = (scope?: string) => (scope ? `?scope=${encodeURIComponent(scope)}` : "");
+
+export async function getListingHeader(page: ListingPage, scope?: string): Promise<ListingHeaderRecord> {
+  return apiFetch<ListingHeaderRecord>(`/listing-header/${page}${scopeQuery(scope)}`);
 }
 
-export async function adminGetListingHeader(token: string, page: ListingPage): Promise<ListingHeader> {
-  return adminRequest<ListingHeader>(token, "GET", `/admin/listing-header/${page}`);
+export async function adminGetListingHeader(token: string, page: ListingPage, scope?: string): Promise<ListingHeaderRecord> {
+  return adminRequest<ListingHeaderRecord>(token, "GET", `/admin/listing-header/${page}${scopeQuery(scope)}`);
 }
 
-export async function adminPutListingHeader(token: string, page: ListingPage, value: ListingHeader) {
-  return adminRequest<{ message: string }>(token, "PUT", `/admin/listing-header/${page}`, value);
+export async function adminPutListingHeader(token: string, page: ListingPage, value: ListingHeader, scope?: string) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/listing-header/${page}${scopeQuery(scope)}`, value);
+}
+
+export async function adminResetListingHeader(token: string, page: ListingPage, scope: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/listing-header/${page}${scopeQuery(scope)}`);
+}
+
+/** The selections that already have a header of their own. */
+export async function adminListingHeaderScopes(token: string, page: ListingPage): Promise<string[]> {
+  return adminRequest<string[]>(token, "GET", `/admin/listing-header/${page}/scopes`);
+}
+
+// ── What sits between the colleges on a listing page: banners, filter strips, ads ──
+
+export type SlotType = "banner" | "filter" | "ad";
+export type SlotPreset = "brand" | "amber" | "emerald" | "ocean" | "plum" | "night" | "cream";
+export type SlotIcon = "compare" | "handshake" | "target" | "sparkles" | "graduation" | "none";
+export type SlotGroup = "location" | "ranking" | "course" | "specialisation" | "credential" | "level" | "mode" | "fees" | "ownership" | "exam" | "approval";
+
+/** One item between the colleges. Shown after `after` colleges, and again every `every` more (0: once). */
+export type ListingSlot = {
+  id: string;
+  type: SlotType;
+  enabled: boolean;
+  after: number;
+  every: number;
+  bgMode: "preset" | "gradient" | "solid" | "image";
+  bgPreset: SlotPreset;
+  bgFrom: string;
+  bgTo: string;
+  bgImage: string;
+  /** "light" is white text, for a dark background. */
+  tone: "light" | "dark";
+  title: string;
+  text: string;
+  buttonLabel: string;
+  buttonHref: string;
+  icon: SlotIcon;
+  sponsored: boolean;
+  image: string;
+  href: string;
+  alt: string;
+  group: SlotGroup;
+  hint: string;
+  limit: number;
+};
+
+export async function getListingSlots(page: ListingPage): Promise<{ slots: ListingSlot[] }> {
+  return apiFetch<{ slots: ListingSlot[] }>(`/listing-slots/${page}`);
+}
+
+export async function adminGetListingSlots(token: string, page: ListingPage): Promise<{ slots: ListingSlot[] }> {
+  return adminRequest<{ slots: ListingSlot[] }>(token, "GET", `/admin/listing-slots/${page}`);
+}
+
+export async function adminPutListingSlots(token: string, page: ListingPage, slots: ListingSlot[]) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/listing-slots/${page}`, { slots });
 }
 
 // ── A college's place in the ranking lists ────────────────────────────────
