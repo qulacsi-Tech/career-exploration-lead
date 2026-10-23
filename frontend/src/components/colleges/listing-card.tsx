@@ -73,13 +73,13 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
 
       <div className="flex gap-4 p-5 pl-6 @2xl:gap-5">
         <div
-          className="hidden w-[5.25rem] shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-brand-soft to-bg-alt px-2 py-3 text-center @lg:flex"
+          className="hidden w-[6.25rem] shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-brand-soft to-bg-alt px-2 py-3 text-center @lg:flex"
           aria-label={rank ? `Ranked ${rank} by ${college.ranking.authority}` : "Not ranked yet"}
         >
           {rank ? (
             <>
               <Medal className="h-5 w-5 text-gold transition group-hover:-rotate-12" aria-hidden="true" />
-              <span className="mt-0.5 font-display text-4xl font-extrabold leading-none text-brand-ink transition duration-300 group-hover:scale-110">
+              <span className="mt-0.5 bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-5xl font-extrabold leading-none tracking-tight text-transparent transition duration-300 group-hover:scale-110">
                 {rank}
               </span>
               <span className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-brand">{college.ranking.authority}</span>
@@ -139,7 +139,7 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
                       <Star key={i} className={`h-4 w-4 ${i < stars ? "fill-gold text-gold" : "text-line"}`} />
                     ))}
                   </span>
-                  {college.rating.toFixed(1)}
+                  <span className="font-display text-xl font-extrabold leading-none text-ink">{college.rating.toFixed(1)}</span>
                   <span className="font-normal text-ink-soft">({college.reviewCount} reviews)</span>
                 </span>
               </div>
@@ -156,19 +156,23 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
 
           <div className="mt-5 flex flex-col gap-4 @2xl:flex-row @2xl:items-stretch @2xl:justify-between">
             <dl className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 @md:grid-cols-3">
-              <Fact icon={BookOpen} label="Courses to explore">
-                <Link href={`${href}/courses`} className="font-semibold text-brand hover:underline">
-                  {college.coursesOffered} {college.coursesOffered === 1 ? "course" : "courses"}
+              <Fact icon={BookOpen} label="Courses" hint={courseHint(college.coursesOffered)} inline>
+                <Link
+                  href={`${href}/courses`}
+                  aria-label={`${college.coursesOffered} ${college.coursesOffered === 1 ? "course" : "courses"}`}
+                  className="bg-[linear-gradient(to_top,var(--color-gold-soft)_38%,transparent_38%)] px-1 font-display text-4xl font-extrabold leading-none text-brand transition hover:scale-110"
+                >
+                  {college.coursesOffered}
                 </Link>
               </Fact>
-              <Fact icon={IndianRupee} label="Total fees">
+              <Fact icon={IndianRupee} label="Total fees" hint="Your budget check">
                 {college.feesRange || "Ask the college"}
               </Fact>
-              <Fact icon={GraduationCap} label="Exams accepted">
+              <Fact icon={GraduationCap} label="Exams accepted" hint="Your entry pass">
                 {exams.length ? (
                   <>
                     {exams.slice(0, 2).join(", ")}
-                    {extra > 0 && <span className="font-semibold text-brand"> +{extra} more</span>}
+                    {extra > 0 && <span className="text-brand"> +{extra} more</span>}
                   </>
                 ) : (
                   "Not listed yet"
@@ -212,15 +216,49 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
   );
 }
 
-function Fact({ icon: Icon, label, children }: { icon: typeof Star; label: string; children: React.ReactNode }) {
+/** A playful line under the courses figure, from how many there are. */
+function courseHint(count: number): string {
+  if (count >= 8) return "Loads to choose from";
+  if (count >= 4) return "Plenty to pick from";
+  return "A focused few";
+}
+
+/**
+ * One fact tile. The number or figure is the star of it: large, in the display face and heavy, with a
+ * small label above and a playful line below. `inline` puts the label and the figure on one line, for
+ * a single short number such as the course count.
+ */
+function Fact({
+  icon: Icon,
+  label,
+  hint,
+  inline = false,
+  children,
+}: {
+  icon: typeof Star;
+  label: string;
+  hint?: string;
+  inline?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex min-w-0 items-start gap-2.5 rounded-xl bg-bg-alt px-3 py-2.5 transition group-hover:bg-brand-soft/50">
-      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface text-brand shadow-sm">
-        <Icon className="h-4 w-4" aria-hidden="true" />
+    <div className="flex min-w-0 items-center gap-3 rounded-xl bg-bg-alt px-3.5 py-3 transition group-hover:bg-brand-soft/50">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-surface text-brand shadow-sm transition duration-300 group-hover:scale-105">
+        <Icon className="h-5 w-5" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <dt className="text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</dt>
-        <dd className="mt-0.5 text-sm font-semibold leading-snug text-ink">{children}</dd>
+        {inline ? (
+          <div className="flex items-center gap-2.5">
+            <dt className="text-xs font-bold uppercase tracking-wider text-ink-faint">{label}</dt>
+            <dd>{children}</dd>
+          </div>
+        ) : (
+          <>
+            <dt className="text-xs font-bold uppercase tracking-wider text-ink-faint">{label}</dt>
+            <dd className="mt-0.5 font-display text-xl font-extrabold leading-tight text-ink">{children}</dd>
+          </>
+        )}
+        {hint && <p className="mt-0.5 text-xs italic text-brand-ink/70">{hint}</p>}
       </div>
     </div>
   );
