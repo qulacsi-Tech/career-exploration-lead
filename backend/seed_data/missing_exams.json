@@ -1,0 +1,88 @@
+[
+  {
+    "slug": "gmat",
+    "name": "Graduate Management Admission Test (GMAT)",
+    "conducting_body": "GMAC",
+    "level": "National",
+    "stream": "Management",
+    "description": "A computer-based test of quantitative, verbal and data-insights skills, accepted by business schools in India and abroad for MBA and PGDM admission. Scores stay valid for five years.",
+    "registration_closes": "Rolling: book any time",
+    "exam_date": "Year-round, on demand",
+    "mode": "Online",
+    "frequency": "Year-round, on demand",
+    "application_fee": "US$275 (about ₹23,000)",
+    "official_site": "mba.com/exams/gmat-exam",
+    "duration_minutes": 135,
+    "sections": [
+      "Quantitative Reasoning",
+      "Verbal Reasoning",
+      "Data Insights"
+    ],
+    "eligibility": "Bachelor's degree in any discipline; some schools also ask for work experience.",
+    "syllabus": "Quantitative Reasoning (problem solving), Verbal Reasoning (reading comprehension and critical reasoning) and Data Insights (data sufficiency, tables, graphics and multi-source reasoning)."
+  },
+  {
+    "slug": "tnea",
+    "name": "Tamil Nadu Engineering Admissions (TNEA)",
+    "conducting_body": "Directorate of Technical Education, Tamil Nadu",
+    "level": "State",
+    "stream": "Engineering",
+    "description": "Online counselling for B.E. and B.Tech seats in Tamil Nadu's engineering colleges. Seats are allotted on Class 12 marks, so there is no separate entrance test.",
+    "registration_closes": "Usually June",
+    "exam_date": "Counselling usually July to September",
+    "mode": "Online",
+    "frequency": "Once a year",
+    "application_fee": "₹500 (₹250 for SC/ST)",
+    "official_site": "tneaonline.org",
+    "duration_minutes": null,
+    "sections": [
+      "Class 12 marks (Physics, Chemistry, Mathematics)"
+    ],
+    "eligibility": "Passed Class 12 with Physics, Chemistry and Mathematics; Tamil Nadu rules on nativity and category apply.",
+    "syllabus": "No entrance syllabus: the rank list is built from Class 12 marks in Physics, Chemistry and Mathematics."
+  },
+  {
+    "slug": "comedk",
+    "name": "COMEDK UGET",
+    "conducting_body": "COMEDK",
+    "level": "State",
+    "stream": "Engineering",
+    "description": "Computer-based entrance test for B.E. and B.Tech seats in the private engineering colleges of Karnataka that belong to the COMEDK consortium.",
+    "registration_closes": "Usually April",
+    "exam_date": "Usually May",
+    "mode": "Online",
+    "frequency": "Once a year",
+    "application_fee": "₹1,800",
+    "official_site": "comedk.org",
+    "duration_minutes": 180,
+    "sections": [
+      "Physics",
+      "Chemistry",
+      "Mathematics"
+    ],
+    "eligibility": "Class 12 with Physics, Chemistry and Mathematics, with the minimum marks COMEDK sets each year.",
+    "syllabus": "Physics, Chemistry and Mathematics of the Class 11 and 12 syllabus."
+  },
+  {
+    "slug": "mht-cet",
+    "name": "MHT CET",
+    "conducting_body": "State Common Entrance Test Cell, Maharashtra",
+    "level": "State",
+    "stream": "Engineering",
+    "description": "Maharashtra's entrance test for B.E. and B.Tech admission, with separate groups for the engineering and pharmacy streams.",
+    "registration_closes": "Usually March",
+    "exam_date": "Usually April to May",
+    "mode": "Online",
+    "frequency": "Once a year",
+    "application_fee": "₹800 (₹600 for reserved categories)",
+    "official_site": "cetcell.mahacet.org",
+    "duration_minutes": 180,
+    "sections": [
+      "Physics",
+      "Chemistry",
+      "Mathematics"
+    ],
+    "eligibility": "Class 12 with Physics and Mathematics plus Chemistry, Biotechnology, Biology or a technical subject, with the minimum marks the CET Cell sets.",
+    "syllabus": "Physics, Chemistry and Mathematics (PCM group), drawn from the Class 11 and 12 syllabus with weight on Class 12."
+  }
+]

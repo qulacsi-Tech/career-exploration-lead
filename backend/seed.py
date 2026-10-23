@@ -746,12 +746,21 @@ async def _seed_college_extras(session: AsyncSession) -> None:
 
 
 async def _seed_exams(session: AsyncSession) -> None:
+    from sqlalchemy import select
+
     print("Seeding exams …")
-    for data in EXAMS:
+    # Exams colleges name that are not in the list above (also added to existing databases by migration 038).
+    extra = [{**e, "level": ExamLevel(e["level"])} for e in json.loads((Path(__file__).parent / "seed_data" / "missing_exams.json").read_text(encoding="utf-8"))]
+    have = set((await session.execute(select(Exam.slug))).scalars())
+    added = 0
+    for data in [*EXAMS, *extra]:
+        if data["slug"] in have:
+            continue
         image = f"/images/exams/{data['slug']}.jpg" if data["slug"] in _EXAM_PHOTOS else ""
         session.add(Exam(id=uuid.uuid4(), image=image, **data))
+        added += 1
     await session.commit()
-    print(f"  ✓ {len(EXAMS)} exams seeded")
+    print(f"  ✓ {added} exams seeded")
 
 
 async def _seed_locations(session: AsyncSession) -> None:

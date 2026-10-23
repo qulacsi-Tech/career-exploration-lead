@@ -192,4 +192,10 @@ Notes for the tester:
 | 70 | Adds the missing space before an exam's abbreviation ("Test(CAT)" becomes "Test (CAT)"). Colleges keep the exam names they have; a new exam picked in the editor uses the directory's name. |
 | also | A state typo with one clear match ("Karnatak") is corrected. It also lists exams used by colleges but missing from the Exams directory, fee ranges, tags and durations the new rules refuse, and placements with the highest below the average. |
 
-Run against the **local** database (16 colleges) it found no QA records, duplicates or negative counts: those are in the tester's environment, which is a different database. The only repairs it would make here are ten programme counts that were higher than the programmes listed (for example Cascade says 9 courses but lists 3). They were **not applied**: applying them makes cards say fewer courses. Seven exams used by colleges are not in the directory (GMAT, TNEA, COMEDK, MHT CET, "Institute Entrance Test").
+Run against the **local** database (16 colleges) it found no QA records, duplicates or negative counts: those are in the tester's environment, which is a different database, so the script still has to be run there (`--apply` after reading the report).
+
+Done on the local database:
+
+- **Programme counts:** ten colleges that said more courses than they list (for example Cascade: 9 against 3 listed) now say the number they list. A second run reports nothing left to repair.
+- **Missing exams:** GMAT, TNEA, COMEDK UGET and MHT CET were used by colleges but were not in the directory. Migration `038` adds them (and `seed.py` does the same on a fresh database), so they can be chosen in the editor and a save naming them passes. Their descriptions, fees and sections are written from public information, but their dates are only "usually ..." because the real dates change each year: please check them on the Exams page in the admin.
+- **Left as it is:** "Institute Entrance Test" on one college's programme is that college's own test, not a national exam, so it stays outside the directory. It is kept on save because it was already on the record.
