@@ -91,7 +91,7 @@ export function CollegeRecordEditor({
 }: {
   slug: string;
   onClose: () => void;
-  onSaved?: (name: string) => void;
+  onSaved?: (name: string, record: CollegeRecord) => void;
   mode?: "full" | "readonly" | "submit";
 }) {
   const readonly = mode === "readonly";
@@ -145,7 +145,7 @@ export function CollegeRecordEditor({
     startTransition(async () => {
       const result = await saveCollegeRecord(slug, record);
       if ("error" in result) return setError(result.error);
-      onSaved?.(record.name);
+      onSaved?.(record.name, record);
       onClose();
     });
   };
@@ -157,7 +157,7 @@ export function CollegeRecordEditor({
     startTransition(async () => {
       const result = await collegeSubmitEdit(record, note);
       if ("error" in result) return setError(result.error);
-      onSaved?.(record.name);
+      onSaved?.(record.name, record);
       onClose();
     });
   };

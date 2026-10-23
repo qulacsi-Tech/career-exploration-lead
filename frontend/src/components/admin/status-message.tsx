@@ -41,14 +41,15 @@ export function useFlash(): [Flash, (kind: "ok" | "error", text: string) => void
   return [flash, show, clear];
 }
 
-export function StatusMessage({ flash }: { flash: Flash }) {
+export function StatusMessage({ flash, floating = false }: { flash: Flash; floating?: boolean }) {
   // The live region is always in the page, so a screen reader announces the text when it appears.
+  // Floating: fixed over the page, so showing or hiding it never moves what is underneath.
   return (
-    <div aria-live="polite" className="min-h-0">
+    <div aria-live="polite" className={floating ? "pointer-events-none fixed bottom-6 right-6 z-[70] w-[min(24rem,calc(100vw-3rem))]" : "min-h-0"}>
       {flash && (
         <p
           role={flash.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg border px-4 py-3 text-sm ${
+          className={`rounded-lg border px-4 py-3 text-sm ${floating ? "pointer-events-auto shadow-lg" : ""} ${
             flash.kind === "error"
               ? "border-red-200 bg-red-50 text-red-700"
               : "border-green-200 bg-green-50 text-green-800"

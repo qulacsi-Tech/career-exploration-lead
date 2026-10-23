@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition, type FormEvent } from "react";
+import type { CollegeRecord } from "@/lib/api";
 import { createCollege, deleteCollegeForever, setCollegeStatus } from "@/lib/admin-actions";
 import type { College, CollegeStatus, IndiaGeo } from "@/lib/api";
 import {
@@ -39,6 +40,19 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
   const [editing, setEditing] = useState<College | null>(null);
   const [adding, setAdding] = useState(false);
   const [flash, showFlash] = useFlash();
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+
+  // What was just saved shows in its row at once. The page's own data catches up a moment later (it reads
+  // every college again), and by then it says the same thing.
+  const [patches, setPatches] = useState<Record<string, Partial<College>>>({});
+  const [added, setAdded] = useState<College[]>([]);
+  const [removed, setRemoved] = useState<string[]>([]);
+  const rows = useMemo(() => {
+    const known = new Set(colleges.map((c) => c.slug));
+    return [...added.filter((c) => !known.has(c.slug)), ...colleges]
+      .filter((c) => !removed.includes(c.slug))
+      .map((c) => (patches[c.slug] ? { ...c, ...patches[c.slug] } : c));
+  }, [colleges, added, removed, patches]);
 
   // Ranking lists belong to a program, so the second selector only has options
   // once the first is set — and a stale ranking from a previous program must
@@ -66,26 +80,35 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
       const order = new Map(
         rankedColleges(rankingSlug).map((row, index) => [row.college.slug, index]),
       );
-      return colleges
+      return rows
         .filter((c) => order.has(c.slug))
         .sort((a, b) => (order.get(a.slug) ?? 0) - (order.get(b.slug) ?? 0));
     }
     if (programSlug) {
       const inProgram = new Set(collegesInProgram(programSlug).map((c) => c.slug));
-      return colleges.filter((c) => inProgram.has(c.slug));
+      return rows.filter((c) => inProgram.has(c.slug));
     }
-    return colleges;
-  }, [colleges, programSlug, rankingSlug]);
+    return rows;
+  }, [rows, programSlug, rankingSlug]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const byStatus = statusFilter ? scoped.filter((c) => (c.status ?? "published") === statusFilter) : scoped;
     const inStream = stream ? byStatus.filter((c) => c.stream === stream) : byStatus;
-    if (!q) return inStream;
-    return inStream.filter((c) =>
-      [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q)),
-    );
-  }, [scoped, query, stream, statusFilter]);
+    const matching = q ? inStream.filter((c) => [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q))) : inStream;
+    if (!sort) return matching; // the order the server sent: newest first
+    const value = (c: College) =>
+      ({ name: c.name, location: `${c.city}, ${c.state}`, ownership: c.ownership, stream: c.stream, courses: c.coursesOffered, rating: c.rating })[sort.key];
+    const sign = sort.dir === "asc" ? 1 : -1;
+    return [...matching].sort((a, b) => {
+      const x = value(a);
+      const y = value(b);
+      return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * sign || a.name.localeCompare(b.name);
+    });
+  }, [scoped, query, stream, statusFilter, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) => (s?.key !== key ? { key, dir: "asc" } : s.dir === "asc" ? { key, dir: "desc" } : null));
 
   return (
     <div className="space-y-6">
@@ -107,11 +130,11 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
         }
       />
 
-      <StatusMessage flash={flash} />
+      <StatusMessage flash={flash} floating />
 
       <AdminSection
         title="All colleges"
-        description={`${filtered.length} of ${colleges.length} shown`}
+        description={`${filtered.length} of ${rows.length} shown`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -187,13 +210,13 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
-                <th scope="col" className="py-2 pr-3 font-semibold">Name</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">Location</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">Ownership</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">Stream</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">Courses</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">Rating</th>
-                <th scope="col" className="py-2 pl-3 text-right font-semibold">Actions</th>
+                <SortHeader label="Name" k="name" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Location" k="location" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Ownership" k="ownership" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Stream" k="stream" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Courses" k="courses" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Rating" k="rating" sort={sort} onSort={toggleSort} />
+                <th scope="col" className="sticky right-0 bg-surface py-2 pl-3 text-right font-semibold shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -226,7 +249,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
                     {college.rating}
                     <span className="text-ink-faint"> ({college.reviewCount})</span>
                   </td>
-                  <td className="py-3 pl-3">
+                  <td className="sticky right-0 bg-surface py-3 pl-3 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"
@@ -276,13 +299,21 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
           key={editing.slug}
           slug={editing.slug}
           onClose={() => setEditing(null)}
-          onSaved={(name) => showFlash("ok", `${name} saved.`)}
+          onSaved={(name, record) => {
+            setPatches((p) => ({ ...p, [editing.slug]: patchFrom(record) }));
+            showFlash("ok", `${name} saved.`);
+          }}
         />
       )}
       <StatusConfirm
         acting={acting}
         onClose={() => setActing(null)}
         onDone={(message) => {
+          if (acting) {
+            const { slug } = acting.college;
+            if (acting.action === "delete") setRemoved((r) => [...r, slug]);
+            else setPatches((p) => ({ ...p, [slug]: { status: acting.action === "publish" ? "published" : acting.action === "archive" ? "archived" : "draft" } }));
+          }
           setActing(null);
           showFlash("ok", message);
         }}
@@ -296,7 +327,10 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
         streams={streams}
         open={adding}
         onClose={() => setAdding(false)}
-        onSaved={() => showFlash("ok", "College added as a draft. It is not on the site until you publish it from the list.")}
+        onSaved={(form) => {
+          setAdded((list) => [stubFrom(form), ...list]);
+          showFlash("ok", "College added as a draft. It is not on the site until you publish it from the list.");
+        }}
       />
     </div>
   );
@@ -432,6 +466,41 @@ function ViewCollegeModal({
   );
 }
 
+type SortKey = "name" | "location" | "ownership" | "stream" | "courses" | "rating";
+
+function SortHeader({ label, k, sort, onSort }: { label: string; k: SortKey; sort: { key: SortKey; dir: "asc" | "desc" } | null; onSort: (k: SortKey) => void }) {
+  const on = sort?.key === k;
+  return (
+    <th scope="col" aria-sort={on ? (sort.dir === "asc" ? "ascending" : "descending") : "none"} className="py-2 pr-3 font-semibold">
+      <button type="button" onClick={() => onSort(k)} className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-brand ${on ? "text-brand" : ""}`}>
+        {label}
+        <span aria-hidden className="text-[10px]">{on ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}</span>
+      </button>
+    </th>
+  );
+}
+
+/** What the table shows of a college, from the record that was just saved. */
+function patchFrom(r: CollegeRecord): Partial<College> {
+  return {
+    name: r.name, city: r.city, state: r.state, ownership: r.ownership, stream: r.stream, feesRange: r.feesRange,
+    established: r.established ?? undefined, about: r.about, examsAccepted: r.examsAccepted, tags: r.tags,
+    approvals: r.approvals, image: r.image, coursesOffered: r.courses.length,
+  };
+}
+
+/** A row for a college that was just added, until the page's own list includes it. */
+function stubFrom(form: FormData): College {
+  const text = (key: string) => String(form.get(key) ?? "").trim();
+  return {
+    slug: text("slug"), name: text("name"), city: text("city"), state: text("state"), status: "draft",
+    ownership: (text("ownership") || "Private") as College["ownership"], stream: text("stream"),
+    ranking: { authority: "", rank: 0 }, rating: 0, reviewCount: 0, coursesOffered: 0, feesRange: text("feesRange"),
+    examsAccepted: [], tags: [], approvals: [], courses: [], cutoffs: [], about: text("about"),
+    established: Number(text("established")) || undefined, image: "",
+  };
+}
+
 type StatusAction = "publish" | "archive" | "restore" | "delete";
 
 function StatusBadge({ status }: { status?: CollegeStatus }) {
@@ -515,7 +584,7 @@ function StatusConfirm({ acting, onClose, onDone, onError }: { acting: { college
 
 const FALLBACK_STREAMS = ["Management", "Engineering", "Medical", "Science", "Arts", "Commerce", "Pharmacy", "Law"];
 
-function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boolean; onClose: () => void; onSaved: () => void; geo: IndiaGeo; streams: string[] }) {
+function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boolean; onClose: () => void; onSaved: (form: FormData) => void; geo: IndiaGeo; streams: string[] }) {
   // Anything typed is worth a question before it is thrown away, so the form tells the modal when it has some.
   const [dirty, setDirty] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -565,8 +634,8 @@ function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boole
         geo={geo}
         streams={streams.length > 0 ? streams : FALLBACK_STREAMS}
         onDirty={() => setDirty(true)}
-        onDone={() => {
-          onSaved();
+        onDone={(form) => {
+          onSaved(form);
           close();
         }}
       />
@@ -579,7 +648,7 @@ function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boole
  * threw away the state, city, year and fees whenever the server said no. Here nothing is cleared, so the
  * editor fixes the one thing that was wrong.
  */
-function AddCollegeForm({ onDone, onDirty, geo, streams }: { onDone: () => void; onDirty: () => void; geo: IndiaGeo; streams: string[] }) {
+function AddCollegeForm({ onDone, onDirty, geo, streams }: { onDone: (form: FormData) => void; onDirty: () => void; geo: IndiaGeo; streams: string[] }) {
   const [error, setError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; established?: string; feesRange?: string }>({});
@@ -592,7 +661,7 @@ function AddCollegeForm({ onDone, onDirty, geo, streams }: { onDone: () => void;
     setDuplicate(false);
     startTransition(async () => {
       const result = await createCollege(undefined, form);
-      if ("ok" in result) return onDone();
+      if ("ok" in result) return onDone(form);
       setError(result.error);
       setDuplicate("duplicate" in result);
     });
