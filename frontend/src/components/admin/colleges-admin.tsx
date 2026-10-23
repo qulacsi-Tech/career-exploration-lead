@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import type { CollegeRecord } from "@/lib/api";
 import { createCollege, deleteCollegeForever, setCollegeStatus } from "@/lib/admin-actions";
 import type { College, CollegeStatus, IndiaGeo } from "@/lib/api";
@@ -509,8 +509,14 @@ function StatusBadge({ status }: { status?: CollegeStatus }) {
   return <span className={`ml-1.5 rounded-full px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide ${style}`}>{status}</span>;
 }
 
-/** The status actions for one row, in a small menu so the Actions column stays narrow. */
+/**
+ * The status actions for one row, in a small menu so the Actions column stays narrow. The menu is fixed to
+ * the screen at the button, not placed inside the table: the table sits in a scrolling box that would cut
+ * off anything drawn outside it (which is what hid it before).
+ */
 function StatusMenu({ college, onPick }: { college: College; onPick: (action: StatusAction) => void }) {
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const status = college.status ?? "published";
   const items: { action: StatusAction; label: string; danger?: boolean }[] =
     status === "draft"
@@ -518,28 +524,63 @@ function StatusMenu({ college, onPick }: { college: College; onPick: (action: St
       : status === "published"
         ? [{ action: "archive", label: "Archive" }]
         : [{ action: "restore", label: "Restore" }, { action: "delete", label: "Delete permanently", danger: true }];
+
+  // Closes on Escape, a click anywhere else, or any scroll (the menu would no longer sit under its button).
+  useEffect(() => {
+    if (!at) return;
+    const close = () => setAt(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest("[data-status-menu]") && !button.current?.contains(e.target as Node)) close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [at]);
+
   return (
-    <details className="relative" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && (e.currentTarget.open = false)}>
-      <summary aria-label={`More actions for ${college.name}`} className="cursor-pointer list-none rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand">
+    <>
+      <button
+        ref={button}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={at !== null}
+        aria-label={`More actions for ${college.name}`}
+        onClick={() => {
+          const r = button.current?.getBoundingClientRect();
+          setAt(at || !r ? null : { top: r.bottom + 4, right: window.innerWidth - r.right });
+        }}
+        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"
+      >
         More
-      </summary>
-      <ul className="absolute right-0 z-20 mt-1 min-w-40 rounded-lg border border-line bg-surface py-1 shadow-lg">
-        {items.map((item) => (
-          <li key={item.action}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.currentTarget.closest("details")?.removeAttribute("open");
-                onPick(item.action);
-              }}
-              className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-bg-alt ${item.danger ? "text-red-700" : "text-ink"}`}
-            >
-              {item.label}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </details>
+      </button>
+      {at && (
+        <ul data-status-menu role="menu" style={{ top: at.top, right: at.right }} className="fixed z-[60] min-w-44 rounded-lg border border-line bg-surface py-1 shadow-lg">
+          {items.map((item) => (
+            <li key={item.action} role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAt(null);
+                  onPick(item.action);
+                }}
+                className={`block w-full px-3 py-2 text-left text-sm hover:bg-bg-alt ${item.danger ? "text-red-700" : "text-ink"}`}
+              >
+                {item.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 
