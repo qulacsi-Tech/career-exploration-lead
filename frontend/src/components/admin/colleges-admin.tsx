@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import type { CollegeRecord } from "@/lib/api";
 import { createCollege, deleteCollegeForever, setCollegeStatus } from "@/lib/admin-actions";
 import type { College, CollegeStatus, IndiaGeo } from "@/lib/api";
@@ -517,6 +518,7 @@ function StatusBadge({ status }: { status?: CollegeStatus }) {
 function StatusMenu({ college, onPick }: { college: College; onPick: (action: StatusAction) => void }) {
   const [at, setAt] = useState<{ top: number; right: number } | null>(null);
   const button = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
   const status = college.status ?? "published";
   const items: { action: StatusAction; label: string; danger?: boolean }[] =
     status === "draft"
@@ -525,25 +527,50 @@ function StatusMenu({ college, onPick }: { college: College; onPick: (action: St
         ? [{ action: "archive", label: "Archive" }]
         : [{ action: "restore", label: "Restore" }, { action: "delete", label: "Delete permanently", danger: true }];
 
-  // Closes on Escape, a click anywhere else, or any scroll (the menu would no longer sit under its button).
   useEffect(() => {
     if (!at) return;
     const close = () => setAt(null);
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     const onDown = (e: PointerEvent) => {
-      if (!(e.target as HTMLElement).closest("[data-status-menu]") && !button.current?.contains(e.target as Node)) close();
+      const target = e.target as Node;
+      if (!menuRef.current?.contains(target) && !button.current?.contains(target)) {
+        close();
+      }
     };
+
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onDown);
-    window.addEventListener("scroll", close, true);
+
+    // Close when user scrolls, but attach with a small delay so that
+    // click-to-focus scrolling on the table does not immediately dismiss the menu.
+    const scrollTimer = setTimeout(() => {
+      window.addEventListener("scroll", close, true);
+    }, 120);
     window.addEventListener("resize", close);
+
     return () => {
+      clearTimeout(scrollTimer);
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
     };
   }, [at]);
+
+  const toggle = () => {
+    if (at) {
+      setAt(null);
+      return;
+    }
+    const r = button.current?.getBoundingClientRect();
+    if (!r) return;
+    const spaceBelow = window.innerHeight - r.bottom;
+    const showAbove = spaceBelow < 120 && r.top > 120;
+    setAt({
+      top: showAbove ? Math.max(8, r.top - (items.length * 40 + 16)) : r.bottom + 4,
+      right: Math.max(8, window.innerWidth - r.right),
+    });
+  };
 
   return (
     <>
@@ -553,33 +580,45 @@ function StatusMenu({ college, onPick }: { college: College; onPick: (action: St
         aria-haspopup="menu"
         aria-expanded={at !== null}
         aria-label={`More actions for ${college.name}`}
-        onClick={() => {
-          const r = button.current?.getBoundingClientRect();
-          setAt(at || !r ? null : { top: r.bottom + 4, right: window.innerWidth - r.right });
-        }}
-        className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"
+        onClick={toggle}
+        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+          at !== null
+            ? "border-brand bg-brand-soft text-brand font-semibold"
+            : "border-line text-ink-soft hover:border-brand hover:text-brand"
+        }`}
       >
         More
       </button>
-      {at && (
-        <ul data-status-menu role="menu" style={{ top: at.top, right: at.right }} className="fixed z-[60] min-w-44 rounded-lg border border-line bg-surface py-1 shadow-lg">
-          {items.map((item) => (
-            <li key={item.action} role="none">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setAt(null);
-                  onPick(item.action);
-                }}
-                className={`block w-full px-3 py-2 text-left text-sm hover:bg-bg-alt ${item.danger ? "text-red-700" : "text-ink"}`}
-              >
-                {item.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {at &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <ul
+            ref={menuRef}
+            data-status-menu
+            role="menu"
+            style={{ top: `${at.top}px`, right: `${at.right}px` }}
+            className="fixed z-[100] min-w-44 rounded-lg border border-line bg-surface py-1 shadow-xl animate-in fade-in duration-100"
+          >
+            {items.map((item) => (
+              <li key={item.action} role="none">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAt(null);
+                    onPick(item.action);
+                  }}
+                  className={`block w-full px-3 py-2 text-left text-sm transition hover:bg-bg-alt ${
+                    item.danger ? "text-red-700 hover:bg-red-50" : "text-ink"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              </li>
+            ))}
+          </ul>,
+          document.body,
+        )}
     </>
   );
 }

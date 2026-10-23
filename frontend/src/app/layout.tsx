@@ -69,7 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         layout per group — means moving between them is still a client-side
         navigation instead of a full page load.
       */}
-      <body className="min-h-full font-sans">
+      <body className="min-h-full font-sans" suppressHydrationWarning>
         {children}
         {/* Both stay quiet until the visitor accepts analytics, and skip /admin. */}
         <AnalyticsProvider />
