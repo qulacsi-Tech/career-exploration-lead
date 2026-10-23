@@ -14,6 +14,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.college_rules import NEWS_YEAR_MIN, check_not_future, check_ratio
+
 DATE = r"^\d{4}-\d{2}-\d{2}$"
 SITE_OR_HTTPS = r"^(/[^\s]*|https://[^\s]+)$"
 HTTPS = r"^https://[^\s]+$"
@@ -42,10 +44,12 @@ class FacultyMember(BaseModel):
 class Faculty(BaseModel):
     count: Optional[int] = Field(default=None, ge=0, le=100000)
     # "15:1"
-    studentRatio: str = Field(default="", max_length=20, pattern=r"^(\d{1,3}\s*:\s*\d{1,3})?$")
+    studentRatio: str = Field(default="", max_length=20)
     phdPercent: Optional[int] = Field(default=None, ge=0, le=100)
     members: list[FacultyMember] = Field(default_factory=list, max_length=60)
     model_config = ConfigDict(extra="forbid")
+
+    _ratio = field_validator("studentRatio")(check_ratio)
 
 
 class Faq(BaseModel):
@@ -87,6 +91,11 @@ class MediaItem(BaseModel):
     link: str = Field(default="", max_length=300, pattern=r"^(https://[^\s]+)?$")
     model_config = ConfigDict(extra="forbid")
 
+    @field_validator("date")
+    @classmethod
+    def _date(cls, value: str) -> str:
+        return check_not_future(value, "The date", NEWS_YEAR_MIN)
+
 
 class AlertItem(BaseModel):
     title: str = Field(min_length=3, max_length=200)
@@ -96,14 +105,25 @@ class AlertItem(BaseModel):
     link: str = Field(default="", max_length=300, pattern=r"^(/[^\s]*|https://[^\s]+)?$")
     model_config = ConfigDict(extra="forbid")
 
+    @field_validator("date")
+    @classmethod
+    def _date(cls, value: str) -> str:
+        return check_not_future(value, "The date", NEWS_YEAR_MIN)
+
 
 class ArticleItem(BaseModel):
     title: str = Field(min_length=3, max_length=200)
     date: str = Field(pattern=DATE)
-    author: str = Field(default="Editorial Desk", max_length=120)
+    # Empty: no author is shown.
+    author: str = Field(default="", max_length=120)
     summary: str = Field(default="", max_length=600)
     body: str = Field(default="", max_length=20000)
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("date")
+    @classmethod
+    def _date(cls, value: str) -> str:
+        return check_not_future(value, "The date", NEWS_YEAR_MIN)
 
 
 class CollegeDetail(BaseModel):
@@ -152,4 +172,14 @@ class CollegeDetail(BaseModel):
     def _unique_similar(self):
         if len(set(self.similarSlugs)) != len(self.similarSlugs):
             raise ValueError("similarSlugs: a college appears more than once")
+        return self
+
+    @model_validator(mode="after")
+    def _unique_questions(self):
+        seen: set[str] = set()
+        for faq in self.faqs:
+            key = " ".join(faq.question.lower().split())
+            if key in seen:
+                raise ValueError(f"Q&A: the question '{faq.question.strip()}' is listed more than once.")
+            seen.add(key)
         return self

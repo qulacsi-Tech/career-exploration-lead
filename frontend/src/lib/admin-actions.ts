@@ -185,13 +185,22 @@ export async function saveCollege(slug: string, form: FormData): Promise<AdminAc
   );
 }
 
+/** The result of adding a college: `duplicate` is set when the same name already exists in the city and the editor has not yet said to go ahead. */
+export type CreateCollegeResult = AdminActionResult | { error: string; duplicate: true };
+
 export async function createCollege(
-  _prev: AdminActionResult | undefined,
+  _prev: CreateCollegeResult | undefined,
   form: FormData
-): Promise<AdminActionResult> {
-  return attempt("/admin/colleges", (token) =>
-    adminCreateCollege(token, { ...body(form, COLLEGE_CREATE_FIELDS), slug: text(form, "slug") })
+): Promise<CreateCollegeResult> {
+  const result = await attempt("/admin/colleges", (token) =>
+    adminCreateCollege(token, {
+      ...body(form, COLLEGE_CREATE_FIELDS),
+      slug: text(form, "slug"),
+      confirmDuplicate: form.get("confirmDuplicate") === "1",
+    })
   );
+  if ("error" in result && result.error.startsWith("Possible duplicate")) return { error: result.error, duplicate: true };
+  return result;
 }
 
 export async function saveExam(slug: string, form: FormData): Promise<AdminActionResult> {

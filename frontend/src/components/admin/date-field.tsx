@@ -37,6 +37,7 @@ export function DateField({
   value,
   onChange,
   hint,
+  max,
 }: {
   id: string;
   label: string;
@@ -44,6 +45,8 @@ export function DateField({
   value: string;
   onChange: (next: string) => void;
   hint?: string;
+  /** The latest date the picker allows, as "YYYY-MM-DD". */
+  max?: string;
 }) {
   const iso = toIso(value);
   const loose = value.trim() !== "" && iso === "";
@@ -56,6 +59,7 @@ export function DateField({
       <input
         id={id}
         type="date"
+        max={max}
         value={iso}
         onChange={(e) => onChange(fromIso(e.target.value))}
         className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"

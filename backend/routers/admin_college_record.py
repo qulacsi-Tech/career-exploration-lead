@@ -16,17 +16,19 @@ from datetime import date
 from typing import Literal, Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import selectinload
 
+from core import college_rules as rules
 from core.dependencies import AdminPayload, DbSession
 from core.exceptions import NotFoundError, ValidationError
 from data.india_districts import INDIA_DISTRICTS
 from models.college import College, OwnershipType
 from models.course import Course
 from models.cutoff import Cutoff
+from models.exam import Exam
 from models.placement import Placement
 from models.review import Review
 from schemas.college_detail import CollegeDetail, photo_path
@@ -49,6 +51,16 @@ class CourseRow(BaseModel):
     seats: Optional[int] = Field(default=None, ge=1, le=100000)
     model_config = ConfigDict(extra="forbid")
 
+    @field_validator("duration")
+    @classmethod
+    def _duration(cls, value: str) -> str:
+        return rules.check_duration(value)
+
+    @field_validator("fees")
+    @classmethod
+    def _fees(cls, value: str) -> str:
+        return rules.check_amount(value, "The fees")
+
 
 class PlacementRow(BaseModel):
     year: int = Field(ge=1990, le=YEAR + 1)
@@ -59,12 +71,27 @@ class PlacementRow(BaseModel):
     topRecruiters: list[str] = Field(default_factory=list, max_length=30)
     model_config = ConfigDict(extra="forbid")
 
+    @field_validator("average", "median", "highest")
+    @classmethod
+    def _package(cls, value: str) -> str:
+        return rules.check_amount(value, "The package")
+
+    @model_validator(mode="after")
+    def _highest_not_below(self):
+        rules.check_packages(self.average, self.median, self.highest)
+        return self
+
 
 class CutoffRow(BaseModel):
     exam: str = Field(min_length=1, max_length=100)
     category: str = Field(min_length=1, max_length=100)
     score: str = Field(min_length=1, max_length=100)
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("score")
+    @classmethod
+    def _score(cls, value: str) -> str:
+        return rules.check_score(value)
 
 
 class ReviewRow(BaseModel):
@@ -75,14 +102,32 @@ class ReviewRow(BaseModel):
     batch: str = Field(min_length=1, max_length=50)
     verified: bool = False
     date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-    rating: float = Field(ge=0, le=5)
+    rating: float = Field(ge=1, le=5)
     body: str = Field(min_length=3, max_length=2000)
-    ratingPlacements: Optional[float] = Field(default=None, ge=0, le=5)
-    ratingFaculty: Optional[float] = Field(default=None, ge=0, le=5)
-    ratingInfrastructure: Optional[float] = Field(default=None, ge=0, le=5)
-    ratingCampusLife: Optional[float] = Field(default=None, ge=0, le=5)
-    approved: bool = True
+    ratingPlacements: Optional[float] = Field(default=None, ge=1, le=5)
+    ratingFaculty: Optional[float] = Field(default=None, ge=1, le=5)
+    ratingInfrastructure: Optional[float] = Field(default=None, ge=1, le=5)
+    ratingCampusLife: Optional[float] = Field(default=None, ge=1, le=5)
+    # A new review waits for a moderator unless the editor approves it on purpose.
+    approved: bool = False
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("batch")
+    @classmethod
+    def _batch(cls, value: str) -> str:
+        return rules.check_batch(value)
+
+    @field_validator("date")
+    @classmethod
+    def _date(cls, value: str) -> str:
+        return rules.check_not_future(value, "The review date")
+
+    @model_validator(mode="after")
+    def _long_enough(self):
+        # A review that is already on the site keeps its text; a new one has to say something.
+        if self.id is None and len(self.body.strip()) < rules.REVIEW_MIN_CHARS:
+            raise ValueError(f"Review must be at least {rules.REVIEW_MIN_CHARS} characters.")
+        return self
 
 
 class RecordBody(BaseModel):
@@ -94,7 +139,7 @@ class RecordBody(BaseModel):
     institutionType: Literal["College", "University"] = "College"
     feesRange: str = Field(default="", max_length=100)
     about: str = Field(default="", max_length=20000)
-    established: Optional[int] = Field(default=None, ge=1000, le=YEAR)
+    established: Optional[int] = None
     rankingAuthority: str = Field(default="", max_length=100)
     rankingRank: Optional[int] = Field(default=None, ge=1, le=10000)
     examsAccepted: list[str] = Field(default_factory=list, max_length=40)
@@ -109,6 +154,39 @@ class RecordBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     _image = field_validator("image")(photo_path)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, value: str) -> str:
+        return rules.check_name(value, "The college name")
+
+    @field_validator("city")
+    @classmethod
+    def _city(cls, value: str) -> str:
+        return rules.check_name(value, "The city")
+
+    @field_validator("state")
+    @classmethod
+    def _state(cls, value: str) -> str:
+        value = value.strip()
+        if value not in INDIA_DISTRICTS:
+            raise ValueError("Choose a state from the list.")
+        return value
+
+    @field_validator("established")
+    @classmethod
+    def _established(cls, value):
+        return rules.check_year_established(value)
+
+    @field_validator("feesRange")
+    @classmethod
+    def _fees_range(cls, value: str) -> str:
+        return rules.check_fee_range(value, "The total fee range")
+
+    @field_validator("tags", "approvals")
+    @classmethod
+    def _short_items(cls, values: list[str]) -> list[str]:
+        return [rules.check_short_text(v, "A tag or approval") for v in values]
 
 
 def _iso(d) -> str:
@@ -219,6 +297,7 @@ async def pools(_admin: AdminPayload, db: DbSession):
             "approvals": approvals,
             "tags": tags,
             "states": sorted(INDIA_DISTRICTS),
+            "districts": {state: sorted(places) for state, places in INDIA_DISTRICTS.items()},
         }
     )
 
@@ -228,13 +307,64 @@ async def get_record(slug: str, _admin: AdminPayload, db: DbSession):
     return SuccessResponse[dict](data=_record(await _load(db, slug)))
 
 
+_FIELD_LABELS = {
+    "name": "College name", "city": "City", "state": "State", "ownership": "Ownership", "stream": "Category",
+    "feesRange": "Total fee range", "about": "About", "established": "Year established", "tags": "Tags",
+    "approvals": "Approvals", "examsAccepted": "Exams accepted", "image": "Photo",
+    "duration": "Duration", "fees": "Fees", "seats": "Seats", "mode": "Mode", "eligibility": "Eligibility",
+    "year": "Batch year", "average": "Average package", "median": "Median package", "highest": "Highest package",
+    "placedPercent": "Batch placed", "exam": "Exam", "category": "Category", "score": "Score",
+    "author": "Reviewer", "course": "Programme", "batch": "Batch", "date": "Date", "rating": "Rating",
+    "body": "Text", "studentRatio": "Student to faculty ratio", "phdPercent": "PhD share", "count": "Faculty count",
+    "question": "Question", "answer": "Answer", "title": "Title",
+}
+_ROW_LABELS = {
+    "courses": "Programme", "placements": "Placement", "cutoffs": "Cut-off", "reviews": "Review",
+    "members": "Faculty member", "faqs": "Question", "alerts": "Alert", "articles": "Article", "media": "Press item",
+    "gallery": "Photo", "videos": "Video",
+}
+
+
+def _friendly(error: dict) -> str:
+    """One validation failure as a sentence an editor can act on, not a field path."""
+    loc = [p for p in error["loc"] if p != "detail"]
+    kind, ctx = error["type"], error.get("ctx") or {}
+    field = _FIELD_LABELS.get(str(loc[-1]) if loc else "", "") if loc else ""
+    field = field or (str(loc[-1]).capitalize() if loc else "This")
+
+    if kind == "value_error":
+        text = str(error["msg"]).removeprefix("Value error, ")
+    elif kind in ("greater_than_equal", "less_than_equal", "greater_than", "less_than"):
+        bound = ctx.get("ge", ctx.get("le", ctx.get("gt", ctx.get("lt"))))
+        low = kind.startswith("greater")
+        text = f"{field} must be {'at least' if low else 'at most'} {bound}."
+    elif kind == "string_too_short":
+        text = f"{field} is required." if ctx.get("min_length", 1) <= 1 else f"{field} must be at least {ctx['min_length']} characters."
+    elif kind == "string_too_long":
+        text = f"{field} can be at most {ctx.get('max_length')} characters."
+    elif kind == "too_long":
+        text = f"{field}: at most {ctx.get('max_length')} items."
+    elif kind == "missing":
+        text = f"{field} is required."
+    elif kind == "string_pattern_mismatch":
+        text = f"{field} is not in the expected format."
+    elif kind in ("literal_error", "enum"):
+        text = f"Choose a valid {field.lower()}."
+    else:
+        text = f"{field}: {error['msg']}"
+
+    # "Programme 2: ..." for a row of a list.
+    for i, part in enumerate(loc):
+        if isinstance(part, int) and i > 0 and str(loc[i - 1]) in _ROW_LABELS:
+            return f"{_ROW_LABELS[str(loc[i - 1])]} {part + 1}: {text}"
+    return text
+
+
 def _parse(raw: dict) -> RecordBody:
     try:
         return RecordBody.model_validate(raw)
     except PydanticValidationError as exc:
-        first = exc.errors()[0]
-        field = ".".join(str(p) for p in first["loc"])
-        raise ValidationError(f"{field}: {first['msg']}") from exc
+        raise ValidationError(_friendly(exc.errors()[0])) from exc
 
 
 def _check(data: RecordBody) -> None:
@@ -253,6 +383,25 @@ def _check(data: RecordBody) -> None:
         seen.add(key)
 
 
+async def _resolve_exams(db, data: RecordBody, row: College) -> None:
+    """Exams have to be ones in the directory, written as the directory writes them ("CAT" becomes
+    "Common Admission Test (CAT)"). One the college already had is kept, so an older record can still
+    be saved; anything added now must exist."""
+    pairs = (await db.execute(select(Exam.slug, Exam.name))).all()
+    table = rules.exam_lookup([(s, n) for s, n in pairs])
+    had = {e.lower() for e in (row.exams_accepted or [])}
+    had |= {e.lower() for c in (row.courses or []) for e in (c.exams or [])}
+    had |= {c.exam.lower() for c in (row.cutoffs or [])}
+    try:
+        data.examsAccepted = rules.resolve_exams(data.examsAccepted, table, had, "Exams accepted")
+        for i, course in enumerate(data.courses):
+            course.exams = rules.resolve_exams(course.exams, table, had, f"Programme {i + 1}")
+        for i, cut in enumerate(data.cutoffs):
+            cut.exam = rules.resolve_exams([cut.exam], table, had, f"Cut-off {i + 1}")[0]
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from exc
+
+
 @router.put("/{slug}/record", response_model=SuccessResponse[dict])
 async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict):
     data = _parse(body)
@@ -267,6 +416,8 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
         missing = [s for s in data.detail.similarSlugs if s not in known]
         if missing:
             raise ValidationError(f"detail.similarSlugs: unknown college '{missing[0]}'.")
+
+    await _resolve_exams(db, data, row)
 
     row.name = data.name.strip()
     row.city = data.city.strip()
@@ -325,8 +476,8 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
     if approved:
         row.rating = round(sum(r.rating for r in approved) / len(approved), 1)
         row.review_count = len(approved)
-    if data.courses:
-        row.courses_offered = len(data.courses)
+    # Always follows the list, so removing the last programme brings the count to 0.
+    row.courses_offered = len(data.courses)
 
     await db.commit()
     return SuccessResponse[dict](data={"message": f"{row.name} saved."})

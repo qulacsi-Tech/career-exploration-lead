@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { createCollege } from "@/lib/admin-actions";
 import type { College, IndiaGeo } from "@/lib/api";
 import {
@@ -18,6 +18,7 @@ import { StateCityFields } from "@/components/admin/state-city-fields";
 import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
+import { feeRangeProblem, nameProblem, yearProblem } from "@/lib/college-rules";
 
 /**
  * Colleges module: a scannable table, with everything bulky behind View.
@@ -27,10 +28,11 @@ import { TextField, SelectField, Field, NameSlugFields } from "@/components/admi
  * enough attached to it that showing any of it inline makes the list unusable
  * once there are more than a handful of records.
  */
-export function CollegesAdmin({ colleges, geo = {} }: { colleges: College[]; geo?: IndiaGeo }) {
+export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: College[]; geo?: IndiaGeo; streams?: string[] }) {
   const [query, setQuery] = useState("");
   const [programSlug, setProgramSlug] = useState("");
   const [rankingSlug, setRankingSlug] = useState("");
+  const [stream, setStream] = useState("");
   const [viewing, setViewing] = useState<College | null>(null);
   const [editing, setEditing] = useState<College | null>(null);
   const [adding, setAdding] = useState(false);
@@ -75,11 +77,12 @@ export function CollegesAdmin({ colleges, geo = {} }: { colleges: College[]; geo
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return scoped;
-    return scoped.filter((c) =>
+    const inStream = stream ? scoped.filter((c) => c.stream === stream) : scoped;
+    if (!q) return inStream;
+    return inStream.filter((c) =>
       [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q)),
     );
-  }, [scoped, query]);
+  }, [scoped, query, stream]);
 
   return (
     <div className="space-y-6">
@@ -139,6 +142,20 @@ export function CollegesAdmin({ colleges, geo = {} }: { colleges: College[]; geo
               ))}
             </select>
 
+            <select
+              value={stream}
+              onChange={(e) => setStream(e.target.value)}
+              aria-label="Filter by category"
+              className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
+            >
+              <option value="">All categories</option>
+              {streams.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+
             <input
               type="search"
               value={query}
@@ -187,7 +204,7 @@ export function CollegesAdmin({ colleges, geo = {} }: { colleges: College[]; geo
                   </td>
                   <td className="py-3 pr-3 text-ink-soft">{college.ownership}</td>
                   <td className="py-3 pr-3 text-ink-soft">{college.stream}</td>
-                  <td className="py-3 pr-3 text-ink-soft">{college.coursesOffered}</td>
+                  <td className="py-3 pr-3 text-ink-soft">{Math.max(0, college.coursesOffered)}</td>
                   <td className="py-3 pr-3 text-ink-soft">
                     {college.rating}
                     <span className="text-ink-faint"> ({college.reviewCount})</span>
@@ -246,6 +263,7 @@ export function CollegesAdmin({ colleges, geo = {} }: { colleges: College[]; geo
       )}
       <AddCollegeModal
         geo={geo}
+        streams={streams}
         open={adding}
         onClose={() => setAdding(false)}
         onSaved={() => showFlash("ok", "College added.")}
@@ -384,18 +402,38 @@ function ViewCollegeModal({
   );
 }
 
-function AddCollegeModal({ open, onClose, onSaved, geo }: { open: boolean; onClose: () => void; onSaved: () => void; geo: IndiaGeo }) {
+const FALLBACK_STREAMS = ["Management", "Engineering", "Medical", "Science", "Arts", "Commerce", "Pharmacy", "Law"];
+
+function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boolean; onClose: () => void; onSaved: () => void; geo: IndiaGeo; streams: string[] }) {
+  // Anything typed is worth a question before it is thrown away, so the form tells the modal when it has some.
+  const [dirty, setDirty] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const close = () => {
+    setDirty(false);
+    setConfirming(false);
+    onClose();
+  };
+  const requestClose = () => (dirty && !confirming ? setConfirming(true) : close());
+
   return (
     <AdminModal
       open={open}
-      onClose={onClose}
+      onClose={requestClose}
       title="Add college"
-      description="Basic details now; courses, placements and SEO on the record afterwards."
+      description="Basic details now; courses, placements and SEO on the record afterwards. Fields marked * are required."
       footer={
-        <>
+        <div className="flex w-full flex-wrap items-center justify-end gap-3">
+          {confirming && (
+            <p role="alert" className="mr-auto rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Discard what you have typed?{" "}
+              <button type="button" onClick={close} className="font-semibold underline underline-offset-2">Yes, discard</button>{" "}
+              <button type="button" onClick={() => setConfirming(false)} className="font-semibold underline underline-offset-2">Keep editing</button>
+            </p>
+          )}
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand"
           >
             Cancel
@@ -407,60 +445,104 @@ function AddCollegeModal({ open, onClose, onSaved, geo }: { open: boolean; onClo
           >
             Save college
           </button>
-        </>
+        </div>
       }
     >
       {/* A child of the modal, so its state is discarded when the modal closes
           rather than persisting into the next opening. */}
       <AddCollegeForm
         geo={geo}
+        streams={streams.length > 0 ? streams : FALLBACK_STREAMS}
+        onDirty={() => setDirty(true)}
         onDone={() => {
           onSaved();
-          onClose();
+          close();
         }}
       />
     </AdminModal>
   );
 }
 
-function AddCollegeForm({ onDone, geo }: { onDone: () => void; geo: IndiaGeo }) {
-  const [state, formAction, pending] = useActionState(createCollege, undefined);
+/**
+ * Submitted by hand rather than as a form action: React empties an action's form once it has run, which
+ * threw away the state, city, year and fees whenever the server said no. Here nothing is cleared, so the
+ * editor fixes the one thing that was wrong.
+ */
+function AddCollegeForm({ onDone, onDirty, geo, streams }: { onDone: () => void; onDirty: () => void; geo: IndiaGeo; streams: string[] }) {
+  const [error, setError] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; established?: string; feesRange?: string }>({});
+  const [pending, startTransition] = useTransition();
+  const lastForm = useRef<FormData | null>(null);
 
-  // Close once the API has accepted the college; a failure stays open with its message.
-  useEffect(() => {
-    if (state && "ok" in state) onDone();
-  }, [state, onDone]);
+  const send = (form: FormData, confirmDuplicate: boolean) => {
+    if (confirmDuplicate) form.set("confirmDuplicate", "1");
+    setError(null);
+    setDuplicate(false);
+    startTransition(async () => {
+      const result = await createCollege(undefined, form);
+      if ("ok" in result) return onDone();
+      setError(result.error);
+      setDuplicate("duplicate" in result);
+    });
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const text = (key: string) => String(form.get(key) ?? "").trim();
+
+    const established = text("established");
+    const problems = {
+      name: nameProblem(text("name"), "College name") ?? undefined,
+      established: yearProblem(established === "" ? null : Number(established)) ?? (established !== "" && !Number.isInteger(Number(established)) ? "Enter a year, such as 1998." : undefined),
+      feesRange: feeRangeProblem(text("feesRange"), "The fee range") ?? undefined,
+    };
+    setFieldErrors(problems);
+    if (Object.values(problems).some(Boolean)) return setError("Fix the highlighted fields and try again.");
+
+    lastForm.current = form;
+    send(form, false);
+  };
 
   return (
     <form
       id="add-college-form"
-      action={formAction}
+      onSubmit={submit}
+      onInput={onDirty}
       className="grid grid-cols-1 gap-4 sm:grid-cols-2"
     >
-      {state && "error" in state && (
-        <p role="alert" className="text-sm text-red-700 sm:col-span-2">
-          {state.error}
-        </p>
+      {error && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:col-span-2">
+          {error}
+          {duplicate && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => lastForm.current && send(lastForm.current, true)}
+              className="ml-3 rounded-lg border border-red-700 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-700 hover:text-white disabled:opacity-50"
+            >
+              Add anyway
+            </button>
+          )}
+        </div>
       )}
       {pending && <p className="text-xs text-ink-soft sm:col-span-2">Saving…</p>}
       <NameSlugFields
         nameLabel="College name"
         namePlaceholder="Bengaluru Institute of Management"
         slugPlaceholder="bengaluru-institute-of-management"
+        nameError={fieldErrors.name}
       />
 
       <StateCityFields geo={geo} />
 
       <SelectField label="Type" name="institutionType" options={["College", "University"]} />
       <SelectField label="Ownership" name="ownership" options={["Private", "Government", "Deemed"]} />
-      <SelectField
-        label="Stream"
-        name="stream"
-        options={["Management", "Engineering", "Medical", "Science", "Arts", "Commerce", "Pharmacy", "Law"]}
-      />
+      <SelectField label="Category" name="stream" options={streams} required placeholder="Select a category" />
 
-      <TextField label="Established" name="established" placeholder="1998" />
-      <TextField label="Fees range" name="feesRange" placeholder="₹9.5L - 21L" />
+      <TextField label="Established" name="established" placeholder="1998" type="number" min={1800} max={new Date().getFullYear()} error={fieldErrors.established} />
+      <TextField label="Fees range" name="feesRange" placeholder="₹9.5L - 21L" error={fieldErrors.feesRange} />
 
       <div className="sm:col-span-2">
         <label htmlFor="about" className="block text-xs font-semibold text-ink">

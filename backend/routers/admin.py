@@ -14,7 +14,9 @@ from typing import Any, Literal, Optional
 from fastapi import APIRouter, Body, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from core import college_rules as rules
 from core.dependencies import AdminPayload, DbSession
+from data.india_districts import INDIA_DISTRICTS
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from schemas.article import ArticleSection
 from schemas.college import CollegeFilterParams
@@ -46,9 +48,9 @@ async def admin_list_colleges(
     limit: int = Query(50, ge=1, le=200),
     stream: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
-    sort: str = Query("popularity"),
+    sort: str = Query("newest"),
 ):
-    """Full college list for the admin table — no featured filter."""
+    """Full college list for the admin table — no featured filter. Newest first unless asked otherwise."""
     params = CollegeFilterParams(page=page, limit=limit, stream=stream, q=q, sort=sort)
     svc = CollegeService(db)
     colleges, meta = await svc.list_colleges(params)
@@ -76,9 +78,9 @@ class CollegeUpdateBody(BaseModel):
     feesRange: Optional[str] = None
     about: Optional[str] = None
     isFeature: Optional[bool] = None
-    rankingRank: Optional[int] = None
+    rankingRank: Optional[int] = Field(default=None, ge=1)
     rankingAuthority: Optional[str] = None
-    coursesOffered: Optional[int] = None
+    coursesOffered: Optional[int] = Field(default=None, ge=0)
     established: Optional[int] = None
     examsAccepted: Optional[list[str]] = None
     tags: Optional[list[str]] = None
@@ -87,6 +89,21 @@ class CollegeUpdateBody(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, value):
+        return value if value is None else rules.check_name(value, "The college name")
+
+    @field_validator("established")
+    @classmethod
+    def _established(cls, value):
+        return rules.check_year_established(value)
+
+    @field_validator("feesRange")
+    @classmethod
+    def _fees(cls, value):
+        return value if value is None else rules.check_fee_range(value, "The total fee range")
 
 
 class CollegeCreateBody(BaseModel):
@@ -101,22 +118,67 @@ class CollegeCreateBody(BaseModel):
     about: Optional[str] = None
     rankingAuthority: Optional[str] = Field(default=None, max_length=100)
     rankingRank: Optional[int] = Field(default=None, ge=1)
-    established: Optional[int] = Field(default=None, ge=1800, le=2100)
+    established: Optional[int] = None
     image: Optional[str] = Field(default=None, max_length=200)
+    # Sent again when the editor has seen the duplicate warning and wants the college added anyway.
+    confirmDuplicate: bool = False
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, value: str) -> str:
+        return rules.check_name(value, "The college name")
+
+    @field_validator("city")
+    @classmethod
+    def _city(cls, value: str) -> str:
+        return rules.check_name(value, "The city")
+
+    @field_validator("state")
+    @classmethod
+    def _state(cls, value: str) -> str:
+        value = value.strip()
+        if INDIA_DISTRICTS and value not in INDIA_DISTRICTS:
+            raise ValueError("Choose a state from the list.")
+        return value
+
+    @field_validator("established")
+    @classmethod
+    def _established(cls, value):
+        return rules.check_year_established(value)
+
+    @field_validator("feesRange")
+    @classmethod
+    def _fees(cls, value):
+        return value if value is None else rules.check_fee_range(value, "The total fee range")
 
 
 @router.post("/colleges", response_model=SuccessResponse[MessageResponse], status_code=201)
 async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db: DbSession):
     """Create a college. The slug must be new: an existing one is a 409, never an overwrite."""
-    from sqlalchemy import select
+    from sqlalchemy import func, select
     from models.college import College
 
     existing = (await db.execute(select(College.id).where(College.slug == body.slug))).scalar_one_or_none()
     if existing is not None:
         raise ConflictError("COLLEGE_SLUG_TAKEN", f"A college with slug '{body.slug}' already exists.")
+
+    # The same name in the same city is probably the same college. Say so once; the editor can go ahead.
+    if not body.confirmDuplicate:
+        twin = (
+            await db.execute(
+                select(College.slug).where(
+                    func.lower(College.name) == body.name.lower(), func.lower(College.city) == body.city.lower()
+                )
+            )
+        ).scalar_one_or_none()
+        if twin is not None:
+            raise ConflictError(
+                "COLLEGE_DUPLICATE",
+                f"Possible duplicate: '{body.name}' in {body.city} already exists ({twin}). Add it anyway?",
+            )
 
     db.add(College(
         id=uuid.uuid4(),

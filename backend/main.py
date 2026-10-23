@@ -76,6 +76,16 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     first = errors[0] if errors else {}
     field = " → ".join(str(loc) for loc in first.get("loc", []))
     msg = first.get("msg", "Validation error")
+    # A rule written for editors (core/college_rules.py) is already a whole sentence: show it as it is.
+    kind, ctx = first.get("type", ""), first.get("ctx") or {}
+    name = str(first.get("loc", ["This"])[-1]).replace("_", " ").capitalize()
+    if kind == "value_error":
+        field, msg = "", msg.removeprefix("Value error, ")
+    elif kind in ("greater_than_equal", "less_than_equal"):
+        low = kind == "greater_than_equal"
+        field, msg = "", f"{name} must be {'at least' if low else 'at most'} {ctx.get('ge' if low else 'le')}."
+    elif kind == "missing":
+        field, msg = "", f"{name} is required."
     return JSONResponse(
         status_code=422,
         content={

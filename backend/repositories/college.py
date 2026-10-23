@@ -135,10 +135,14 @@ def _apply_filters(stmt, params: CollegeFilterParams):
         )
 
     # Sort
-    if params.sort == "rating":
-        stmt = stmt.order_by(College.rating.desc())
+    # Every order ends on the name and id, so ties (most colleges have no reviews yet) fall the same way
+    # on every request and on every page, instead of in whatever order the database happens to return.
+    if params.sort == "newest":
+        stmt = stmt.order_by(College.created_at.desc(), College.id)
+    elif params.sort == "rating":
+        stmt = stmt.order_by(College.rating.desc(), College.name, College.id)
     elif params.sort == "views":
-        stmt = stmt.order_by(College.view_count.desc())
+        stmt = stmt.order_by(College.view_count.desc(), College.name, College.id)
     elif params.sort == "name":
         # A tie-break on id keeps the order stable from one page to the next.
         stmt = stmt.order_by(College.name, College.id)
@@ -150,11 +154,13 @@ def _apply_filters(stmt, params: CollegeFilterParams):
             ),
             College.ranking_rank.asc(),
             College.review_count.desc(),
+            College.name,
+            College.id,
         )
     elif list_rank is not None:  # popularity inside a ranking list is the list's own order
         stmt = stmt.order_by(list_rank, College.id)
     else:  # popularity (default)
-        stmt = stmt.order_by(College.review_count.desc())
+        stmt = stmt.order_by(College.review_count.desc(), College.name, College.id)
 
     return stmt
 

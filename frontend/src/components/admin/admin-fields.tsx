@@ -21,9 +21,12 @@ export function TextField({
   min,
   max,
   step,
+  error,
 }: {
   label: string;
   name: string;
+  /** Shown in red under the field, and marks it invalid. */
+  error?: string;
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
@@ -48,6 +51,7 @@ export function TextField({
       <div className="flex items-baseline justify-between gap-2">
         <label htmlFor={name} className="block text-xs font-semibold text-ink">
           {label}
+          {required && <span className="text-brand"> *</span>}
         </label>
         {labelAction}
       </div>
@@ -56,6 +60,9 @@ export function TextField({
         name={name}
         type={type}
         required={required}
+        aria-required={required || undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${name}-error` : undefined}
         disabled={disabled}
         maxLength={maxLength}
         min={min}
@@ -65,6 +72,7 @@ export function TextField({
         {...(controlled ? { value, onChange: (e) => onChange(e.target.value) } : { defaultValue })}
         className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none disabled:bg-bg-alt disabled:text-ink-muted disabled:cursor-not-allowed"
       />
+      {error && <p id={`${name}-error`} role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
       {hint && <p className="mt-1 text-[11px] text-ink-faint">{hint}</p>}
     </div>
   );
@@ -100,11 +108,13 @@ export function SelectField({
     <div className={className}>
       <label htmlFor={name} className="block text-xs font-semibold text-ink">
         {label}
+        {required && <span className="text-brand"> *</span>}
       </label>
       <select
         id={name}
         name={name}
         required={required}
+        aria-required={required || undefined}
         {...(controlled
           ? { value, onChange: (e) => onChange(e.target.value) }
           : { defaultValue: defaultValue ?? (placeholder ? "" : undefined) })}
@@ -289,7 +299,10 @@ export function NameSlugFields({
   slugPrefix = "",
   slugSuffix = "",
   nameMaxLength,
+  nameError,
 }: {
+  /** Shown beside the name field. */
+  nameError?: string;
   nameLabel?: string;
   namePlaceholder?: string;
   nameFieldName?: string;
@@ -333,6 +346,7 @@ export function NameSlugFields({
         maxLength={nameMaxLength}
         value={name}
         onChange={setName}
+        error={nameError}
       />
       <TextField
         label={slugLabel}

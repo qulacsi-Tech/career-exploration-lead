@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { DateField } from "@/components/admin/date-field";
+import { findExam } from "@/lib/college-rules";
 
 /*
   The small parts every tab of the college editor is built from: a card, labelled fields,
@@ -66,8 +67,8 @@ export function TextInput({
   list?: string;
 }) {
   return (
-    <Labelled id={id} label={label} required={required} hint={[hint, max ? `${value.length}/${max}` : ""].filter(Boolean).join(" ")}>
-      <input id={id} type={type} list={list} maxLength={max} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={inputCls} />
+    <Labelled id={id} label={label} required={required} hint={[hint, max && value.length >= max * 0.8 ? `${value.length}/${max}` : ""].filter(Boolean).join(" ")}>
+      <input id={id} type={type} list={list} maxLength={max} value={value} placeholder={placeholder} aria-required={required || undefined} onChange={(e) => onChange(e.target.value)} className={inputCls} />
     </Labelled>
   );
 }
@@ -93,7 +94,7 @@ export function TextArea({
 }) {
   return (
     <Labelled id={id} label={label} required={required} hint={[hint, `${value.length}/${max}`].filter(Boolean).join(" ")}>
-      <textarea id={id} rows={rows} maxLength={max} value={value} onChange={(e) => onChange(e.target.value)} className={inputCls} />
+      <textarea id={id} rows={rows} maxLength={max} value={value} aria-required={required || undefined} onChange={(e) => onChange(e.target.value)} className={inputCls} />
     </Labelled>
   );
 }
@@ -131,6 +132,7 @@ export function NumberInput({
         step={step}
         value={value ?? ""}
         placeholder={placeholder}
+        aria-required={required || undefined}
         onChange={(e) => {
           if (e.target.value === "") return onChange(null);
           const n = Number(e.target.value);
@@ -168,7 +170,7 @@ export function SelectInput({
   const all = value && !options.includes(value) ? [value, ...options] : options;
   return (
     <Labelled id={id} label={label} required={required} hint={hint}>
-      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={inputCls}>
+      <select id={id} value={value} aria-required={required || undefined} onChange={(e) => onChange(e.target.value)} className={inputCls}>
         {placeholder !== undefined && <option value="">{placeholder}</option>}
         {all.map((o) => (
           <option key={o} value={o}>
@@ -190,6 +192,8 @@ export function ChipInput({
   max,
   hint,
   placeholder,
+  strict = false,
+  maxChars,
 }: {
   id: string;
   label: string;
@@ -199,17 +203,27 @@ export function ChipInput({
   max?: number;
   hint?: string;
   placeholder?: string;
+  /** Only what is in `suggestions` can be added (the exams in the directory); anything else is refused with a message. */
+  strict?: boolean;
+  /** The longest a single item may be. */
+  maxChars?: number;
 }) {
   const [typed, setTyped] = useState("");
+  const [refused, setRefused] = useState<string | null>(null);
   const full = max !== undefined && value.length >= max;
   const has = (text: string) => value.some((v) => v.toLowerCase() === text.toLowerCase());
 
   const add = (raw: string) => {
     const text = raw.trim();
+    if (!text || full) return setTyped("");
+    // Typing "aicte" reuses the existing "AICTE"; in strict mode "cat" finds "Common Admission Test (CAT)".
+    const match = strict ? findExam(text, suggestions) : (suggestions.find((s) => s.toLowerCase() === text.toLowerCase()) ?? null);
+    if (strict && !match) return setRefused(`"${text}" is not in the directory. Choose one from the list.`);
+    if (!strict && maxChars !== undefined && text.length > maxChars) return setRefused(`Keep it to ${maxChars} characters or fewer.`);
     setTyped("");
-    if (!text || full || has(text)) return;
-    // Typing "aicte" reuses the existing "AICTE".
-    onChange([...value, suggestions.find((s) => s.toLowerCase() === text.toLowerCase()) ?? text]);
+    setRefused(null);
+    if (has(match ?? text)) return;
+    onChange([...value, match ?? text]);
   };
 
   const listId = `${id}-list`;
@@ -237,7 +251,10 @@ export function ChipInput({
           value={typed}
           disabled={full}
           placeholder={full ? `Up to ${max}` : placeholder ?? "Type and press Enter"}
-          onChange={(e) => setTyped(e.target.value)}
+          onChange={(e) => {
+            setTyped(e.target.value);
+            setRefused(null);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === ",") {
               e.preventDefault();
@@ -255,6 +272,7 @@ export function ChipInput({
           Add
         </button>
       </div>
+      {refused && <p role="alert" className="mt-1 text-xs text-red-700">{refused}</p>}
       {hint && <p className="mt-1 text-xs text-ink-faint">{hint}</p>}
     </div>
   );
@@ -278,6 +296,7 @@ export function Row({
   children: ReactNode;
   error?: string;
 }) {
+  const [confirming, setConfirming] = useState(false);
   return (
     <li className={`rounded-xl border bg-bg-alt/50 p-4 ${error ? "border-red-300" : "border-line"}`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -289,7 +308,15 @@ export function Row({
               <button type="button" aria-label={`Move ${title} down`} disabled={index === count - 1} onClick={() => onMove(1)} className="rounded-lg border border-line px-2 py-1 text-xs text-ink-soft hover:border-brand disabled:opacity-40">Down</button>
             </>
           )}
-          <button type="button" onClick={onRemove} className="rounded-lg border border-line px-3 py-1 text-xs text-ink-soft hover:border-red-700 hover:text-red-700">Remove</button>
+          {confirming ? (
+            <span role="alert" className="flex items-center gap-2 text-xs text-ink">
+              Remove this?
+              <button type="button" onClick={onRemove} className="rounded-lg border border-red-700 bg-red-700 px-3 py-1 text-white hover:bg-red-800">Yes, remove</button>
+              <button type="button" onClick={() => setConfirming(false)} className="rounded-lg border border-line px-3 py-1 text-ink-soft hover:border-brand">Keep</button>
+            </span>
+          ) : (
+            <button type="button" onClick={() => setConfirming(true)} className="rounded-lg border border-line px-3 py-1 text-xs text-ink-soft hover:border-red-700 hover:text-red-700">Remove</button>
+          )}
         </div>
       </div>
       {children}
@@ -331,8 +358,37 @@ export function textToIso(text: string): string {
   return m && month >= 0 ? `${m[3]}-${String(month + 1).padStart(2, "0")}-${String(Number(m[1])).padStart(2, "0")}` : "";
 }
 
-export function IsoDate({ id, label, value, onChange, hint }: { id: string; label: string; value: string; onChange: (iso: string) => void; hint?: string }) {
-  return <DateField id={id} label={label} value={isoToText(value)} onChange={(text) => onChange(textToIso(text))} hint={hint} />;
+export function IsoDate({ id, label, value, onChange, hint, notFuture = false }: { id: string; label: string; value: string; onChange: (iso: string) => void; hint?: string; /** Do not offer a date after today. */ notFuture?: boolean }) {
+  return <DateField id={id} label={label} value={isoToText(value)} onChange={(text) => onChange(textToIso(text))} hint={hint} max={notFuture ? today() : undefined} />;
+}
+
+const DURATION_PARTS = /^\s*(\d{1,3}(?:\.\d)?)\s*(years?|months?)\s*$/i;
+
+/**
+ * A programme's length as a number and Years / Months, stored as the text the site shows ("2 Years",
+ * "18 Months"). Something typed in the old free-text way is shown as it is, with a note, until a number is entered.
+ */
+export function DurationField({ id, label, value, onChange, required }: { id: string; label: string; value: string; onChange: (next: string) => void; required?: boolean }) {
+  const parsed = DURATION_PARTS.exec(value);
+  const [amount, setAmount] = useState(parsed?.[1] ?? "");
+  const [unit, setUnit] = useState(parsed ? (/^y/i.test(parsed[2]) ? "Years" : "Months") : "Years");
+  const [loose, setLoose] = useState(value.trim() !== "" && !parsed);
+  const emit = (nextAmount: string, nextUnit: string) => {
+    setLoose(false);
+    onChange(nextAmount === "" ? "" : `${nextAmount} ${nextUnit}`);
+  };
+  return (
+    <Labelled id={id} label={label} required={required}>
+      <div className="mt-1.5 flex gap-2">
+        <input id={id} type="number" min={0.5} step="any" inputMode="decimal" value={amount} aria-required={required || undefined} onChange={(e) => { setAmount(e.target.value); emit(e.target.value, unit); }} className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none" />
+        <select aria-label={`${label}: unit`} value={unit} onChange={(e) => { setUnit(e.target.value); emit(amount, e.target.value); }} className="shrink-0 rounded-lg border border-line bg-bg px-2 py-2 text-sm text-ink focus:border-brand focus:outline-none">
+          <option>Years</option>
+          <option>Months</option>
+        </select>
+      </div>
+      {loose && <p className="mt-1 text-xs text-amber-800">Currently &ldquo;{value}&rdquo;, which is not a length of time. Enter a number to replace it.</p>}
+    </Labelled>
+  );
 }
 
 export const today = () => new Date().toISOString().slice(0, 10);

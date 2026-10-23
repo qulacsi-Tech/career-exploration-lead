@@ -2266,6 +2266,8 @@ export type CollegePools = {
   approvals: string[];
   tags: string[];
   states: string[];
+  /** The districts of each state, for the City picker. */
+  districts: Record<string, string[]>;
 };
 
 export async function adminGetCollegeRecord(token: string, slug: string): Promise<LoadedCollegeRecord> {

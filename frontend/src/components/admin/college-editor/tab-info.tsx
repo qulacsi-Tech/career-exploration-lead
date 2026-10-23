@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import type { CollegePools, CollegeRecord } from "@/lib/api";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { RangeField } from "@/components/admin/range-field";
-import { Card, ChipInput, NumberInput, SelectInput, TextArea, TextInput } from "@/components/admin/college-editor/shared";
+import { Card, ChipInput, Labelled, NumberInput, SelectInput, TextArea, TextInput, inputCls } from "@/components/admin/college-editor/shared";
+import { TAG_MAX_CHARS, YEAR_MIN } from "@/lib/college-rules";
 
 export type EditorProps = {
   record: CollegeRecord;
@@ -33,12 +35,12 @@ export function InfoTab({ record, update, pools, slug }: EditorProps) {
                 <p className="mt-1 text-xs text-ink-faint">Fixed, so links keep working.</p>
               </div>
               <SelectInput id="ci-state" label="State" required value={record.state} onChange={(v) => set("state", v)} options={pools.states} placeholder="Select a state" />
-              <TextInput id="ci-city" label="City" required max={200} value={record.city} onChange={(v) => set("city", v)} />
+              <CityField state={record.state} value={record.city} districts={pools.districts?.[record.state] ?? []} onChange={(v) => set("city", v)} />
               <TextInput id="ci-locality" label="Locality" max={120} value={record.detail.locality} onChange={(v) => detail({ locality: v })} hint="The street or area before the city, e.g. Hosur Road." />
               <SelectInput id="ci-type" label="Type" required value={record.institutionType ?? "College"} onChange={(v) => set("institutionType", v as CollegeRecord["institutionType"])} options={["College", "University"]} hint="Whether this is a college or a university." />
               <SelectInput id="ci-ownership" label="Ownership" required value={record.ownership} onChange={(v) => set("ownership", v as CollegeRecord["ownership"])} options={["Private", "Government", "Deemed"]} />
               <SelectInput id="ci-stream" label="Category" required value={record.stream} onChange={(v) => set("stream", v)} options={pools.streams} placeholder="Select a category" hint="The category the college is listed under." />
-              <NumberInput id="ci-established" label="Established" min={1000} max={YEAR} value={record.established} onChange={(v) => set("established", v)} placeholder="e.g. 1998" hint="The year it was founded." />
+              <NumberInput id="ci-established" label="Established" min={YEAR_MIN} max={YEAR} value={record.established} onChange={(v) => set("established", v)} placeholder="e.g. 1998" hint="The year it was founded." />
             </div>
           </Card>
 
@@ -47,13 +49,13 @@ export function InfoTab({ record, update, pools, slug }: EditorProps) {
               <TextInput id="ci-short" label="Short title" max={80} value={record.detail.shortName} onChange={(v) => detail({ shortName: v })} hint="e.g. BIMS Bengaluru. Empty: the initials and city." />
               <TextInput id="ci-tagline" label="Heading after the title" max={160} value={record.detail.tagline} onChange={(v) => detail({ tagline: v })} hint="e.g. Courses, Fees, Admission 2027. Empty: a default." />
             </div>
-            <ChipInput id="ci-approvals" label="Approvals" value={record.approvals} onChange={(v) => set("approvals", v)} suggestions={pools.approvals} max={20} hint="Shown as chips: AICTE, NAAC A++, UGC." />
-            <ChipInput id="ci-tags" label="Tags" value={record.tags} onChange={(v) => set("tags", v)} suggestions={pools.tags} max={12} hint="Badges on the college's cards in lists." />
+            <ChipInput id="ci-approvals" label="Approvals" value={record.approvals} onChange={(v) => set("approvals", v)} suggestions={pools.approvals} max={20} maxChars={TAG_MAX_CHARS} hint={`Shown as chips: AICTE, NAAC A++, UGC. Up to ${TAG_MAX_CHARS} characters each.`} />
+            <ChipInput id="ci-tags" label="Tags" value={record.tags} onChange={(v) => set("tags", v)} suggestions={pools.tags} max={12} maxChars={TAG_MAX_CHARS} hint={`Badges on the college's cards in lists. Up to ${TAG_MAX_CHARS} characters each.`} />
           </Card>
 
           <Card title="About and admissions" description="The overview text, the entrance exams accepted and the overall fee range.">
             <TextArea id="ci-about" label="About" rows={6} max={20000} value={record.about} onChange={(v) => set("about", v)} hint="Shown on the overview and used for the search snippet." />
-            <ChipInput id="ci-exams" label="Entrance exams accepted" value={record.examsAccepted} onChange={(v) => set("examsAccepted", v)} suggestions={pools.exams} max={40} hint="Chosen from the exams in the directory." />
+            <ChipInput id="ci-exams" label="Entrance exams accepted" value={record.examsAccepted} onChange={(v) => set("examsAccepted", v)} suggestions={pools.exams} max={40} strict hint="Only exams in the directory can be added. Type the name or its short form, such as CAT." />
             <div className="max-w-xl">
               <RangeField id="ci-fees" label="Total fee range" compact units={["L", "Cr"]} value={record.feesRange} onChange={(v) => set("feesRange", v)} hint="Across all programmes." />
             </div>
@@ -72,6 +74,47 @@ export function InfoTab({ record, update, pools, slug }: EditorProps) {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+const OTHER = "__other__";
+
+/**
+ * The city: one of the state's districts, or "Other" and typed in (a city is often not a district's name, and
+ * a hub such as Delhi NCR spans several). With no districts for the state it is a plain text box.
+ */
+function CityField({ state, value, districts, onChange }: { state: string; value: string; districts: string[]; onChange: (v: string) => void }) {
+  const [other, setOther] = useState(value !== "" && !districts.includes(value));
+  if (districts.length === 0) return <TextInput id="ci-city" label="City" required max={200} value={value} onChange={onChange} />;
+  const picked = other ? OTHER : value;
+  return (
+    <div>
+      <Labelled id="ci-city" label="City" required hint={state ? undefined : "Choose a state first."}>
+        <select
+          id="ci-city"
+          aria-required="true"
+          value={picked}
+          disabled={!state}
+          onChange={(e) => {
+            if (e.target.value === OTHER) {
+              setOther(true);
+              onChange("");
+            } else {
+              setOther(false);
+              onChange(e.target.value);
+            }
+          }}
+          className={inputCls}
+        >
+          <option value="">Select a city</option>
+          {districts.map((d) => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+          <option value={OTHER}>Other, type it</option>
+        </select>
+      </Labelled>
+      {other && <input aria-label="City" aria-required="true" value={value} maxLength={200} placeholder="Type the city" onChange={(e) => onChange(e.target.value)} className={inputCls} />}
     </div>
   );
 }

@@ -5,7 +5,8 @@ import type { CollegeRankings, RankingListHead, RecordCourse, RecordCutoff, Reco
 import { loadCollegeRankings, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
 import { AmountField } from "@/components/admin/range-field";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
-import { AddButton, Card, ChipInput, EmptyNote, NumberInput, Row, SelectInput, TextInput, move } from "@/components/admin/college-editor/shared";
+import { packageProblem } from "@/lib/college-rules";
+import { AddButton, Card, ChipInput, DurationField, EmptyNote, NumberInput, Row, SelectInput, TextInput, move } from "@/components/admin/college-editor/shared";
 
 /*
   The tabs that are tables of figures: Courses & Fees, Placements, Cut-Offs and Rankings.
@@ -45,12 +46,12 @@ export function CoursesTab({ record, update, pools }: EditorProps) {
             <Row key={i} title={c.name || `Programme ${i + 1}`} index={i} count={rows.length} onMove={(d) => set(move(rows, i, d))} onRemove={() => set(rows.filter((_, n) => n !== i))}>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <TextInput id={`co-${i}-name`} label="Programme" required max={200} list="courses-pool" value={c.name} onChange={(v) => patch(i, { name: v })} hint="Choose a course from the directory or type one." />
-                <TextInput id={`co-${i}-duration`} label="Duration" required max={100} value={c.duration} onChange={(v) => patch(i, { duration: v })} placeholder="e.g. 2 Years" />
+                <DurationField id={`co-${i}-duration`} label="Duration" required value={c.duration} onChange={(v) => patch(i, { duration: v })} />
                 <SelectInput id={`co-${i}-mode`} label="Mode" value={c.mode} onChange={(v) => patch(i, { mode: v })} options={MODES} />
                 <AmountField id={`co-${i}-fees`} label="Total fees" joined units={["L", "Cr"]} value={c.fees} onChange={(v) => patch(i, { fees: v })} hint="In lakh (L) or crore (Cr)." />
               </div>
               <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                <ChipInput id={`co-${i}-exams`} label="Entrance exams" value={c.exams} onChange={(v) => patch(i, { exams: v })} suggestions={pools.exams} max={20} />
+                <ChipInput id={`co-${i}-exams`} label="Entrance exams" value={c.exams} onChange={(v) => patch(i, { exams: v })} suggestions={pools.exams} max={20} strict />
                 <div className="space-y-4">
                   <TextInput id={`co-${i}-elig`} label="Eligibility" max={300} value={c.eligibility} onChange={(v) => patch(i, { eligibility: v })} placeholder="e.g. Graduation with 50%" />
                   <NumberInput id={`co-${i}-seats`} label="Seats" min={1} max={100000} value={c.seats} onChange={(v) => patch(i, { seats: v })} />
@@ -75,11 +76,6 @@ const blankPlacement = (existing: RecordPlacement[]): RecordPlacement => ({
   topRecruiters: [],
 });
 
-const lakh = (text: string) => {
-  const n = Number(/[\d.]+/.exec(text)?.[0]);
-  return Number.isFinite(n) ? n : null;
-};
-
 export function PlacementsTab({ record, update }: EditorProps) {
   const rows = record.placements;
   const set = (list: RecordPlacement[]) => update((r) => ({ ...r, placements: list }));
@@ -96,10 +92,7 @@ export function PlacementsTab({ record, update }: EditorProps) {
       ) : (
         <ul className="space-y-4">
           {rows.map((p, i) => {
-            const avg = lakh(p.average);
-            const med = lakh(p.median);
-            const high = lakh(p.highest);
-            const odd = high !== null && ((avg !== null && high < avg) || (med !== null && high < med));
+            const odd = packageProblem(p.average, p.median, p.highest);
             return (
               <Row key={i} title={`Batch ${p.year}`} index={i} count={rows.length} onRemove={() => set(rows.filter((_, n) => n !== i))}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -107,9 +100,9 @@ export function PlacementsTab({ record, update }: EditorProps) {
                   <AmountField id={`pl-${i}-avg`} label="Average package" units={["LPA", "Cr"]} value={p.average} onChange={(v) => patch(i, { average: v })} />
                   <AmountField id={`pl-${i}-med`} label="Median package" units={["LPA", "Cr"]} value={p.median} onChange={(v) => patch(i, { median: v })} />
                   <AmountField id={`pl-${i}-high`} label="Highest package" units={["LPA", "Cr"]} value={p.highest} onChange={(v) => patch(i, { highest: v })} />
-                  <NumberInput id={`pl-${i}-placed`} label="Batch placed (%)" min={0} max={100} value={p.placedPercent} onChange={(v) => patch(i, { placedPercent: v === null ? null : Math.max(0, Math.min(100, Math.round(v))) })} />
+                  <NumberInput id={`pl-${i}-placed`} label="Batch placed (%)" min={0} max={100} value={p.placedPercent} onChange={(v) => patch(i, { placedPercent: v })} hint={p.placedPercent !== null && (p.placedPercent < 0 || p.placedPercent > 100) ? "Batch placed must be between 0 and 100." : undefined} />
                 </div>
-                {odd && <p role="status" className="mt-2 text-xs text-amber-800">Check the packages: the highest should not be below the average or the median.</p>}
+                {odd && <p role="alert" className="mt-2 text-xs text-red-700">{odd}</p>}
                 <div className="mt-4">
                   <ChipInput id={`pl-${i}-rec`} label="Top recruiters" value={p.topRecruiters} onChange={(v) => patch(i, { topRecruiters: v })} max={30} hint="Company names, shown as a scrolling strip." />
                 </div>
@@ -135,13 +128,8 @@ export function CutoffsTab({ record, update, pools }: EditorProps) {
     <Card
       title="Cut-offs"
       description="The score needed for each entrance exam and category. The Cut-Offs tab draws a bar for a percentile and shows other scores as they are."
-      actions={<AddButton onClick={() => set([...rows, { exam: pools.exams[0] ?? "", category: "General", score: "" }])} disabled={rows.length >= 200}>Add a cut-off</AddButton>}
+      actions={<AddButton onClick={() => set([...rows, { exam: "", category: "General", score: "" }])} disabled={rows.length >= 200}>Add a cut-off</AddButton>}
     >
-      <datalist id="cutoff-exams">
-        {pools.exams.map((e) => (
-          <option key={e} value={e} />
-        ))}
-      </datalist>
       {rows.length === 0 ? (
         <EmptyNote>No cut-offs. The Cut-Offs tab shows an empty message.</EmptyNote>
       ) : (
@@ -151,9 +139,9 @@ export function CutoffsTab({ record, update, pools }: EditorProps) {
             return (
               <Row key={i} title={`${c.exam || "Exam"} · ${c.category || "Category"}`} index={i} count={rows.length} onRemove={() => set(rows.filter((_, n) => n !== i))} error={duplicate ? "This exam and category is listed more than once." : undefined}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <TextInput id={`cu-${i}-exam`} label="Exam" required max={100} list="cutoff-exams" value={c.exam} onChange={(v) => patch(i, { exam: v })} />
+                  <SelectInput id={`cu-${i}-exam`} label="Exam" required value={c.exam} onChange={(v) => patch(i, { exam: v })} options={pools.exams} placeholder="Choose an exam" />
                   <SelectInput id={`cu-${i}-cat`} label="Category" value={c.category} onChange={(v) => patch(i, { category: v })} options={CATEGORIES} />
-                  <TextInput id={`cu-${i}-score`} label="Score" required max={100} value={c.score} onChange={(v) => patch(i, { score: v })} placeholder="e.g. 98 percentile" hint="A percentile, a rank or marks." />
+                  <TextInput id={`cu-${i}-score`} label="Score" required max={100} value={c.score} onChange={(v) => patch(i, { score: v })} placeholder="e.g. 98 percentile" hint="A percentile (0-100), a rank or marks." />
                 </div>
               </Row>
             );
@@ -262,12 +250,12 @@ export function RankingsTab({ slug }: EditorProps) {
                   options={data.available.map((l) => l.slug)}
                   labels={Object.fromEntries(data.available.map((l) => [l.slug, label(l)]))}
                 />
-                <NumberInput id="rk-rank" label="Rank" min={1} max={100000} value={rank} onChange={(v) => setRank(v === null ? null : Math.max(1, Math.round(v)))} />
+                <NumberInput id="rk-rank" label="Rank" min={1} max={100000} value={rank} onChange={(v) => setRank(v)} hint={rank !== null && (rank < 1 || !Number.isInteger(rank)) ? "Rank must be a whole number, 1 or more." : undefined} />
                 <TextInput id="rk-score" label="Score" max={50} value={score} onChange={setScore} placeholder="Optional" />
                 <button
                   type="button"
                   onClick={add}
-                  disabled={pending || !listSlug || rank === null}
+                  disabled={pending || !listSlug || rank === null || rank < 1 || !Number.isInteger(rank)}
                   className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
                 >
                   {pending ? "Adding…" : "Add ranking"}

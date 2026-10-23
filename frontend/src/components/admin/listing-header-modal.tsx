@@ -66,8 +66,6 @@ function HeaderDialog({ page, onClose }: { page: ListingPage; onClose: () => voi
   // Load the header for what is selected: when the dialog opens, when the selection changes, after a reset.
   useEffect(() => {
     let alive = true;
-    setValue(null);
-    setSaved(false);
     loadListingHeader(page, scope || undefined).then((result) => {
       if (!alive) return;
       if ("error" in result) return setError(result.error);
@@ -97,6 +95,13 @@ function HeaderDialog({ page, onClose }: { page: ListingPage; onClose: () => voi
     });
   };
 
+  // Choosing something else clears the form until its own header arrives, so the old text is never shown under the new name.
+  const changeScope = (next: string) => {
+    setValue(null);
+    setSaved(false);
+    setScope(next);
+  };
+
   const reset = () => {
     startTransition(async () => {
       const result = await resetListingHeader(page, scope);
@@ -106,6 +111,7 @@ function HeaderDialog({ page, onClose }: { page: ListingPage; onClose: () => voi
         next.delete(scope);
         return next;
       });
+      setValue(null);
       setReloads((n) => n + 1);
     });
   };
@@ -154,7 +160,7 @@ function HeaderDialog({ page, onClose }: { page: ListingPage; onClose: () => voi
               value={groupLabel}
               onChange={(e) => {
                 setGroupLabel(e.target.value);
-                setScope("");
+                changeScope("");
               }}
               className={SELECT}
             >
@@ -169,7 +175,7 @@ function HeaderDialog({ page, onClose }: { page: ListingPage; onClose: () => voi
               aria-label="Menu selection"
               value={scope}
               disabled={!group}
-              onChange={(e) => setScope(e.target.value)}
+              onChange={(e) => changeScope(e.target.value)}
               className={`${SELECT} disabled:opacity-50`}
             >
               <option value="">{group ? "Pick one…" : "—"}</option>

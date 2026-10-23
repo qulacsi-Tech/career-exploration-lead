@@ -59,13 +59,16 @@ export function RangeField({
 
   const emit = (nextMin: string, nextMax: string, nextUnit: string) => {
     setLoose(false);
-    const lo = Number(nextMin);
-    const hi = Number(nextMax);
-    const ok = nextMin !== "" && nextMax !== "" && Number.isFinite(lo) && Number.isFinite(hi) && lo <= hi;
-    onChange(ok ? (compact ? `₹${nextMin}${nextUnit} - ${nextMax}${nextUnit}` : `₹${nextMin} - ${nextMax} ${nextUnit}`) : "");
+    const ok = (v: string) => v !== "" && Number.isFinite(Number(v));
+    // A wrong or half-filled pair is passed on as typed, not blanked: the editor reports it and Save
+    // waits, and the stored value is untouched. Only two empty boxes mean "no fee".
+    const part = (v: string) => (v === "" ? "" : compact ? `${v}${nextUnit}` : v);
+    if (!ok(nextMin) && !ok(nextMax)) return onChange("");
+    onChange(compact ? `₹${part(nextMin)} - ${part(nextMax)}`.trimEnd() : `₹${part(nextMin)} - ${part(nextMax)} ${nextUnit}`.replace(/\s+/g, " "));
   };
 
-  const inverted = min !== "" && max !== "" && Number(min) > Number(max);
+  const negative = Number(min) < 0 || Number(max) < 0;
+  const inverted = !negative && min !== "" && max !== "" && Number(min) > Number(max);
   const field = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
 
   return (
@@ -129,8 +132,10 @@ export function RangeField({
           </button>
           .
         </p>
+      ) : negative ? (
+        <p role="alert" className="mt-1 text-xs text-red-700">A fee cannot be negative.</p>
       ) : inverted ? (
-        <p role="alert" className="mt-1 text-xs text-red-700">The first number is above the second.</p>
+        <p role="alert" className="mt-1 text-xs text-red-700">The &lsquo;From&rsquo; fee must be less than or equal to the &lsquo;To&rsquo; fee.</p>
       ) : (
         <p className="mt-1 text-xs text-ink-faint">
           {hint ? `${hint} ` : ""}
@@ -197,6 +202,8 @@ export function AmountField({
           Currently &ldquo;{value}&rdquo;, which is not an amount. Enter a number to replace it, or{" "}
           <button type="button" onClick={() => { setLoose(false); onChange(""); }} className="font-medium underline underline-offset-2 hover:text-red-700">clear it</button>.
         </p>
+      ) : Number(amount) < 0 ? (
+        <p role="alert" className="mt-1 text-xs text-red-700">{label} must be 0 or more.</p>
       ) : (
         <p className="mt-1 text-xs text-ink-faint">
           {hint ? `${hint} ` : ""}

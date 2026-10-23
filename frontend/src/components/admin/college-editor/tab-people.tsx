@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { FacultyMember, RecordReview } from "@/lib/api";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
+import { REVIEW_MIN_CHARS } from "@/lib/college-rules";
 import { AddButton, Card, EmptyNote, IsoDate, NumberInput, Row, SelectInput, TextArea, TextInput, move, today } from "@/components/admin/college-editor/shared";
 
 /*
@@ -23,7 +24,8 @@ const blankReview = (course: string): RecordReview => ({
   ratingFaculty: null,
   ratingInfrastructure: null,
   ratingCampusLife: null,
-  approved: true,
+  // A new review waits for a moderator unless approved on purpose.
+  approved: false,
 });
 
 export function ReviewsTab({ record, update }: EditorProps) {
@@ -54,17 +56,17 @@ export function ReviewsTab({ record, update }: EditorProps) {
                 <TextInput id={`rv-${i}-author`} label="Reviewer" required max={200} value={r.author} onChange={(v) => patch(i, { author: v })} />
                 <SelectInput id={`rv-${i}-course`} label="Programme" required value={r.course} onChange={(v) => patch(i, { course: v })} options={courseNames} placeholder="Select a programme" hint={courseNames.length === 0 ? "Add programmes on the Courses tab first." : undefined} />
                 <TextInput id={`rv-${i}-batch`} label="Batch" required max={50} value={r.batch} onChange={(v) => patch(i, { batch: v })} placeholder="e.g. 2023-25" />
-                <IsoDate id={`rv-${i}-date`} label="Review date" value={r.date} onChange={(v) => patch(i, { date: v || r.date })} />
+                <IsoDate id={`rv-${i}-date`} label="Review date" value={r.date} onChange={(v) => patch(i, { date: v })} notFuture />
               </div>
               <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-5">
-                <NumberInput id={`rv-${i}-rating`} label="Overall (0-5)" required min={0} max={5} step={0.1} value={r.rating} onChange={(v) => patch(i, { rating: v === null ? 0 : Math.max(0, Math.min(5, v)) })} />
-                <NumberInput id={`rv-${i}-rp`} label="Placements" min={0} max={5} step={0.1} value={r.ratingPlacements} onChange={(v) => patch(i, { ratingPlacements: v === null ? null : Math.max(0, Math.min(5, v)) })} />
-                <NumberInput id={`rv-${i}-rf`} label="Faculty" min={0} max={5} step={0.1} value={r.ratingFaculty} onChange={(v) => patch(i, { ratingFaculty: v === null ? null : Math.max(0, Math.min(5, v)) })} />
-                <NumberInput id={`rv-${i}-ri`} label="Infrastructure" min={0} max={5} step={0.1} value={r.ratingInfrastructure} onChange={(v) => patch(i, { ratingInfrastructure: v === null ? null : Math.max(0, Math.min(5, v)) })} />
-                <NumberInput id={`rv-${i}-rc`} label="Campus life" min={0} max={5} step={0.1} value={r.ratingCampusLife} onChange={(v) => patch(i, { ratingCampusLife: v === null ? null : Math.max(0, Math.min(5, v)) })} />
+                <NumberInput id={`rv-${i}-rating`} label="Overall (1-5)" required min={1} max={5} step={0.1} value={r.rating} onChange={(v) => patch(i, { rating: v ?? 0 })} />
+                <NumberInput id={`rv-${i}-rp`} label="Placements" min={1} max={5} step={0.1} value={r.ratingPlacements} onChange={(v) => patch(i, { ratingPlacements: v })} />
+                <NumberInput id={`rv-${i}-rf`} label="Faculty" min={1} max={5} step={0.1} value={r.ratingFaculty} onChange={(v) => patch(i, { ratingFaculty: v })} />
+                <NumberInput id={`rv-${i}-ri`} label="Infrastructure" min={1} max={5} step={0.1} value={r.ratingInfrastructure} onChange={(v) => patch(i, { ratingInfrastructure: v })} />
+                <NumberInput id={`rv-${i}-rc`} label="Campus life" min={1} max={5} step={0.1} value={r.ratingCampusLife} onChange={(v) => patch(i, { ratingCampusLife: v })} />
               </div>
               <div className="mt-4">
-                <TextArea id={`rv-${i}-body`} label="Review" required rows={3} max={2000} value={r.body} onChange={(v) => patch(i, { body: v })} />
+                <TextArea id={`rv-${i}-body`} label="Review" required rows={3} max={2000} value={r.body} onChange={(v) => patch(i, { body: v })} hint={r.id ? undefined : `At least ${REVIEW_MIN_CHARS} characters.`} />
               </div>
               <div className="mt-3 flex flex-wrap gap-5">
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
@@ -97,9 +99,9 @@ export function FacultyTab({ record, update }: EditorProps) {
     <div className="space-y-5">
       <Card title="Faculty at a glance" description="Three figures at the top of the Faculty tab. Leave a box empty to leave that figure out.">
         <div className="grid max-w-3xl grid-cols-1 gap-5 md:grid-cols-3">
-          <NumberInput id="fa-count" label="Faculty members" min={0} max={100000} value={faculty.count} onChange={(v) => setFaculty({ count: v === null ? null : Math.max(0, Math.round(v)) })} />
+          <NumberInput id="fa-count" label="Faculty members" min={0} max={100000} value={faculty.count} onChange={(v) => setFaculty({ count: v })} hint={faculty.count !== null && faculty.count < members.length ? `${members.length} members are listed below, more than this count.` : undefined} />
           <TextInput id="fa-ratio" label="Student to faculty ratio" max={20} value={faculty.studentRatio} onChange={(v) => setFaculty({ studentRatio: v })} placeholder="15:1" hint="Written as 15:1." />
-          <NumberInput id="fa-phd" label="Hold a PhD (%)" min={0} max={100} value={faculty.phdPercent} onChange={(v) => setFaculty({ phdPercent: v === null ? null : Math.max(0, Math.min(100, Math.round(v))) })} />
+          <NumberInput id="fa-phd" label="Hold a PhD (%)" min={0} max={100} value={faculty.phdPercent} onChange={(v) => setFaculty({ phdPercent: v })} />
         </div>
       </Card>
 
