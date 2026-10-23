@@ -3,7 +3,7 @@
 import math
 from typing import List, Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
@@ -66,58 +66,6 @@ def _to_list_schema(college: College) -> CollegeListSchema:
             for c in (college.courses or [])
         ],
     )
-
-
-async def _add_listing_extras(db: AsyncSession, colleges: List[College], rows: List[CollegeListSchema]) -> None:
-    """
-    What the /colleges card shows beyond the basics: the year the college was founded, its latest
-    average package, and its four student ratings. Two aggregate queries for the whole page, so no
-    college's reviews or placements are loaded one by one.
-    """
-    ids = [c.id for c in colleges]
-    if not ids:
-        return
-
-    ratings = {
-        r.college_id: r
-        for r in (await db.execute(
-            select(
-                Review.college_id,
-                func.avg(Review.rating_placements).label("placements"),
-                func.avg(Review.rating_faculty).label("faculty"),
-                func.avg(Review.rating_infrastructure).label("infrastructure"),
-                func.avg(Review.rating_campus_life).label("campus"),
-            )
-            .where(Review.college_id.in_(ids), Review.is_approved.is_(True))
-            .group_by(Review.college_id)
-        )).all()
-    }
-
-    latest: dict = {}
-    for p in (await db.execute(
-        select(Placement.college_id, Placement.year, Placement.average_package)
-        .where(Placement.college_id.in_(ids))
-        .order_by(Placement.year.desc())
-    )).all():
-        latest.setdefault(p.college_id, p)  # newest first, so the first one seen is the latest
-
-    for college, row in zip(colleges, rows):
-        row.foundedYear = college.established
-        record = ratings.get(college.id)
-        if record:
-            labelled = [
-                ("Placements", record.placements),
-                ("Faculty", record.faculty),
-                ("Infrastructure", record.infrastructure),
-                ("Campus Life", record.campus),
-            ]
-            row.studentRatings = [
-                RatingBreakdownSchema(label=label, score=round(float(value), 1)) for label, value in labelled if value is not None
-            ]
-        placement = latest.get(college.id)
-        if placement and placement.average_package:
-            row.avgPackage = placement.average_package
-            row.avgPackageYear = placement.year
 
 
 def _rating_breakdown(reviews: List[Review]) -> List[RatingBreakdownSchema]:
@@ -233,7 +181,6 @@ class CollegeService:
         colleges, total = await self.repo.list(params)
         pages = math.ceil(total / params.limit) if params.limit else 1
         rows = [_to_list_schema(c) for c in colleges]
-        await _add_listing_extras(self.repo.db, colleges, rows)
         if params.ranking_list and rows:
             # Filtering by a ranking list: each card shows its rank in that list, not its headline ranking.
             found = (await self.repo.db.execute(
