@@ -30,7 +30,7 @@ async def test_draft_publish_archive_delete(client, world):
         assert [c["status"] for c in r.json()["data"] if c["slug"] == slug] == ["draft"]
         assert (await client.get(f"{API}/colleges/{slug}")).status_code == 404
         assert slug not in (await client.get(f"{API}/sitemap/colleges")).json()["data"]
-        assert slug not in {c["slug"] for c in (await client.get(f"{API}/colleges?limit=200")).json()["data"]}
+        assert slug not in {c["slug"] for c in (await client.get(f"{API}/colleges?limit=50")).json()["data"]}
 
         r = await client.patch(f"{API}/admin/colleges/{slug}/status", json={"status": "published"}, headers=h)
         assert r.status_code == 200

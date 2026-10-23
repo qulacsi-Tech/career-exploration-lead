@@ -158,15 +158,16 @@ def exam_lookup(exams: list[tuple[str, str]]) -> dict[str, str]:
 
 
 def resolve_exams(values: list[str], table: dict[str, str], already: set[str], label: str) -> list[str]:
-    """Each exam as the directory names it. One already on the record is kept as it is, so an older
-    record is not refused for something it had before; anything new has to be in the directory."""
+    """Each exam as the directory names it. One already on the record is kept exactly as it is written
+    (so saving an older record neither refuses it nor rewrites "CAT" as the long name); anything new has
+    to be in the directory."""
     out: list[str] = []
     for raw in values:
         text = raw.strip()
         if not text:
             continue
         if text.lower() in already:
-            out.append(table.get(text.lower(), text))
+            out.append(text)
             continue
         found = table.get(text.lower())
         if found is None:

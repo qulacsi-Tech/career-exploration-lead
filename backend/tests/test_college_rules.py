@@ -89,3 +89,5 @@ def test_exams_resolve_to_the_directory_name_and_old_values_are_kept():
         r.resolve_exams(["FAKE"], table, set(), "Exams")
     # already on the record: kept even if the directory has never heard of it
     assert r.resolve_exams(["KCET"], table, {"kcet"}, "Exams") == ["KCET"]
+    # and a short form already on the record is not rewritten
+    assert r.resolve_exams(["CAT"], table, {"cat"}, "Exams") == ["CAT"]

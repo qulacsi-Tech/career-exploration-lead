@@ -168,7 +168,7 @@ Decisions taken: D1 yes (Draft / Published / Archived), D2 platform admins publi
 | F: public college page | **Done** | cc6bec1 | 11, 30, 32, 37, 56, 65, 66 |
 | D: list UI | **Done** | 9ca2531 | 16 (sortable), 17, 18 |
 | G: editor polish | **Done** | 519c711 | 19, 31, 33, 42, 50, 51, 54, 61, 63, 64, 67, 68, 71 |
-| H: data cleanup | **Not started**, needs your database | n/a | 21 (stored values), 22, 47/48 (run the script), 69, 70 |
+| H: data cleanup | **Script done; run it on the QA database** | see `git log` | 21, 22, 47/48, 69, 70 |
 
 Notes for the tester:
 
@@ -178,3 +178,18 @@ Notes for the tester:
 - **Backend tests** for the new rules and the status flow are in `backend/tests` (`test_college_rules.py` needs nothing; `test_college_status.py` needs the seeded database like the existing ones).
 - **Existing data may now be refused on save** until corrected (for example a duration written as "abc", a state not in the list, a tag over 30 characters). The message names the programme or field.
 - 22, 69, 70 remain data work: someone has to confirm the correct ownership, stream and exam names.
+
+### Data cleanup (package H)
+
+`backend/scripts/repair_college_data.py` checks every college against the rules and repairs what is exact and reversible. It reports only by default; `--apply` makes the repairs.
+
+| Item | What the script does |
+|---|---|
+| 21 | Sets a negative or out-of-date programme count to the number of programmes listed. |
+| 22 | Cannot be fixed by a script. It lists colleges whose ownership or category does not fit the name, for a person to check against an official source. |
+| 47, 48 | Archives QA and test records (restorable). `scripts/archive_test_colleges.py` does only this step. |
+| 69 | Lists colleges listed twice (same name and city) and which copy it would keep; `--archive-duplicates` archives the lesser copy. Different cities are not touched. |
+| 70 | Adds the missing space before an exam's abbreviation ("Test(CAT)" becomes "Test (CAT)"). Colleges keep the exam names they have; a new exam picked in the editor uses the directory's name. |
+| also | A state typo with one clear match ("Karnatak") is corrected. It also lists exams used by colleges but missing from the Exams directory, fee ranges, tags and durations the new rules refuse, and placements with the highest below the average. |
+
+Run against the **local** database (16 colleges) it found no QA records, duplicates or negative counts: those are in the tester's environment, which is a different database. The only repairs it would make here are ten programme counts that were higher than the programmes listed (for example Cascade says 9 courses but lists 3). They were **not applied**: applying them makes cards say fewer courses. Seven exams used by colleges are not in the directory (GMAT, TNEA, COMEDK, MHT CET, "Institute Entrance Test").
