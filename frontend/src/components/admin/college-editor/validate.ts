@@ -1,4 +1,5 @@
 import type { CollegeRecord } from "@/lib/api";
+import { withoutBrokenImages } from "@/lib/rich-text";
 import {
   NEWS_YEAR_MIN,
   REVIEW_MIN_CHARS,
@@ -45,7 +46,35 @@ export type TabId =
 const SITE_OR_HTTPS = /^(\/[^\s]*|https:\/\/[^\s]+)?$/;
 const HTTPS = /^(https:\/\/[^\s]+)?$/;
 
-export function problemsByTab(r: CollegeRecord): Record<TabId, string[]> {
+const empty = (...texts: (string | null | undefined)[]) => texts.every((t) => !t || !t.trim());
+
+/**
+ * The record as it is saved: a row that was added and never typed in is dropped (so adding one does not
+ * start a list of "required" errors, and saving does not trip over it), and a picture in a written
+ * section that cannot load is removed.
+ */
+export function cleanRecord(r: CollegeRecord): CollegeRecord {
+  const d = r.detail;
+  return {
+    ...r,
+    courses: r.courses.filter((c) => !(empty(c.name, c.duration, c.fees, c.eligibility) && c.exams.length === 0 && c.seats === null)),
+    reviews: r.reviews.filter((v) => v.id || !empty(v.author, v.batch, v.body)),
+    cutoffs: r.cutoffs.filter((c) => !empty(c.exam, c.score)),
+    detail: {
+      ...d,
+      faculty: { ...d.faculty, members: d.faculty.members.filter((m) => !empty(m.name, m.designation, m.department, m.qualification)) },
+      faqs: d.faqs.filter((f) => !empty(f.question, f.answer)),
+      alerts: d.alerts.filter((a) => !empty(a.title, a.link)),
+      articles: d.articles.filter((a) => !empty(a.title, a.summary, a.body)),
+      media: d.media.filter((m) => !empty(m.title, m.publication, m.link)),
+      videos: d.videos.filter((v) => !(empty(v.title) && !v.videoId)),
+      tabs: Object.fromEntries(Object.entries(d.tabs).map(([slug, doc]) => [slug, withoutBrokenImages(doc)])),
+    },
+  };
+}
+
+export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
+  const r = cleanRecord(record);
   const out: Record<TabId, string[]> = {
     info: [], courses: [], reviews: [], admissions: [], placements: [], cutoffs: [], rankings: [],
     gallery: [], infrastructure: [], faculty: [], compare: [], qna: [], scholarships: [], news: [], seo: [], administrative: [],

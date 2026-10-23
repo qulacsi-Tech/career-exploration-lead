@@ -161,8 +161,20 @@ function withMediaUrls(node: JSONContent): JSONContent {
   if (node.type === "image" && typeof node.attrs?.src === "string") {
     next.attrs = { ...node.attrs, src: mediaUrl(node.attrs.src) };
   }
-  if (node.content) next.content = node.content.map(withMediaUrls);
+  // A picture whose address is not one of ours (or https) cannot load, so it is left out rather than drawn empty.
+  if (node.content) next.content = node.content.filter((child) => child.type !== "image" || isUsableImage(child.attrs?.src)).map(withMediaUrls);
   return next;
+}
+
+/** An uploaded picture, one shipped with the site, or an https address. Anything else would show as a broken image. */
+export function isUsableImage(src: unknown): boolean {
+  return typeof src === "string" && /^(\/api\/uploads\/|\/images\/|https:\/\/)\S+$/.test(src) && !src.includes("..");
+}
+
+/** The document without pictures that cannot load. Applied when a section is saved. */
+export function withoutBrokenImages<T extends JSONContent>(node: T): T {
+  if (!node.content) return node;
+  return { ...node, content: node.content.filter((child) => child.type !== "image" || isUsableImage(child.attrs?.src)).map((child) => withoutBrokenImages(child)) };
 }
 
 export function richTextToHtml(doc: RichTextDoc | null | undefined): string {

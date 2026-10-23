@@ -31,7 +31,7 @@ import { GalleryTab, VideosTab } from "@/components/admin/college-editor/tab-med
 import { NewsTab } from "@/components/admin/college-editor/tab-news";
 import { SeoTab, WrittenTab } from "@/components/admin/college-editor/tab-written";
 import { AdministrativeTab } from "@/components/admin/college-editor/tab-administrative";
-import { problemsByTab, type TabId } from "@/components/admin/college-editor/validate";
+import { cleanRecord, problemsByTab, type TabId } from "@/components/admin/college-editor/validate";
 
 /*
   The college editor: one dialog, one tab for each part of the public college page, in the
@@ -143,7 +143,7 @@ export function CollegeRecordEditor({
     if (!record) return;
     setError(null);
     startTransition(async () => {
-      const result = await saveCollegeRecord(slug, record);
+      const result = await saveCollegeRecord(slug, cleanRecord(record));
       if ("error" in result) return setError(result.error);
       onSaved?.(record.name, record);
       onClose();
@@ -155,7 +155,7 @@ export function CollegeRecordEditor({
     if (!record) return;
     setError(null);
     startTransition(async () => {
-      const result = await collegeSubmitEdit(record, note);
+      const result = await collegeSubmitEdit(cleanRecord(record), note);
       if ("error" in result) return setError(result.error);
       onSaved?.(record.name, record);
       onClose();
@@ -280,7 +280,7 @@ export function CollegeRecordEditor({
 
       {props && problems && (
         <>
-          <div role="tablist" aria-label="College sections" className="-mt-1 mb-6 flex gap-1 overflow-x-auto border-b border-line">
+          <div role="tablist" aria-label="College sections" className="-mt-1 mb-6 flex flex-wrap gap-x-1 border-b border-line">
             {tabs.map((t) => {
               const active = tab === t.id;
               const count = readonly ? 0 : problems[t.id].length;
@@ -291,13 +291,14 @@ export function CollegeRecordEditor({
                   role="tab"
                   id={`ce-tab-${t.id}`}
                   aria-selected={active}
+                  aria-label={count > 0 ? `${t.label}, ${count} to fix` : t.label}
                   aria-controls={`ce-panel-${t.id}`}
                   onClick={() => setTab(t.id)}
                   className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-2.5 text-sm font-medium transition ${active ? "border-brand text-brand" : "border-transparent text-ink-soft hover:text-ink"}`}
                 >
                   <t.icon className="h-4 w-4" aria-hidden="true" />
                   {t.label}
-                  {count > 0 && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white" title={`${count} to fix`}>{count}</span>}
+                  {count > 0 && <span aria-hidden="true" className="rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-4 text-white" title={`${count} to fix`}>{count}</span>}
                 </button>
               );
             })}

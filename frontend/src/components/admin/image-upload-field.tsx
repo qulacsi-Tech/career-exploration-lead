@@ -207,10 +207,11 @@ export function ImageUploadField({
       return;
     }
     if (size.width < minW || size.height < minH) {
-      setNote({
-        kind: "error",
-        text: `That image is ${size.width} × ${size.height} px, which is too small and would look blurry. The minimum is ${minW} × ${minH} px; ${recW} × ${recH} px is ideal.`,
-      });
+      const short = [
+        size.width < minW && `Width ${size.width} px is below the ${minW} px minimum`,
+        size.height < minH && `Height ${size.height} px is below the ${minH} px minimum`,
+      ].filter(Boolean).join(". ");
+      setNote({ kind: "error", text: `${short}. It would look blurry; ${recW} × ${recH} px is ideal.` });
       return;
     }
 

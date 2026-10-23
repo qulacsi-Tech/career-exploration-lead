@@ -39,7 +39,7 @@ export function GalleryTab({ record, update }: EditorProps) {
         form.append("file", file);
         const result = await uploadHomeImage(form);
         if ("error" in result) problems.push(`${file.name}: ${result.error}`);
-        else added.push({ src: result.url, alt: "", name: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "), highlight: false });
+        else added.push({ src: result.url, alt: "", name: "", highlight: false });
       }
       if (added.length > 0) update((r) => ({ ...r, detail: { ...r.detail, gallery: [...r.detail.gallery, ...added] } }));
       setNotes(problems);

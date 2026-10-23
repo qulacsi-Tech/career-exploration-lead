@@ -23,6 +23,20 @@ HTTPS = r"^https://[^\s]+$"
 # The written sections a college page has, by the tab-template slug they are stored under.
 TAB_SLUGS = ("admission-process", "hostel-facilities", "scholarships")
 MAX_TAB_BYTES = 60_000
+_USABLE_IMAGE = re.compile(r"^(/api/uploads/|/images/|https://)\S+$")
+
+
+def _without_broken_images(node: dict) -> dict:
+    """A picture whose address cannot load (a relative path, a data URI) is dropped, not stored as an empty figure."""
+    children = node.get("content")
+    if not isinstance(children, list):
+        return node
+    kept = [
+        _without_broken_images(c)
+        for c in children
+        if isinstance(c, dict) and not (c.get("type") == "image" and not _USABLE_IMAGE.match(str((c.get("attrs") or {}).get("src", ""))))
+    ]
+    return {**node, "content": kept}
 
 
 def photo_path(value: str) -> str:
@@ -166,7 +180,7 @@ class CollegeDetail(BaseModel):
                 raise ValueError(f"{slug}: not a document")
             if len(json.dumps(doc)) > MAX_TAB_BYTES:
                 raise ValueError(f"{slug}: too long")
-        return value
+        return {slug: _without_broken_images(doc) for slug, doc in value.items()}
 
     @model_validator(mode="after")
     def _unique_similar(self):

@@ -31,6 +31,8 @@ export function WrittenTab({ record, update, tab, title, description }: EditorPr
 }
 
 const TITLE_MAX = 70;
+// The address the site is served from, so the preview reads like the real search result.
+const SITE_HOST = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "") || "topcollegepath.com";
 const DESC_MAX = 170;
 
 export function SeoTab({ record, update, slug }: EditorProps) {
@@ -47,7 +49,7 @@ export function SeoTab({ record, update, slug }: EditorProps) {
       </Card>
       <Card title="Preview">
         <div className="rounded-lg border border-line bg-bg p-4">
-          <p className="truncate text-xs text-ink-faint">yoursite.com › college › {slug}</p>
+          <p className="truncate text-xs text-ink-faint">{SITE_HOST} › college › {slug}</p>
           <p className="mt-1 line-clamp-2 text-lg leading-snug text-[#1a0dab]">{shownTitle}</p>
           <p className="mt-1 line-clamp-3 text-sm text-ink-soft">{shownDescription || "No description."}</p>
         </div>

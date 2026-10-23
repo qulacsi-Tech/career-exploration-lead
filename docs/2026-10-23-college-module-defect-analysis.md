@@ -2,7 +2,7 @@
 
 Source: *Top College Defect Tracker – College.pdf* (72 items, SL 1–72).
 Method: each item was checked against the current code (`main`, commit `f2e472d`), not only against the tester's remark. Nothing has been run in a browser for this review, so items marked **Runtime check** need a quick look in the app before the fix is accepted.
-Status of this document: **for review. No fixes have been made.**
+Status: **fixes in progress. See section 7 for what has been done and what is left.**
 
 ## 1. Summary
 
@@ -154,3 +154,27 @@ Each package ends with: a type-check, the existing backend tests (`backend/tests
 ## 6. Next step
 
 Please review section 2 (the twelve decisions) and the package order. When you reply, I will start with whichever packages you approve. My suggestion is **A, B and C first** (most of the failed rows, no migration), then **E** once D1/D2 are settled.
+
+## 7. Progress (updated 2026-10-23)
+
+Decisions taken: D1 yes (Draft / Published / Archived), D2 platform admins publish, D11 archive the QA records; the rest followed the recommendations in section 2.
+
+| Work package | State | Commit | Items |
+|---|---|---|---|
+| A: list order | **Done** | 6da7b7e | 1, 16 (order) |
+| B: one validation layer | **Done** | 6da7b7e | 3, 4, 7, 9, 13, 21, 25, 26, 27, 28, 29, 35, 36, 38, 39, 40, 41, 43, 44, 52, 53, 55, 57, 58, 59, 60, 62 |
+| C: Add College form | **Done** | 6da7b7e | 5, 6, 8, 14, 15, 20 |
+| E: status model | **Done**, needs the migration run (`037`) | 16... see `git log` | 10, 12, 47, 48 |
+| F: public college page | **Done** | cc6bec1 | 11, 30, 32, 37, 56, 65, 66 |
+| D: list UI | **Done** | see `git log` | 16 (sortable), 17, 18 |
+| G: editor polish | **Done** | see `git log` | 19, 31, 33, 42, 50, 51, 54, 61, 63, 64, 67, 68, 71 |
+| H: data cleanup | **Not started**, needs your database | n/a | 21 (stored values), 22, 47/48 (run the script), 69, 70 |
+
+Notes for the tester:
+
+- **Run the migration** (it runs on API start, or `alembic upgrade head`): existing colleges become Published, so nothing disappears.
+- **QA records:** `python -m scripts.archive_test_colleges` lists them; add `--apply` to archive them. Review the list first.
+- **Not checked in a browser:** 17 (sticky Actions at ~980px), 18 (floating message), 67 (tab wrap), 71 (Score alignment: the cause was the character counter under the field, now shown only near the limit).
+- **Backend tests** for the new rules and the status flow are in `backend/tests` (`test_college_rules.py` needs nothing; `test_college_status.py` needs the seeded database like the existing ones).
+- **Existing data may now be refused on save** until corrected (for example a duration written as "abc", a state not in the list, a tag over 30 characters). The message names the programme or field.
+- 22, 69, 70 remain data work: someone has to confirm the correct ownership, stream and exam names.
