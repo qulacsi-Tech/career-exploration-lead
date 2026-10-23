@@ -104,6 +104,9 @@ import {
   adminReorderStudyAbroad,
   adminSetFiguresReviewed,
   adminUpdateCollege,
+  adminSetCollegeStatus,
+  adminDeleteCollege,
+  type CollegeStatus,
   adminUpdateExam,
   adminUpdateStudyAbroadItem,
   type StudyAbroadKind,
@@ -183,6 +186,27 @@ export async function saveCollege(slug: string, form: FormData): Promise<AdminAc
   return attempt("/admin/colleges", (token) =>
     adminUpdateCollege(token, slug, { ...body(form, COLLEGE_EDIT_FIELDS), ...(typeof photo === "string" ? { image: photo } : {}) })
   );
+}
+
+/** What a college's pages and lists show changes with its status, so refresh them all. */
+function refreshCollegePages(slug: string) {
+  revalidatePath("/admin/colleges");
+  revalidatePath("/colleges");
+  revalidatePath(`/college/${slug}`, "layout");
+  revalidatePath("/rankings", "layout");
+  revalidatePath("/", "layout");
+}
+
+export async function setCollegeStatus(slug: string, status: CollegeStatus): Promise<AdminActionResult> {
+  const result = await attempt("/admin/colleges", (token) => adminSetCollegeStatus(token, slug, status));
+  if ("ok" in result) refreshCollegePages(slug);
+  return result;
+}
+
+export async function deleteCollegeForever(slug: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/colleges", (token) => adminDeleteCollege(token, slug));
+  if ("ok" in result) refreshCollegePages(slug);
+  return result;
 }
 
 /** The result of adding a college: `duplicate` is set when the same name already exists in the city and the editor has not yet said to go ahead. */

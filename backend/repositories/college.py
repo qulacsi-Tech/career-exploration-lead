@@ -69,6 +69,9 @@ def _name_like(patterns):
 
 def _apply_filters(stmt, params: CollegeFilterParams):
     """Apply all optional filter/sort criteria to an existing SELECT statement."""
+    # The public site shows published colleges; the admin list asks for "all" or one status.
+    if params.status != "all":
+        stmt = stmt.where(College.status == (params.status or "published"))
     if params.stream:
         stmt = stmt.where(College.stream.ilike(f"%{params.stream}%"))
     if params.city:
@@ -185,11 +188,11 @@ class CollegeRepository:
         colleges = list(result.scalars().unique())
         return colleges, total
 
-    async def get_by_slug(self, slug: str) -> Optional[College]:
-        """Return full college with all relations loaded."""
+    async def get_by_slug(self, slug: str, published_only: bool = True) -> Optional[College]:
+        """Return full college with all relations loaded. A draft or archived college is not public."""
         stmt = (
             select(College)
-            .where(College.slug == slug)
+            .where(College.slug == slug, *([College.status == "published"] if published_only else []))
             .options(
                 selectinload(College.courses),
                 selectinload(College.placements),
@@ -205,8 +208,8 @@ class CollegeRepository:
         stmt = (
             select(College)
             .options(selectinload(College.courses))
-            .where(College.stream == college.stream, College.id != college.id)
-            .order_by(College.rating.desc())
+            .where(College.stream == college.stream, College.id != college.id, College.status == "published")
+            .order_by(College.rating.desc(), College.name)
             .limit(limit)
         )
         result = await self.db.execute(stmt)
@@ -218,22 +221,24 @@ class CollegeRepository:
         Cities, exams, approvals and modes are whatever colleges actually carry;
         courses and specialisations come from the published catalogue.
         """
+        live = College.status == "published"
+
         async def column(stmt) -> List[str]:
             rows = (await self.db.execute(stmt)).scalars()
             return sorted({str(v).strip() for v in rows if v and str(v).strip()}, key=str.lower)
 
         return {
-            "cities": await column(select(College.city).distinct()),
-            "exams": await column(select(func.jsonb_array_elements_text(College.exams_accepted)).distinct()),
-            "approvals": await column(select(func.jsonb_array_elements_text(College.approvals)).distinct()),
-            "modes": await column(select(Course.mode).distinct()),
+            "cities": await column(select(College.city).where(live).distinct()),
+            "exams": await column(select(func.jsonb_array_elements_text(College.exams_accepted)).where(live).distinct()),
+            "approvals": await column(select(func.jsonb_array_elements_text(College.approvals)).where(live).distinct()),
+            "modes": await column(select(Course.mode).where(Course.college_id.in_(select(College.id).where(live))).distinct()),
             "courses": await column(select(CourseCatalogue.name).where(CourseCatalogue.is_published == True)),  # noqa: E712
             "specialisations": await column(select(Specialisation.name).distinct()),
         }
 
     async def get_all_slugs(self) -> List[str]:
         """Return every slug — used by Next.js generateStaticParams."""
-        result = await self.db.execute(select(College.slug))
+        result = await self.db.execute(select(College.slug).where(College.status == "published"))
         return list(result.scalars())
 
     async def get_featured(self, limit: int = 6) -> List[College]:
@@ -241,8 +246,8 @@ class CollegeRepository:
         stmt = (
             select(College)
             .options(selectinload(College.courses))
-            .where(College.is_featured == True)  # noqa: E712
-            .order_by(College.rating.desc())
+            .where(College.is_featured == True, College.status == "published")  # noqa: E712
+            .order_by(College.rating.desc(), College.name)
             .limit(limit)
         )
         result = await self.db.execute(stmt)
@@ -263,6 +268,7 @@ class CollegeRepository:
         """Return [{name, count}] for every distinct stream."""
         stmt = (
             select(College.stream, func.count(College.id).label("count"))
+            .where(College.status == "published")
             .group_by(College.stream)
             .order_by(func.count(College.id).desc())
         )
@@ -284,7 +290,7 @@ class CollegeRepository:
         """Return colleges similar to the given one — same stream first,
         sorted by rating proximity, excluding the college itself."""
         try:
-            conditions = [College.id != college.id]
+            conditions = [College.id != college.id, College.status == "published"]
             if college.stream:
                 conditions.append(College.stream == college.stream)
 
@@ -305,8 +311,8 @@ class CollegeRepository:
                 stmt2 = (
                     select(College)
                     .options(selectinload(College.courses))
-                    .where(College.id.notin_(existing_ids))
-                    .order_by(College.rating.desc())
+                    .where(College.id.notin_(existing_ids), College.status == "published")
+                    .order_by(College.rating.desc(), College.name)
                     .limit(needed)
                 )
                 result2 = await self.db.execute(stmt2)

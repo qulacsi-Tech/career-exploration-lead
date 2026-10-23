@@ -20,7 +20,7 @@ async def sitemap_colleges(db: DbSession):
     """All published college slugs for sitemap generation."""
     from sqlalchemy import select
     from models.college import College
-    result = await db.execute(select(College.slug))
+    result = await db.execute(select(College.slug).where(College.status == "published"))
     return SuccessResponse[list](data=list(result.scalars()))
 
 

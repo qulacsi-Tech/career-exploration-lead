@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition, type FormEvent } from "react";
-import { createCollege } from "@/lib/admin-actions";
-import type { College, IndiaGeo } from "@/lib/api";
+import { createCollege, deleteCollegeForever, setCollegeStatus } from "@/lib/admin-actions";
+import type { College, CollegeStatus, IndiaGeo } from "@/lib/api";
 import {
   programs,
   rankingListsForProgram,
@@ -33,6 +33,8 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
   const [programSlug, setProgramSlug] = useState("");
   const [rankingSlug, setRankingSlug] = useState("");
   const [stream, setStream] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | CollegeStatus>("");
+  const [acting, setActing] = useState<{ college: College; action: StatusAction } | null>(null);
   const [viewing, setViewing] = useState<College | null>(null);
   const [editing, setEditing] = useState<College | null>(null);
   const [adding, setAdding] = useState(false);
@@ -77,12 +79,13 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const inStream = stream ? scoped.filter((c) => c.stream === stream) : scoped;
+    const byStatus = statusFilter ? scoped.filter((c) => (c.status ?? "published") === statusFilter) : scoped;
+    const inStream = stream ? byStatus.filter((c) => c.stream === stream) : byStatus;
     if (!q) return inStream;
     return inStream.filter((c) =>
       [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q)),
     );
-  }, [scoped, query, stream]);
+  }, [scoped, query, stream, statusFilter]);
 
   return (
     <div className="space-y-6">
@@ -143,6 +146,18 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
             </select>
 
             <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "" | CollegeStatus)}
+              aria-label="Filter by status"
+              className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
+            >
+              <option value="">All statuses</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+              <option value="archived">Archived</option>
+            </select>
+
+            <select
               value={stream}
               onChange={(e) => setStream(e.target.value)}
               aria-label="Filter by category"
@@ -194,7 +209,9 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
                         )}
                       </span>
                       <span className="min-w-0">
-                        <span className="block font-medium text-ink">{college.name}</span>
+                        <span className="block font-medium text-ink">
+                          {college.name} <StatusBadge status={college.status} />
+                        </span>
                         <span className="block text-xs text-ink-faint">{college.slug}</span>
                       </span>
                     </div>
@@ -225,6 +242,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
                       >
                         Edit
                       </button>
+                      <StatusMenu college={college} onPick={(action) => setActing({ college, action })} />
                     </div>
                   </td>
                 </tr>
@@ -261,12 +279,24 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
           onSaved={(name) => showFlash("ok", `${name} saved.`)}
         />
       )}
+      <StatusConfirm
+        acting={acting}
+        onClose={() => setActing(null)}
+        onDone={(message) => {
+          setActing(null);
+          showFlash("ok", message);
+        }}
+        onError={(message) => {
+          setActing(null);
+          showFlash("error", message);
+        }}
+      />
       <AddCollegeModal
         geo={geo}
         streams={streams}
         open={adding}
         onClose={() => setAdding(false)}
-        onSaved={() => showFlash("ok", "College added.")}
+        onSaved={() => showFlash("ok", "College added as a draft. It is not on the site until you publish it from the list.")}
       />
     </div>
   );
@@ -398,6 +428,87 @@ function ViewCollegeModal({
           </AdminSubsection>
         </div>
       )}
+    </AdminModal>
+  );
+}
+
+type StatusAction = "publish" | "archive" | "restore" | "delete";
+
+function StatusBadge({ status }: { status?: CollegeStatus }) {
+  if (!status || status === "published") return null;
+  const style = status === "draft" ? "bg-amber-100 text-amber-900" : "bg-slate-200 text-slate-700";
+  return <span className={`ml-1.5 rounded-full px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide ${style}`}>{status}</span>;
+}
+
+/** The status actions for one row, in a small menu so the Actions column stays narrow. */
+function StatusMenu({ college, onPick }: { college: College; onPick: (action: StatusAction) => void }) {
+  const status = college.status ?? "published";
+  const items: { action: StatusAction; label: string; danger?: boolean }[] =
+    status === "draft"
+      ? [{ action: "publish", label: "Publish" }, { action: "archive", label: "Archive" }]
+      : status === "published"
+        ? [{ action: "archive", label: "Archive" }]
+        : [{ action: "restore", label: "Restore" }, { action: "delete", label: "Delete permanently", danger: true }];
+  return (
+    <details className="relative" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && (e.currentTarget.open = false)}>
+      <summary aria-label={`More actions for ${college.name}`} className="cursor-pointer list-none rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand">
+        More
+      </summary>
+      <ul className="absolute right-0 z-20 mt-1 min-w-40 rounded-lg border border-line bg-surface py-1 shadow-lg">
+        {items.map((item) => (
+          <li key={item.action}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.currentTarget.closest("details")?.removeAttribute("open");
+                onPick(item.action);
+              }}
+              className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-bg-alt ${item.danger ? "text-red-700" : "text-ink"}`}
+            >
+              {item.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+const STATUS_COPY: Record<StatusAction, { title: string; body: (name: string) => string; confirm: string; done: (name: string) => string; danger?: boolean }> = {
+  publish: { title: "Publish this college?", body: (n) => `${n} will appear on the public site, in search and in the sitemap.`, confirm: "Publish", done: (n) => `${n} is published.` },
+  archive: { title: "Archive this college?", body: (n) => `${n} is hidden from the public site, search, Compare and the rankings. Nothing is deleted and you can restore it.`, confirm: "Archive", done: (n) => `${n} is archived. Restore it any time from the list.` },
+  restore: { title: "Restore this college?", body: (n) => `${n} comes back as a draft, so you can check it before publishing.`, confirm: "Restore as draft", done: (n) => `${n} is back as a draft.` },
+  delete: { title: "Delete this college for good?", body: (n) => `${n} and its programmes, placements, reviews and cut-offs are removed permanently. This cannot be undone.`, confirm: "Delete permanently", done: (n) => `${n} was deleted.`, danger: true },
+};
+
+function StatusConfirm({ acting, onClose, onDone, onError }: { acting: { college: College; action: StatusAction } | null; onClose: () => void; onDone: (message: string) => void; onError: (message: string) => void }) {
+  const [pending, startTransition] = useTransition();
+  if (!acting) return null;
+  const { college, action } = acting;
+  const copy = STATUS_COPY[action];
+  const run = () =>
+    startTransition(async () => {
+      const result = action === "delete" ? await deleteCollegeForever(college.slug) : await setCollegeStatus(college.slug, action === "publish" ? "published" : action === "archive" ? "archived" : "draft");
+      if ("error" in result) return onError(result.error);
+      onDone(copy.done(college.name));
+    });
+  return (
+    <AdminModal
+      open
+      onClose={onClose}
+      title={copy.title}
+      footer={
+        <>
+          <button type="button" onClick={onClose} disabled={pending} className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand disabled:opacity-50">
+            Cancel
+          </button>
+          <button type="button" onClick={run} disabled={pending} className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50 ${copy.danger ? "bg-red-700 hover:bg-red-800" : "bg-brand hover:bg-brand-dark"}`}>
+            {pending ? "Working…" : copy.confirm}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm text-ink">{copy.body(college.name)}</p>
     </AdminModal>
   );
 }

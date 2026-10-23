@@ -138,11 +138,15 @@ export type Review = {
   body: string;
 };
 
+export type CollegeStatus = "draft" | "published" | "archived";
+
 export type College = {
   slug: string;
   name: string;
   city: string;
   state: string;
+  /** Only published colleges reach the public site; the admin list also carries drafts and archived ones. */
+  status?: CollegeStatus;
   ownership: "Private" | "Government" | "Deemed";
   stream: string;
   ranking: Ranking;
@@ -1704,6 +1708,16 @@ async function adminRequest<T>(
 /** Admin: create a college. The slug must be new. */
 export async function adminCreateCollege(token: string, body: Record<string, unknown>) {
   return adminRequest<{ message: string }>(token, "POST", "/admin/colleges", body);
+}
+
+/** Admin: publish a draft, archive a college, or restore an archived one. */
+export async function adminSetCollegeStatus(token: string, slug: string, status: CollegeStatus) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/colleges/${encodeURIComponent(slug)}/status`, { status });
+}
+
+/** Admin: delete for good. The API refuses unless the college is archived. */
+export async function adminDeleteCollege(token: string, slug: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/colleges/${encodeURIComponent(slug)}`);
 }
 
 /** Admin: partial update of a college. Only the keys present are changed. */

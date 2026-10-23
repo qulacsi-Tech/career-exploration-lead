@@ -81,6 +81,8 @@ class CollegeListSchema(BaseModel):
     state: str
     ownership: str
     stream: str
+    # draft | published | archived. The public site only ever receives published ones.
+    status: str = "published"
     ranking: RankingSchema
     rating: float
     reviewCount: int
@@ -164,5 +166,7 @@ class CollegeFilterParams(BaseModel):
     credential: Optional[str] = None
     min_rating: Optional[float] = None
     sort: str = "popularity"
+    # Only the admin asks for anything but published: "all", "draft" or "archived".
+    status: Optional[str] = None
     featured: Optional[bool] = None
     q: Optional[str] = None

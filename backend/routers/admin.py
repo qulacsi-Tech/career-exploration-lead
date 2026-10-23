@@ -49,9 +49,10 @@ async def admin_list_colleges(
     stream: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     sort: str = Query("newest"),
+    status: str = Query("all", pattern="^(all|draft|published|archived)$"),
 ):
-    """Full college list for the admin table — no featured filter. Newest first unless asked otherwise."""
-    params = CollegeFilterParams(page=page, limit=limit, stream=stream, q=q, sort=sort)
+    """Full college list for the admin table: every status unless one is asked for. Newest first unless asked otherwise."""
+    params = CollegeFilterParams(page=page, limit=limit, stream=stream, q=q, sort=sort, status=status)
     svc = CollegeService(db)
     colleges, meta = await svc.list_colleges(params)
     return ListResponse[Any](data=colleges, meta=meta)
@@ -195,9 +196,11 @@ async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db
         ranking_rank=body.rankingRank,
         established=body.established,
         image=body.image or "",
+        # Not public until someone has looked at it and published it.
+        status="draft",
     ))
     await db.commit()
-    return SuccessResponse[MessageResponse](data=MessageResponse(message=f"College '{body.slug}' created."))
+    return SuccessResponse[MessageResponse](data=MessageResponse(message=f"College '{body.slug}' created as a draft."))
 
 
 @router.patch("/colleges/{slug}", response_model=SuccessResponse[MessageResponse])
@@ -239,11 +242,35 @@ async def admin_update_college(
     return SuccessResponse[MessageResponse](data=MessageResponse(message=f"College '{slug}' updated."))
 
 
-@router.delete("/colleges/{slug}", response_model=SuccessResponse[MessageResponse])
-async def admin_delete_college(slug: str, _admin: AdminPayload, db: DbSession):
-    from sqlalchemy import delete as sql_delete
+class CollegeStatusBody(BaseModel):
+    status: Literal["draft", "published", "archived"]
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.patch("/colleges/{slug}/status", response_model=SuccessResponse[MessageResponse])
+async def admin_set_college_status(slug: str, body: CollegeStatusBody, _admin: AdminPayload, db: DbSession):
+    """Publish a draft, archive a college (hidden, nothing lost) or bring an archived one back."""
+    from sqlalchemy import update as sql_update
     from models.college import College
 
+    result = await db.execute(sql_update(College).where(College.slug == slug).values(status=body.status))
+    await db.commit()
+    if result.rowcount == 0:
+        raise NotFoundError("College")
+    return SuccessResponse[MessageResponse](data=MessageResponse(message=f"College '{slug}' is now {body.status}."))
+
+
+@router.delete("/colleges/{slug}", response_model=SuccessResponse[MessageResponse])
+async def admin_delete_college(slug: str, _admin: AdminPayload, db: DbSession):
+    """Permanent. Only an archived college can be deleted, so a click on the wrong row never loses data."""
+    from sqlalchemy import delete as sql_delete, select
+    from models.college import College
+
+    current = (await db.execute(select(College.status).where(College.slug == slug))).scalar_one_or_none()
+    if current is None:
+        raise NotFoundError("College")
+    if current != "archived":
+        raise ConflictError("COLLEGE_NOT_ARCHIVED", "Archive the college first. Only an archived college can be deleted for good.")
     result = await db.execute(sql_delete(College).where(College.slug == slug))
     await db.commit()
     if result.rowcount == 0:

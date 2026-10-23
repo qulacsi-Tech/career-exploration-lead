@@ -19,7 +19,7 @@ async def _pg_search(db: AsyncSession, q: str, limit: int) -> SearchResultsSchem
     college_rows = (
         await db.execute(
             select(College.slug, College.name, College.city, College.stream)
-            .where(or_(College.name.ilike(term), College.city.ilike(term)))
+            .where(or_(College.name.ilike(term), College.city.ilike(term)), College.status == "published")
             .limit(limit)
         )
     ).fetchall()

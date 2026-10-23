@@ -4,6 +4,7 @@ import math
 from typing import List, Optional, Tuple
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
@@ -31,6 +32,7 @@ def _to_list_schema(college: College) -> CollegeListSchema:
     """Map ORM College → CollegeListSchema (camelCase, frontend-compatible)."""
     page_record = college.detail if isinstance(college.detail, dict) else {}
     return CollegeListSchema(
+        status=college.status or "published",
         isFeatured=bool(college.is_featured),
         viewCount=college.view_count or 0,
         logo=page_record.get("logo") or "",
@@ -234,7 +236,7 @@ class CollegeService:
         slugs = list(row.data)[:limit] if row and isinstance(row.data, list) else []
         if not slugs:
             return []
-        rows = (await self.repo.db.execute(select(College).where(College.slug.in_(slugs)))).scalars().all()
+        rows = (await self.repo.db.execute(select(College).where(College.slug.in_(slugs), College.status == "published"))).scalars().all()
         by_slug = {c.slug: c for c in rows}
         return [
             {"slug": c.slug, "name": c.name, "city": c.city, "state": c.state, "image": c.image or "", "institutionType": c.institution_type or "College"}
@@ -249,5 +251,13 @@ class CollegeService:
         college = await self.repo.get_by_slug(slug)
         if not college:
             raise NotFoundError("College")
-        similar = await self.repo.get_similar(college, limit=limit)
-        return [_to_list_schema(c) for c in similar]
+        # The colleges the editor pinned come first, then the nearest by stream and rating.
+        pinned_slugs = [s for s in ((college.detail or {}).get("similarSlugs") or []) if s != slug][:limit]
+        pinned: list = []
+        if pinned_slugs:
+            found = (await self.repo.db.execute(select(College).where(College.slug.in_(pinned_slugs), College.status == "published").options(selectinload(College.courses)))).scalars().unique().all()
+            by_slug = {c.slug: c for c in found}
+            pinned = [by_slug[s] for s in pinned_slugs if s in by_slug]
+        rest = await self.repo.get_similar(college, limit=limit + len(pinned))
+        chosen = (pinned + [c for c in rest if c.id not in {p.id for p in pinned}])[:limit]
+        return [_to_list_schema(c) for c in chosen]

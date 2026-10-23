@@ -16,6 +16,10 @@ class OwnershipType(str, enum.Enum):
     DEEMED = "Deemed"
 
 
+# A college is public only when published. A draft is waiting for review; an archived college is hidden but kept.
+COLLEGE_STATUSES = ("draft", "published", "archived")
+
+
 class College(Base):
     __tablename__ = "colleges"
 
@@ -39,6 +43,7 @@ class College(Base):
     approvals = Column(JSONB, nullable=False, default=list)
     established = Column(Integer, nullable=True)
     about = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="published", server_default="published", index=True)
     is_featured = Column(Boolean, nullable=False, default=False, index=True)
     view_count = Column(Integer, nullable=False, default=0)
     # Card and hero photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).

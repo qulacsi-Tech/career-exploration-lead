@@ -38,7 +38,7 @@ class CollectionService:
             return []
 
         rows = (await self.db.execute(
-            select(College).where(College.slug.in_(slugs)).options(selectinload(College.courses))
+            select(College).where(College.slug.in_(slugs), College.status == "published").options(selectinload(College.courses))
         )).scalars().unique().all()
         by_slug = {c.slug: c for c in rows}
         chosen = [by_slug[s] for s in slugs if s in by_slug]

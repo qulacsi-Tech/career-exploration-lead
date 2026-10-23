@@ -284,7 +284,8 @@ async def pools(_admin: AdminPayload, db: DbSession):
     streams = sorted({*fields, *(await db.execute(select(College.stream).distinct())).scalars().all()} - {""})
     exams = (await db.execute(select(Exam.name).order_by(Exam.name))).scalars().all()
     courses = (await db.execute(select(CourseCatalogue.name).where(CourseCatalogue.is_published.is_(True)).order_by(CourseCatalogue.name))).scalars().all()
-    colleges = (await db.execute(select(College.slug, College.name).order_by(College.name))).all()
+    # Only colleges the site shows can be pinned as similar.
+    colleges = (await db.execute(select(College.slug, College.name).where(College.status == "published").order_by(College.name))).all()
     in_use = (await db.execute(select(College.approvals, College.tags))).all()
     approvals = sorted({a for row in in_use for a in (row[0] or [])})
     tags = sorted({t for row in in_use for t in (row[1] or [])})
