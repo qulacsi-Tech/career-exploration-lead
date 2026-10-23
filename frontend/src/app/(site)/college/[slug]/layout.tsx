@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { CollegeMasthead } from "@/components/college/college-masthead";
 import { collegePhoto } from "@/lib/college-images";
-import { faqsOf, monogram, shortNameOf, taglineOf } from "@/lib/college-insights";
+import { faqsOf, monogram, packageHeadline, shortNameOf, taglineOf } from "@/lib/college-insights";
 import { getCollegeOrNull } from "@/lib/api";
 import { collegeSections, sectionHref } from "@/lib/college-sections";
 
@@ -62,7 +62,8 @@ export default async function CollegeLayout({
         approvals={college.approvals}
         rating={college.rating}
         reviewCount={college.reviewCount}
-        averagePackage={college.placement?.average ?? ""}
+        averagePackage={packageHeadline(college.placement)?.value ?? ""}
+        averagePackageLabel={packageHeadline(college.placement)?.label === "Median package" ? "Median Package" : "Avg. Package"}
         qnaCount={faqsOf(college).length}
         photo={college.image || collegePhoto(college.slug)}
         logo={college.logo || undefined}

@@ -38,6 +38,7 @@ import { Chip } from "@/components/ui/chip";
 import { videoEmbedUrl } from "@/lib/college-content";
 import {
   faqsOf,
+  isRealPackage,
   longDate,
   lakhValue,
   overallScore,
@@ -45,6 +46,7 @@ import {
   rankingTable,
   shortFee,
 } from "@/lib/college-insights";
+import { plural } from "@/lib/college-rules";
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
 import { comparisonsFeaturing, compareUrl } from "@/lib/comparison-data";
 import { collegesBySlugs, similarColleges } from "@/lib/comparison-resolve";
@@ -404,7 +406,7 @@ function Faculty({ college }: { college: College }) {
               fraction={faculty.score / 5}
               value={faculty.score}
               caption="out of 5 is how students rate the faculty."
-              note={`${college.reviewCount.toLocaleString("en-IN")} reviews`}
+              note={plural(college.reviewCount, "review")}
             />
             <div>
               <ColumnLabel>Faculty against the other categories</ColumnLabel>
@@ -455,7 +457,7 @@ function Reviews({ college }: { college: College }) {
               <Stars score={overall} className="h-5 w-5" />
             </div>
             <p className="mt-2 text-sm text-ink-soft">
-              {college.reviewCount.toLocaleString("en-IN")} student reviews
+              {plural(college.reviewCount, "student review")}
             </p>
           </div>
           <div>
@@ -504,7 +506,7 @@ function Placements({ college }: { college: College }) {
     { label: "Median package", value: placement.median },
     { label: "Average package", value: placement.average },
     { label: "Highest package", value: placement.highest },
-  ];
+  ].filter((p) => isRealPackage(p.value));
   const max = Math.max(...packages.map((p) => lakhValue(p.value) ?? 0), 1);
   const placementScore = college.ratingBreakdown.find((row) => row.label === "Placements");
 
@@ -537,9 +539,11 @@ function Placements({ college }: { college: College }) {
         </div>
       </DetailCard>
 
-      <DetailCard title="Top Recruiters">
-        <RecruiterMarquee recruiters={placement.topRecruiters} />
-      </DetailCard>
+      {placement.topRecruiters.length > 0 && (
+        <DetailCard title="Top Recruiters">
+          <RecruiterMarquee recruiters={placement.topRecruiters} />
+        </DetailCard>
+      )}
 
       {college.placements.length > 1 && (
         <DetailCard title="Earlier Years">
@@ -576,7 +580,7 @@ function Placements({ college }: { college: College }) {
             fraction={placementScore.score / 5}
             value={placementScore.score}
             caption="out of 5 is how students rate placement support."
-            note={`${college.reviewCount.toLocaleString("en-IN")} reviews`}
+            note={plural(college.reviewCount, "review")}
           />
         </DetailCard>
       )}
@@ -630,11 +634,13 @@ async function Rankings({ college }: { college: College }) {
     <>
       <DetailCard>
         <div className="grid gap-8 sm:grid-cols-3">
-          <BigFigure
-            label={`${college.ranking.authority} rank`}
-            value={`#${college.ranking.rank}`}
-            note={`${college.stream} category`}
-          />
+          {college.ranking.rank > 0 && (
+            <BigFigure
+              label={`${college.ranking.authority} rank`}
+              value={`#${college.ranking.rank}`}
+              note={`${college.stream} category`}
+            />
+          )}
           <BigFigure
             label="Among colleges listed here"
             value={`${position} of ${of}`}

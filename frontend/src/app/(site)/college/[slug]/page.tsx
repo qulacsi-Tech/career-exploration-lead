@@ -20,12 +20,15 @@ import {
 import { Chip } from "@/components/ui/chip";
 import {
   faqsOf,
+  isRealPackage,
   longDate,
   lakhValue,
-  monogram,
+  packageHeadline,
   percentOf,
   shortFee,
+  shortNameOf,
 } from "@/lib/college-insights";
+import { plural } from "@/lib/college-rules";
 import { sectionHref } from "@/lib/college-sections";
 import { getCollege, getCollegeSlugs, getHomeData, getLocations, getSimilarColleges } from "@/lib/api";
 import type { College, CollegeDetail } from "@/lib/api";
@@ -74,7 +77,7 @@ export default async function CollegeOverviewPage({
   }
 
   // college-insights helpers accept the same College shape (structural compat)
-  const short = monogram(college.name);
+  const short = shortNameOf(college);
   const href  = (section: string) => sectionHref(college.slug, section);
 
   const alerts = [...college.alerts].sort(
@@ -94,8 +97,9 @@ export default async function CollegeOverviewPage({
         { label: "Median package",  value: placement.median  },
         { label: "Average package", value: placement.average },
         { label: "Highest package", value: placement.highest },
-      ]
+      ].filter((p) => isRealPackage(p.value))
     : [];
+  const headline = packageHeadline(placement);
   const maxPackage = Math.max(...packages.map((p) => lakhValue(p.value) ?? 0), 1);
 
   // Options for the enquiry dialog. It still opens with none if either request fails.
@@ -181,17 +185,19 @@ export default async function CollegeOverviewPage({
             ))}
           </div>
           <div className="space-y-6">
-            <IconStat
-              icon="trophy"
-              value={`#${college.ranking.rank}`}
-              label={`${college.ranking.authority} ${college.stream} ranking`}
-            />
+            {college.ranking.rank > 0 && (
+              <IconStat
+                icon="trophy"
+                value={`#${college.ranking.rank}`}
+                label={`${college.ranking.authority} ${college.stream} ranking`}
+              />
+            )}
             <IconStat icon="rupee" value={college.feesRange} label="Total fees, all programmes" />
-            {placement && (
+            {placement && headline && (
               <IconStat
                 icon="trend"
-                value={placement.average}
-                label={`Average package, ${placement.year}`}
+                value={headline.value}
+                label={`${headline.label}, ${placement.year}`}
               />
             )}
             {college.established && (
@@ -210,12 +216,14 @@ export default async function CollegeOverviewPage({
         <DetailCard
           title={`About ${short}`}
           footer={
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-sm font-semibold text-ink">Approved by</span>
-              {(college.approvals ?? []).map((approval) => (
-                <Chip key={approval} tone="brand">{approval}</Chip>
-              ))}
-            </div>
+            (college.approvals ?? []).length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-sm font-semibold text-ink">Approved by</span>
+                {(college.approvals ?? []).map((approval) => (
+                  <Chip key={approval} tone="brand">{approval}</Chip>
+                ))}
+              </div>
+            ) : undefined
           }
         >
           <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">{college.about}</p>
@@ -224,7 +232,7 @@ export default async function CollegeOverviewPage({
             <BigFigure
               label="Student rating"
               value={college.rating.toFixed(1)}
-              note={`From ${college.reviewCount.toLocaleString("en-IN")} reviews`}
+              note={`From ${plural(college.reviewCount, "review")}`}
             />
             {college.established && (
               <BigFigure
@@ -291,19 +299,23 @@ export default async function CollegeOverviewPage({
           title={`${short} Placements ${placement.year}`}
           footer={
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <p className="text-sm text-ink-soft">
-                <span className="font-semibold text-ink">Top recruiters:</span>{" "}
-                {placement.topRecruiters.slice(0, 5).join(", ")}
-              </p>
+              {placement.topRecruiters.length > 0 ? (
+                <p className="text-sm text-ink-soft">
+                  <span className="font-semibold text-ink">Top recruiters:</span>{" "}
+                  {placement.topRecruiters.slice(0, 5).join(", ")}
+                </p>
+              ) : (
+                <span />
+              )}
               <CardLink href={href("placements")}>Full placement report</CardLink>
             </div>
           }
         >
           <div className="grid gap-10 md:grid-cols-2">
             <BigFigure
-              label="Average package"
-              value={placement.average}
-              note={`Highest ${placement.highest} · median ${placement.median}`}
+              label={headline?.label ?? "Average package"}
+              value={headline?.value ?? "Not published"}
+              note={[isRealPackage(placement.highest) && `Highest ${placement.highest}`, isRealPackage(placement.median) && headline?.label !== "Median package" && `median ${placement.median}`].filter(Boolean).join(" · ") || undefined}
             />
             <div>
               <ColumnLabel>Package spread</ColumnLabel>
@@ -359,7 +371,7 @@ export default async function CollegeOverviewPage({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-ink-soft">
                 Overall <strong className="text-ink">{overall.toFixed(1)} / 5</strong> across{" "}
-                {college.reviewCount.toLocaleString("en-IN")} reviews
+                {plural(college.reviewCount, "review")}
               </p>
               <CardLink href={href("reviews")}>Read all reviews</CardLink>
             </div>
@@ -372,7 +384,7 @@ export default async function CollegeOverviewPage({
                 fraction={row.score / 5}
                 value={row.score}
                 caption={`out of 5 for ${row.label.toLowerCase()}.`}
-                note={`${college.reviewCount.toLocaleString("en-IN")} reviews`}
+                note={plural(college.reviewCount, "review")}
               />
             ))}
           </div>

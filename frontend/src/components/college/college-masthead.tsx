@@ -93,6 +93,9 @@ function toggleSavedSlug(slug: string) {
   savedListeners.forEach((listener) => listener());
 }
 
+/** More approvals than this are folded behind "+N more". */
+const MAX_APPROVALS = 4;
+
 export function CollegeMasthead({
   slug,
   name,
@@ -106,6 +109,7 @@ export function CollegeMasthead({
   rating,
   reviewCount,
   averagePackage,
+  averagePackageLabel = "Avg. Package",
   qnaCount,
   photo,
   logo,
@@ -131,6 +135,8 @@ export function CollegeMasthead({
   reviewCount: number;
   /** "₹14.2 LPA" — shown in the meta line in place of the rating. */
   averagePackage: string;
+  /** "Avg. Package", or "Median Package" when only a median was given. */
+  averagePackageLabel?: string;
   qnaCount: number;
   photo: string;
   /** Uploaded logo. Without one the tile shows `monogram`. */
@@ -151,6 +157,7 @@ export function CollegeMasthead({
   /* ---- condensed rail ---- */
   const titleRef = useRef<HTMLDivElement>(null);
   const [condensed, setCondensed] = useState(false);
+  const [showAllApprovals, setShowAllApprovals] = useState(false);
   useEffect(() => {
     const node = titleRef.current;
     if (!node) return;
@@ -284,7 +291,7 @@ export function CollegeMasthead({
                     className="inline-flex items-center gap-1.5 hover:underline"
                   >
                     <TrendingUp className="h-3.5 w-3.5 text-brand" />
-                    Avg. Package
+                    {averagePackageLabel}
                     <span className="font-semibold text-brand">{averagePackage}</span>
                   </Link>
                   <span aria-hidden className="h-3.5 w-px bg-line" />
@@ -300,11 +307,23 @@ export function CollegeMasthead({
             </p>
 
             <ul className="mt-3 flex flex-wrap gap-1.5">
-              {[`${ownership} Institute`, `Estd. ${established}`, ...approvals].map((chip) => (
+              {[`${ownership} Institute`, ...(established > 0 ? [`Estd. ${established}`] : []), ...(showAllApprovals ? approvals : approvals.slice(0, MAX_APPROVALS))].map((chip) => (
                 <li key={chip} className="rounded bg-bg-alt px-2 py-0.5 text-xs text-ink-soft">
                   {chip}
                 </li>
               ))}
+              {approvals.length > MAX_APPROVALS && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllApprovals((v) => !v)}
+                    aria-expanded={showAllApprovals}
+                    className="rounded bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand-ink hover:bg-brand hover:text-white"
+                  >
+                    {showAllApprovals ? "Show fewer" : `+${approvals.length - MAX_APPROVALS} more`}
+                  </button>
+                </li>
+              )}
             </ul>
           </motion.div>
 

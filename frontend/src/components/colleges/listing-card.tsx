@@ -4,6 +4,7 @@ import type { College } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { CompareButton } from "@/components/colleges/compare-button";
+import { plural } from "@/lib/college-rules";
 
 /**
  * A row on the /colleges listing, in the Shiksha mould the client asked for: the rank up front, a
@@ -131,7 +132,7 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
                 </span>
                 <span
                   className="inline-flex items-center gap-1.5 font-semibold"
-                  aria-label={`Rated ${college.rating.toFixed(1)} out of 5 from ${college.reviewCount} reviews`}
+                  aria-label={`Rated ${college.rating.toFixed(1)} out of 5 from ${plural(college.reviewCount, "review")}`}
                 >
                   <span className="inline-flex" aria-hidden="true">
                     {Array.from({ length: 5 }, (_, i) => (
@@ -139,7 +140,7 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
                     ))}
                   </span>
                   <span className="font-display text-xl font-extrabold leading-none text-ink">{college.rating.toFixed(1)}</span>
-                  <span className="font-normal text-ink-soft">({college.reviewCount} reviews)</span>
+                  <span className="font-normal text-ink-soft">({plural(college.reviewCount, "review")})</span>
                 </span>
               </div>
 

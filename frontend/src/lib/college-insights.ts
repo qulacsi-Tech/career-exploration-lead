@@ -28,7 +28,22 @@ export function lakhValue(amount: string): number | null {
 
 /** "₹18.4L Total Fees" → "₹18.4L" — the figure without its caption. */
 export function shortFee(fees: string): string {
-  return fees.replace(/\s*total fees/i, "").trim();
+  const text = fees.replace(/\s*total fees/i, "").trim();
+  // A programme with no fee ("₹0L") is free, not "zero lakh".
+  return /^(?:₹|Rs\.?|INR)?\s*0+(?:\.0+)?\s*[A-Za-z]*$/i.test(text) ? "Free" : text;
+}
+
+/** A package figure that says something: the API writes "N/A" when a number was never entered. */
+export function isRealPackage(value: string | undefined | null): value is string {
+  return !!value && /\d/.test(value);
+}
+
+/** The figure to lead a placement summary with: the average, or the median when there is no average. */
+export function packageHeadline(placement: { average: string; median: string } | null | undefined): { label: string; value: string } | null {
+  if (!placement) return null;
+  if (isRealPackage(placement.average)) return { label: "Average package", value: placement.average };
+  if (isRealPackage(placement.median)) return { label: "Median package", value: placement.median };
+  return null;
 }
 
 /**
@@ -170,7 +185,8 @@ type EditorFields = {
 
 /** "BIMS Bengaluru" — the editor's short name, else initials and city. */
 export function shortNameOf(college: College & EditorFields): string {
-  return college.shortName?.trim() || `${monogram(college.name)} ${college.city}`;
+  // Without a short title the full name reads better than initials ("QCVC Bengaluru").
+  return college.shortName?.trim() || college.name;
 }
 
 /** The H1 after the short name. `intake` is the coming admission year. */

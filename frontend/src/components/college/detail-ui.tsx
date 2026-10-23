@@ -29,6 +29,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { scoreTone } from "@/lib/college-insights";
+import { plural } from "@/lib/college-rules";
 
 /**
  * The building blocks of the college detail page.
@@ -450,7 +451,7 @@ export function PeerGrid({ peers, visible = 4 }: { peers: PeerItem[]; visible?: 
                 <span className="uppercase">{peer.city}, {peer.state}</span>
                 <span aria-hidden>&bull;</span>
                 <Stars score={peer.score} className="h-3.5 w-3.5" />
-                <span>{peer.reviewCount.toLocaleString("en-IN")} reviews</span>
+                <span>{plural(peer.reviewCount, "review")}</span>
               </p>
             </div>
           </li>
