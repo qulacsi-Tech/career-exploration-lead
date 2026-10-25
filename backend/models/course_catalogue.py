@@ -19,7 +19,8 @@ class CourseCatalogue(Base):
     name = Column(String(200), nullable=False)          # "MBA"
     full_name = Column(String(500), nullable=False)     # "Master of Business Administration"
     level = Column(String(50), nullable=False)          # UG | PG | Diploma | Doctorate
-    stream = Column(String(100), nullable=False, index=True)
+    stream = Column(String(100), nullable=False, index=True)   # the first of `streams`
+    streams = Column(JSONB, nullable=False, default=list)       # every category it sits under
     duration = Column(String(100), nullable=False)
     modes = Column(JSONB, nullable=False, default=list)         # ["Full Time", "Online"]
     eligibility = Column(Text, nullable=True)

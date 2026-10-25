@@ -27,12 +27,14 @@ import {
   percentOf,
   shortFee,
   shortNameOf,
+  programmeTitle,
 } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
 import { sectionHref } from "@/lib/college-sections";
 import { getCollege, getCollegeSlugs, getHomeData, getLocations, getSimilarColleges } from "@/lib/api";
 import type { College, CollegeDetail } from "@/lib/api";
 import { CollegeEnquiryModal } from "@/components/college/college-enquiry-modal";
+import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 
 export async function generateStaticParams() {
   try {
@@ -94,7 +96,6 @@ export default async function CollegeOverviewPage({
   const placement = college.placement;
   const packages = placement
     ? [
-        { label: "Median package",  value: placement.median  },
         { label: "Average package", value: placement.average },
         { label: "Highest package", value: placement.highest },
       ].filter((p) => isRealPackage(p.value))
@@ -267,7 +268,7 @@ export default async function CollegeOverviewPage({
               <ColumnLabel>Total fees by programme</ColumnLabel>
               <MeterList
                 rows={feeRows.map(({ course, lakh }) => ({
-                  label: course.name,
+                  label: programmeTitle(course),
                   display: shortFee(course.fees),
                   fraction: lakh === null ? null : lakh / maxFee,
                 }))}
@@ -298,15 +299,7 @@ export default async function CollegeOverviewPage({
         <DetailCard
           title={`${short} Placements ${placement.year}`}
           footer={
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              {placement.topRecruiters.length > 0 ? (
-                <p className="text-sm text-ink-soft">
-                  <span className="font-semibold text-ink">Top recruiters:</span>{" "}
-                  {placement.topRecruiters.slice(0, 5).join(", ")}
-                </p>
-              ) : (
-                <span />
-              )}
+            <div className="flex flex-wrap items-center justify-end gap-4">
               <CardLink href={href("placements")}>Full placement report</CardLink>
             </div>
           }
@@ -315,7 +308,7 @@ export default async function CollegeOverviewPage({
             <BigFigure
               label={headline?.label ?? "Average package"}
               value={headline?.value ?? "Not published"}
-              note={[isRealPackage(placement.highest) && `Highest ${placement.highest}`, isRealPackage(placement.median) && headline?.label !== "Median package" && `median ${placement.median}`].filter(Boolean).join(" · ") || undefined}
+              note={isRealPackage(placement.highest) ? `Highest ${placement.highest}` : undefined}
             />
             <div>
               <ColumnLabel>Package spread</ColumnLabel>
@@ -332,6 +325,13 @@ export default async function CollegeOverviewPage({
               />
             </div>
           </div>
+        </DetailCard>
+      )}
+
+      {/* Top recruiters: the same moving strip as the Placements tab, so the names are not a single line of small print. */}
+      {placement && placement.topRecruiters.length > 0 && (
+        <DetailCard title="Top Recruiters">
+          <RecruiterMarquee recruiters={placement.topRecruiters} />
         </DetailCard>
       )}
 

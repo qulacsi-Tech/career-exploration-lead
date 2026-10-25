@@ -386,6 +386,133 @@ export function NameSlugFields({
   );
 }
 
+/**
+ * Several names in one go: type one and press Enter, and it becomes a chip while the box clears for
+ * the next. Each chip posts as `name` (read with `FormData.getAll`), and so does whatever is still
+ * typed in the box, so a last name does not need an Enter before Save.
+ */
+export function NamesInput({
+  label,
+  name,
+  placeholder,
+  maxLength = 200,
+  hint,
+  className,
+}: {
+  label: string;
+  name: string;
+  placeholder?: string;
+  maxLength?: number;
+  hint?: string;
+  className?: string;
+}) {
+  const [names, setNames] = useState<string[]>([]);
+  const [text, setText] = useState("");
+
+  const commit = () => {
+    const value = text.trim();
+    if (value && !names.some((n) => n.toLowerCase() === value.toLowerCase())) setNames([...names, value]);
+    setText("");
+  };
+
+  return (
+    <div className={className}>
+      <label htmlFor={`${name}-input`} className="block text-xs font-semibold text-ink">
+        {label}
+        <span className="text-brand"> *</span>
+      </label>
+      {names.length > 0 && (
+        <ul className="mt-1.5 flex flex-wrap gap-2">
+          {names.map((n) => (
+            <li key={n} className="flex items-center gap-1.5 rounded-full border border-brand bg-brand-soft py-1 pl-3 pr-1.5 text-sm text-brand">
+              {n}
+              <input type="hidden" name={name} value={n} />
+              <button
+                type="button"
+                aria-label={`Remove ${n}`}
+                onClick={() => setNames(names.filter((x) => x !== n))}
+                className="flex h-5 w-5 items-center justify-center rounded-full text-base leading-none hover:bg-brand hover:text-white"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <input
+        id={`${name}-input`}
+        name={name}
+        value={text}
+        maxLength={maxLength}
+        placeholder={names.length > 0 ? "Type another and press Enter" : placeholder}
+        autoComplete="off"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          // Enter adds the name instead of submitting the form; Backspace on an empty box takes the last one back.
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          } else if (e.key === "Backspace" && text === "" && names.length > 0) {
+            setNames(names.slice(0, -1));
+          }
+        }}
+        className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+      />
+      <p className="mt-1 text-[11px] text-ink-faint">{hint ?? "Press Enter after each name to add more than one."}</p>
+    </div>
+  );
+}
+
+/**
+ * The parents of a record, several at once: checkable chips that post one value per ticked box
+ * under `name`. The caller reads them with `FormData.getAll(name)`.
+ */
+export function ParentPicker({
+  label,
+  name,
+  options,
+  defaultValues = [],
+  emptyNote,
+  className,
+}: {
+  label: string;
+  name: string;
+  options: { value: string; label: string }[];
+  defaultValues?: string[];
+  /** Shown when there is nothing to pick yet. */
+  emptyNote: string;
+  className?: string;
+}) {
+  return (
+    <fieldset className={className}>
+      <legend className="block text-xs font-semibold text-ink">
+        {label}
+        <span className="text-brand"> *</span>
+      </legend>
+      {options.length === 0 ? (
+        <p className="mt-1.5 text-sm text-ink-soft">{emptyNote}</p>
+      ) : (
+        <ul className="mt-1.5 flex flex-wrap gap-2">
+          {options.map((option) => (
+            <li key={option.value}>
+              <label className="flex cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-1.5 text-sm text-ink transition hover:border-brand has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:checked]:text-brand">
+                <input
+                  type="checkbox"
+                  name={name}
+                  value={option.value}
+                  defaultChecked={defaultValues.includes(option.value)}
+                  className="h-4 w-4 accent-[var(--color-brand)]"
+                />
+                {option.label}
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+    </fieldset>
+  );
+}
+
 /** Read-only label/value pair, for the View dialog. */
 export function Field({ label, value }: { label: string; value: string }) {
   return (

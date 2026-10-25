@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CollegePools, CollegeRecord } from "@/lib/api";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { RangeField } from "@/components/admin/range-field";
+import { CategoryTicks } from "@/components/admin/college-editor/course-picker";
 import { Card, ChipInput, Labelled, NumberInput, SelectInput, TextArea, TextInput, inputCls } from "@/components/admin/college-editor/shared";
 import { TAG_MAX_CHARS, YEAR_MIN } from "@/lib/college-rules";
 
@@ -39,7 +40,7 @@ export function InfoTab({ record, update, pools, slug }: EditorProps) {
               <TextInput id="ci-locality" label="Locality" max={120} value={record.detail.locality} onChange={(v) => detail({ locality: v })} hint="The street or area before the city, e.g. Hosur Road." />
               <SelectInput id="ci-type" label="Type" required value={record.institutionType ?? "College"} onChange={(v) => set("institutionType", v as CollegeRecord["institutionType"])} options={["College", "University"]} hint="Whether this is a college or a university." />
               <SelectInput id="ci-ownership" label="Ownership" required value={record.ownership} onChange={(v) => set("ownership", v as CollegeRecord["ownership"])} options={["Private", "Government", "Deemed"]} />
-              <SelectInput id="ci-stream" label="Category" required value={record.stream} onChange={(v) => set("stream", v)} options={pools.streams} placeholder="Select a category" hint="The category the college is listed under." />
+              <div className="md:col-span-2"><CategoryTicks value={record.streams} options={pools.streams} onChange={(next) => update((r) => ({ ...r, streams: next, stream: next[0] ?? "" }))} /></div>
               <NumberInput id="ci-established" label="Established" min={YEAR_MIN} max={YEAR} value={record.established} onChange={(v) => set("established", v)} placeholder="e.g. 1998" hint="The year it was founded." />
             </div>
           </Card>
@@ -57,7 +58,7 @@ export function InfoTab({ record, update, pools, slug }: EditorProps) {
             <TextArea id="ci-about" label="About" rows={6} max={20000} value={record.about} onChange={(v) => set("about", v)} hint="Shown on the overview and used for the search snippet." />
             <ChipInput id="ci-exams" label="Entrance exams accepted" value={record.examsAccepted} onChange={(v) => set("examsAccepted", v)} suggestions={pools.exams} max={40} strict hint="Only exams in the directory can be added. Type the name or its short form, such as CAT." />
             <div className="max-w-xl">
-              <RangeField id="ci-fees" label="Total fee range" compact units={["L", "Cr"]} value={record.feesRange} onChange={(v) => set("feesRange", v)} hint="Across all programmes." />
+              <RangeField id="ci-fees" label="Total fee range" compact units={["K", "L", "Cr"]} value={record.feesRange} onChange={(v) => set("feesRange", v)} hint="Across all programmes." />
             </div>
           </Card>
         </div>

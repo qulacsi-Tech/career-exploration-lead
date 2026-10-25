@@ -12,7 +12,7 @@ from datetime import date
 from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Body, Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core import college_rules as rules
 from core.dependencies import AdminPayload, DbSession
@@ -107,13 +107,22 @@ class CollegeUpdateBody(BaseModel):
         return value if value is None else rules.check_fee_range(value, "The total fee range")
 
 
+class NewCourse(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    specialisation: str = Field(default="", max_length=200)
+
+
 class CollegeCreateBody(BaseModel):
     name: str = Field(min_length=2, max_length=500)
     slug: str = Field(min_length=2, max_length=200, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
     city: str = Field(min_length=1, max_length=200)
     state: str = Field(min_length=1, max_length=200)
     ownership: OwnershipType
-    stream: str = Field(min_length=1, max_length=100)
+    # The categories the college is listed under; `stream` alone is the one-category form and is still accepted.
+    streams: list[str] = Field(default_factory=list, max_length=20)
+    stream: Optional[str] = Field(default=None, max_length=100)
+    # The courses (and specialisations) ticked on the add form. Fees and duration are filled in on the record afterwards.
+    courses: list[NewCourse] = Field(default_factory=list, max_length=60)
     institutionType: Literal["College", "University"] = "College"
     feesRange: Optional[str] = Field(default=None, max_length=100)
     about: Optional[str] = None
@@ -155,6 +164,17 @@ class CollegeCreateBody(BaseModel):
     def _fees(cls, value):
         return value if value is None else rules.check_fee_range(value, "The total fee range")
 
+    @model_validator(mode="after")
+    def _categories(self):
+        names = []
+        for name in [*self.streams, *([self.stream] if self.stream else [])]:
+            if name.strip() and name.strip() not in names:
+                names.append(name.strip())
+        if not names:
+            raise ValueError("Choose at least one category.")
+        self.streams, self.stream = names, names[0]
+        return self
+
 
 @router.post("/colleges", response_model=SuccessResponse[MessageResponse], status_code=201)
 async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db: DbSession):
@@ -181,7 +201,7 @@ async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db
                 f"Possible duplicate: '{body.name}' in {body.city} already exists ({twin}). Add it anyway?",
             )
 
-    db.add(College(
+    college = College(
         id=uuid.uuid4(),
         slug=body.slug,
         name=body.name,
@@ -189,6 +209,8 @@ async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db
         state=body.state,
         ownership=body.ownership,
         stream=body.stream,
+        streams=body.streams,
+        courses_offered=len(body.courses),
         institution_type=body.institutionType,
         fees_range=body.feesRange,
         about=body.about,
@@ -198,7 +220,19 @@ async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db
         image=body.image or "",
         # Not public until someone has looked at it and published it.
         status="draft",
-    ))
+    )
+    db.add(college)
+    # The ticked courses become programme rows with their figures empty; the record editor asks for them.
+    from models.course import Course
+
+    seen: set[tuple[str, str]] = set()
+    for c in body.courses:
+        key = (c.name.strip().lower(), c.specialisation.strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        db.add(Course(id=uuid.uuid4(), college_id=college.id, name=c.name.strip(), specialisation=c.specialisation.strip(),
+                      duration="", mode="Full Time", fees="", exams=[], eligibility=""))
     await db.commit()
     return SuccessResponse[MessageResponse](data=MessageResponse(message=f"College '{body.slug}' created as a draft."))
 

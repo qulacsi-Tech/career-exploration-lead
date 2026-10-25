@@ -190,9 +190,9 @@ export default async function Home() {
               { label: "Online", value: [program.online.duration, program.online.fees].filter(Boolean).join("  ·  ") },
               { label: "On campus", value: [program.onCampus.duration, program.onCampus.fees].filter(Boolean).join("  ·  ") },
             ].filter((fact) => fact.value),
-            // The institution's page, scrolled to its Courses & Fees card when it has one, with the enquiry
-            // dialog open and this programme named in it.
-            href: `/college/${program.universitySlug}?enquire=1&program=${encodeURIComponent(program.name)}#courses`,
+            // The programme's own page: it shows every institution offering it, and works for a university
+            // that has no page of its own in the directory.
+            href: `/programs/${program.slug}`,
             cta: copy.programs.buttonLabel,
           }))}
         />

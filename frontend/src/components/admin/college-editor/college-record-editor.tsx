@@ -24,6 +24,7 @@ import { loadCollegePools, loadCollegeRecord, saveCollegeRecord } from "@/lib/ad
 import { collegeSubmitEdit, loadMyCollegePools, loadMyCollegeRecord } from "@/lib/college-actions";
 import type { CollegePools, CollegeRecord, LoadedCollegeRecord } from "@/lib/api";
 import { AdminModal } from "@/components/admin/admin-modal";
+import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { InfoTab, type EditorProps } from "@/components/admin/college-editor/tab-info";
 import { CoursesTab, CutoffsTab, PlacementsTab, RankingsTab } from "@/components/admin/college-editor/tab-numbers";
 import { CompareTab, FacultyTab, FaqTab, ReviewsTab } from "@/components/admin/college-editor/tab-people";
@@ -108,6 +109,8 @@ export function CollegeRecordEditor({
   const [error, setError] = useState<string | null>(null);
   const [confirmingClose, setConfirmingClose] = useState(false);
   const [pending, startTransition] = useTransition();
+  // "Saved." shows in the dialog itself: after a save the dialog stays open, and closes only when it is closed.
+  const [flash, showFlash, clearFlash] = useFlash();
 
   useEffect(() => {
     let alive = true;
@@ -128,6 +131,7 @@ export function CollegeRecordEditor({
   const update: EditorProps["update"] = (change) => {
     setRecord((r) => (r ? change(r) : r));
     setError(null);
+    clearFlash();
   };
 
   const problems = useMemo(() => (record ? problemsByTab(record) : null), [record]);
@@ -143,10 +147,18 @@ export function CollegeRecordEditor({
     if (!record) return;
     setError(null);
     startTransition(async () => {
-      const result = await saveCollegeRecord(slug, cleanRecord(record));
-      if ("error" in result) return setError(result.error);
-      onSaved?.(record.name, record);
-      onClose();
+      const cleaned = cleanRecord(record);
+      const result = await saveCollegeRecord(slug, cleaned);
+      if ("error" in result) {
+        clearFlash();
+        return setError(result.error);
+      }
+      // What was saved is now the starting point, so "Unsaved changes" clears and the dialog stays on this tab.
+      setInitial(cleaned);
+      setRecord(cleaned);
+      setConfirmingClose(false);
+      onSaved?.(cleaned.name, cleaned);
+      showFlash("ok", `${cleaned.name || "The college"} saved.`);
     });
   };
 
@@ -244,6 +256,7 @@ export function CollegeRecordEditor({
   const footer = readonly ? readonlyFooter : submitting ? submitFooter : (
     <div className="flex w-full flex-wrap items-center gap-3">
       {error && <p role="alert" className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
+      {flash && <div className="w-full"><StatusMessage flash={flash} /></div>}
       {confirmingClose && (
         <p role="alert" className="w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
           You have unsaved changes. Close anyway?{" "}

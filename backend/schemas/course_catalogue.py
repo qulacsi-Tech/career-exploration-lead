@@ -5,9 +5,9 @@ from pydantic import BaseModel, ConfigDict
 class SpecialisationSchema(BaseModel):
     slug: str
     name: str
-    courseSlug: str
-    courseName: str
-    stream: str
+    courseSlug: Optional[str] = None
+    courseName: Optional[str] = None
+    stream: Optional[str] = None
     duration: Optional[str] = None
     averageFees: Optional[str] = None
     collegeCount: int

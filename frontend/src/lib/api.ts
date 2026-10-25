@@ -110,6 +110,8 @@ export type Ranking = { authority: string; rank: number };
 export type RatingBreakdown = { label: string; score: number };
 export type Course = {
   name: string;
+  /** From the Specialisations list; empty when the programme has none. */
+  specialisation?: string;
   duration: string;
   mode: string;
   fees: string;
@@ -307,6 +309,25 @@ export type RecommendedProgram = {
   onCampus: OnCampusInfo;
   /** The programme's own photo: /images/... or /api/uploads/... Empty or absent: the shared set. */
   image?: string;
+  /** Every institution that offers it (same name), the one asked for first. Present on the detail read only. */
+  institutions?: ProgramInstitution[];
+};
+
+export type ProgramInstitution = {
+  slug: string;
+  university: string;
+  universitySlug: string;
+  /** The institution has a page of its own on the site. */
+  inDirectory: boolean;
+  city?: string | null;
+  state?: string | null;
+  ownership?: string | null;
+  rankingAuthority?: string | null;
+  rankingRank?: number | null;
+  rating?: number | null;
+  reviewCount?: number | null;
+  online: { duration: string | null; fees: string | null; feesNote: string | null };
+  onCampus: { duration: string | null; fees: string | null };
 };
 
 export type CareerPanelLink = { label: string; href: string };
@@ -1065,9 +1086,12 @@ export type AdminSpecialisation = {
   id: string;
   slug: string;
   name: string;
-  courseSlug: string;
-  courseName: string;
-  stream: string;
+  /** A link made before the list was flat; null for any added since. The editor does not ask for one. */
+  courseSlug: string | null;
+  courseName: string | null;
+  /** Every course it sits under, by slug. */
+  courseSlugs: string[];
+  stream: string | null;
   duration: string | null;
   averageFees: string | null;
   collegeCount: number;
@@ -1081,8 +1105,10 @@ export type AdminCourse = {
   slug: string;
   name: string;
   fullName: string;
-  level: "UG" | "PG" | "Diploma" | "Doctorate";
+  level: "UG" | "PG" | "Diploma" | "Doctorate" | "";
   stream: string;
+  /** Every category it sits under. */
+  streams: string[];
   duration: string;
   modes: string[];
   eligibility: string | null;
@@ -1093,11 +1119,11 @@ export type AdminCourse = {
   shownCount: number;
   about: string | null;
   isPublished: boolean;
-  specialisations: AdminSpecialisation[];
 };
 
-export async function adminGetCatalogue(token: string): Promise<AdminCourse[]> {
-  return adminRequest<AdminCourse[]>(token, "GET", "/admin/catalogue");
+/** The two catalogue lists, each on its own. The categories come from the fields list. */
+export async function adminGetCatalogue(token: string): Promise<{ courses: AdminCourse[]; specialisations: AdminSpecialisation[] }> {
+  return adminRequest<{ courses: AdminCourse[]; specialisations: AdminSpecialisation[] }>(token, "GET", "/admin/catalogue");
 }
 
 export async function adminCreateCourse(token: string, body: Record<string, unknown>) {
@@ -1118,6 +1144,10 @@ export async function adminCreateSpecialisation(token: string, body: Record<stri
 
 export async function adminUpdateSpecialisation(token: string, slug: string, body: Record<string, unknown>) {
   return adminRequest<{ message: string }>(token, "PATCH", `/admin/specialisations/${slug}`, body);
+}
+
+export async function adminDeleteSpecialisations(token: string, slugs: string[]) {
+  return adminRequest<{ message: string; deleted: number }>(token, "POST", "/admin/specialisations/delete", { slugs });
 }
 
 // ── Admin rankings ─────────────────────────────────────────────────────────
@@ -1552,6 +1582,7 @@ export type ProgramInput = {
 export type ProgramSourceCourse = {
   id: string;
   name: string;
+  specialisation?: string;
   mode: string;
   duration: string;
   fees: string;
@@ -2208,7 +2239,7 @@ export async function adminDeleteArticle(token: string, slug: string) {
 
 // ── Admin: the whole college record ───────────────────────────────────────
 
-export type RecordCourse = { name: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null };
+export type RecordCourse = { name: string; specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null };
 export type RecordPlacement = { year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[] };
 export type RecordCutoff = { exam: string; category: string; score: string };
 export type RecordReview = {
@@ -2252,6 +2283,8 @@ export type CollegeRecord = {
   state: string;
   ownership: "Private" | "Government" | "Deemed";
   stream: string;
+  /** Every category it is listed under; `stream` is the first. */
+  streams: string[];
   /** Whether this listing is a college or a university. */
   institutionType: "College" | "University";
   feesRange: string;
@@ -2276,6 +2309,11 @@ export type CollegePools = {
   streams: string[];
   exams: string[];
   courses: string[];
+  specialisations: string[];
+  /** The categories each course sits under, by course name. */
+  courseStreams: Record<string, string[]>;
+  /** The courses each specialisation sits under, by specialisation name. */
+  specialisationCourses: Record<string, string[]>;
   colleges: { slug: string; name: string }[];
   approvals: string[];
   tags: string[];

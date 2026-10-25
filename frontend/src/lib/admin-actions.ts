@@ -96,6 +96,7 @@ import {
   adminCreateSpecialisation,
   adminUpdateCourse,
   adminUpdateSpecialisation,
+  adminDeleteSpecialisations,
   adminCreateStudyAbroadItem,
   adminUpdateLeadStatus,
   LEAD_STATUSES,
@@ -132,7 +133,7 @@ const COLLEGE_EDIT_FIELDS = [
 ] as const;
 
 const COLLEGE_CREATE_FIELDS = [
-  "name", "city", "state", "ownership", "stream", "institutionType", "feesRange", "about", "established",
+  "name", "city", "state", "ownership", "institutionType", "feesRange", "about", "established",
 ] as const;
 
 const EXAM_EDIT_FIELDS = [
@@ -212,6 +213,17 @@ export async function deleteCollegeForever(slug: string): Promise<AdminActionRes
 /** The result of adding a college: `duplicate` is set when the same name already exists in the city and the editor has not yet said to go ahead. */
 export type CreateCollegeResult = AdminActionResult | { error: string; duplicate: true };
 
+function parseCourses(raw: FormDataEntryValue | null): { name: string; specialisation: string }[] {
+  try {
+    const list = JSON.parse(String(raw ?? "[]"));
+    return Array.isArray(list)
+      ? list.map((c) => ({ name: String(c?.name ?? "").trim(), specialisation: String(c?.specialisation ?? "").trim() })).filter((c) => c.name)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function createCollege(
   _prev: CreateCollegeResult | undefined,
   form: FormData
@@ -219,6 +231,9 @@ export async function createCollege(
   const result = await attempt("/admin/colleges", (token) =>
     adminCreateCollege(token, {
       ...body(form, COLLEGE_CREATE_FIELDS),
+      // One box per ticked category, and the ticked courses as JSON from the form's hidden field.
+      streams: form.getAll("streams").map((v) => String(v).trim()).filter(Boolean),
+      courses: parseCourses(form.get("courses")),
       slug: text(form, "slug"),
       confirmDuplicate: form.get("confirmDuplicate") === "1",
     })
@@ -443,64 +458,52 @@ export async function loadLeadJourney(id: string): Promise<{ journey: Awaited<Re
 
 // ── Courses and specialisations ──────────────────────────────────────────────
 
-const COURSE_FIELDS = [
-  "name", "fullName", "level", "stream", "duration", "averageFees", "about",
-  "eligibility", "modes", "examsAccepted", "collegeCount",
-] as const;
-const COURSE_NULLABLE = new Set(["averageFees", "about", "eligibility"]);
-const COURSE_LISTS = new Set(["modes", "examsAccepted"]);
-
-const SPEC_FIELDS = ["name", "courseSlug", "duration", "averageFees", "collegeCount", "about"] as const;
-const SPEC_NULLABLE = new Set(["duration", "averageFees", "about"]);
-
-/**
- * Reads the named fields that are on the form. Only the active editor tab is
- * mounted, so a field absent from the form is not part of this save and is left
- * out of the request rather than cleared. Empty optional text becomes null;
- * lists split on commas.
- */
-function fieldsBody(form: FormData, fields: readonly string[], nullable: Set<string>, lists: Set<string>) {
-  const out: Record<string, unknown> = {};
-  for (const field of fields) {
-    if (!form.has(field)) continue;
-    let value = String(form.get(field) ?? "").trim();
-    // "Other" in a select-with-other field: the typed value is posted as `<field>Custom`.
-    if (value === "__other__") value = String(form.get(`${field}Custom`) ?? "").trim();
-    if (lists.has(field)) {
-      out[field] = value.split(",").map((item) => item.trim()).filter(Boolean);
-    } else if (value === "" && nullable.has(field)) {
-      out[field] = null;
-    } else if (field === "collegeCount") {
-      // A count is a whole number, never blank: an empty box means 0.
-      out[field] = Math.max(0, Math.floor(Number(value) || 0));
-    } else {
-      out[field] = value;
-    }
-  }
-  return out;
-}
+/** The parents ticked on a catalogue form: one name or slug per checked box. */
+const ticked = (form: FormData, field: string) => form.getAll(field).map((v) => String(v).trim()).filter(Boolean);
 
 export async function saveCourse(slug: string, form: FormData): Promise<AdminActionResult> {
   const result = await attempt("/admin/catalogue", (token) =>
-    adminUpdateCourse(token, slug, fieldsBody(form, COURSE_FIELDS, COURSE_NULLABLE, COURSE_LISTS))
+    adminUpdateCourse(token, slug, { name: String(form.get("name") ?? "").trim(), streams: ticked(form, "streams") })
   );
   if ("ok" in result) revalidatePath("/courses", "layout");
   return result;
+}
+
+/** The names typed on an add form: the chips and whatever is still in the box, once each. */
+function typedNames(form: FormData): string[] {
+  const seen = new Map<string, string>();
+  for (const value of form.getAll("name")) {
+    const name = String(value).trim();
+    if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+  }
+  return [...seen.values()];
+}
+
+/** Adds one record for each name, all under the same parents. Stops at the first refusal and says what was added before it. */
+async function createEach(
+  names: string[],
+  create: (name: string) => Promise<AdminActionResult>,
+  noun: string
+): Promise<AdminActionResult> {
+  if (names.length === 0) return { error: `Enter a ${noun} name.` };
+  let added = 0;
+  for (const name of names) {
+    const result = await create(name);
+    if ("error" in result) {
+      return { error: added > 0 ? `${added} of ${names.length} added. '${name}': ${result.error}` : result.error };
+    }
+    added += 1;
+  }
+  revalidatePath("/courses", "layout");
+  return { ok: true };
 }
 
 export async function createCourse(
   _prev: AdminActionResult | undefined,
   form: FormData
 ): Promise<AdminActionResult> {
-  const result = await attempt("/admin/catalogue", (token) =>
-    adminCreateCourse(token, {
-      ...fieldsBody(form, COURSE_FIELDS, COURSE_NULLABLE, COURSE_LISTS),
-      slug: String(form.get("slug") ?? "").trim(),
-      fullName: String(form.get("fullName") ?? "").trim(),
-    })
-  );
-  if ("ok" in result) revalidatePath("/courses", "layout");
-  return result;
+  const streams = ticked(form, "streams");
+  return createEach(typedNames(form), (name) => attempt("/admin/catalogue", (token) => adminCreateCourse(token, { name, streams })), "course");
 }
 
 export async function deleteCourses(slugs: string[]): Promise<AdminActionResult> {
@@ -517,24 +520,79 @@ export async function deletePrograms(slugs: string[]): Promise<AdminActionResult
 
 export async function saveSpecialisation(slug: string, form: FormData): Promise<AdminActionResult> {
   const result = await attempt("/admin/catalogue", (token) =>
-    adminUpdateSpecialisation(token, slug, fieldsBody(form, SPEC_FIELDS, SPEC_NULLABLE, new Set()))
+    adminUpdateSpecialisation(token, slug, { name: String(form.get("name") ?? "").trim(), courseSlugs: ticked(form, "courseSlugs") })
   );
   if ("ok" in result) revalidatePath("/courses", "layout");
   return result;
+}
+
+export async function deleteSpecialisations(slugs: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) => adminDeleteSpecialisations(token, slugs));
+  if ("ok" in result) revalidatePath("/courses", "layout");
+  return result;
+}
+
+/**
+ * A category is a homepage field underneath (its page address, /<slug>/colleges, is what the college lists
+ * hang off). The short description is the field's tagline, shown on the disc; the "show on homepage" box is
+ * its tick in the homepage grid. Icon, badge and average CTC are left to the Homepage sections screen.
+ */
+export async function createCategory(
+  _prev: AdminActionResult | undefined,
+  form: FormData
+): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) =>
+    adminCreateField(token, {
+      name: String(form.get("name") ?? "").trim(),
+      icon: "book-open",
+      tagline: String(form.get("tagline") ?? "").trim(),
+      badge: "",
+      avgCtc: "",
+      show: form.has("show"),
+    })
+  );
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Saves the description and the homepage tick. The name stays, and so do the icon, badge and CTC set elsewhere. */
+export async function saveCategory(
+  current: { slug: string; name: string; icon: string; badge: string; avgCtc: string },
+  form: FormData
+): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) =>
+    adminUpdateField(token, current.slug, {
+      name: current.name,
+      icon: current.icon,
+      tagline: String(form.get("tagline") ?? "").trim(),
+      badge: current.badge,
+      avgCtc: current.avgCtc,
+      show: form.has("show"),
+    })
+  );
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function deleteCategories(slugs: string[]): Promise<AdminActionResult> {
+  for (const slug of slugs) {
+    const result = await attempt("/admin/catalogue", (token) => adminDeleteField(token, slug));
+    if (!("ok" in result)) return result;
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 export async function createSpecialisation(
   _prev: AdminActionResult | undefined,
   form: FormData
 ): Promise<AdminActionResult> {
-  const result = await attempt("/admin/catalogue", (token) =>
-    adminCreateSpecialisation(token, {
-      ...fieldsBody(form, SPEC_FIELDS, SPEC_NULLABLE, new Set()),
-      slug: String(form.get("slug") ?? "").trim(),
-    })
+  const courseSlugs = ticked(form, "courseSlugs");
+  return createEach(
+    typedNames(form),
+    (name) => attempt("/admin/catalogue", (token) => adminCreateSpecialisation(token, { name, courseSlugs })),
+    "specialisation"
   );
-  if ("ok" in result) revalidatePath("/courses", "layout");
-  return result;
 }
 
 // ── Rankings ─────────────────────────────────────────────────────────────────
@@ -980,6 +1038,56 @@ export async function saveProgram(slug: string, form: FormData): Promise<AdminAc
   const result = await attempt("/admin/programs", (token) => adminUpdateProgram(token, slug, programBody(form)));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
+}
+
+/**
+ * Adds one programme for each institution ticked on the add form: the chosen course (and specialisation)
+ * at that institution, with the figures shown for it. Stops at the first refusal and says what was added
+ * before it, so those are not entered twice.
+ */
+export async function createPrograms(
+  _prev: AdminActionResult | undefined,
+  form: FormData
+): Promise<AdminActionResult> {
+  type Item = { slug: string; name: string; onlineDuration: string; onlineFees: string; onCampusDuration: string; onCampusFees: string };
+  let payload: { course?: string; specialisation?: string; items?: Item[] };
+  try {
+    payload = JSON.parse(String(form.get("payload") ?? "{}"));
+  } catch {
+    return { error: "Could not read the form. Try again." };
+  }
+  const course = String(payload.course ?? "").trim();
+  const specialisation = String(payload.specialisation ?? "").trim();
+  const items = payload.items ?? [];
+  if (!course) return { error: "Choose a course." };
+  if (items.length === 0) return { error: "Tick at least one institution." };
+
+  const title = specialisation ? `${course} ${specialisation}` : course;
+  const slugBase = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const orNull = (v: string) => (String(v ?? "").trim() === "" ? null : String(v).trim());
+
+  let added = 0;
+  for (const item of items) {
+    const result = await attempt("/admin/programs", (token) =>
+      adminCreateProgram(token, {
+        name: title,
+        slug: `${slugBase}-${item.slug}`.slice(0, 200),
+        universityName: item.name,
+        universitySlug: item.slug,
+        onlineDuration: orNull(item.onlineDuration),
+        onlineFees: orNull(item.onlineFees),
+        onlineFeesNote: null,
+        onCampusDuration: orNull(item.onCampusDuration),
+        onCampusFees: orNull(item.onCampusFees),
+      })
+    );
+    if ("error" in result) {
+      return { error: `${added > 0 ? `${added} of ${items.length} added. ` : ""}${item.name}: ${result.error}` };
+    }
+    added += 1;
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 export async function createProgram(

@@ -21,7 +21,7 @@ export type DashboardStat = {
 
 export const dashboardStats: DashboardStat[] = [
   { label: "Colleges", value: "1,284", delta: { value: "12 added", direction: "up" }, href: "/admin/colleges" },
-  { label: "Courses", value: "486", delta: { value: "4 added", direction: "up" }, href: "/admin/courses" },
+  { label: "Courses", value: "486", delta: { value: "4 added", direction: "up" }, href: "/admin/catalogue?tab=courses" },
   { label: "Exams", value: "152", delta: { value: "2 added", direction: "up" }, href: "/admin/exams" },
   { label: "New leads", value: "342", delta: { value: "18%", direction: "up" }, href: "/admin/leads" },
 ];

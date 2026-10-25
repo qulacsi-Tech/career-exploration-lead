@@ -22,9 +22,9 @@ TAG_MAX_CHARS = 30
 _NAME_PUNCT = set(" .,&'’()/-:")
 _DURATION = re.compile(r"^(\d{1,3}(?:\.\d)?)\s*(years?|months?)$", re.IGNORECASE)
 _BATCH = re.compile(r"^\d{4}(?:\s*[-–—]\s*(?:\d{4}|\d{2}))?$")
-_NUMBER = re.compile(r"(-?\d+(?:\.\d+)?)\s*(cr|crore|lpa|lakh|l)?", re.IGNORECASE)
+_NUMBER = re.compile(r"(-?\d+(?:\.\d+)?)\s*(cr|crore|lpa|lakh|l|k)?", re.IGNORECASE)
 _RATIO = re.compile(r"^(?:[1-9]\d{0,2}\s*:\s*[1-9]\d{0,2})?$")
-_UNIT_LAKH = {"": 1.0, "l": 1.0, "lpa": 1.0, "lakh": 1.0, "cr": 100.0, "crore": 100.0}
+_UNIT_LAKH = {"": 1.0, "l": 1.0, "lpa": 1.0, "lakh": 1.0, "cr": 100.0, "crore": 100.0, "k": 0.01}
 
 
 def check_name(value: str, label: str = "The name") -> str:

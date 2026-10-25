@@ -43,6 +43,7 @@ YEAR = date.today().year
 
 class CourseRow(BaseModel):
     name: str = Field(min_length=2, max_length=200)
+    specialisation: str = Field(default="", max_length=200)
     duration: str = Field(min_length=1, max_length=100)
     mode: Literal["Full Time", "Part Time", "Weekend", "Online", "Distance"] = "Full Time"
     fees: str = Field(min_length=1, max_length=200)
@@ -135,7 +136,9 @@ class RecordBody(BaseModel):
     city: str = Field(min_length=1, max_length=200)
     state: str = Field(min_length=1, max_length=200)
     ownership: Literal["Private", "Government", "Deemed"]
-    stream: str = Field(min_length=1, max_length=100)
+    # The categories the college is listed under. `stream` is the first of them, kept for the pages that show one.
+    streams: list[str] = Field(default_factory=list, max_length=20)
+    stream: str = Field(default="", max_length=100)
     institutionType: Literal["College", "University"] = "College"
     feesRange: str = Field(default="", max_length=100)
     about: str = Field(default="", max_length=20000)
@@ -216,6 +219,7 @@ def _record(c: College) -> dict:
         "state": c.state,
         "ownership": c.ownership.value if hasattr(c.ownership, "value") else str(c.ownership),
         "stream": c.stream,
+        "streams": c.streams or ([c.stream] if c.stream else []),
         "institutionType": c.institution_type or "College",
         "feesRange": c.fees_range or "",
         "about": c.about or "",
@@ -227,7 +231,7 @@ def _record(c: College) -> dict:
         "approvals": c.approvals or [],
         "image": c.image or "",
         "courses": [
-            {"name": x.name, "duration": x.duration, "mode": x.mode, "fees": x.fees, "exams": x.exams or [], "eligibility": x.eligibility or "", "seats": x.seats}
+            {"name": x.name, "specialisation": x.specialisation or "", "duration": x.duration, "mode": x.mode, "fees": x.fees, "exams": x.exams or [], "eligibility": x.eligibility or "", "seats": x.seats}
             for x in sorted(c.courses or [], key=lambda x: x.created_at or 0)
         ],
         "placements": [
@@ -279,11 +283,19 @@ async def pools(_admin: AdminPayload, db: DbSession):
     from models.course_catalogue import CourseCatalogue
     from models.exam import Exam
     from models.home_field import HomeField
+    from models.specialisation import Specialisation
 
     fields = (await db.execute(select(HomeField.name).order_by(HomeField.name))).scalars().all()
     streams = sorted({*fields, *(await db.execute(select(College.stream).distinct())).scalars().all()} - {""})
     exams = (await db.execute(select(Exam.name).order_by(Exam.name))).scalars().all()
-    courses = (await db.execute(select(CourseCatalogue.name).where(CourseCatalogue.is_published.is_(True)).order_by(CourseCatalogue.name))).scalars().all()
+    course_rows = (await db.execute(select(CourseCatalogue.name, CourseCatalogue.slug, CourseCatalogue.stream, CourseCatalogue.streams).where(CourseCatalogue.is_published.is_(True)).order_by(CourseCatalogue.name))).all()
+    courses = [r.name for r in course_rows]
+    # Which categories each course sits under, so the form offers only the courses of the chosen category.
+    course_streams = {r.name: list(r.streams or [r.stream]) for r in course_rows}
+    slug_to_name = {r.slug: r.name for r in course_rows}
+    spec_rows = (await db.execute(select(Specialisation.name, Specialisation.course_slug, Specialisation.course_slugs).order_by(Specialisation.name))).all()
+    specialisations = [r.name for r in spec_rows]
+    specialisation_courses = {r.name: [slug_to_name[c] for c in (r.course_slugs or [r.course_slug]) if c in slug_to_name] for r in spec_rows}
     # Only colleges the site shows can be pinned as similar.
     colleges = (await db.execute(select(College.slug, College.name).where(College.status == "published").order_by(College.name))).all()
     in_use = (await db.execute(select(College.approvals, College.tags))).all()
@@ -294,6 +306,9 @@ async def pools(_admin: AdminPayload, db: DbSession):
             "streams": streams,
             "exams": sorted(set(exams)),
             "courses": sorted(set(courses)),
+            "specialisations": sorted(set(specialisations)),
+            "courseStreams": course_streams,
+            "specialisationCourses": specialisation_courses,
             "colleges": [{"slug": s, "name": n} for s, n in colleges],
             "approvals": approvals,
             "tags": tags,
@@ -370,12 +385,14 @@ def _parse(raw: dict) -> RecordBody:
 
 def _check(data: RecordBody) -> None:
     """Rules that span rows."""
+    if not [x for x in [*data.streams, data.stream] if x.strip()]:
+        raise ValidationError("streams: choose at least one category.")
     years = [p.year for p in data.placements]
     if len(set(years)) != len(years):
         raise ValidationError("placements: a year appears more than once.")
-    names = [c.name.strip().lower() for c in data.courses]
+    names = [(c.name.strip().lower(), c.specialisation.strip().lower()) for c in data.courses]
     if len(set(names)) != len(names):
-        raise ValidationError("courses: a programme is listed more than once.")
+        raise ValidationError("courses: a programme is listed more than once with the same specialisation.")
     seen = set()
     for cut in data.cutoffs:
         key = (cut.exam.strip().lower(), cut.category.strip().lower())
@@ -424,7 +441,8 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
     row.city = data.city.strip()
     row.state = data.state.strip()
     row.ownership = OwnershipType(data.ownership)
-    row.stream = data.stream.strip()
+    row.streams = [s.strip() for s in dict.fromkeys([*data.streams, data.stream]) if s and s.strip()]
+    row.stream = row.streams[0]
     row.institution_type = data.institutionType
     row.fees_range = data.feesRange.strip() or None
     row.about = data.about.strip() or None
@@ -443,7 +461,7 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
     await db.execute(delete(Placement).where(Placement.college_id == row.id))
     await db.execute(delete(Cutoff).where(Cutoff.college_id == row.id))
     for c in data.courses:
-        db.add(Course(id=uuid.uuid4(), college_id=row.id, name=c.name.strip(), duration=c.duration.strip(), mode=c.mode, fees=c.fees.strip(),
+        db.add(Course(id=uuid.uuid4(), college_id=row.id, name=c.name.strip(), specialisation=c.specialisation.strip(), duration=c.duration.strip(), mode=c.mode, fees=c.fees.strip(),
                       exams=[e.strip() for e in c.exams if e.strip()], eligibility=c.eligibility.strip(), seats=c.seats))
     for p in data.placements:
         db.add(Placement(id=uuid.uuid4(), college_id=row.id, year=p.year, average_package=p.average.strip() or None, median_package=p.median.strip() or None,

@@ -1,12 +1,14 @@
-"""Admin catalogue: courses and their specialisations. ADMIN role required on every route.
+"""Admin catalogue: courses and specialisations. ADMIN role required on every route.
 
-Only the fields the admin editor edits are accepted. The "colleges offering"
-count is an editorial figure entered by hand (it is not computed from the
-directory). A specialisation carries its
-parent course's name and stream, so a course rename or stream change is copied
-to its specialisations in the same transaction.
+The editor takes a name and the parents: a course names the categories it sits under, a
+specialisation the courses it sits under (one or several each), and the slug is made from the
+name. Everything else about a programme (fees, duration, eligibility) is entered per college.
+The first parent is also kept in the single-parent columns (`stream`, `course_slug`) that the
+public course pages read; a course rename or category change is copied to the specialisations
+linked that way in the same transaction.
 """
 
+import re
 import uuid
 from typing import Literal, Optional
 
@@ -27,6 +29,20 @@ from services.course_catalogue import CollegeCounts
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 SLUG = r"^[a-z0-9]+(-[a-z0-9]+)*$"
+
+
+def _slugify(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+async def _free_slug(db, model, name: str) -> str:
+    """A slug from the name that no row of `model` uses yet: mba, then mba-2, mba-3."""
+    base = _slugify(name) or "item"
+    slug, n = base, 1
+    while (await db.execute(select(model.id).where(model.slug == slug))).scalar_one_or_none() is not None:
+        n += 1
+        slug = f"{base}-{n}"
+    return slug
 Level = Literal["UG", "PG", "Diploma", "Doctorate"]
 
 
@@ -44,34 +60,17 @@ class _FormatChecks(BaseModel):
         return check_fees(value)
 
 
-class CourseCreateBody(_FormatChecks):
-    slug: str = Field(min_length=2, max_length=200, pattern=SLUG)
+class CourseCreateBody(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    fullName: str = Field(min_length=2, max_length=500)
-    level: Level
-    stream: str = Field(min_length=1, max_length=100)
-    duration: str = Field(min_length=1, max_length=100)
-    modes: list[str] = Field(default_factory=list, max_length=10)
-    eligibility: Optional[str] = Field(default=None, max_length=4000)
-    averageFees: Optional[str] = Field(default=None, max_length=100)
-    examsAccepted: list[str] = Field(default_factory=list, max_length=30)
-    collegeCount: int = Field(default=0, ge=0, le=1_000_000)
-    about: Optional[str] = Field(default=None, max_length=4000)
+    streams: list[str] = Field(min_length=1, max_length=20)
     model_config = ConfigDict(extra="forbid")
-
-    @field_validator("stream", check_fields=False)
-    @classmethod
-    def _stream(cls, value):
-        if value is not None and value.strip() == "__other__":
-            raise ValueError("please specify a custom stream.")
-        return value
 
 
 class CourseUpdateBody(_FormatChecks):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    streams: Optional[list[str]] = Field(default=None, min_length=1, max_length=20)
     fullName: Optional[str] = Field(default=None, min_length=2, max_length=500)
     level: Optional[Level] = None
-    stream: Optional[str] = Field(default=None, min_length=1, max_length=100)
     duration: Optional[str] = Field(default=None, min_length=1, max_length=100)
     modes: Optional[list[str]] = Field(default=None, max_length=10)
     eligibility: Optional[str] = Field(default=None, max_length=4000)
@@ -81,28 +80,16 @@ class CourseUpdateBody(_FormatChecks):
     about: Optional[str] = Field(default=None, max_length=4000)
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator("stream", check_fields=False)
-    @classmethod
-    def _stream(cls, value):
-        if value is not None and value.strip() == "__other__":
-            raise ValueError("please specify a custom stream.")
-        return value
 
-
-class SpecialisationCreateBody(_FormatChecks):
-    slug: str = Field(min_length=2, max_length=200, pattern=SLUG)
+class SpecialisationCreateBody(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    courseSlug: str = Field(min_length=2, max_length=200)
-    duration: Optional[str] = Field(default=None, max_length=100)
-    averageFees: Optional[str] = Field(default=None, max_length=100)
-    collegeCount: int = Field(default=0, ge=0, le=1_000_000)
-    about: Optional[str] = Field(default=None, max_length=4000)
+    courseSlugs: list[str] = Field(min_length=1, max_length=50)
     model_config = ConfigDict(extra="forbid")
 
 
 class SpecialisationUpdateBody(_FormatChecks):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
-    courseSlug: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    courseSlugs: Optional[list[str]] = Field(default=None, min_length=1, max_length=50)
     duration: Optional[str] = Field(default=None, max_length=100)
     averageFees: Optional[str] = Field(default=None, max_length=100)
     collegeCount: Optional[int] = Field(default=None, ge=0, le=1_000_000)
@@ -125,7 +112,7 @@ def _validate(model: type[BaseModel], raw: dict) -> BaseModel:
     return validate_body(model, raw)
 
 
-def _course_out(c: CourseCatalogue, specs: list[Specialisation], counts: CollegeCounts) -> dict:
+def _course_out(c: CourseCatalogue, counts: CollegeCounts) -> dict:
     return {
         "id": str(c.id),
         "slug": c.slug,
@@ -133,6 +120,7 @@ def _course_out(c: CourseCatalogue, specs: list[Specialisation], counts: College
         "fullName": c.full_name,
         "level": c.level,
         "stream": c.stream,
+        "streams": c.streams or ([c.stream] if c.stream else []),
         "duration": c.duration,
         "modes": c.modes or [],
         "eligibility": c.eligibility,
@@ -143,7 +131,6 @@ def _course_out(c: CourseCatalogue, specs: list[Specialisation], counts: College
         "shownCount": counts.course(c.name, c.college_count),
         "about": c.about,
         "isPublished": c.is_published,
-        "specialisations": [_spec_out(s, counts) for s in specs],
     }
 
 
@@ -154,6 +141,7 @@ def _spec_out(s: Specialisation, counts: CollegeCounts) -> dict:
         "name": s.name,
         "courseSlug": s.course_slug,
         "courseName": s.course_name,
+        "courseSlugs": s.course_slugs or ([s.course_slug] if s.course_slug else []),
         "stream": s.stream,
         "duration": s.duration,
         "averageFees": s.average_fees,
@@ -190,45 +178,54 @@ async def _spec_by_slug(db, slug: str) -> Specialisation:
     return spec
 
 
-@router.get("/catalogue", response_model=SuccessResponse[list])
+@router.get("/catalogue", response_model=SuccessResponse[dict])
 async def admin_catalogue(_admin: AdminPayload, db: DbSession):
-    """Every course, published or not, with its specialisations nested."""
+    """Both lists, every row published or not: the courses, and the specialisations on their own."""
     courses = (await db.execute(select(CourseCatalogue).order_by(CourseCatalogue.name))).scalars().all()
     specs = (await db.execute(select(Specialisation).order_by(Specialisation.name))).scalars().all()
-    by_course: dict[uuid.UUID, list[Specialisation]] = {}
-    for s in specs:
-        by_course.setdefault(s.course_id, []).append(s)
     counts = CollegeCounts(await CourseCatalogueRepository(db).college_course_names())
-    return SuccessResponse[list](data=[_course_out(c, by_course.get(c.id, []), counts) for c in courses])
+    return SuccessResponse[dict](data={
+        "courses": [_course_out(c, counts) for c in courses],
+        "specialisations": [_spec_out(s, counts) for s in specs],
+    })
+
+
+def _clean_names(values: list[str]) -> list[str]:
+    seen: list[str] = []
+    for v in values:
+        v = v.strip()
+        if v and v not in seen:
+            seen.append(v)
+    return seen
 
 
 @router.post("/courses", response_model=SuccessResponse[dict], status_code=201)
 async def admin_create_course(_admin: AdminPayload, db: DbSession, body: dict):
     data = _validate(CourseCreateBody, body)
-    taken = (await db.execute(select(CourseCatalogue.id).where(CourseCatalogue.slug == data.slug))).scalar_one_or_none()
-    if taken is not None:
-        raise ConflictError("COURSE_SLUG_TAKEN", f"A course with slug '{data.slug}' already exists.")
-    await _reject_duplicate(db, data.name, data.level)
+    streams = _clean_names(data.streams)
+    if not streams:
+        raise ValidationError("streams: choose a category.")
+    same = (await db.execute(select(CourseCatalogue.slug).where(func.lower(func.trim(CourseCatalogue.name)) == data.name.strip().lower()))).scalars().first()
+    if same is not None:
+        raise ConflictError("COURSE_DUPLICATE", f"A course named '{data.name.strip()}' already exists.")
+    slug = await _free_slug(db, CourseCatalogue, data.name)
 
-    course = CourseCatalogue(
+    db.add(CourseCatalogue(
         id=uuid.uuid4(),
-        slug=data.slug,
-        name=data.name,
-        full_name=data.fullName,
-        level=data.level,
-        stream=data.stream,
-        duration=data.duration,
-        modes=data.modes,
-        eligibility=data.eligibility,
-        average_fees=data.averageFees,
-        exams_accepted=data.examsAccepted,
-        college_count=data.collegeCount,
-        about=data.about,
+        slug=slug,
+        name=data.name.strip(),
+        full_name=data.name.strip(),
+        level="",
+        stream=streams[0],
+        streams=streams,
+        duration="",
+        modes=[],
+        exams_accepted=[],
+        college_count=0,
         is_published=True,
-    )
-    db.add(course)
+    ))
     await db.commit()
-    return SuccessResponse[dict](data={"message": f"Course '{data.slug}' created."})
+    return SuccessResponse[dict](data={"message": f"Course '{slug}' created."})
 
 
 class DeleteBody(BaseModel):
@@ -254,8 +251,14 @@ async def admin_update_course(slug: str, _admin: AdminPayload, db: DbSession, bo
     changes = data.model_dump(exclude_unset=True)
     _reject_nulls(changes, NULLABLE_COURSE_FIELDS)
 
+    if "streams" in changes:
+        streams = _clean_names(changes.pop("streams"))
+        if not streams:
+            raise ValidationError("streams: choose a category.")
+        changes["streams"], changes["stream"] = streams, streams[0]
+
     mapping = {
-        "name": "name", "fullName": "full_name", "level": "level", "stream": "stream",
+        "name": "name", "streams": "streams", "stream": "stream", "fullName": "full_name", "level": "level",
         "duration": "duration", "modes": "modes", "eligibility": "eligibility",
         "averageFees": "average_fees", "examsAccepted": "exams_accepted", "collegeCount": "college_count",
         "about": "about",
@@ -280,39 +283,45 @@ async def admin_update_course(slug: str, _admin: AdminPayload, db: DbSession, bo
     return SuccessResponse[dict](data={"message": f"Course '{slug}' updated."})
 
 
+async def _reject_duplicate_spec(db, name: str, except_id=None) -> None:
+    """Finance is one entry in the list, whichever course it is used with."""
+    stmt = select(Specialisation.slug).where(func.lower(func.trim(Specialisation.name)) == name.strip().lower())
+    if except_id is not None:
+        stmt = stmt.where(Specialisation.id != except_id)
+    existing = (await db.execute(stmt)).scalars().first()
+    if existing is not None:
+        raise ConflictError("SPECIALISATION_EXISTS", f"A specialisation named '{name.strip()}' already exists ('{existing}').")
+
+
+async def _courses_by_slugs(db, slugs: list[str]) -> list[CourseCatalogue]:
+    """The courses a specialisation sits under, in the order chosen. Unknown slugs are refused."""
+    wanted = _clean_names(slugs)
+    if not wanted:
+        raise ValidationError("courseSlugs: choose a course.")
+    found = {c.slug: c for c in (await db.execute(select(CourseCatalogue).where(CourseCatalogue.slug.in_(wanted)))).scalars().all()}
+    missing = [slug for slug in wanted if slug not in found]
+    if missing:
+        raise NotFoundError(f"Course '{missing[0]}'")
+    return [found[slug] for slug in wanted]
+
+
+def _set_parents(spec: Specialisation, courses: list[CourseCatalogue]) -> None:
+    first = courses[0]
+    spec.course_slugs = [c.slug for c in courses]
+    spec.course_id, spec.course_slug, spec.course_name, spec.stream = first.id, first.slug, first.name, first.stream
+
+
 @router.post("/specialisations", response_model=SuccessResponse[dict], status_code=201)
 async def admin_create_specialisation(_admin: AdminPayload, db: DbSession, body: dict):
     data = _validate(SpecialisationCreateBody, body)
-    taken = (await db.execute(select(Specialisation.id).where(Specialisation.slug == data.slug))).scalar_one_or_none()
-    if taken is not None:
-        raise ConflictError("SPECIALISATION_SLUG_TAKEN", f"A specialisation with slug '{data.slug}' already exists.")
-    course = await _course_by_slug(db, data.courseSlug)
+    courses = await _courses_by_slugs(db, data.courseSlugs)
+    await _reject_duplicate_spec(db, data.name)
 
-    dup = (await db.execute(
-        select(Specialisation.id).where(
-            Specialisation.course_id == course.id,
-            func.lower(Specialisation.name) == data.name.strip().lower()
-        )
-    )).scalar_one_or_none()
-    if dup is not None:
-        raise ConflictError("SPECIALISATION_EXISTS", f"A specialisation named '{data.name}' already exists under '{course.name}'.")
-
-    spec = Specialisation(
-        id=uuid.uuid4(),
-        slug=data.slug,
-        name=data.name,
-        course_id=course.id,
-        course_slug=course.slug,
-        course_name=course.name,
-        stream=course.stream,
-        duration=data.duration,
-        average_fees=data.averageFees,
-        college_count=data.collegeCount,
-        about=data.about,
-    )
+    spec = Specialisation(id=uuid.uuid4(), slug=await _free_slug(db, Specialisation, data.name), name=data.name.strip(), college_count=0)
+    _set_parents(spec, courses)
     db.add(spec)
     await db.commit()
-    return SuccessResponse[dict](data={"message": f"Specialisation '{data.slug}' created."})
+    return SuccessResponse[dict](data={"message": f"Specialisation '{spec.slug}' created."})
 
 
 @router.patch("/specialisations/{slug}", response_model=SuccessResponse[dict])
@@ -322,28 +331,13 @@ async def admin_update_specialisation(slug: str, _admin: AdminPayload, db: DbSes
     changes = data.model_dump(exclude_unset=True)
     _reject_nulls(changes, NULLABLE_SPEC_FIELDS)
 
-    target_course_id = spec.course_id
-    if "courseSlug" in changes and changes["courseSlug"] is not None:
-        course = await _course_by_slug(db, changes.pop("courseSlug"))
-        spec.course_id = course.id
-        spec.course_slug = course.slug
-        spec.course_name = course.name
-        spec.stream = course.stream
-        target_course_id = course.id
+    if changes.get("courseSlugs") is not None:
+        _set_parents(spec, await _courses_by_slugs(db, changes.pop("courseSlugs")))
     else:
-        changes.pop("courseSlug", None)
+        changes.pop("courseSlugs", None)
 
-    target_name = changes.get("name", spec.name)
-    if "name" in changes or "courseSlug" in changes:
-        dup = (await db.execute(
-            select(Specialisation.id).where(
-                Specialisation.course_id == target_course_id,
-                func.lower(Specialisation.name) == target_name.strip().lower(),
-                Specialisation.id != spec.id
-            )
-        )).scalar_one_or_none()
-        if dup is not None:
-            raise ConflictError("SPECIALISATION_EXISTS", f"A specialisation named '{target_name}' already exists under this course.")
+    if "name" in changes and changes["name"].strip().lower() != spec.name.strip().lower():
+        await _reject_duplicate_spec(db, changes["name"], spec.id)
 
     for key, column in {
         "name": "name", "duration": "duration", "averageFees": "average_fees",
@@ -353,3 +347,13 @@ async def admin_update_specialisation(slug: str, _admin: AdminPayload, db: DbSes
             setattr(spec, column, changes[key])
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Specialisation '{slug}' updated."})
+
+
+@router.post("/specialisations/delete", response_model=SuccessResponse[dict])
+async def admin_delete_specialisations(_admin: AdminPayload, db: DbSession, body: dict):
+    data = _validate(DeleteBody, body)
+    specs = (await db.execute(select(Specialisation).where(Specialisation.slug.in_(data.slugs)))).scalars().all()
+    for spec in specs:
+        await db.delete(spec)
+    await db.commit()
+    return SuccessResponse[dict](data={"message": f"{len(specs)} specialisation(s) deleted.", "deleted": len(specs)})

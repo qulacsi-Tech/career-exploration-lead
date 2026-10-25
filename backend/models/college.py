@@ -29,7 +29,8 @@ class College(Base):
     city = Column(String(200), nullable=False, index=True)
     state = Column(String(200), nullable=False, index=True)
     ownership = Column(Enum(OwnershipType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
-    stream = Column(String(100), nullable=False, index=True)
+    stream = Column(String(100), nullable=False, index=True)  # the first of `streams`
+    streams = Column(JSONB, nullable=False, default=list, server_default="[]")  # every category it is listed under
     # "College" or "University": what kind of institution this listing is.
     institution_type = Column(String(20), nullable=False, default="College", server_default="College")
     ranking_authority = Column(String(100), nullable=True)

@@ -3,7 +3,7 @@
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import Numeric, and_, case, cast, func, or_, select
+from sqlalchemy import Numeric, String, and_, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -73,7 +73,8 @@ def _apply_filters(stmt, params: CollegeFilterParams):
     if params.status != "all":
         stmt = stmt.where(College.status == (params.status or "published"))
     if params.stream:
-        stmt = stmt.where(College.stream.ilike(f"%{params.stream}%"))
+        # The first category, or any of the several a college can be listed under.
+        stmt = stmt.where(or_(College.stream.ilike(f"%{params.stream}%"), cast(College.streams, String).ilike(f"%{params.stream}%")))
     if params.city:
         stmt = stmt.where(College.city.ilike(f"%{params.city}%"))
     if params.state:
@@ -101,7 +102,9 @@ def _apply_filters(stmt, params: CollegeFilterParams):
     if params.mode:
         stmt = stmt.where(_course_matches(Course.mode.ilike(f"%{params.mode}%")))
     if params.specialisation:
-        stmt = stmt.where(_course_matches(Course.name.ilike(f"%{params.specialisation}%")))
+        stmt = stmt.where(
+            _course_matches(or_(Course.name.ilike(f"%{params.specialisation}%"), Course.specialisation.ilike(f"%{params.specialisation}%")))
+        )
     if params.level in _LEVEL_PATTERNS:
         stmt = stmt.where(_course_matches(_name_like(_LEVEL_PATTERNS[params.level])))
     if params.credential == "Degree":

@@ -3,144 +3,63 @@
 import { createCourse, deleteCourses, saveCourse } from "@/lib/admin-actions";
 import type { AdminCourse } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
-import { ListingHeaderButton } from "@/components/admin/listing-header-modal";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
-import {
-  TextField,
-  SelectField,
-  SelectWithOtherField,
-  TextAreaField,
-  Field,
-  NameSlugFields,
-} from "@/components/admin/admin-fields";
+import { TextField, Field, NamesInput, ParentPicker } from "@/components/admin/admin-fields";
 
-const LEVELS = ["UG", "PG", "Diploma", "Doctorate"];
-const STREAMS = [
-  "Management",
-  "Engineering",
-  "Medical",
-  "Science",
-  "Arts",
-  "Commerce",
-  "Pharmacy",
-  "Law",
-  "Paramedical",
-];
+/**
+ * The second level: B.Tech, B.E., MBA, BBA. A course is a name and the categories it sits under;
+ * fees, duration and eligibility are entered per college, on the college form. A course can sit
+ * under several categories, and a college that picks one of them is offered this course.
+ */
+export function CoursesAdmin({ courses, streams }: { courses: AdminCourse[]; streams: string[] }) {
+  const options = streams.map((name) => ({ value: name, label: name }));
+  const picker = (defaults: string[]) => (
+    <ParentPicker
+      label="Categories"
+      name="streams"
+      options={options}
+      defaultValues={defaults}
+      emptyNote="Add a category first."
+      className="sm:col-span-2"
+    />
+  );
 
-/*
-  Only fields the API stores are edited here. "Colleges offering" is counted
-  from the directory unless a figure is typed, which then overrides the count.
-  The status is set by the publish flow, so it is not an input.
-*/
-export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
   return (
     <ResourceAdmin<AdminCourse>
       title="Courses"
-      description="Degree programmes offered across the directory, with eligibility, fees and accepted exams."
+      description="The degrees and programmes, such as B.Tech, B.E., MBA and BBA. Pick the categories each one sits under."
       addLabel="Add course"
-      headerActions={<ListingHeaderButton page="courses" label="Courses page header" />}
-      addDescription="Basic details now; eligibility and exams on the record afterwards."
+      addDescription="One or more names, and the categories they sit under. Fees and duration are filled in on the college."
       rows={courses}
       getKey={(course) => course.slug}
-      searchIn={(course) => [course.name, course.fullName, course.stream, course.level, course.slug]}
-      searchPlaceholder="Search name, stream, level"
+      searchIn={(course) => [course.name, ...course.streams]}
+      searchPlaceholder="Search course or category"
       columns={[
         {
           key: "name",
           label: "Course",
           className: "text-ink",
-          render: (course) => (
-            <>
-              <p className="font-medium text-ink">{course.name}</p>
-              <p className="text-xs text-ink-faint">{course.fullName}</p>
-            </>
-          ),
+          render: (course) => <p className="font-medium text-ink">{course.name}</p>,
         },
-        { key: "level", label: "Level", render: (course) => course.level },
-        { key: "stream", label: "Stream", render: (course) => course.stream },
-        { key: "duration", label: "Duration", render: (course) => course.duration },
-        { key: "fees", label: "Average fees", render: (course) => course.averageFees ?? "—" },
+        { key: "streams", label: "Under categories", render: (course) => course.streams.join(", ") || "—" },
         { key: "colleges", label: "Colleges", render: (course) => course.shownCount.toLocaleString("en-IN") },
       ]}
       renderView={(course) => (
-        <div className="space-y-6">
-          <AdminSubsection title="Basic details">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
-              <Field label="Full name" value={course.fullName} />
-              <Field label="Level" value={course.level} />
-              <Field label="Stream" value={course.stream} />
-              <Field label="Duration" value={course.duration} />
-              <Field label="Average fees" value={course.averageFees ?? "—"} />
-              <Field label="Colleges offering" value={`${course.shownCount.toLocaleString("en-IN")}${course.collegeCount > 0 ? " (typed)" : " (counted)"}`} />
-            </dl>
-            <p className="mt-3 text-sm leading-relaxed text-ink-soft">{course.about ?? "—"}</p>
-          </AdminSubsection>
-
-          <AdminSubsection title="Eligibility">
-            <p className="text-sm text-ink-soft">{course.eligibility ?? "—"}</p>
-          </AdminSubsection>
-
-          <AdminSubsection title="Modes & exams">
-            <p className="text-sm text-ink-soft">Modes: {course.modes.join(", ") || "—"}</p>
-            <p className="mt-1 text-sm text-ink-soft">Exams: {course.examsAccepted.join(", ") || "—"}</p>
-          </AdminSubsection>
-        </div>
+        <AdminSubsection title="Details">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+            <Field label="Categories" value={course.streams.join(", ") || "—"} />
+            <Field label="Colleges offering" value={course.shownCount.toLocaleString("en-IN")} />
+          </dl>
+        </AdminSubsection>
       )}
       editTabs={[
         {
           id: "basic",
-          label: "Basic details",
+          label: "Details",
           render: (course) => (
             <FieldGrid>
-              <TextField label="Short name" name="name" defaultValue={course.name} required maxLength={200} />
-              <TextField label="Full name" name="fullName" defaultValue={course.fullName} required maxLength={500} />
-              <SelectField label="Level" name="level" defaultValue={course.level} options={LEVELS} />
-              <SelectWithOtherField label="Stream" name="stream" defaultValue={course.stream} options={STREAMS} />
-              <TextField label="Duration" name="duration" defaultValue={course.duration} required maxLength={100} hint="A number and a unit, e.g. 4 Years or 24 Months." />
-              <TextField label="Average fees" name="averageFees" defaultValue={course.averageFees ?? ""} maxLength={100} hint="An amount or range, e.g. ₹4L - 25L." />
-              <TextField
-                label="Colleges offering (override)"
-                name="collegeCount"
-                type="number"
-                defaultValue={String(course.collegeCount)}
-                hint={`Leave 0 to count from the directory (now ${course.shownCount})`}
-              />
-              <TextAreaField
-                label="About"
-                name="about"
-                defaultValue={course.about ?? ""}
-                rows={4}
-                className="sm:col-span-2 lg:col-span-3"
-              />
-            </FieldGrid>
-          ),
-        },
-        {
-          id: "eligibility",
-          label: "Eligibility & exams",
-          render: (course) => (
-            <FieldGrid>
-              <TextAreaField
-                label="Eligibility"
-                name="eligibility"
-                defaultValue={course.eligibility ?? ""}
-                rows={3}
-                className="sm:col-span-2 lg:col-span-3"
-              />
-              <TextField
-                label="Modes"
-                name="modes"
-                defaultValue={course.modes.join(", ")}
-                hint="Comma separated, e.g. Full Time, Online"
-                className="sm:col-span-2"
-              />
-              <TextField
-                label="Accepted exams"
-                name="examsAccepted"
-                defaultValue={course.examsAccepted.join(", ")}
-                hint="Comma separated, e.g. CAT, XAT"
-                className="sm:col-span-2"
-              />
+              <TextField label="Name" name="name" defaultValue={course.name} required maxLength={200} />
+              {picker(course.streams)}
             </FieldGrid>
           ),
         },
@@ -150,19 +69,8 @@ export function CoursesAdmin({ courses }: { courses: AdminCourse[] }) {
       onBulkDelete={(rows) => deleteCourses(rows.map((c) => c.slug))}
       renderAddForm={() => (
         <>
-          <NameSlugFields
-            nameLabel="Short name"
-            namePlaceholder="MBA"
-            nameMaxLength={200}
-            slugPlaceholder="mba"
-          />
-          <TextField label="Full name" name="fullName" placeholder="Master of Business Administration" required maxLength={500} />
-          <SelectField label="Level" name="level" options={LEVELS} />
-          <SelectWithOtherField label="Stream" name="stream" options={STREAMS} />
-          <TextField label="Duration" name="duration" placeholder="24 Months" required maxLength={100} hint="A number and a unit, e.g. 4 Years or 24 Months." />
-          <TextField label="Average fees" name="averageFees" placeholder="₹4L - 25L" maxLength={100} hint="An amount or range, e.g. ₹4L - 25L." />
-          <TextField label="Colleges offering (override)" name="collegeCount" type="number" placeholder="0" hint="Leave 0 to count from the directory" />
-          <TextAreaField label="About" name="about" rows={3} className="sm:col-span-2" />
+          <NamesInput label="Names" name="name" placeholder="B.Tech" className="sm:col-span-2" />
+          {picker([])}
         </>
       )}
     />

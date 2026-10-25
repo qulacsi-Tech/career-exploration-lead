@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import type { CollegeRecord } from "@/lib/api";
+import type { CollegePools, CollegeRecord } from "@/lib/api";
 import { createCollege, deleteCollegeForever, setCollegeStatus } from "@/lib/admin-actions";
 import type { College, CollegeStatus, IndiaGeo } from "@/lib/api";
 import {
@@ -17,6 +17,7 @@ import { AdminModal } from "@/components/admin/admin-modal";
 import { ListingHeaderButton } from "@/components/admin/listing-header-modal";
 import { ListingSlotsButton } from "@/components/admin/listing-slots-modal";
 import { StateCityFields } from "@/components/admin/state-city-fields";
+import { CategoryTicks, CourseTicks, type CoursePick } from "@/components/admin/college-editor/course-picker";
 import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
@@ -30,7 +31,7 @@ import { feeRangeProblem, nameProblem, yearProblem } from "@/lib/college-rules";
  * enough attached to it that showing any of it inline makes the list unusable
  * once there are more than a handful of records.
  */
-export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: College[]; geo?: IndiaGeo; streams?: string[] }) {
+export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null }: { colleges: College[]; geo?: IndiaGeo; streams?: string[]; pools?: CollegePools | null }) {
   const [query, setQuery] = useState("");
   const [programSlug, setProgramSlug] = useState("");
   const [rankingSlug, setRankingSlug] = useState("");
@@ -99,7 +100,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
     const matching = q ? inStream.filter((c) => [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q))) : inStream;
     if (!sort) return matching; // the order the server sent: newest first
     const value = (c: College) =>
-      ({ name: c.name, location: `${c.city}, ${c.state}`, ownership: c.ownership, stream: c.stream, courses: c.coursesOffered, rating: c.rating })[sort.key];
+      ({ name: c.name, location: `${c.city}, ${c.state}`, ownership: c.ownership, stream: c.stream, courses: c.coursesOffered, rating: nirfRank(c) ?? Number.MAX_SAFE_INTEGER })[sort.key];
     const sign = sort.dir === "asc" ? 1 : -1;
     return [...matching].sort((a, b) => {
       const x = value(a);
@@ -216,7 +217,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
                 <SortHeader label="Ownership" k="ownership" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Stream" k="stream" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Courses" k="courses" sort={sort} onSort={toggleSort} />
-                <SortHeader label="Rating" k="rating" sort={sort} onSort={toggleSort} />
+                <SortHeader label="NIRF" k="rating" sort={sort} onSort={toggleSort} />
                 <th scope="col" className="sticky right-0 bg-surface py-2 pl-3 text-right font-semibold shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">Actions</th>
               </tr>
             </thead>
@@ -247,11 +248,18 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
                   <td className="py-3 pr-3 text-ink-soft">{college.stream}</td>
                   <td className="py-3 pr-3 text-ink-soft">{Math.max(0, college.coursesOffered)}</td>
                   <td className="py-3 pr-3 text-ink-soft">
-                    {college.rating}
-                    <span className="text-ink-faint"> ({college.reviewCount})</span>
+                    {nirfRank(college) !== null ? (
+                      `NIRF (${nirfRank(college)})`
+                    ) : (
+                      <>
+                        {college.rating}
+                        <span className="text-ink-faint"> ({college.reviewCount})</span>
+                      </>
+                    )}
                   </td>
                   <td className="sticky right-0 bg-surface py-3 pl-3 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">
                     <div className="flex justify-end gap-2">
+                      {/* View is switched off for now; the dialog behind it is kept.
                       <button
                         type="button"
                         onClick={() => setViewing(college)}
@@ -259,6 +267,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
                       >
                         View
                       </button>
+                      */}
                       <button
                         type="button"
                         onClick={() => setEditing(college)}
@@ -326,6 +335,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [] }: { colleges: 
       <AddCollegeModal
         geo={geo}
         streams={streams}
+        pools={pools}
         open={adding}
         onClose={() => setAdding(false)}
         onSaved={(form) => {
@@ -422,7 +432,6 @@ function ViewCollegeModal({
               <>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
                   <Field label="Average" value={college.placement.average} />
-                  <Field label="Median" value={college.placement.median} />
                   <Field label="Highest" value={college.placement.highest} />
                 </dl>
                 <p className="mt-2 text-xs text-ink-soft">
@@ -481,6 +490,11 @@ function SortHeader({ label, k, sort, onSort }: { label: string; k: SortKey; sor
   );
 }
 
+/** The NIRF rank, when the college's ranking is NIRF's; null otherwise, and the review rating is shown instead. */
+function nirfRank(c: College): number | null {
+  return /nirf/i.test(c.ranking?.authority ?? "") && c.ranking.rank > 0 ? c.ranking.rank : null;
+}
+
 /** What the table shows of a college, from the record that was just saved. */
 function patchFrom(r: CollegeRecord): Partial<College> {
   return {
@@ -495,7 +509,7 @@ function stubFrom(form: FormData): College {
   const text = (key: string) => String(form.get(key) ?? "").trim();
   return {
     slug: text("slug"), name: text("name"), city: text("city"), state: text("state"), status: "draft",
-    ownership: (text("ownership") || "Private") as College["ownership"], stream: text("stream"),
+    ownership: (text("ownership") || "Private") as College["ownership"], stream: String(form.getAll("streams")[0] ?? ""),
     ranking: { authority: "", rank: 0 }, rating: 0, reviewCount: 0, coursesOffered: 0, feesRange: text("feesRange"),
     examsAccepted: [], tags: [], approvals: [], courses: [], cutoffs: [], about: text("about"),
     established: Number(text("established")) || undefined, image: "",
@@ -664,7 +678,7 @@ function StatusConfirm({ acting, onClose, onDone, onError }: { acting: { college
 
 const FALLBACK_STREAMS = ["Management", "Engineering", "Medical", "Science", "Arts", "Commerce", "Pharmacy", "Law"];
 
-function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boolean; onClose: () => void; onSaved: (form: FormData) => void; geo: IndiaGeo; streams: string[] }) {
+function AddCollegeModal({ open, onClose, onSaved, geo, streams, pools }: { open: boolean; onClose: () => void; onSaved: (form: FormData) => void; geo: IndiaGeo; streams: string[]; pools: CollegePools | null }) {
   // Anything typed is worth a question before it is thrown away, so the form tells the modal when it has some.
   const [dirty, setDirty] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -680,6 +694,7 @@ function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boole
     <AdminModal
       open={open}
       onClose={requestClose}
+      size="seventy"
       title="Add college"
       description="Basic details now; courses, placements and SEO on the record afterwards. Fields marked * are required."
       footer={
@@ -713,6 +728,7 @@ function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boole
       <AddCollegeForm
         geo={geo}
         streams={streams.length > 0 ? streams : FALLBACK_STREAMS}
+        pools={pools}
         onDirty={() => setDirty(true)}
         onDone={(form) => {
           onSaved(form);
@@ -728,7 +744,9 @@ function AddCollegeModal({ open, onClose, onSaved, geo, streams }: { open: boole
  * threw away the state, city, year and fees whenever the server said no. Here nothing is cleared, so the
  * editor fixes the one thing that was wrong.
  */
-function AddCollegeForm({ onDone, onDirty, geo, streams }: { onDone: (form: FormData) => void; onDirty: () => void; geo: IndiaGeo; streams: string[] }) {
+function AddCollegeForm({ onDone, onDirty, geo, streams, pools }: { onDone: (form: FormData) => void; onDirty: () => void; geo: IndiaGeo; streams: string[]; pools: CollegePools | null }) {
+  const [categories, setCategories] = useState<string[]>([]);
+  const [picked, setPicked] = useState<CoursePick[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; established?: string; feesRange?: string }>({});
@@ -751,6 +769,7 @@ function AddCollegeForm({ onDone, onDirty, geo, streams }: { onDone: (form: Form
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const text = (key: string) => String(form.get(key) ?? "").trim();
+    if (categories.length === 0) return setError("Choose at least one category.");
 
     const established = text("established");
     const problems = {
@@ -799,7 +818,32 @@ function AddCollegeForm({ onDone, onDirty, geo, streams }: { onDone: (form: Form
 
       <SelectField label="Type" name="institutionType" options={["College", "University"]} />
       <SelectField label="Ownership" name="ownership" options={["Private", "Government", "Deemed"]} />
-      <SelectField label="Category" name="stream" options={streams} required placeholder="Select a category" />
+
+      <div className="sm:col-span-2">
+        <CategoryTicks
+          name="streams"
+          value={categories}
+          options={streams}
+          onChange={(next) => {
+            setCategories(next);
+            onDirty();
+          }}
+        />
+      </div>
+      {pools && (
+        <div className="sm:col-span-2">
+          <CourseTicks
+            categories={categories}
+            pools={pools}
+            value={picked}
+            onChange={(next) => {
+              setPicked(next);
+              onDirty();
+            }}
+          />
+          <input type="hidden" name="courses" value={JSON.stringify(picked)} />
+        </div>
+      )}
 
       <TextField label="Established" name="established" placeholder="1998" type="number" min={1800} max={new Date().getFullYear()} error={fieldErrors.established} />
       <TextField label="Fees range" name="feesRange" placeholder="₹9.5L - 21L" error={fieldErrors.feesRange} />

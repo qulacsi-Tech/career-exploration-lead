@@ -5,6 +5,7 @@ import { mediaUrl } from "@/lib/media";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { CompareButton } from "@/components/colleges/compare-button";
 import { plural } from "@/lib/college-rules";
+import { programmeTitle } from "@/lib/college-insights";
 
 /**
  * A row on the /colleges listing, in the Shiksha mould the client asked for: the rank up front, a
@@ -167,9 +168,9 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
                       <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-faint">Courses offered</p>
                       <ul className="max-h-60 space-y-1 overflow-y-auto">
                         {courses.map((course) => (
-                          <li key={course.name} className="flex items-baseline justify-between gap-4 text-sm">
+                          <li key={programmeTitle(course)} className="flex items-baseline justify-between gap-4 text-sm">
                             <span className="font-semibold text-ink">
-                              {course.name}
+                              {programmeTitle(course)}
                               {course.duration && <span className="font-normal text-ink-soft"> · {course.duration}</span>}
                             </span>
                             {course.fees && <span className="shrink-0 font-bold text-brand-ink">{course.fees}</span>}

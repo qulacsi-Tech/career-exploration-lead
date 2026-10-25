@@ -20,10 +20,16 @@ import type { CollegeDetail as College } from "@/lib/api";
  * not drawn rather than drawn at zero.
  */
 export function lakhValue(amount: string): number | null {
-  const match = amount.match(/[\d.]+/);
+  const match = amount.match(/([\d.]+)\s*(k)?/i);
   if (!match) return null;
-  const value = Number(match[0]);
+  // Thousands (₹50K) are 0.5 lakh.
+  const value = Number(match[1]) / (match[2] ? 100 : 1);
   return Number.isFinite(value) ? value : null;
+}
+
+/** "B.Tech · Computer Science": a programme is a course and, when it has one, its specialisation. Unique per college, so it also serves as a list key. */
+export function programmeTitle(course: { name: string; specialisation?: string }): string {
+  return course.specialisation ? `${course.name} · ${course.specialisation}` : course.name;
 }
 
 /** "₹18.4L Total Fees" → "₹18.4L" — the figure without its caption. */
@@ -38,11 +44,10 @@ export function isRealPackage(value: string | undefined | null): value is string
   return !!value && /\d/.test(value);
 }
 
-/** The figure to lead a placement summary with: the average, or the median when there is no average. */
-export function packageHeadline(placement: { average: string; median: string } | null | undefined): { label: string; value: string } | null {
+/** The figure to lead a placement summary with: the average package. */
+export function packageHeadline(placement: { average: string } | null | undefined): { label: string; value: string } | null {
   if (!placement) return null;
   if (isRealPackage(placement.average)) return { label: "Average package", value: placement.average };
-  if (isRealPackage(placement.median)) return { label: "Median package", value: placement.median };
   return null;
 }
 
@@ -110,7 +115,7 @@ export type Faq = { question: string; answer: string };
  */
 export function faqsFor(college: College): Faq[] {
   const faqs: Faq[] = [];
-  const courseNames = college.courses.map((course) => course.name);
+  const courseNames = college.courses.map(programmeTitle);
 
   faqs.push({
     question: `What courses does ${college.name} offer, and what do they cost?`,
@@ -129,7 +134,7 @@ export function faqsFor(college: College): Faq[] {
   if (college.placement) {
     faqs.push({
       question: `How are placements at ${college.name}?`,
-      answer: `In ${college.placement.year}, the average package was ${college.placement.average}, the median ${college.placement.median} and the highest ${college.placement.highest}. Top recruiters include ${college.placement.topRecruiters
+      answer: `In ${college.placement.year}, the average package was ${college.placement.average} and the highest ${college.placement.highest}. Top recruiters include ${college.placement.topRecruiters
         .slice(0, 4)
         .join(", ")}.`,
     });

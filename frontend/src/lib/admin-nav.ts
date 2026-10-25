@@ -64,9 +64,8 @@ export const adminNav: AdminNavSection[] = [
     icon: "content",
     items: [
       { label: "Colleges", href: "/admin/colleges", phase: 1 },
-      { label: "Courses", href: "/admin/courses", phase: 1 },
-      { label: "Programmes", href: "/admin/programs", phase: 1 },
-      { label: "Specialisations", href: "/admin/specialisations", phase: 1 },
+      // Categories, Courses and Specialisations: the three lists the college form picks from.
+      { label: "Catalogue", href: "/admin/catalogue", phase: 1 },
       { label: "Exams", href: "/admin/exams", phase: 1 },
       { label: "Rankings", href: "/admin/rankings", phase: 1 },
       { label: "Study Abroad", href: "/admin/study-abroad", phase: 1 },
@@ -88,6 +87,8 @@ export const adminNav: AdminNavSection[] = [
     items: [
       { label: "Homepage", href: "/admin/sections/homepage", phase: 1 },
       { label: "Location Page", href: "/admin/sections/location", phase: 1 },
+      // The homepage's online and on-campus programme cards. Not the degree list, which is Content > Catalogue.
+      { label: "Online Programmes", href: "/admin/programs", phase: 1 },
     ],
   },
   {

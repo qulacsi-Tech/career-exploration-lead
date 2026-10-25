@@ -57,6 +57,8 @@ export function cleanRecord(r: CollegeRecord): CollegeRecord {
   const d = r.detail;
   return {
     ...r,
+    // The first category is the one single-category pages show.
+    stream: r.streams[0] ?? "",
     courses: r.courses.filter((c) => !(empty(c.name, c.duration, c.fees, c.eligibility) && c.exams.length === 0 && c.seats === null)),
     reviews: r.reviews.filter((v) => v.id || !empty(v.author, v.batch, v.body)),
     cutoffs: r.cutoffs.filter((c) => !empty(c.exam, c.score)),
@@ -88,7 +90,7 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   add("info", nameProblem(r.name, "The college name"));
   if (!r.state.trim()) out.info.push("Choose a state.");
   add("info", r.city.trim() ? nameProblem(r.city, "The city") : "The city is required.");
-  if (!r.stream.trim()) out.info.push("Choose a category.");
+  if (r.streams.length === 0) out.info.push("Choose at least one category.");
   add("info", yearProblem(r.established));
   add("info", feeRangeProblem(r.feesRange, "The total fee range"));
   if (!SITE_OR_HTTPS.test(d.brochureUrl)) out.info.push("The brochure link must start with https:// or /.");
@@ -99,15 +101,15 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   // Courses
   const names = new Set<string>();
   r.courses.forEach((c, i) => {
-    const label = c.name.trim() || `Programme ${i + 1}`;
+    const label = [c.name.trim(), c.specialisation.trim()].filter(Boolean).join(" · ") || `Programme ${i + 1}`;
     if (c.name.trim().length < 2) out.courses.push(`${label}: the programme name is required.`);
     if (!c.duration.trim()) out.courses.push(`${label}: the duration is required.`);
     else add("courses", durationProblem(c.duration) && `${label}: ${durationProblem(c.duration)}`);
     if (!c.fees.trim()) out.courses.push(`${label}: the fees are required.`);
     else add("courses", amountProblem(c.fees, "Fees") && `${label}: Fees must be 0 or more.`);
     if (c.seats !== null && c.seats < 1) out.courses.push(`${label}: seats must be at least 1.`);
-    const key = c.name.trim().toLowerCase();
-    if (key && names.has(key)) out.courses.push(`${label} is listed more than once.`);
+    const key = `${c.name.trim().toLowerCase()}|${c.specialisation.trim().toLowerCase()}`;
+    if (c.name.trim() && names.has(key)) out.courses.push(`${label} is listed more than once.`);
     names.add(key);
   });
 
@@ -136,8 +138,8 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
     if (p.year < 1990 || p.year > new Date().getFullYear() + 1) out.placements.push(`${p.year}: the batch year must be between 1990 and ${new Date().getFullYear() + 1}.`);
     if (years.has(p.year)) out.placements.push(`${p.year} is listed more than once.`);
     years.add(p.year);
-    (["average", "median", "highest"] as const).forEach((key) => add("placements", amountProblem(p[key], `The ${key} package`) && `${label}: The ${key} package must be 0 or more.`));
-    add("placements", packageProblem(p.average, p.median, p.highest) && `${label}: ${packageProblem(p.average, p.median, p.highest)}`);
+    (["average", "highest"] as const).forEach((key) => add("placements", amountProblem(p[key], `The ${key} package`) && `${label}: The ${key} package must be 0 or more.`));
+    add("placements", packageProblem(p.average, "", p.highest) && `${label}: ${packageProblem(p.average, "", p.highest)}`);
     if (p.placedPercent !== null && (p.placedPercent < 0 || p.placedPercent > 100)) out.placements.push(`${label}: batch placed must be between 0 and 100.`);
   });
 

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-
-import { createProgram, deleteProgram, deletePrograms, saveProgram } from "@/lib/admin-actions";
-import type { AdminProgram } from "@/lib/api";
+import { createPrograms, deleteProgram, deletePrograms, saveProgram } from "@/lib/admin-actions";
+import type { AdminProgram, ProgramSourceCourse } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
-import { TextField, NameSlugFields } from "@/components/admin/admin-fields";
+import { TextField } from "@/components/admin/admin-fields";
+import { ProgramAddFields, type CatalogueChoice } from "@/components/admin/program-add-fields";
 import { UniversityPicker, type UniversityOption } from "@/components/admin/university-picker";
 
 /** The programme fields the homepage row and the programme pages show. */
@@ -40,42 +39,27 @@ function ProgramFields({
   );
 }
 
-/** The add form. The slug follows the name and the university, so one programme at two universities gets two slugs. */
-function ProgramAddFields({ colleges }: { colleges: UniversityOption[] }) {
-  const [university, setUniversity] = useState("");
-  return (
-    <>
-      <NameSlugFields
-        nameLabel="Programme name"
-        nameFieldName="name"
-        namePlaceholder="MS in Data Analytics"
-        slugPlaceholder="ms-data-analytics"
-        slugSuffix={university}
-        nameMaxLength={200}
-      />
-      <div className="sm:col-span-2">
-        <ProgramFields program={null} colleges={colleges} onUniversityChange={setUniversity} />
-      </div>
-    </>
-  );
-}
-
 export function ProgramsAdmin({
   programs,
   recommendedSlugs,
   colleges,
+  catalogue,
+  sourceCourses,
 }: {
   programs: AdminProgram[];
   recommendedSlugs: string[];
   colleges: UniversityOption[];
+  catalogue: CatalogueChoice;
+  sourceCourses: ProgramSourceCourse[];
 }) {
   const inRow = new Set(recommendedSlugs);
   return (
     <ResourceAdmin<AdminProgram>
-      title="Programmes"
-      description="Programme records shown on the homepage row and on programme pages. The homepage row is chosen on the Homepage sections screen."
-      addLabel="Add programme"
-      addDescription="The name, university and fees. The homepage row is chosen separately."
+      title="Online Programmes"
+      description="University programme cards shown on the homepage row and on programme pages. The homepage row is chosen on the Homepage sections screen."
+      addLabel="Add programmes"
+      addSize="wide"
+      addDescription="Choose a course, then the institutions that offer it. One programme is made for each. The homepage row is chosen separately."
       rows={programs}
       getKey={(p) => p.slug}
       searchIn={(p) => [p.name, p.universityName, p.slug, p.universitySlug]}
@@ -114,10 +98,10 @@ export function ProgramsAdmin({
       )}
       editTabs={[{ id: "programme", label: "Programme", render: (p) => <ProgramFields program={p} colleges={colleges} /> }]}
       onSave={(p, data) => saveProgram(p.slug, data)}
-      onAdd={(data) => createProgram(undefined, data)}
+      onAdd={(data) => createPrograms(undefined, data)}
       onDelete={(p) => deleteProgram(p.slug)}
       onBulkDelete={(rows) => deletePrograms(rows.map((p) => p.slug))}
-      renderAddForm={() => <ProgramAddFields colleges={colleges} />}
+      renderAddForm={() => <ProgramAddFields colleges={colleges} catalogue={catalogue} sourceCourses={sourceCourses} />}
     />
   );
 }

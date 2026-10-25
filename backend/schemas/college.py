@@ -29,6 +29,7 @@ class RatingBreakdownSchema(BaseModel):
 
 class CourseSchema(BaseModel):
     name: str
+    specialisation: str = ""
     duration: str
     mode: str
     fees: str

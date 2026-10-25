@@ -39,8 +39,9 @@ class CourseCatalogueRepository:
 
     async def college_course_names(self) -> List[Tuple[object, str]]:
         """Every (college, course name) pair in the directory, for counting colleges per course."""
-        rows = await self.db.execute(select(Course.college_id, Course.name))
-        return [(college_id, name or "") for college_id, name in rows]
+        # The specialisation is appended, so "MBA" + "Finance" counts for the course MBA and for Finance alike.
+        rows = await self.db.execute(select(Course.college_id, Course.name, Course.specialisation))
+        return [(college_id, f"{name or ''} {spec or ''}".strip()) for college_id, name, spec in rows]
 
     async def get_by_slug(self, slug: str) -> Optional[CourseCatalogue]:
         stmt = (

@@ -58,6 +58,7 @@ def _to_list_schema(college: College) -> CollegeListSchema:
         courses=[
             CourseSchema(
                 name=c.name,
+                specialisation=c.specialisation or "",
                 duration=c.duration,
                 mode=c.mode,
                 fees=c.fees,

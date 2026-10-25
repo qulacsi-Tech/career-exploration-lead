@@ -17,8 +17,8 @@ const LETTER_MARK_NUMBER = /^[\p{L}\p{M}\p{N}]$/u;
 const DURATION = /^(\d{1,3}(?:\.\d)?)\s*(years?|months?)$/i;
 const BATCH = /^\d{4}(?:\s*[-–—]\s*(?:\d{4}|\d{2}))?$/;
 const RATIO = /^(?:[1-9]\d{0,2}\s*:\s*[1-9]\d{0,2})?$/;
-const NUMBER = /(-?\d+(?:\.\d+)?)\s*(cr|crore|lpa|lakh|l)?/gi;
-const LAKH: Record<string, number> = { "": 1, l: 1, lpa: 1, lakh: 1, cr: 100, crore: 100 };
+const NUMBER = /(-?\d+(?:\.\d+)?)\s*(cr|crore|lpa|lakh|l|k)?/gi;
+const LAKH: Record<string, number> = { "": 1, l: 1, lpa: 1, lakh: 1, cr: 100, crore: 100, k: 0.01 };
 
 export function nameProblem(value: string, label = "The name"): string | null {
   const text = value.trim().replace(/\s+/g, " ");

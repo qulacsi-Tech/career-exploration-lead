@@ -45,6 +45,7 @@ import {
   percentOf,
   rankingTable,
   shortFee,
+  programmeTitle,
 } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
@@ -246,11 +247,11 @@ function Courses({ college }: { college: College }) {
         <ul className="divide-y divide-line border-y border-line">
           {college.courses.map((course) => (
             <li
-              key={course.name}
+              key={programmeTitle(course)}
               className="grid gap-4 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div className="min-w-0">
-                <h3 className="font-display text-lg font-bold text-ink">{course.name}</h3>
+                <h3 className="font-display text-lg font-bold text-ink">{programmeTitle(course)}</h3>
                 <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-soft">
                   <span className="inline-flex items-center gap-1.5">
                     <Clock className="h-4 w-4 text-brand" />
@@ -362,9 +363,9 @@ function Fees({ college }: { college: College }) {
             </thead>
             <tbody>
               {college.courses.map((course) => (
-                <tr key={course.name} className="border-b border-line-soft">
+                <tr key={programmeTitle(course)} className="border-b border-line-soft">
                   <th scope="row" className="py-4 pr-4 font-semibold text-ink">
-                    {course.name}
+                    {programmeTitle(course)}
                   </th>
                   <td className="py-4 pr-4 text-ink-soft">{course.duration}</td>
                   <td className="py-4 pr-4 text-ink-soft">{course.mode}</td>
@@ -503,7 +504,6 @@ function Placements({ college }: { college: College }) {
     );
   }
   const packages = [
-    { label: "Median package", value: placement.median },
     { label: "Average package", value: placement.average },
     { label: "Highest package", value: placement.highest },
   ].filter((p) => isRealPackage(p.value));
@@ -513,7 +513,7 @@ function Placements({ college }: { college: College }) {
   return (
     <>
       <DetailCard title={`Placement Statistics ${placement.year}`}>
-        <div className="grid gap-8 sm:grid-cols-3">
+        <div className="grid gap-8 sm:grid-cols-2">
           {packages.map((p) => (
             <BigFigure key={p.label} label={p.label} value={p.value} />
           ))}
@@ -553,7 +553,6 @@ function Placements({ college }: { college: College }) {
                 <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-faint">
                   <th scope="col" className="py-3 pr-4 font-semibold">Year</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Average</th>
-                  <th scope="col" className="py-3 pr-4 font-semibold">Median</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Highest</th>
                   <th scope="col" className="py-3 text-right font-semibold">Placed</th>
                 </tr>
@@ -563,7 +562,6 @@ function Placements({ college }: { college: College }) {
                   <tr key={row.year} className="border-b border-line-soft">
                     <th scope="row" className="py-4 pr-4 font-semibold text-ink">{row.year}</th>
                     <td className="py-4 pr-4 text-ink-soft">{row.average}</td>
-                    <td className="py-4 pr-4 text-ink-soft">{row.median}</td>
                     <td className="py-4 pr-4 text-ink-soft">{row.highest}</td>
                     <td className="py-4 text-right text-ink-soft">{row.placedPercent != null ? `${row.placedPercent}%` : "—"}</td>
                   </tr>

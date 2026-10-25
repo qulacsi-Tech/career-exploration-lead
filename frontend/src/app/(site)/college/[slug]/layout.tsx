@@ -63,7 +63,7 @@ export default async function CollegeLayout({
         rating={college.rating}
         reviewCount={college.reviewCount}
         averagePackage={packageHeadline(college.placement)?.value ?? ""}
-        averagePackageLabel={packageHeadline(college.placement)?.label === "Median package" ? "Median Package" : "Avg. Package"}
+        averagePackageLabel="Avg. Package"
         qnaCount={faqsOf(college).length}
         photo={college.image || collegePhoto(college.slug)}
         logo={college.logo || undefined}

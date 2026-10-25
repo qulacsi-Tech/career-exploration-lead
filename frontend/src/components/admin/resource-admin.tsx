@@ -65,6 +65,7 @@ export function ResourceAdmin<T>({
   description,
   addLabel,
   addDescription,
+  addSize,
   rows,
   getKey,
   searchIn,
@@ -83,6 +84,8 @@ export function ResourceAdmin<T>({
   description: string;
   addLabel: string;
   addDescription?: string;
+  /** The width of the Add dialog. A form with lists to pick from wants more than the default. */
+  addSize?: "md" | "lg" | "wide";
   rows: T[];
   getKey: (row: T) => string;
   /** Fields the search box matches against. */
@@ -428,6 +431,7 @@ export function ResourceAdmin<T>({
       <AdminModal
         open={adding}
         onClose={() => setAdding(false)}
+        size={addSize}
         title={addLabel}
         description={addDescription}
         footer={

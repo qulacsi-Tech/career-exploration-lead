@@ -15,6 +15,8 @@ class Course(Base):
         UUID(as_uuid=True), ForeignKey("colleges.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name = Column(String(200), nullable=False)
+    # From the Specialisations list; empty when the programme has none.
+    specialisation = Column(String(200), nullable=False, default="", server_default="")
     duration = Column(String(100), nullable=False)
     mode = Column(String(100), nullable=False)
     fees = Column(String(200), nullable=False)

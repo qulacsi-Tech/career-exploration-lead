@@ -28,16 +28,22 @@
 export function RecruiterMarquee({ recruiters }: { recruiters: string[] }) {
   /* Pace by content: a longer roster would otherwise sprint to cover twice the
      distance in the same time. ~4.5s per name reads at a glance. */
-  const duration = `${Math.max(recruiters.length * 4.5, 18)}s`;
+  /* A handful of names makes a row narrower than the card, and the loop then slides past
+     empty space. The roster is repeated until a row has at least this many chips; the
+     repeats are hidden from screen readers so each recruiter is still heard once. */
+  const repeats = Math.max(1, Math.ceil(14 / Math.max(recruiters.length, 1)));
+  const shown = Array.from({ length: repeats }, () => recruiters).flat();
+  const duration = `${Math.max(shown.length * 4.5, 18)}s`;
 
   const row = (hidden: boolean) => (
     <ul
       className="recruiter-marquee-row flex shrink-0 items-center gap-3 pr-3"
       aria-hidden={hidden || undefined}
     >
-      {recruiters.map((name) => (
+      {shown.map((name, i) => (
         <li
-          key={name}
+          key={`${name}-${i}`}
+          aria-hidden={i >= recruiters.length || undefined}
           className="whitespace-nowrap rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold text-ink shadow-sm transition-colors hover:border-brand/40 hover:text-brand"
         >
           {name}

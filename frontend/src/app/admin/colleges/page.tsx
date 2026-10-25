@@ -22,6 +22,6 @@ export default async function AdminCollegesPage() {
   // The state and district lists for the add form. Without them the form falls back to plain text boxes.
   const geo = await withAdminToken((token) => adminGetGeo(token)).catch(() => ({}));
   // The same category list the editor offers, so Add, Edit and the filter agree.
-  const streams = await withAdminToken((token) => adminGetCollegePools(token)).then((pools) => pools.streams).catch(() => [] as string[]);
-  return <CollegesAdmin colleges={colleges} geo={geo} streams={streams} />;
+  const pools = await withAdminToken((token) => adminGetCollegePools(token)).catch(() => null);
+  return <CollegesAdmin colleges={colleges} geo={geo} streams={pools?.streams ?? []} pools={pools} />;
 }

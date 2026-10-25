@@ -152,6 +152,7 @@ async def _source_courses(db) -> list[dict]:
         {
             "id": str(c.id),
             "name": c.name,
+            "specialisation": c.specialisation or "",
             "mode": c.mode,
             "duration": c.duration,
             "fees": c.fees,
