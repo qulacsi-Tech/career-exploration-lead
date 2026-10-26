@@ -87,6 +87,8 @@ export const adminNav: AdminNavSection[] = [
     items: [
       { label: "Homepage", href: "/admin/sections/homepage", phase: 1 },
       { label: "Location Page", href: "/admin/sections/location", phase: 1 },
+      // The header's "Top Ranked Colleges" menu: which categories and links show, their names and SEO.
+      { label: "Navigation", href: "/admin/sections/navigation", phase: 1 },
       // The homepage's online and on-campus programme cards. Not the degree list, which is Content > Catalogue.
       { label: "Online Programmes", href: "/admin/programs", phase: 1 },
     ],

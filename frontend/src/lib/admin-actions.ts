@@ -1,6 +1,6 @@
 "use server";
 
-import { getCollegesMenu } from "@/components/colleges-menu-data";
+import { applyMenuConfig, getCollegesMenu, getMenuSource } from "@/components/colleges-menu-data";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -37,6 +37,8 @@ import {
   adminPutContent,
   adminPutTopExams,
   adminPutHomeCopy,
+  adminPutNavMenuConfig,
+  type NavMenuConfig,
   adminGetListingHeader,
   adminPutListingHeader,
   adminResetListingHeader,
@@ -939,6 +941,13 @@ export async function saveHomeCopy(
   return result;
 }
 
+/** Saves what the admin decided about the header's colleges menu: shown or hidden, order, names and SEO. */
+export async function saveNavMenu(config: NavMenuConfig): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/navigation", (token) => adminPutNavMenuConfig(token, config));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
 /** Saves the carousel: which locations show and their order. */
 export async function saveHomeLocations(
   locations: { slug: string; show: boolean }[]
@@ -1353,7 +1362,7 @@ export async function resetListingHeader(page: ListingPage, scope: string): Prom
 export async function loadHeaderTargets(page: ListingPage) {
   const token = await requireAdminToken();
   try {
-    const [groups, custom] = await Promise.all([getCollegesMenu(Infinity), adminListingHeaderScopes(token, page)]);
+    const [groups, custom] = await Promise.all([getMenuSource().then((source) => applyMenuConfig(source, { order: [], groups: {} }, Infinity)), adminListingHeaderScopes(token, page)]);
     return { groups, custom };
   } catch (err) {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");

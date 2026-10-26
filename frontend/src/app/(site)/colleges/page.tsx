@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Eye, Flame, SearchX, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { ListingHero, introOf } from "@/components/colleges/listing-hero";
@@ -7,8 +8,9 @@ import { ListingFilters } from "@/components/colleges/listing-filters";
 import { ListingSlotView } from "@/components/colleges/listing-slot";
 import { Reveal } from "@/components/college/reveal";
 import { appliedFilters, simple, toggleHref, type FilterGroup } from "@/components/colleges/filter-utils";
-import { getCollegeFacets, getColleges, getListingHeader, getListingSlots, getRankings, type ListingSlot, type CollegeFacets, type CollegeParams, type RankingList } from "@/lib/api";
+import { getCollegeFacets, getColleges, getListingHeader, getListingSlots, getNavMenuConfig, getRankings, type ListingSlot, type CollegeFacets, type CollegeParams, type RankingList } from "@/lib/api";
 import { scopeFromParams } from "@/lib/listing-scope";
+import { getMenuSource, menuSeoFor } from "@/components/colleges-menu-data";
 import { badgesFor, listingFaqs, listingIntro, listingTitle } from "@/components/colleges/listing-meta";
 
 /**
@@ -59,6 +61,21 @@ const SORTS = [
 
 const num = (v: string | undefined) =>
   v === undefined || v === "" || Number.isNaN(Number(v)) ? undefined : Number(v);
+
+/** A link in the header menu can carry a page title and description written in Sections → Navigation. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const scope = scopeFromParams((k) => (typeof params[k] === "string" ? (params[k] as string) : undefined));
+  if (!scope) return {};
+  const [config, source] = await Promise.all([getNavMenuConfig().catch(() => null), getMenuSource()]);
+  const seo = config && menuSeoFor(config, source, `/colleges?${new URLSearchParams([[scope.slice(0, scope.indexOf("=")), scope.slice(scope.indexOf("=") + 1)]])}`);
+  if (!seo) return {};
+  return { ...(seo.title && { title: seo.title }), ...(seo.description && { description: seo.description }) };
+}
 
 export default async function CollegesListingPage({
   searchParams,

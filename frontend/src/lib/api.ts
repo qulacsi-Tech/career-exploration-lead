@@ -2568,3 +2568,22 @@ export const adminGetThread = (token: string, id: string) => adminRequest<Thread
 export const adminReplyThread = (token: string, id: string, body: string) =>
   adminRequest<ThreadDetail>(token, "POST", `/admin/threads/${id}/messages`, { body });
 export const adminResolveThread = (token: string, id: string) => adminRequest<ThreadDetail>(token, "POST", `/admin/threads/${id}/resolve`);
+
+// ── The colleges menu in the header: what the admin decided about it ──────
+
+export type NavItemConfig = { label: string; hidden: boolean; seoTitle: string; seoDescription: string };
+export type NavGroupConfig = { label: string; hidden: boolean; limit: number; order: string[]; items: Record<string, NavItemConfig> };
+/** Nothing in a field means "as the directory has it". Groups are named by the menu's own ids ("course", "location"...). */
+export type NavMenuConfig = { order: string[]; groups: Record<string, NavGroupConfig> };
+
+export async function getNavMenuConfig(): Promise<NavMenuConfig> {
+  return apiFetch<NavMenuConfig>("/nav/colleges-menu");
+}
+
+export async function adminGetNavMenuConfig(token: string): Promise<NavMenuConfig> {
+  return adminRequest<NavMenuConfig>(token, "GET", "/admin/nav/colleges-menu");
+}
+
+export async function adminPutNavMenuConfig(token: string, value: NavMenuConfig) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/nav/colleges-menu", value);
+}
