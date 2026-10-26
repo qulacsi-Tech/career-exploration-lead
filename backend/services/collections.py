@@ -1,4 +1,5 @@
 from typing import Any, Optional
+from urllib.parse import urlencode
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,14 +8,44 @@ from sqlalchemy.orm import selectinload
 from core.exceptions import NotFoundError
 from models.collection import Collection
 from models.college import College
-from models.location import Location
-from models.program import Program
 from models.ranking import RankingEntry, RankingList
+from repositories.college import CollegeRepository
+from schemas.college import CollegeFilterParams
 from services.college import _to_list_schema
 
 
 # The most colleges one homepage band can hold, across all its categories.
 MAX_BAND_COLLEGES = 100
+
+# The listing filters a collection can preset, named as the colleges listing names them.
+FILTER_KEYS = ("stream", "course", "specialisation", "city", "ownership", "level", "credential", "mode", "exam", "approval")
+
+
+def normalise(data: dict) -> dict:
+    """A stored collection with every field the site reads present.
+
+    Collections saved before filters existed hold only their chosen colleges, so they read as
+    hand-picked ones with no filters. `href` is the listing page the collection opens.
+    """
+    out = dict(data)
+    out["membership"] = data.get("membership") or ("picked" if data.get("collegeSlugs") else "filters")
+    out["filters"] = {k: v for k, v in (data.get("filters") or {}).items() if k in FILTER_KEYS and v}
+    out["collegeSlugs"] = data.get("collegeSlugs") or []
+    out["rankingListSlug"] = data.get("rankingListSlug") or ""
+    out["author"] = {"name": "", "role": "", "photo": "", **(data.get("author") or {})}
+    out["href"] = collection_href(out)
+    return out
+
+
+def collection_href(data: dict) -> str:
+    """The colleges listing with this collection's filters preset. `collection` carries its header and SEO."""
+    query: dict[str, str] = {}
+    if (data.get("membership") or "filters") == "filters":
+        query.update({k: v for k, v in (data.get("filters") or {}).items() if k in FILTER_KEYS and v})
+        if data.get("rankingListSlug"):
+            query["ranking_list"] = data["rankingListSlug"]
+    query["collection"] = data["slug"]
+    return "/colleges?" + urlencode(query)
 
 
 class CollectionService:
@@ -30,9 +61,20 @@ class CollectionService:
 
     async def _published(self) -> list[dict[str, Any]]:
         rows = (await self.db.execute(select(Collection))).scalars().all()
-        return [r.data for r in rows if r.data.get("isPublished")]
+        return [normalise(r.data) for r in rows if r.data.get("isPublished")]
+
+    async def _by_filters(self, data: dict, limit: Optional[int]) -> list:
+        """The colleges a filter collection matches, in the listing's popularity order."""
+        filters = data.get("filters") or {}
+        if not filters and not data.get("rankingListSlug"):
+            return []  # no filter would mean every college
+        params = CollegeFilterParams(page=1, limit=limit or 500, ranking_list=data.get("rankingListSlug") or None, **filters)
+        rows, _ = await CollegeRepository(self.db).list(params)
+        return [_to_list_schema(c) for c in rows]
 
     async def _colleges_for(self, data: dict, limit: Optional[int] = None) -> list:
+        if data.get("membership") == "filters":
+            return await self._by_filters(data, limit)
         slugs: list[str] = data.get("collegeSlugs") or []
         if not slugs:
             return []
@@ -59,7 +101,7 @@ class CollectionService:
 
     async def colleges_for(self, data: dict, limit: Optional[int] = None) -> list:
         """Colleges a stored collection resolves to, in display order."""
-        return await self._colleges_for(data, limit)
+        return await self._colleges_for(normalise(data), limit)
 
     async def homepage_bands(self) -> list[dict]:
         visible = [
@@ -110,7 +152,7 @@ class CollectionService:
                 continue
             columns.setdefault(placement["column"], []).append({
                 "label": data["title"],
-                "href": f"/colleges/{data['slug']}",
+                "href": data["href"],
                 "order": placement["order"],
             })
         return [
@@ -120,20 +162,6 @@ class CollectionService:
 
     async def published_slugs(self) -> list[str]:
         return [d["slug"] for d in await self._published()]
-
-    async def _overlapping_page(self, scope: dict) -> Optional[str]:
-        """A single-filter collection that duplicates a city or programme page points at that page."""
-        filters = [v for v in (scope.get("programSlug"), scope.get("locationSlug"),
-                               scope.get("examSlug"), scope.get("courseSlug")) if v]
-        if len(filters) != 1:
-            return None
-        location = scope.get("locationSlug")
-        if location and (await self.db.execute(select(Location.id).where(Location.slug == location))).scalar_one_or_none():
-            return f"/location/{location}"
-        program = scope.get("programSlug")
-        if program and (await self.db.execute(select(Program.id).where(Program.slug == program))).scalar_one_or_none():
-            return f"/{program}/colleges"
-        return None
 
     async def page(self, slug: str) -> dict:
         """Everything the collection page renders, in one payload."""
@@ -148,18 +176,56 @@ class CollectionService:
         for other in published:
             if other["id"] == data["id"]:
                 continue
-            # Same programme, or both without one: the rule carried over from the mock.
-            if (other.get("scope") or {}).get("programSlug") != (data.get("scope") or {}).get("programSlug"):
+            # Same category, or both without one.
+            if (other.get("filters") or {}).get("stream") != (data.get("filters") or {}).get("stream"):
                 continue
             related.append({
                 "slug": other["slug"],
                 "title": other["title"],
+                "href": other["href"],
                 "count": len(await self._colleges_for(other)),
             })
 
-        canonical = (
-            (data.get("seo") or {}).get("canonical")
-            or await self._overlapping_page(data.get("scope") or {})
-            or f"/colleges/{slug}"
-        )
+        canonical = (data.get("seo") or {}).get("canonical") or data["href"]
         return {"collection": data, "colleges": colleges, "related": related, "canonical": canonical}
+
+    async def meta(self, slug: str) -> dict:
+        """What the listing page needs to dress itself as this collection: its header, SEO and how it is filtered."""
+        data = next((d for d in await self._published() if d["slug"] == slug), None)
+        if data is None:
+            raise NotFoundError("Collection")
+        return {
+            "slug": data["slug"],
+            "title": data["title"],
+            "heading": data.get("heading") or "",
+            "subheading": data.get("subheading") or "",
+            "author": data["author"],
+            "membership": data["membership"],
+            "filters": data["filters"],
+            "rankingListSlug": data["rankingListSlug"],
+            "href": data["href"],
+            "seo": data.get("seo") or {},
+        }
+
+    async def picked(self, slug: str) -> Optional[tuple[list[str], Optional[str]]]:
+        """For a published hand-picked collection: its colleges in order, and the ranking list that orders them."""
+        data = next((d for d in await self._published() if d["slug"] == slug), None)
+        if data is None or data["membership"] != "picked":
+            return None
+        return data["collegeSlugs"], data["rankingListSlug"] or None
+
+    async def links(self) -> list[dict]:
+        """Every published collection: name and the address it opens."""
+        return sorted(
+            ({"slug": d["slug"], "title": d["title"], "href": d["href"]} for d in await self._published()),
+            key=lambda link: link["title"].lower(),
+        )
+
+    async def nav_links(self) -> list[dict]:
+        """The collections set to appear in the header menu."""
+        links = [
+            {"slug": d["slug"], "title": d["title"], "href": d["href"], "order": placement["order"]}
+            for d in await self._published()
+            if (placement := (d.get("placements") or {}).get("nav"))
+        ]
+        return sorted(links, key=lambda link: (link["order"], link["title"]))

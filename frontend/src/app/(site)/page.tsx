@@ -149,7 +149,7 @@ export default async function Home() {
               label={collection.heading || collection.title}
               buttonLabel={copy.collegeCard.buttonLabel}
               viewAllLabel={copy.collegeCard.viewAllLabel}
-              viewAllHref={`/colleges/${collection.slug}`}
+              viewAllHref={collection.href}
             />
           </div>
         </section>

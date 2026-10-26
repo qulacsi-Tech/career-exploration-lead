@@ -11,6 +11,7 @@ const LEVEL_WORD: Record<string, string> = { UG: "Undergraduate", PG: "Postgradu
 
 export type ListingFilters = {
   q?: string;
+  stream?: string;
   city?: string;
   course?: string;
   specialisation?: string;
@@ -31,7 +32,7 @@ export function listingTitle(f: ListingFilters): { title: string; filtered: bool
   const subject =
     f.course && f.specialisation
       ? `${f.course} ${f.specialisation}`
-      : (f.specialisation ?? f.course ?? (f.level ? LEVEL_WORD[f.level] : undefined));
+      : (f.specialisation ?? f.course ?? (f.level ? LEVEL_WORD[f.level] : f.stream));
 
   const parts = [
     f.ranking_list_name,

@@ -1,6 +1,6 @@
 "use server";
 
-import { applyMenuConfig, getCollegesMenu, getMenuSource } from "@/components/colleges-menu-data";
+import { applyMenuConfig, EMPTY_NAV, getCollegesMenu, getMenuSource } from "@/components/colleges-menu-data";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -38,6 +38,10 @@ import {
   adminPutTopExams,
   adminPutHomeCopy,
   adminPutNavMenuConfig,
+  getColleges,
+  type CollegeParams,
+  adminPreviewCollection,
+  type CollectionPreview,
   type NavMenuConfig,
   adminGetListingHeader,
   adminPutListingHeader,
@@ -655,63 +659,18 @@ export async function createRanking(
 
 // ── Collections ──────────────────────────────────────────────────────────────
 
-/** An optional number field. Non-numeric text is passed through so the API names the field. */
-function numberOrText(value: string): number | string {
-  return /^\d+$/.test(value) ? Number(value) : value;
-}
-
+/**
+ * The collection form keeps all of its state in one hidden `payload` field (filters, picked colleges,
+ * header, SEO and placements), so a tab that is not on screen is still saved. The API checks it.
+ */
 function collectionBody(form: FormData): { value: Record<string, unknown> } | { error: string } {
-  let colleges: unknown;
-  let faqs: unknown;
   try {
-    colleges = JSON.parse(String(form.get("colleges") ?? "[]"));
-    faqs = JSON.parse(String(form.get("faqs") ?? "[]"));
+    const value = JSON.parse(String(form.get("payload") ?? ""));
+    if (value && typeof value === "object" && !Array.isArray(value)) return { value };
   } catch {
-    return { error: "The college or FAQ list could not be read. Reload the page and try again." };
+    // fall through
   }
-  if (!Array.isArray(colleges) || !Array.isArray(faqs)) {
-    return { error: "The college and FAQ lists must be lists." };
-  }
-
-  const text = (name: string) => String(form.get(name) ?? "").trim();
-  const orNull = (name: string) => (text(name) === "" ? null : text(name));
-
-  const homepageOn = form.has("homepageOn");
-  const footerOn = form.has("footerOn");
-
-  return {
-    value: {
-      title: text("title"),
-      heading: text("heading"),
-      subheading: text("subheading"),
-      scope: {
-        programSlug: orNull("programSlug"),
-        locationSlug: orNull("locationSlug"),
-        examSlug: orNull("examSlug"),
-        courseSlug: orNull("courseSlug"),
-      },
-      rankingListSlug: orNull("rankingListSlug"),
-      collegeSlugs: colleges,
-      homepage: homepageOn
-        ? {
-            order: numberOrText(text("homepageOrder")),
-            limit: numberOrText(text("homepageLimit")),
-            isVisible: form.has("homepageVisible"),
-          }
-        : null,
-      footer: footerOn
-        ? { column: text("footerColumn"), order: numberOrText(text("footerOrder")) }
-        : null,
-      seo: {
-        metaTitle: text("metaTitle"),
-        metaDescription: text("metaDescription"),
-        canonical: orNull("canonical"),
-        intro: String(form.get("intro") ?? "").trim(),
-        faqs,
-      },
-      isPublished: form.has("isPublished"),
-    },
-  };
+  return { error: "The collection could not be read. Reload the page and try again." };
 }
 
 function revalidateCollections() {
@@ -734,10 +693,22 @@ export async function createCollection(
   const body = collectionBody(form);
   if ("error" in body) return body;
   const result = await attempt("/admin/collections", (token) =>
-    adminCreateCollection(token, { ...body.value, slug: String(form.get("slug") ?? "").trim() })
+    adminCreateCollection(token, body.value)
   );
   if ("ok" in result) revalidateCollections();
   return result;
+}
+
+/** How many published colleges a membership would hold right now, for the live count in the collection form. */
+export async function previewCollection(body: Record<string, unknown>): Promise<CollectionPreview | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminPreviewCollection(token, body);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: "Could not count the colleges." };
+  }
 }
 
 // ── Homepage bands ───────────────────────────────────────────────────────────
@@ -939,6 +910,30 @@ export async function saveHomeCopy(
   const result = await attempt("/admin/home-copy", (token) => adminPutHomeCopy(token, part, value));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
+}
+
+/** The institutes a menu link opens by default, for the eye dialog where some can be left out. Read from the same listing the visitor gets. */
+export async function loadLinkInstitutes(href: string): Promise<{ colleges: { slug: string; name: string; city: string }[]; truncated: boolean } | { error: string }> {
+  await requireAdminToken();
+  try {
+    const query = new URLSearchParams(href.split("?")[1] ?? "");
+    const get = (k: string) => query.get(k) ?? undefined;
+    const base: CollegeParams = {
+      stream: get("stream"), course: get("course"), specialisation: get("specialisation"), city: get("city"),
+      ownership: get("ownership"), level: get("level"), credential: get("credential"), mode: get("mode"),
+      exam: get("exam"), approval: get("approval"), ranking_list: get("ranking_list"), collection: get("collection"),
+    };
+    const colleges: { slug: string; name: string; city: string }[] = [];
+    let pages = 1;
+    for (let page = 1; page <= Math.min(pages, 5); page++) {
+      const result = await getColleges({ ...base, page, limit: 100 });
+      pages = result.meta.pages;
+      colleges.push(...result.data.map((c) => ({ slug: c.slug, name: c.name, city: c.city })));
+    }
+    return { colleges, truncated: pages > 5 };
+  } catch {
+    return { error: "Could not load the institutes. Try again." };
+  }
 }
 
 /** Saves what the admin decided about the header's colleges menu: shown or hidden, order, names and SEO. */
@@ -1362,7 +1357,7 @@ export async function resetListingHeader(page: ListingPage, scope: string): Prom
 export async function loadHeaderTargets(page: ListingPage) {
   const token = await requireAdminToken();
   try {
-    const [groups, custom] = await Promise.all([getMenuSource().then((source) => applyMenuConfig(source, { order: [], groups: {} }, Infinity)), adminListingHeaderScopes(token, page)]);
+    const [groups, custom] = await Promise.all([getMenuSource(EMPTY_NAV, false).then((source) => applyMenuConfig(source, EMPTY_NAV, Infinity)), adminListingHeaderScopes(token, page)]);
     return { groups, custom };
   } catch (err) {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");

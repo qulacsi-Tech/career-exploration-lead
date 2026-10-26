@@ -6,6 +6,8 @@ from core.dependencies import DbSession
 from schemas.college import CollegeDetailSchema, CollegeFilterParams, CollegeListSchema
 from schemas.common import ListResponse, Meta, SuccessResponse
 from services.college import CollegeService
+from services.collections import CollectionService
+from routers.nav_menu import excluded_for
 
 router = APIRouter(prefix="/colleges", tags=["colleges"])
 
@@ -34,6 +36,8 @@ async def list_colleges(
     sort: str = Query("popularity"),
     featured: Optional[bool] = Query(None),
     q: Optional[str] = Query(None),
+    collection: Optional[str] = Query(None, max_length=200),
+    menu: Optional[str] = Query(None, max_length=300),
 ):
     params = CollegeFilterParams(
         page=page, limit=limit, stream=stream, city=city, state=state,
@@ -42,6 +46,14 @@ async def list_colleges(
         specialisation=specialisation, level=level, credential=credential, min_rating=min_rating,
         sort=sort, featured=featured, q=q,
     )
+    if collection:
+        # A hand-picked collection lists its own colleges; any other filter still narrows them.
+        picked = await CollectionService(db).picked(collection)
+        if picked:
+            params.slugs, params.order_list = picked
+    if menu:
+        # A header-menu link can leave some institutes out of the list it opens.
+        params.exclude_slugs = await excluded_for(db, menu) or None
     svc = CollegeService(db)
     colleges, meta = await svc.list_colleges(params)
     return ListResponse[CollegeListSchema](data=colleges, meta=meta)

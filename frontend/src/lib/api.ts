@@ -483,6 +483,10 @@ export type CollegeParams = {
   fees_min?: number;
   fees_max?: number;
   min_rating?: number;
+  /** A collection's slug: a hand-picked one lists only its own colleges. */
+  collection?: string;
+  /** A header-menu link, "<category id>:<link key>": the institutes the admin left out of it stay out. */
+  menu?: string;
 };
 
 /** College listing with optional filters / search / pagination. */
@@ -511,12 +515,16 @@ export async function getColleges(
   if (params?.fees_min !== undefined) qs.set("fees_min", String(params.fees_min));
   if (params?.fees_max !== undefined) qs.set("fees_max", String(params.fees_max));
   if (params?.min_rating) qs.set("min_rating", String(params.min_rating));
+  if (params?.collection) qs.set("collection", params.collection);
+  if (params?.menu) qs.set("menu", params.menu);
   const query = qs.toString() ? `?${qs}` : "";
   return apiListFetch<College>(`/colleges${query}`);
 }
 
 /** What the listing's filter menus offer, read from the directory. */
 export type CollegeFacets = {
+  /** The categories colleges are listed under. */
+  streams?: string[];
   cities: string[];
   exams: string[];
   approvals: string[];
@@ -1022,16 +1030,25 @@ export async function getStudyAbroad(): Promise<StudyAbroadContent> {
 
 // ── Collections ───────────────────────────────────────────────────────────
 
-export type CollectionScope = {
-  programSlug?: string;
-  locationSlug?: string;
-  examSlug?: string;
-  courseSlug?: string;
+/** The listing filters a collection presets. Named as the colleges listing names them; absent means "any". */
+export type CollectionFilters = {
+  stream?: string;
+  course?: string;
+  specialisation?: string;
+  city?: string;
+  ownership?: string;
+  level?: string;
+  credential?: string;
+  /** Mode of study. */
+  mode?: string;
+  exam?: string;
+  approval?: string;
 };
 
 export type CollectionPlacements = {
   homepage?: { order: number; limit: number; isVisible: boolean };
   footer?: { column: string; order: number };
+  nav?: { order: number };
 };
 
 export type CollectionSeo = {
@@ -1048,9 +1065,15 @@ export type Collection = {
   title: string;
   heading: string;
   subheading: string;
-  scope: CollectionScope;
+  /** "filters": every college matching `filters` and the ranking list. "picked": only `collegeSlugs`, in that order. */
+  /** Who the page says wrote it. An empty name falls back to the listing's own author. */
+  author: { name: string; role: string; photo: string };
+  membership: "filters" | "picked";
+  filters: CollectionFilters;
   collegeSlugs: string[];
   rankingListSlug: string;
+  /** The colleges listing it opens, with its filters preset: /colleges?city=Pune&collection=slug. */
+  href: string;
   seo: CollectionSeo;
   placements: CollectionPlacements;
   isPublished: boolean;
@@ -1076,7 +1099,7 @@ export type FooterColumn = {
 export type CollectionPagePayload = {
   collection: Collection;
   colleges: College[];
-  related: { slug: string; title: string; count: number }[];
+  related: { slug: string; title: string; href: string; count: number }[];
   canonical: string;
 };
 
@@ -1096,6 +1119,35 @@ export async function getFooterColumns(): Promise<FooterColumn[]> {
 /** Slugs of published collections, for generateStaticParams. */
 export async function getCollectionSlugs(): Promise<string[]> {
   return apiFetch<string[]>("/collections/slugs");
+}
+
+/** What the colleges listing needs to dress itself as a collection: its header, SEO and filters. */
+export type CollectionMeta = {
+  slug: string;
+  title: string;
+  heading: string;
+  subheading: string;
+  author: { name: string; role: string; photo: string };
+  membership: "filters" | "picked";
+  filters: CollectionFilters;
+  rankingListSlug: string;
+  href: string;
+  seo: Partial<CollectionSeo>;
+};
+
+/** A published collection's header, SEO and filters. A slug that is unknown or unpublished is a 404. */
+export async function getCollectionMeta(slug: string): Promise<CollectionMeta> {
+  return apiFetch<CollectionMeta>(`/collections/${encodeURIComponent(slug)}/meta`);
+}
+
+/** Every published collection and the address it opens, for choosing collections to add to the menu. */
+export async function getCollectionLinks(): Promise<{ slug: string; title: string; href: string }[]> {
+  return apiFetch("/collections/links");
+}
+
+/** The collections set to appear in the header menu. */
+export async function getCollectionNav(): Promise<{ slug: string; title: string; href: string; order: number }[]> {
+  return apiFetch("/collections/nav");
 }
 
 /** A published collection's page: its colleges, related collections, and canonical URL. */
@@ -1208,13 +1260,30 @@ export async function adminDeleteRanking(token: string, slug: string) {
 export type CollectionOption = { slug: string; name: string };
 
 export type AdminCollectionOptions = {
-  programs: CollectionOption[];
-  locations: CollectionOption[];
-  exams: CollectionOption[];
-  courses: CollectionOption[];
-  colleges: CollectionOption[];
+  streams: string[];
+  courses: string[];
+  specialisations: string[];
+  /** The categories each course sits under, by course name. */
+  courseStreams: Record<string, string[]>;
+  /** The courses each specialisation sits under, by specialisation name. */
+  specialisationCourses: Record<string, string[]>;
+  cities: string[];
+  exams: string[];
+  approvals: string[];
+  modes: string[];
+  ownerships: string[];
+  levels: string[];
+  credentials: string[];
   rankings: CollectionOption[];
+  colleges: { slug: string; name: string; city: string; stream: string }[];
 };
+
+/** How many published colleges a membership holds right now, and the first few. */
+export type CollectionPreview = { count: number; sample: { slug: string; name: string; city: string }[] };
+
+export async function adminPreviewCollection(token: string, body: Record<string, unknown>): Promise<CollectionPreview> {
+  return adminRequest<CollectionPreview>(token, "POST", "/admin/collections/preview", body);
+}
 
 export async function adminGetCollectionOptions(token: string): Promise<AdminCollectionOptions> {
   return adminRequest<AdminCollectionOptions>(token, "GET", "/admin/collections/options");
@@ -2594,10 +2663,13 @@ export const adminResolveThread = (token: string, id: string) => adminRequest<Th
 
 // ── The colleges menu in the header: what the admin decided about it ──────
 
-export type NavItemConfig = { label: string; hidden: boolean; seoTitle: string; seoDescription: string };
+/** `excluded` lists the institutes (by slug) the link's listing leaves out. */
+export type NavItemConfig = { label: string; hidden: boolean; seoTitle: string; seoDescription: string; excluded: string[] };
 export type NavGroupConfig = { label: string; hidden: boolean; limit: number; order: string[]; items: Record<string, NavItemConfig> };
 /** Nothing in a field means "as the directory has it". Groups are named by the menu's own ids ("course", "location"...). */
-export type NavMenuConfig = { order: string[]; groups: Record<string, NavGroupConfig> };
+/** A category the admin added to the menu: a name and the collections it links to. Its id starts with "custom-". */
+export type NavCustomGroup = { id: string; label: string; collections: string[] };
+export type NavMenuConfig = { order: string[]; groups: Record<string, NavGroupConfig>; custom: NavCustomGroup[] };
 
 export async function getNavMenuConfig(): Promise<NavMenuConfig> {
   return apiFetch<NavMenuConfig>("/nav/colleges-menu");

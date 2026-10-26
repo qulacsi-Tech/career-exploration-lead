@@ -30,6 +30,17 @@ async def footer_columns(db: DbSession):
     return SuccessResponse[list](data=await CollectionService(db).footer_columns())
 
 
+@router.get("/nav", response_model=SuccessResponse[list])
+async def nav_links(db: DbSession):
+    return SuccessResponse[list](data=await CollectionService(db).nav_links())
+
+
+@router.get("/links", response_model=SuccessResponse[list])
+async def collection_links(db: DbSession):
+    """Every published collection with the address it opens, for the menu editor."""
+    return SuccessResponse[list](data=await CollectionService(db).links())
+
+
 @router.get("/slugs", response_model=SuccessResponse[list])
 async def collection_slugs(db: DbSession):
     return SuccessResponse[list](data=await CollectionService(db).published_slugs())
@@ -38,3 +49,9 @@ async def collection_slugs(db: DbSession):
 @router.get("/{slug}/page", response_model=SuccessResponse[dict])
 async def collection_page(slug: str, db: DbSession):
     return SuccessResponse[dict](data=await CollectionService(db).page(slug))
+
+
+@router.get("/{slug}/meta", response_model=SuccessResponse[dict])
+async def collection_meta(slug: str, db: DbSession):
+    """The header, SEO and filters of a published collection, for the colleges listing it opens."""
+    return SuccessResponse[dict](data=await CollectionService(db).meta(slug))

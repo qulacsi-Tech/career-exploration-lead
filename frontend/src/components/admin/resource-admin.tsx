@@ -66,6 +66,7 @@ export function ResourceAdmin<T>({
   addLabel,
   addDescription,
   addSize,
+  editSize = "full",
   rows,
   getKey,
   searchIn,
@@ -85,7 +86,9 @@ export function ResourceAdmin<T>({
   addLabel: string;
   addDescription?: string;
   /** The width of the Add dialog. A form with lists to pick from wants more than the default. */
-  addSize?: "md" | "lg" | "wide";
+  addSize?: "md" | "lg" | "wide" | "seventy" | "eighty";
+  /** The width of the Edit dialog. Defaults to nearly the whole screen. */
+  editSize?: "lg" | "wide" | "seventy" | "eighty" | "full";
   rows: T[];
   getKey: (row: T) => string;
   /** Fields the search box matches against. */
@@ -343,7 +346,7 @@ export function ResourceAdmin<T>({
       <AdminModal
         open={editing !== null}
         onClose={() => setEditing(null)}
-        size="full"
+        size={editSize}
         title={editing ? `Edit — ${searchIn(editing)[0]}` : ""}
         footer={
           <>

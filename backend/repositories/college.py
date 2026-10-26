@@ -139,6 +139,10 @@ def _apply_filters(stmt, params: CollegeFilterParams):
         stmt = stmt.where(
             or_(College.name.ilike(term), College.city.ilike(term), College.about.ilike(term))
         )
+    if params.slugs is not None:
+        stmt = stmt.where(College.slug.in_(params.slugs))
+    if params.exclude_slugs:
+        stmt = stmt.where(College.slug.not_in(params.exclude_slugs))
 
     # Sort
     # Every order ends on the name and id, so ties (most colleges have no reviews yet) fall the same way
@@ -163,6 +167,18 @@ def _apply_filters(stmt, params: CollegeFilterParams):
             College.name,
             College.id,
         )
+    elif params.slugs is not None:  # a hand-picked collection keeps the editor's order, ranked first when a list is named
+        position = case(*[(College.slug == slug, i) for i, slug in enumerate(params.slugs)], else_=len(params.slugs))
+        if params.order_list:
+            picked_rank = (
+                select(func.min(RankingEntry.rank))
+                .join(RankingList, RankingEntry.ranking_list_id == RankingList.id)
+                .where(RankingList.slug == params.order_list, RankingEntry.college_slug == College.slug)
+                .scalar_subquery()
+            )
+            stmt = stmt.order_by(func.coalesce(picked_rank, 1000000), position, College.id)
+        else:
+            stmt = stmt.order_by(position, College.id)
     elif list_rank is not None:  # popularity inside a ranking list is the list's own order
         stmt = stmt.order_by(list_rank, College.id)
     else:  # popularity (default)
@@ -231,6 +247,7 @@ class CollegeRepository:
             return sorted({str(v).strip() for v in rows if v and str(v).strip()}, key=str.lower)
 
         return {
+            "streams": await column(select(func.jsonb_array_elements_text(College.streams)).where(live).distinct()),
             "cities": await column(select(College.city).where(live).distinct()),
             "exams": await column(select(func.jsonb_array_elements_text(College.exams_accepted)).where(live).distinct()),
             "approvals": await column(select(func.jsonb_array_elements_text(College.approvals)).where(live).distinct()),

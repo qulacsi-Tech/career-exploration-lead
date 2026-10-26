@@ -185,3 +185,9 @@ class CollegeFilterParams(BaseModel):
     status: Optional[str] = None
     featured: Optional[bool] = None
     q: Optional[str] = None
+    # A hand-picked collection: only these colleges, in this order (the popularity sort), best rank in
+    # `order_list` first when one is named. Everything else in the bag still narrows them.
+    slugs: Optional[List[str]] = None
+    order_list: Optional[str] = None
+    # Colleges a header-menu link leaves out.
+    exclude_slugs: Optional[List[str]] = None

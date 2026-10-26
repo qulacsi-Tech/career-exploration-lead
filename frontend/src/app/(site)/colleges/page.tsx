@@ -8,10 +8,25 @@ import { ListingFilters } from "@/components/colleges/listing-filters";
 import { ListingSlotView } from "@/components/colleges/listing-slot";
 import { Reveal } from "@/components/college/reveal";
 import { appliedFilters, simple, toggleHref, type FilterGroup } from "@/components/colleges/filter-utils";
-import { getCollegeFacets, getColleges, getListingHeader, getListingSlots, getNavMenuConfig, getRankings, type ListingSlot, type CollegeFacets, type CollegeParams, type RankingList } from "@/lib/api";
+import { getCollegeFacets, getColleges, getListingHeader, getCollectionMeta, getListingSlots, getNavMenuConfig, getRankings, type CollectionMeta, type ListingSlot, type CollegeFacets, type CollegeParams, type RankingList } from "@/lib/api";
 import { scopeFromParams } from "@/lib/listing-scope";
 import { getMenuSource, menuSeoFor } from "@/components/colleges-menu-data";
 import { badgesFor, listingFaqs, listingIntro, listingTitle } from "@/components/colleges/listing-meta";
+import type { RichTextDoc } from "@/lib/rich-text";
+
+/** The filters a collection presets, as they appear in the colleges address. */
+const COLLECTION_FILTER_KEYS = ["stream", "course", "specialisation", "city", "ownership", "level", "credential", "mode", "exam", "approval", "ranking_list"] as const;
+
+/** A rich-text intro as plain paragraphs. */
+function paragraphsOf(doc: RichTextDoc | undefined): string[] {
+  if (!doc || !Array.isArray(doc.content)) return [];
+  return doc.content
+    .map((node) => {
+      const block = node as { content?: { text?: string }[] };
+      return (block.content ?? []).map((t) => t.text ?? "").join("");
+    })
+    .filter((p) => p.trim() !== "");
+}
 
 /**
  * The filter menus. Location, course, specialisation, mode, exam and approval
@@ -20,6 +35,7 @@ import { badgesFor, listingFaqs, listingIntro, listingTitle } from "@/components
  */
 function filterGroups(f: CollegeFacets, rankingLists: RankingList[]): FilterGroup[] {
   return [
+    { id: "category", label: "Category", options: simple("stream", f.streams ?? []) },
     { id: "location", label: "Location", options: simple("city", f.cities) },
     // One option for every ranking list on the Rankings page: picking one shows the colleges in it, best rank first.
     {
@@ -51,7 +67,7 @@ function filterGroups(f: CollegeFacets, rankingLists: RankingList[]): FilterGrou
   ].filter((g) => g.options.length > 0);
 }
 
-const NO_FACETS: CollegeFacets = { cities: [], exams: [], approvals: [], modes: [], courses: [], specialisations: [] };
+const NO_FACETS: CollegeFacets = { streams: [], cities: [], exams: [], approvals: [], modes: [], courses: [], specialisations: [] };
 
 const SORTS = [
   { key: "popularity", label: "Popularity" },
@@ -69,9 +85,23 @@ export async function generateMetadata({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const params = await searchParams;
-  const scope = scopeFromParams((k) => (typeof params[k] === "string" ? (params[k] as string) : undefined));
+  const one = (k: string) => (typeof params[k] === "string" ? (params[k] as string) : undefined);
+  // A collection's own title and description, when the address says it is one.
+  const collectionSlug = one("collection");
+  const found = collectionSlug ? await getCollectionMeta(collectionSlug).catch(() => null) : null;
+  const meta = found && (found.membership === "picked" || COLLECTION_FILTER_KEYS.some((k) => one(k))) ? found : null;
+  if (meta) {
+    const heading = meta.heading || meta.title;
+    return {
+      title: meta.seo.metaTitle || heading,
+      description: meta.seo.metaDescription || meta.subheading || `Browse ${heading} on fees, placements, rankings and admissions.`,
+      alternates: { canonical: meta.seo.canonical || meta.href },
+    };
+  }
+  const scope = scopeFromParams(one);
   if (!scope) return {};
-  const [config, source] = await Promise.all([getNavMenuConfig().catch(() => null), getMenuSource()]);
+  const config = await getNavMenuConfig().catch(() => null);
+  const source = await getMenuSource(config ?? undefined);
   const seo = config && menuSeoFor(config, source, `/colleges?${new URLSearchParams([[scope.slice(0, scope.indexOf("=")), scope.slice(scope.indexOf("=") + 1)]])}`);
   if (!seo) return {};
   return { ...(seo.title && { title: seo.title }), ...(seo.description && { description: seo.description }) };
@@ -85,6 +115,12 @@ export default async function CollegesListingPage({
   const params = await searchParams;
   const str = (k: string) => (typeof params[k] === "string" ? (params[k] as string) : undefined);
 
+  // A collection dresses the page while it still means something: it is hand-picked, or at least one of
+  // its filters is still applied. Remove the last filter and the page is the plain list again.
+  const collectionSlug = str("collection");
+  const found: CollectionMeta | null = collectionSlug ? await getCollectionMeta(collectionSlug).catch(() => null) : null;
+  const collection = found && (found.membership === "picked" || COLLECTION_FILTER_KEYS.some((k) => str(k))) ? found : null;
+
   const page = num(str("page")) ?? 1;
   const sort = str("sort") ?? "popularity";
   const query: CollegeParams = {
@@ -93,6 +129,7 @@ export default async function CollegesListingPage({
     course: str("course"),
     specialisation: str("specialisation"),
     credential: str("credential"),
+    stream: str("stream"),
     level: str("level"),
     mode: str("mode"),
     ownership: str("ownership"),
@@ -103,6 +140,9 @@ export default async function CollegesListingPage({
     fees_min: num(str("fees_min")),
     fees_max: num(str("fees_max")),
     min_rating: num(str("min_rating")),
+    collection: collection ? collection.slug : undefined,
+    // A header-menu link can leave some institutes out; that holds while the link's own filters are on.
+    menu: collection || COLLECTION_FILTER_KEYS.some((k) => str(k)) ? str("menu") : undefined,
   };
 
   const search = new URLSearchParams();
@@ -129,14 +169,15 @@ export default async function CollegesListingPage({
   }
 
   const { title: autoTitle, filtered } = listingTitle({
-    q: query.q, city: query.city, course: query.course, specialisation: query.specialisation,
+    q: query.q, stream: query.stream, city: query.city, course: query.course, specialisation: query.specialisation,
     level: query.level, credential: query.credential, mode: query.mode, ownership: query.ownership,
     exam: query.exam, approval: query.approval, ranking_max: query.ranking_max, ranking_list_name: pickedList?.name, min_rating: query.min_rating,
   });
   // A heading the admin wrote applies to the page it was written for: a selection's own header on
   // that selection alone, the page's on the unfiltered page.
   const written = header?.title && (scopeFromParams(str) ? header.custom && applied.length === 1 : !filtered) ? header.title : "";
-  const title = written || autoTitle;
+  // A collection names its own page; its heading stands while visitors narrow it further.
+  const title = collection ? collection.heading || collection.title : written || autoTitle;
   const badgeOf = badgesFor(colleges);
   const badgeCounts = colleges.reduce(
     (n, c) => {
@@ -145,9 +186,21 @@ export default async function CollegesListingPage({
     },
     { featured: 0, topRated: 0, mostViewed: 0 },
   );
-  const faqs = listingFaqs(title, colleges, meta.total);
+  const collectionFaqs = collection?.seo.faqs ?? [];
+  const faqs = [...collectionFaqs, ...listingFaqs(title, colleges, meta.total).filter((f) => !collectionFaqs.some((c) => c.question === f.question))];
 
-  const intro = introOf(header, listingIntro(title, colleges, meta.total));
+  const collectionIntro = paragraphsOf(collection?.seo.intro);
+  const intro = collectionIntro.length > 0 ? collectionIntro : introOf(header, listingIntro(title, colleges, meta.total));
+  // The author the collection names, else the one set for the colleges page.
+  const author = collection?.author.name && header ? { ...header, name: collection.author.name, role: collection.author.role, photo: collection.author.photo } : collection?.author.name ? { name: collection.author.name, role: collection.author.role, photo: collection.author.photo, intro: "", title: "" } : header;
+  // The chip that ends the collection: the filters stay, its header and picked list go.
+  const withoutCollection = (() => {
+    const next = new URLSearchParams(search.toString());
+    next.delete("collection");
+    next.delete("page");
+    const qs = next.toString();
+    return qs ? `/colleges?${qs}` : "/colleges";
+  })();
 
   const pageHref = (p: number) => {
     const next = new URLSearchParams(search.toString());
@@ -179,14 +232,15 @@ export default async function CollegesListingPage({
       <ListingHero
         crumbs={[
           { label: "Home", href: "/" },
-          { label: "Colleges", href: filtered ? "/colleges" : undefined },
-          ...(filtered ? [{ label: title }] : []),
+          { label: "Colleges", href: filtered || collection ? "/colleges" : undefined },
+          ...(filtered || collection ? [{ label: title }] : []),
         ]}
         title={title}
         countLabel={`${meta.total} Results`}
         intro={intro}
-        author={header}
+        author={author}
       />
+      {collection?.subheading && <p className="mt-2 text-sm text-ink-soft">{collection.subheading}</p>}
 
       {/* Filter bar: applied filters on the left, badge legend on the right */}
       <div className="mt-3 flex flex-col gap-3 border-b border-line pb-3 sm:flex-row sm:items-center sm:justify-between">
@@ -195,6 +249,17 @@ export default async function CollegesListingPage({
             <SlidersHorizontal className="h-4 w-4 text-brand" />
             Filters
           </span>
+          {collection && (
+            <Link
+              href={withoutCollection}
+              scroll={false}
+              aria-label={`Leave the ${collection.title} collection`}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand-ink transition hover:bg-brand hover:text-white"
+            >
+              Collection: {collection.title}
+              <X className="h-3.5 w-3.5" />
+            </Link>
+          )}
           {applied.map((f) => (
             <Link
               key={f.id}
@@ -207,7 +272,7 @@ export default async function CollegesListingPage({
               <X className="h-3.5 w-3.5" />
             </Link>
           ))}
-          {applied.length === 0 && <span className="text-sm text-ink-faint">None applied</span>}
+          {applied.length === 0 && !collection && <span className="text-sm text-ink-faint">None applied</span>}
           {applied.length > 1 && (
             <Link href="/colleges" className="text-sm font-medium text-brand hover:underline">
               Clear all

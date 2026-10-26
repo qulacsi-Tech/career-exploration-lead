@@ -374,6 +374,7 @@ async def admin_create_band(_admin: AdminPayload, db: DbSession, body: dict):
         title=data.title.strip(),
         heading=heading,
         subheading=data.subheading.strip(),
+        membership="picked",
         collegeSlugs=data.collegeSlugs,
         homepage=HomepageBody(order=order, limit=data.limit, isVisible=True),
         # A published page needs SEO text; this is a sensible start the editor can refine.

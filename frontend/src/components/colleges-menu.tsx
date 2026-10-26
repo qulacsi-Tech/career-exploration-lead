@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, ArrowUpRight, Building2, ChevronDown, ChevronRight, ClipboardList, GraduationCap, Laptop, Layers, MapPin, Sparkles, Trophy,
+  ArrowRight, ArrowUpRight, Building2, FolderOpen, ChevronDown, ChevronRight, ClipboardList, GraduationCap, Laptop, Layers, MapPin, Sparkles, Trophy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -12,7 +12,7 @@ export type MenuGroup = { label: string; icon?: string; items: { label: string; 
 
 const ICONS: Record<string, LucideIcon> = {
   ranking: Trophy, course: GraduationCap, specialisation: Sparkles, location: MapPin,
-  type: Building2, level: Layers, mode: Laptop, exam: ClipboardList,
+  type: Building2, level: Layers, mode: Laptop, exam: ClipboardList, collection: FolderOpen,
 };
 
 /**

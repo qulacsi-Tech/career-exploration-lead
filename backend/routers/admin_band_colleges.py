@@ -81,6 +81,6 @@ async def save_band_colleges(slug: str, _admin: AdminPayload, db: DbSession, bod
 
     row = await _collection(db, slug)
     # Reassigned, not mutated, so SQLAlchemy sees the JSON column change.
-    row.data = {**row.data, "collegeSlugs": data.slugs}
+    row.data = {**row.data, "membership": "picked", "collegeSlugs": data.slugs}
     await db.commit()
     return SuccessResponse[dict](data={"message": "Colleges saved."})
