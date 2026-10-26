@@ -120,6 +120,18 @@ export type Course = {
   eligibility?: string;
   seats?: number | null;
 };
+/** One row of a year's placements by category, course and specialisation. A blank package is "not given". */
+export type PlacementBreakdown = {
+  category: string;
+  course: string;
+  /** Empty: the course as a whole. */
+  specialisation: string;
+  average: string;
+  highest: string;
+  /** How many students were placed, and how many sat for placement. */
+  placed: number | null;
+  students: number | null;
+};
 export type Placement = {
   year: number;
   average: string;
@@ -128,6 +140,8 @@ export type Placement = {
   topRecruiters: string[];
   /** Share of the batch placed, 0-100. */
   placedPercent?: number | null;
+  /** By category, course and specialisation, as entered in the admin. */
+  breakdown?: PlacementBreakdown[];
 };
 export type Cutoff = { exam: string; category: string; score: string };
 export type Review = {
@@ -2240,7 +2254,7 @@ export async function adminDeleteArticle(token: string, slug: string) {
 // ── Admin: the whole college record ───────────────────────────────────────
 
 export type RecordCourse = { name: string; specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null };
-export type RecordPlacement = { year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[] };
+export type RecordPlacement = { year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[]; breakdown: PlacementBreakdown[] };
 export type RecordCutoff = { exam: string; category: string; score: string };
 export type RecordReview = {
   id?: string;

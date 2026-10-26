@@ -19,6 +19,7 @@ from schemas.college import (
     CollegeListSchema,
     CourseSchema,
     CutoffSchema,
+    PlacementBreakdownSchema,
     PlacementSchema,
     RankingSchema,
     RatingBreakdownSchema,
@@ -90,6 +91,17 @@ def _rating_breakdown(reviews: List[Review]) -> List[RatingBreakdownSchema]:
     return [RatingBreakdownSchema(label=label, score=score) for label, score in breakdown if score is not None]
 
 
+def _breakdown(placement: Placement) -> list[PlacementBreakdownSchema]:
+    """A year's rows by category / course / specialisation. Stored junk is skipped rather than failing the page."""
+    rows = []
+    for raw in placement.breakdown or []:
+        try:
+            rows.append(PlacementBreakdownSchema.model_validate(raw))
+        except Exception:
+            continue
+    return rows
+
+
 def _to_detail_schema(college: College) -> CollegeDetailSchema:
     base = _to_list_schema(college)
 
@@ -104,6 +116,7 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
             highest=latest.highest_package or "N/A",
             topRecruiters=latest.top_recruiters or [],
             placedPercent=latest.placed_percent,
+            breakdown=_breakdown(latest),
         )
 
     approved_reviews = [r for r in (college.reviews or []) if r.is_approved]
@@ -116,6 +129,7 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
             highest=p.highest_package or "N/A",
             topRecruiters=p.top_recruiters or [],
             placedPercent=p.placed_percent,
+            breakdown=_breakdown(p),
         )
         for p in sorted(college.placements or [], key=lambda p: p.year, reverse=True)
     ]

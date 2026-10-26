@@ -141,6 +141,20 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
     (["average", "highest"] as const).forEach((key) => add("placements", amountProblem(p[key], `The ${key} package`) && `${label}: The ${key} package must be 0 or more.`));
     add("placements", packageProblem(p.average, "", p.highest) && `${label}: ${packageProblem(p.average, "", p.highest)}`);
     if (p.placedPercent !== null && (p.placedPercent < 0 || p.placedPercent > 100)) out.placements.push(`${label}: batch placed must be between 0 and 100.`);
+    const rows = new Set<string>();
+    p.breakdown.forEach((b, n) => {
+      const name = [b.category, b.course, b.specialisation].map((x) => x.trim()).filter(Boolean).join(" · ") || `row ${n + 1}`;
+      const where = `${label}, ${name}`;
+      if (!b.course.trim()) out.placements.push(`${label}, row ${n + 1}: choose the course.`);
+      const key = [b.category, b.course, b.specialisation].map((x) => x.trim().toLowerCase()).join("|");
+      if (rows.has(key)) out.placements.push(`${where} is listed more than once.`);
+      rows.add(key);
+      (["average", "highest"] as const).forEach((field) => add("placements", amountProblem(b[field], `The ${field} package`) && `${where}: The ${field} package must be 0 or more.`));
+      add("placements", packageProblem(b.average, "", b.highest) && `${where}: ${packageProblem(b.average, "", b.highest)}`);
+      if (b.placed !== null && b.placed < 0) out.placements.push(`${where}: the number placed cannot be negative.`);
+      if (b.students !== null && b.students < 1) out.placements.push(`${where}: the number of students must be at least 1.`);
+      if (b.placed !== null && b.students !== null && b.placed > b.students) out.placements.push(`${where}: more students placed than sat for placement.`);
+    });
   });
 
   // Cut-offs

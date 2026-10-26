@@ -40,6 +40,18 @@ class CourseSchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class PlacementBreakdownSchema(BaseModel):
+    category: str = ""
+    course: str = ""
+    specialisation: str = ""
+    average: str = ""
+    highest: str = ""
+    placed: Optional[int] = None
+    students: Optional[int] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class PlacementSchema(BaseModel):
     year: int
     average: str
@@ -47,6 +59,8 @@ class PlacementSchema(BaseModel):
     highest: str
     topRecruiters: List[str]
     placedPercent: Optional[int] = None
+    # By category, course and specialisation, as the admin entered them.
+    breakdown: List[PlacementBreakdownSchema] = []
 
     model_config = ConfigDict(populate_by_name=True)
 

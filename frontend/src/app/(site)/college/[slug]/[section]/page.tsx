@@ -32,6 +32,7 @@ import {
   type IconName,
 } from "@/components/college/detail-ui";
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
+import { PlacementBreakdownTable } from "@/components/college/placement-breakdown";
 import { CollegeSectionPage } from "@/components/college/section-page";
 import { RichText } from "@/components/rich-text";
 import { Chip } from "@/components/ui/chip";
@@ -545,6 +546,12 @@ function Placements({ college }: { college: College }) {
         </DetailCard>
       )}
 
+      {(placement.breakdown?.length ?? 0) > 0 && (
+        <DetailCard title={`By Course and Specialisation ${placement.year}`}>
+          <PlacementBreakdownTable rows={placement.breakdown} />
+        </DetailCard>
+      )}
+
       {college.placements.length > 1 && (
         <DetailCard title="Earlier Years">
           <div className="-mx-2 overflow-x-auto px-2">
@@ -569,6 +576,14 @@ function Placements({ college }: { college: College }) {
               </tbody>
             </table>
           </div>
+          {college.placements.slice(1).filter((row) => (row.breakdown?.length ?? 0) > 0).map((row) => (
+            <details key={row.year} className="mt-4 rounded-lg border border-line">
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink">{row.year}: by course and specialisation</summary>
+              <div className="border-t border-line px-4 pb-2">
+                <PlacementBreakdownTable rows={row.breakdown} />
+              </div>
+            </details>
+          ))}
         </DetailCard>
       )}
 

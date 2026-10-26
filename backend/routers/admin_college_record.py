@@ -63,6 +63,29 @@ class CourseRow(BaseModel):
         return rules.check_amount(value, "The fees")
 
 
+class BreakdownRow(BaseModel):
+    category: str = Field(default="", max_length=100)
+    course: str = Field(min_length=1, max_length=200)
+    specialisation: str = Field(default="", max_length=200)
+    average: str = Field(default="", max_length=50)
+    highest: str = Field(default="", max_length=50)
+    placed: Optional[int] = Field(default=None, ge=0, le=100000)
+    students: Optional[int] = Field(default=None, ge=1, le=100000)
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("average", "highest")
+    @classmethod
+    def _package(cls, value: str) -> str:
+        return rules.check_amount(value, "The package")
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        rules.check_packages(self.average, "", self.highest)
+        if self.placed is not None and self.students is not None and self.placed > self.students:
+            raise ValueError("The number placed is more than the number of students.")
+        return self
+
+
 class PlacementRow(BaseModel):
     year: int = Field(ge=1990, le=YEAR + 1)
     average: str = Field(default="", max_length=50)
@@ -70,6 +93,7 @@ class PlacementRow(BaseModel):
     highest: str = Field(default="", max_length=50)
     placedPercent: Optional[int] = Field(default=None, ge=0, le=100)
     topRecruiters: list[str] = Field(default_factory=list, max_length=30)
+    breakdown: list[BreakdownRow] = Field(default_factory=list, max_length=100)
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("average", "median", "highest")
@@ -209,6 +233,14 @@ async def _load(db, slug: str) -> College:
     return row
 
 
+def _breakdown_row(b: dict) -> dict:
+    return {
+        "category": b.get("category") or "", "course": b.get("course") or "", "specialisation": b.get("specialisation") or "",
+        "average": b.get("average") or "", "highest": b.get("highest") or "",
+        "placed": b.get("placed"), "students": b.get("students"),
+    }
+
+
 def _record(c: College) -> dict:
     """The college as the editor holds it."""
     return {
@@ -242,6 +274,7 @@ def _record(c: College) -> dict:
                 "highest": p.highest_package or "",
                 "placedPercent": p.placed_percent,
                 "topRecruiters": p.top_recruiters or [],
+                "breakdown": [_breakdown_row(b) for b in (p.breakdown or []) if isinstance(b, dict)],
             }
             for p in sorted(c.placements or [], key=lambda p: p.year, reverse=True)
         ],
@@ -390,6 +423,10 @@ def _check(data: RecordBody) -> None:
     years = [p.year for p in data.placements]
     if len(set(years)) != len(years):
         raise ValidationError("placements: a year appears more than once.")
+    for p in data.placements:
+        keys = [(b.category.strip().lower(), b.course.strip().lower(), b.specialisation.strip().lower()) for b in p.breakdown]
+        if len(set(keys)) != len(keys):
+            raise ValidationError(f"placements: {p.year} lists the same programme more than once in its breakdown.")
     names = [(c.name.strip().lower(), c.specialisation.strip().lower()) for c in data.courses]
     if len(set(names)) != len(names):
         raise ValidationError("courses: a programme is listed more than once with the same specialisation.")
@@ -465,7 +502,8 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
                       exams=[e.strip() for e in c.exams if e.strip()], eligibility=c.eligibility.strip(), seats=c.seats))
     for p in data.placements:
         db.add(Placement(id=uuid.uuid4(), college_id=row.id, year=p.year, average_package=p.average.strip() or None, median_package=p.median.strip() or None,
-                         highest_package=p.highest.strip() or None, placed_percent=p.placedPercent, top_recruiters=[r.strip() for r in p.topRecruiters if r.strip()]))
+                         highest_package=p.highest.strip() or None, placed_percent=p.placedPercent, top_recruiters=[r.strip() for r in p.topRecruiters if r.strip()],
+                         breakdown=[{"category": b.category.strip(), "course": b.course.strip(), "specialisation": b.specialisation.strip(), "average": b.average.strip(), "highest": b.highest.strip(), "placed": b.placed, "students": b.students} for b in p.breakdown]))
     for k in data.cutoffs:
         db.add(Cutoff(id=uuid.uuid4(), college_id=row.id, exam=k.exam.strip(), category=k.category.strip(), score=k.score.strip()))
 

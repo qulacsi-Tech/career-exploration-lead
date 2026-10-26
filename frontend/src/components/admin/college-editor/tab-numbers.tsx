@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, type ReactNode } from "react";
-import type { CollegeRankings, RankingListHead, RecordCourse, RecordCutoff, RecordPlacement } from "@/lib/api";
+import type { CollegeRankings, PlacementBreakdown, RankingListHead, RecordCourse, RecordCutoff, RecordPlacement } from "@/lib/api";
 import { loadCollegeRankings, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
 import { AmountField } from "@/components/admin/range-field";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
@@ -129,9 +129,65 @@ const blankPlacement = (existing: RecordPlacement[]): RecordPlacement => ({
   highest: "",
   placedPercent: null,
   topRecruiters: [],
+  breakdown: [],
 });
 
-export function PlacementsTab({ record, update }: EditorProps) {
+const blankBreakdown = (): PlacementBreakdown => ({ category: "", course: "", specialisation: "", average: "", highest: "", placed: null, students: null });
+
+/**
+ * A year's figures by category, course and specialisation, picked the way the Courses & Fees tab
+ * picks them: the category from the ones the college is listed under, the course from the ones it
+ * offers in that category, the specialisation from those it offers under the course.
+ */
+function BreakdownEditor({ rows, onChange, record, pools, id }: { rows: PlacementBreakdown[]; onChange: (next: PlacementBreakdown[]) => void; id: string } & Pick<EditorProps, "record" | "pools">) {
+  const patch = (i: number, change: Partial<PlacementBreakdown>) => onChange(rows.map((b, n) => (n === i ? { ...b, ...change } : b)));
+  const categories = [...new Set([...record.streams, ...rows.map((b) => b.category).filter(Boolean)])];
+  const coursesIn = (category: string) =>
+    [...new Set(record.courses.map((c) => c.name).filter((name) => !category || (pools.courseStreams[name] ?? []).includes(category)))];
+  const specsOf = (course: string) => [...new Set(record.courses.filter((c) => c.name === course && c.specialisation).map((c) => c.specialisation))];
+
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h4 className="text-sm font-semibold text-ink">Breakdown by category, course and specialisation</h4>
+          <p className="mt-0.5 text-xs text-ink-faint">Optional. The figures above are the overall ones; add a row for each programme that has its own. Courses and specialisations are the ones ticked on the Courses &amp; Fees tab.</p>
+        </div>
+        <AddButton onClick={() => onChange([...rows, { ...blankBreakdown(), category: record.streams[0] ?? "" }])} disabled={rows.length >= 100}>Add a row</AddButton>
+      </div>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-xs text-ink-faint">No breakdown for this year. Only the overall figures are shown.</p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {rows.map((b, i) => {
+            const specs = specsOf(b.course);
+            const odd = packageProblem(b.average, "", b.highest) || (b.placed !== null && b.students !== null && b.placed > b.students ? "More students placed than sat for placement." : "");
+            const courses = coursesIn(b.category);
+            const keep = courses.includes(b.course);
+            return (
+              <Row key={i} title={[b.category, b.course, b.specialisation].filter(Boolean).join(" · ") || `Row ${i + 1}`} index={i} count={rows.length} onRemove={() => onChange(rows.filter((_, n) => n !== i))}>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <SelectInput id={`${id}-${i}-cat`} label="Category" value={b.category} onChange={(v) => patch(i, { category: v, ...(coursesIn(v).includes(b.course) ? {} : { course: "", specialisation: "" }) })} options={categories} placeholder="Any category" />
+                  <SelectInput id={`${id}-${i}-course`} label="Course" required value={b.course} onChange={(v) => patch(i, { course: v, specialisation: "" })} options={courses} placeholder={courses.length || keep ? "Choose a course" : "Tick courses on Courses & Fees first"} />
+                  <SelectInput id={`${id}-${i}-spec`} label="Specialisation" value={b.specialisation} onChange={(v) => patch(i, { specialisation: v })} options={specs} placeholder="The course as a whole" />
+                </div>
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <AmountField id={`${id}-${i}-avg`} label="Average package" units={["LPA", "Cr"]} value={b.average} onChange={(v) => patch(i, { average: v })} />
+                  <AmountField id={`${id}-${i}-high`} label="Highest package" units={["LPA", "Cr"]} value={b.highest} onChange={(v) => patch(i, { highest: v })} />
+                  <NumberInput id={`${id}-${i}-placed`} label="Students placed" min={0} max={100000} value={b.placed} onChange={(v) => patch(i, { placed: v })} />
+                  <NumberInput id={`${id}-${i}-students`} label="Students in the batch" min={1} max={100000} value={b.students} onChange={(v) => patch(i, { students: v })} hint={b.placed !== null && b.students !== null && b.students > 0 ? `${Math.round((b.placed / b.students) * 100)}% placed.` : undefined} />
+                </div>
+                {odd && <p role="alert" className="mt-2 text-xs text-red-700">{odd}</p>}
+              </Row>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function PlacementsTab({ record, update, pools }: EditorProps) {
   const rows = record.placements;
   const set = (list: RecordPlacement[]) => update((r) => ({ ...r, placements: list }));
   const patch = (i: number, change: Partial<RecordPlacement>) => set(rows.map((p, n) => (n === i ? { ...p, ...change } : p)));
@@ -160,6 +216,7 @@ export function PlacementsTab({ record, update }: EditorProps) {
                 <div className="mt-4">
                   <ChipInput id={`pl-${i}-rec`} label="Top recruiters" value={p.topRecruiters} onChange={(v) => patch(i, { topRecruiters: v })} max={30} hint="Company names, shown as a scrolling strip." />
                 </div>
+                <BreakdownEditor id={`pl-${i}-bd`} rows={p.breakdown} onChange={(next) => patch(i, { breakdown: next })} record={record} pools={pools} />
               </Row>
             );
           })}

@@ -22,6 +22,7 @@ import { CollegeRecordEditor } from "@/components/admin/college-editor/college-r
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
 import { feeRangeProblem, nameProblem, yearProblem } from "@/lib/college-rules";
+import { PlacementBreakdownTable } from "@/components/college/placement-breakdown";
 
 /**
  * Colleges module: a scannable table, with everything bulky behind View.
@@ -437,6 +438,12 @@ function ViewCollegeModal({
                 <p className="mt-2 text-xs text-ink-soft">
                   Top recruiters: {college.placement.topRecruiters.join(", ")}
                 </p>
+                {(college.placement.breakdown?.length ?? 0) > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-1 text-xs font-semibold text-ink">By course and specialisation</p>
+                    <PlacementBreakdownTable rows={college.placement.breakdown} />
+                  </div>
+                )}
               </>
             )}
           </AdminSubsection>

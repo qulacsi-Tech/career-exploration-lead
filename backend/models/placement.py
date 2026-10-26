@@ -21,6 +21,8 @@ class Placement(Base):
     highest_package = Column(String(50), nullable=True)
     placed_percent = Column(Integer, nullable=True)
     top_recruiters = Column(JSONB, nullable=False, default=list)
+    # One entry per category / course / specialisation: {category, course, specialisation, average, highest, placed, students}.
+    breakdown = Column(JSONB, nullable=False, default=list, server_default="[]")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     college = relationship("College", back_populates="placements")
