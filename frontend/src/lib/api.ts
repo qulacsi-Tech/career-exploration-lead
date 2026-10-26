@@ -51,14 +51,23 @@ export class ApiError extends Error {
  */
 const PUBLIC_REVALIDATE_SECONDS = 60;
 
-async function apiFetch<T>(path: string, retries = 2): Promise<T> {
+/**
+ * `next build` prerenders every college and exam page from the live API. A deploy that restarts the
+ * backend leaves the API answering 502 for up to a minute, so while building each read waits for it
+ * (about a minute and a half in all) instead of failing the build. Requests from a running site keep the short retry.
+ */
+const BUILDING = process.env.NEXT_PHASE === "phase-production-build";
+const DEFAULT_RETRIES = BUILDING ? 8 : 2;
+const retryDelay = (attempt: number) => (BUILDING ? Math.min(2000 * 2 ** attempt, 15000) : 600 * (attempt + 1));
+
+async function apiFetch<T>(path: string, retries = DEFAULT_RETRIES): Promise<T> {
   const url = `${API_BASE}${path}`;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
       if (!res.ok) {
         if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
-          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          await new Promise((r) => setTimeout(r, retryDelay(attempt)));
           continue;
         }
         throw new ApiError(res.status, `API ${res.status} on ${url}`);
@@ -67,7 +76,7 @@ async function apiFetch<T>(path: string, retries = 2): Promise<T> {
       return json.data;
     } catch (err) {
       if (attempt < retries && !(err instanceof ApiError && err.status === 404)) {
-        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, retryDelay(attempt)));
         continue;
       }
       throw err;
@@ -78,7 +87,7 @@ async function apiFetch<T>(path: string, retries = 2): Promise<T> {
 
 async function apiListFetch<T>(
   path: string,
-  retries = 2
+  retries = DEFAULT_RETRIES
 ): Promise<{ data: T[]; meta: PaginationMeta }> {
   const url = `${API_BASE}${path}`;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -86,7 +95,7 @@ async function apiListFetch<T>(
       const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
       if (!res.ok) {
         if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
-          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          await new Promise((r) => setTimeout(r, retryDelay(attempt)));
           continue;
         }
         throw new ApiError(res.status, `API ${res.status} on ${url}`);
@@ -95,7 +104,7 @@ async function apiListFetch<T>(
       return { data: json.data, meta: json.meta };
     } catch (err) {
       if (attempt < retries && !(err instanceof ApiError && err.status === 404)) {
-        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, retryDelay(attempt)));
         continue;
       }
       throw err;
