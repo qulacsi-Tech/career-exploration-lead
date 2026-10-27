@@ -220,12 +220,3 @@ class CollectionService:
             ({"slug": d["slug"], "title": d["title"], "href": d["href"]} for d in await self._published()),
             key=lambda link: link["title"].lower(),
         )
-
-    async def nav_links(self) -> list[dict]:
-        """The collections set to appear in the header menu."""
-        links = [
-            {"slug": d["slug"], "title": d["title"], "href": d["href"], "order": placement["order"]}
-            for d in await self._published()
-            if (placement := (d.get("placements") or {}).get("nav"))
-        ]
-        return sorted(links, key=lambda link: (link["order"], link["title"]))

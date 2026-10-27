@@ -37,6 +37,7 @@ const BADGE_PRESETS = ["Upcoming", "Live", "Expired"];
 
 const BLANK: ExamInput = {
   name: "",
+  shortName: "",
   conductingBody: "",
   level: "National",
   mode: "Online",
@@ -59,6 +60,7 @@ const BLANK: ExamInput = {
 function toInput(e: AdminExam): ExamInput {
   return {
     name: e.name,
+    shortName: e.shortName ?? "",
     conductingBody: e.conductingBody,
     level: e.level,
     mode: e.mode,
@@ -264,6 +266,7 @@ export function ExamModal({
             <h3 id="exam-h-details" className={heading}>Details</h3>
             <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
               <Text id="exam-name" label="Exam name" required max={500} value={draft.name} onChange={(v) => set("name", v)} hint={editing ? "The page address stays the same after a rename." : "Becomes the page address."} />
+              <Text id="exam-short" label="Short name" max={100} value={draft.shortName} onChange={(v) => set("shortName", v)} hint="e.g. CAT. Used where space is tight. Empty: the full name." />
               <Text id="exam-body" label="Conducting body" required max={200} value={draft.conductingBody} onChange={(v) => set("conductingBody", v)} />
               <div>
                 <label htmlFor="exam-level" className="block text-xs font-semibold text-ink">Level</label>

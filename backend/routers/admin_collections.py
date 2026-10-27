@@ -26,6 +26,7 @@ from repositories.college import CollegeRepository
 from routers.admin_college_record import pools as college_pools
 from schemas.college import CollegeFilterParams
 from schemas.common import SuccessResponse
+from routers.nav_menu import apply_menu, current_config, group_labels, menu_group_of
 from services.collections import normalise
 
 router = APIRouter(prefix="/admin/collections", tags=["admin"])
@@ -72,8 +73,11 @@ class FooterBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class NavBody(BaseModel):
-    order: int = Field(ge=0, le=1000)
+class MenuBody(BaseModel):
+    """Which header-menu category the collection sits in: an existing category's id, or "new" with a name."""
+
+    group: str = Field(default="", max_length=40)
+    name: str = Field(default="", max_length=60)
     model_config = ConfigDict(extra="forbid")
 
 
@@ -126,7 +130,7 @@ class CollectionBody(BaseModel):
     collegeSlugs: list[str] = Field(default_factory=list, max_length=500)
     homepage: Optional[HomepageBody] = None
     footer: Optional[FooterBody] = None
-    nav: Optional[NavBody] = None
+    menu: Optional[MenuBody] = None
     author: AuthorBody = Field(default_factory=AuthorBody)
     seo: SeoBody = Field(default_factory=SeoBody)
     isPublished: bool = False
@@ -224,8 +228,6 @@ def _stored(collection_id: str, slug: str, body: CollectionBody) -> dict:
         placements["homepage"] = body.homepage.model_dump()
     if body.footer is not None:
         placements["footer"] = body.footer.model_dump()
-    if body.nav is not None:
-        placements["nav"] = body.nav.model_dump()
 
     return {
         "id": collection_id,
@@ -269,6 +271,7 @@ async def admin_collection_options(admin: AdminPayload, db: DbSession):
         "credentials": CREDENTIALS,
         "rankings": [{"slug": s, "name": n} for s, n in rankings],
         "colleges": [{"slug": s, "name": n, "city": c or "", "stream": st or ""} for s, n, c, st in colleges],
+        "menuGroups": group_labels(await current_config(db)),
     })
 
 
@@ -283,7 +286,8 @@ async def admin_preview_collection(_admin: AdminPayload, db: DbSession, body: di
 @router.get("", response_model=SuccessResponse[list])
 async def admin_list_collections(_admin: AdminPayload, db: DbSession):
     rows = (await db.execute(select(Collection).order_by(Collection.slug))).scalars().all()
-    return SuccessResponse[list](data=[normalise(r.data) for r in rows])
+    menu = await current_config(db)
+    return SuccessResponse[list](data=[{**normalise(r.data), "menuGroup": menu_group_of(menu, r.slug)} for r in rows])
 
 
 @router.post("", response_model=SuccessResponse[dict], status_code=201)
@@ -297,6 +301,7 @@ async def admin_create_collection(_admin: AdminPayload, db: DbSession, body: dic
     collection_id = str(uuid.uuid4())
     db.add(Collection(id=uuid.UUID(collection_id), slug=data.slug,
                       data=_stored(collection_id, data.slug, data)))
+    await apply_menu(db, data.slug, data.menu.model_dump() if data.menu else None)
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Collection '{data.slug}' created."})
 
@@ -311,6 +316,7 @@ async def admin_update_collection(slug: str, _admin: AdminPayload, db: DbSession
     await _check_references(db, data)
 
     row.data = _stored(row.data["id"], slug, data)
+    await apply_menu(db, slug, data.menu.model_dump() if data.menu else None)
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Collection '{slug}' saved."})
 
@@ -330,6 +336,7 @@ async def admin_delete_collection(slug: str, _admin: AdminPayload, db: DbSession
         )
     if (row.data.get("placements") or {}).get("homepage"):
         raise ConflictError("COLLECTION_ON_HOMEPAGE", "Remove this collection from the homepage before deleting it.")
+    await apply_menu(db, slug, None)
     await db.delete(row)
     await db.commit()
     return SuccessResponse[dict](data={"message": f"Collection '{slug}' deleted."})

@@ -6,18 +6,23 @@ background). The admin edits the whole list at once; the public read is open.
 
 Until an admin saves, the page gets the layout it always had (DEFAULT_SLOTS). Saving an empty list
 is a choice: it removes everything.
+
+Like the listing's header, a set can belong to one selection of the header menu (a course, a city, a
+ranking list...), named by a scope such as "course=MBA". A visitor who opened that selection gets the set
+written for it; a selection without one gets the page's set.
 """
 
 import re
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict, Field, ValidationError as PydanticValidationError, field_validator
 from sqlalchemy import select
 
 from core.dependencies import AdminPayload, DbSession
 from core.exceptions import ValidationError
 from models.site_content import SiteContent
+from routers.listing_header import _scope
 from schemas.common import SuccessResponse
 
 Page = Literal["colleges"]
@@ -132,32 +137,56 @@ DEFAULT_SLOTS = [
 ]
 
 
-def _key(page: str) -> str:
-    return f"listing.slots.{page}"
+def _key(page: str, scope: str = "") -> str:
+    return f"listing.slots.{page}:{scope}" if scope else f"listing.slots.{page}"
 
 
-async def _current(db, page: str) -> dict:
-    row = (await db.execute(select(SiteContent).where(SiteContent.key == _key(page)))).scalar_one_or_none()
+async def _row(db, key: str):
+    return (await db.execute(select(SiteContent).where(SiteContent.key == key))).scalar_one_or_none()
+
+
+def _body(row):
     if row is not None and isinstance(row.data, dict):
         try:
             return SlotsBody.model_validate(row.data).model_dump()
         except PydanticValidationError:
-            pass
-    return {"slots": DEFAULT_SLOTS}
+            return None
+    return None
+
+
+async def _current(db, page: str, scope: str = "") -> dict:
+    """The set for `scope` when it has its own (`custom` true), else the page's. Never fails."""
+    if scope:
+        own = _body(await _row(db, _key(page, scope)))
+        if own is not None:
+            return {**own, "custom": True}
+    page_set = _body(await _row(db, _key(page)))
+    if page_set is not None:
+        return {**page_set, "custom": not scope}
+    return {"slots": DEFAULT_SLOTS, "custom": False}
 
 
 @public_router.get("/{page}", response_model=SuccessResponse[dict])
-async def get_listing_slots(page: Page, db: DbSession):
-    return SuccessResponse[dict](data=await _current(db, page))
+async def get_listing_slots(page: Page, db: DbSession, scope: str = Query(default="", max_length=80)):
+    return SuccessResponse[dict](data=await _current(db, page, _scope(scope)))
+
+
+@router.get("/{page}/scopes", response_model=SuccessResponse[list[str]])
+async def admin_listing_slot_scopes(page: Page, _admin: AdminPayload, db: DbSession):
+    """The selections that have a set of their own."""
+    prefix = _key(page) + ":"
+    rows = (await db.execute(select(SiteContent.key).where(SiteContent.key.startswith(prefix, autoescape=True)))).scalars().all()
+    return SuccessResponse[list[str]](data=sorted(k[len(prefix):] for k in rows))
 
 
 @router.get("/{page}", response_model=SuccessResponse[dict])
-async def admin_get_listing_slots(page: Page, _admin: AdminPayload, db: DbSession):
-    return SuccessResponse[dict](data=await _current(db, page))
+async def admin_get_listing_slots(page: Page, _admin: AdminPayload, db: DbSession, scope: str = Query(default="", max_length=80)):
+    return SuccessResponse[dict](data=await _current(db, page, _scope(scope)))
 
 
 @router.put("/{page}", response_model=SuccessResponse[dict])
-async def admin_put_listing_slots(page: Page, _admin: AdminPayload, db: DbSession, body: dict):
+async def admin_put_listing_slots(page: Page, _admin: AdminPayload, db: DbSession, body: dict, scope: str = Query(default="", max_length=80)):
+    scope = _scope(scope)
     try:
         value = SlotsBody.model_validate(body).model_dump()
     except PydanticValidationError as exc:
@@ -167,10 +196,24 @@ async def admin_put_listing_slots(page: Page, _admin: AdminPayload, db: DbSessio
     if len({s["id"] for s in value["slots"]}) != len(value["slots"]):
         raise ValidationError("slots: every item needs its own id")
 
-    row = (await db.execute(select(SiteContent).where(SiteContent.key == _key(page)))).scalar_one_or_none()
+    key = _key(page, scope)
+    row = await _row(db, key)
     if row is None:
-        db.add(SiteContent(key=_key(page), data=value))
+        db.add(SiteContent(key=key, data=value))
     else:
         row.data = value
     await db.commit()
     return SuccessResponse[dict](data={"message": "Saved."})
+
+
+@router.delete("/{page}", response_model=SuccessResponse[dict])
+async def admin_reset_listing_slots(page: Page, _admin: AdminPayload, db: DbSession, scope: str = Query(max_length=80)):
+    """Drop a selection's own set, so it shows the page's again."""
+    scope = _scope(scope)
+    if not scope:
+        raise ValidationError("scope: choose a selection to reset")
+    row = await _row(db, _key(page, scope))
+    if row is not None:
+        await db.delete(row)
+        await db.commit()
+    return SuccessResponse[dict](data={"message": "Reset."})

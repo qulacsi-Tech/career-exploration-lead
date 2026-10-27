@@ -37,17 +37,7 @@ import { CollegeSectionPage } from "@/components/college/section-page";
 import { RichText } from "@/components/rich-text";
 import { Chip } from "@/components/ui/chip";
 import { videoEmbedUrl } from "@/lib/college-content";
-import {
-  faqsOf,
-  isRealPackage,
-  longDate,
-  lakhValue,
-  overallScore,
-  percentOf,
-  rankingTable,
-  shortFee,
-  programmeTitle,
-} from "@/lib/college-insights";
+import { faqsOf, isRealPackage, longDate, lakhValue, overallScore, percentOf, rankingTable, shortFee, programmeTitle, cutoffLabel, cutoffProgramme } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
 import { comparisonsFeaturing, compareUrl } from "@/lib/comparison-data";
@@ -618,16 +608,21 @@ function Cutoffs({ college }: { college: College }) {
           rows={college.cutoffs.map((cutoff) => {
             const percent = percentOf(cutoff.score);
             return {
-              label: `${cutoff.exam} · ${cutoff.category}`,
+              label: cutoffLabel(cutoff),
               display: cutoff.score,
               fraction: percent === null ? null : percent / 100,
             };
           })}
         />
       </DetailCard>
-      <DetailCard title="By Exam and Category">
-        <CutoffCards cutoffs={college.cutoffs} />
-      </DetailCard>
+      {/* One card for every programme (no course picked), then one for each course or specialisation. */}
+      {[...new Set(college.cutoffs.map((cutoff) => cutoffProgramme(cutoff)))]
+        .sort((a, b) => (a === "" ? -1 : b === "" ? 1 : a.localeCompare(b)))
+        .map((programme) => (
+          <DetailCard key={programme || "all"} title={programme ? `${programme}: by Exam and Caste` : "By Exam and Caste"}>
+            <CutoffCards cutoffs={college.cutoffs.filter((cutoff) => cutoffProgramme(cutoff) === programme)} />
+          </DetailCard>
+        ))}
     </>
   );
 }

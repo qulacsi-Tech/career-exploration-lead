@@ -152,7 +152,8 @@ export type Placement = {
   /** By category, course and specialisation, as entered in the admin. */
   breakdown?: PlacementBreakdown[];
 };
-export type Cutoff = { exam: string; category: string; score: string };
+/** `category` is the caste category (General, OBC...). `course` and `specialisation` are empty for every programme. */
+export type Cutoff = { exam: string; category: string; course?: string; specialisation?: string; score: string };
 export type Review = {
   author: string;
   course: string;
@@ -168,6 +169,8 @@ export type CollegeStatus = "draft" | "published" | "archived";
 export type College = {
   slug: string;
   name: string;
+  /** The default priority set in the admin: 1 is shown first. Absent: after those that have one, by NIRF rank. */
+  priority?: number | null;
   city: string;
   state: string;
   /** Only published colleges reach the public site; the admin list also carries drafts and archived ones. */
@@ -204,6 +207,8 @@ export type College = {
 export type Exam = {
   slug: string;
   name: string;
+  /** Where space is tight. Empty or absent: the full name. */
+  shortName?: string;
   conductingBody: string;
   level: "National" | "State";
   description: string;
@@ -379,6 +384,8 @@ export type RecommendedUniversity = {
   image?: string;
   /** "College" or "University". Absent on an API older than the type field. */
   institutionType?: string;
+  /** The category it is listed under. */
+  stream?: string;
 };
 
 /** homeStreams now has slug so it matches mock-data.ts homeStreams */
@@ -798,6 +805,8 @@ export type CourseCatalogue = {
   examsAccepted: string[];
   collegeCount: number;
   about?: string;
+  /** Set in the admin: 1 first. */
+  priority?: number | null;
   // Detail only
   specialisations?: Specialisation[];
 };
@@ -808,6 +817,8 @@ export type RankingEntry = { collegeSlug: string; rank: number; score?: string }
 export type RankingList = {
   slug: string;
   name: string;
+  /** Where space is tight. Empty or absent: the full name. */
+  shortName?: string;
   authority: string;
   year: number;
   stream?: string;
@@ -1048,7 +1059,6 @@ export type CollectionFilters = {
 export type CollectionPlacements = {
   homepage?: { order: number; limit: number; isVisible: boolean };
   footer?: { column: string; order: number };
-  nav?: { order: number };
 };
 
 export type CollectionSeo = {
@@ -1072,6 +1082,8 @@ export type Collection = {
   filters: CollectionFilters;
   collegeSlugs: string[];
   rankingListSlug: string;
+  /** The header-menu category it sits in (a category id), if any. */
+  menuGroup?: string | null;
   /** The colleges listing it opens, with its filters preset: /colleges?city=Pune&collection=slug. */
   href: string;
   seo: CollectionSeo;
@@ -1145,11 +1157,6 @@ export async function getCollectionLinks(): Promise<{ slug: string; title: strin
   return apiFetch("/collections/links");
 }
 
-/** The collections set to appear in the header menu. */
-export async function getCollectionNav(): Promise<{ slug: string; title: string; href: string; order: number }[]> {
-  return apiFetch("/collections/nav");
-}
-
 /** A published collection's page: its colleges, related collections, and canonical URL. */
 export async function getCollectionPage(slug: string): Promise<CollectionPagePayload> {
   return apiFetch<CollectionPagePayload>(`/collections/${slug}/page`);
@@ -1193,6 +1200,8 @@ export type AdminCourse = {
   /** What the site shows: the typed figure, or the live count when none is typed. */
   shownCount: number;
   about: string | null;
+  /** 1 is shown first in the Courses list and menu. Null: after those that have one. */
+  priority?: number | null;
   isPublished: boolean;
 };
 
@@ -1233,6 +1242,7 @@ export type AdminRanking = {
   id: string;
   slug: string;
   name: string;
+  shortName?: string;
   authority: string;
   year: number;
   stream: string | null;
@@ -1276,6 +1286,8 @@ export type AdminCollectionOptions = {
   credentials: string[];
   rankings: CollectionOption[];
   colleges: { slug: string; name: string; city: string; stream: string }[];
+  /** The header-menu categories a collection can be added to. */
+  menuGroups: { id: string; label: string }[];
 };
 
 /** How many published colleges a membership holds right now, and the first few. */
@@ -1396,6 +1408,7 @@ export async function adminPutContent(token: string, name: "careers" | "highligh
 export type AdminExam = {
   slug: string;
   name: string;
+  shortName?: string;
   conductingBody: string;
   level: "National" | "State";
   mode: string;
@@ -1425,6 +1438,7 @@ export type AdminTopExams = {
 /** What the exam form sends. The slug is made from the name when an exam is created. */
 export type ExamInput = {
   name: string;
+  shortName: string;
   conductingBody: string;
   level: "National" | "State";
   mode: string;
@@ -2333,7 +2347,7 @@ export async function adminDeleteArticle(token: string, slug: string) {
 
 export type RecordCourse = { name: string; specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null };
 export type RecordPlacement = { year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[]; breakdown: PlacementBreakdown[] };
-export type RecordCutoff = { exam: string; category: string; score: string };
+export type RecordCutoff = { exam: string; category: string; course: string; specialisation: string; score: string };
 export type RecordReview = {
   id?: string;
   author: string;
@@ -2496,16 +2510,29 @@ export type ListingSlot = {
   limit: number;
 };
 
-export async function getListingSlots(page: ListingPage): Promise<{ slots: ListingSlot[] }> {
-  return apiFetch<{ slots: ListingSlot[] }>(`/listing-slots/${page}`);
+/** What sits between the listed colleges. `custom` is true when this selection (or the page, with no selection) has a set of its own. */
+export type ListingSlots = { slots: ListingSlot[]; custom: boolean };
+
+/** The set for a selection of the header menu ("course=MBA"), else the page's. */
+export async function getListingSlots(page: ListingPage, scope?: string): Promise<ListingSlots> {
+  return apiFetch<ListingSlots>(`/listing-slots/${page}${scopeQuery(scope)}`);
 }
 
-export async function adminGetListingSlots(token: string, page: ListingPage): Promise<{ slots: ListingSlot[] }> {
-  return adminRequest<{ slots: ListingSlot[] }>(token, "GET", `/admin/listing-slots/${page}`);
+export async function adminGetListingSlots(token: string, page: ListingPage, scope?: string): Promise<ListingSlots> {
+  return adminRequest<ListingSlots>(token, "GET", `/admin/listing-slots/${page}${scopeQuery(scope)}`);
 }
 
-export async function adminPutListingSlots(token: string, page: ListingPage, slots: ListingSlot[]) {
-  return adminRequest<{ message: string }>(token, "PUT", `/admin/listing-slots/${page}`, { slots });
+export async function adminPutListingSlots(token: string, page: ListingPage, slots: ListingSlot[], scope?: string) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/listing-slots/${page}${scopeQuery(scope)}`, { slots });
+}
+
+export async function adminResetListingSlots(token: string, page: ListingPage, scope: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/listing-slots/${page}${scopeQuery(scope)}`);
+}
+
+/** The selections that already have a set of their own. */
+export async function adminListingSlotScopes(token: string, page: ListingPage): Promise<string[]> {
+  return adminRequest<string[]>(token, "GET", `/admin/listing-slots/${page}/scopes`);
 }
 
 // ── A college's place in the ranking lists ────────────────────────────────
@@ -2664,21 +2691,93 @@ export const adminResolveThread = (token: string, id: string) => adminRequest<Th
 // ── The colleges menu in the header: what the admin decided about it ──────
 
 /** `excluded` lists the institutes (by slug) the link's listing leaves out. */
-export type NavItemConfig = { label: string; hidden: boolean; seoTitle: string; seoDescription: string; excluded: string[] };
-export type NavGroupConfig = { label: string; hidden: boolean; limit: number; order: string[]; items: Record<string, NavItemConfig> };
+/** `priority` gives institutes of the link's list a place: slug -> 1, 2, 3... (1 first). */
+export type NavItemConfig = { label: string; hidden: boolean; seoTitle: string; seoDescription: string; excluded: string[]; priority: Record<string, number> };
+/** `collections` are the slugs of collections added to the category, shown with its other links. */
+export type NavGroupConfig = { label: string; hidden: boolean; limit: number; order: string[]; items: Record<string, NavItemConfig>; collections: string[] };
 /** Nothing in a field means "as the directory has it". Groups are named by the menu's own ids ("course", "location"...). */
 /** A category the admin added to the menu: a name and the collections it links to. Its id starts with "custom-". */
 export type NavCustomGroup = { id: string; label: string; collections: string[] };
 export type NavMenuConfig = { order: string[]; groups: Record<string, NavGroupConfig>; custom: NavCustomGroup[] };
 
-export async function getNavMenuConfig(): Promise<NavMenuConfig> {
-  return apiFetch<NavMenuConfig>("/nav/colleges-menu");
+/** The site has two header menus, each with its own saved choices. */
+export type NavMenuName = "colleges" | "courses";
+
+export async function getNavMenuConfig(menu: NavMenuName = "colleges"): Promise<NavMenuConfig> {
+  return apiFetch<NavMenuConfig>(`/nav/${menu}-menu`);
 }
 
-export async function adminGetNavMenuConfig(token: string): Promise<NavMenuConfig> {
-  return adminRequest<NavMenuConfig>(token, "GET", "/admin/nav/colleges-menu");
+/** The five figures on a course's card. Empty means not shown. */
+export type CourseInfo = { duration: string; averageFees: string; examsAccepted: string[]; modes: string[]; eligibility: string; priority: number | null };
+
+export async function adminPutCourseInfo(token: string, slug: string, info: CourseInfo) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/courses/${encodeURIComponent(slug)}/info`, info);
 }
 
-export async function adminPutNavMenuConfig(token: string, value: NavMenuConfig) {
-  return adminRequest<{ message: string }>(token, "PUT", "/admin/nav/colleges-menu", value);
+// ── Which colleges teach a course, and what each says about it ──────────
+
+export type CollegeCourseRow = { specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null };
+export type CourseCollegesData = {
+  course: { slug: string; name: string };
+  colleges: { slug: string; name: string; city: string; stream: string; status: string; rows: CollegeCourseRow[] }[];
+  /** The specialisations of this course in the catalogue. */
+  specialisations: string[];
+  exams: string[];
+  modes: string[];
+};
+
+export async function adminGetCourseColleges(token: string, slug: string): Promise<CourseCollegesData> {
+  return adminRequest<CourseCollegesData>(token, "GET", `/admin/courses/${encodeURIComponent(slug)}/colleges`);
+}
+
+export async function adminPutCourseColleges(token: string, slug: string, colleges: { slug: string; rows: CollegeCourseRow[] }[]) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/courses/${encodeURIComponent(slug)}/colleges`, { colleges });
+}
+
+// ── Which category comes first in each homepage section ──────────────────
+
+export type CategoryPrioritySection = "topColleges" | "topExams" | "careers" | "universities";
+/** Category names, first priority first, for each section. Empty: the Fields list's own order. */
+export type CategoryPriority = Record<CategoryPrioritySection, string[]>;
+export const NO_CATEGORY_PRIORITY: CategoryPriority = { topColleges: [], topExams: [], careers: [], universities: [] };
+
+export async function getCategoryPriority(): Promise<CategoryPriority> {
+  return apiFetch<CategoryPriority>("/home/category-priority");
+}
+
+export async function adminGetCategoryPriority(token: string): Promise<CategoryPriority> {
+  return adminRequest<CategoryPriority>(token, "GET", "/admin/home-category-priority");
+}
+
+export async function adminPutCategoryPriority(token: string, section: CategoryPrioritySection, order: string[]) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/home-category-priority/${section}`, { order });
+}
+
+// ── Priority: which institutes come first ────────────────────────────────
+
+export type PriorityRow = { slug: string; name: string; city: string; stream: string; status: string; priority: number | null; rank: number | null };
+
+export async function adminGetDefaultPriorities(token: string): Promise<PriorityRow[]> {
+  return adminRequest<PriorityRow[]>(token, "GET", "/admin/priority/default");
+}
+
+export async function adminSetDefaultPriorities(token: string, priorities: Record<string, number | null>) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/priority/default", { priorities });
+}
+
+export async function adminSetMenuPriorities(token: string, menu: string, priority: Record<string, number>) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/priority/menu", { menu, priority });
+}
+
+/** Who holds a rank in a ranking list. `exclude` is the college being edited, which may keep its own rank. */
+export async function adminRankHolder(token: string, list: string, rank: number, exclude: string) {
+  return adminRequest<{ holder: { slug: string; name: string } | null; list: string }>(token, "GET", `/admin/rankings/${encodeURIComponent(list)}/rank/${rank}?exclude=${encodeURIComponent(exclude)}`);
+}
+
+export async function adminGetNavMenuConfig(token: string, menu: NavMenuName = "colleges"): Promise<NavMenuConfig> {
+  return adminRequest<NavMenuConfig>(token, "GET", `/admin/nav/${menu}-menu`);
+}
+
+export async function adminPutNavMenuConfig(token: string, value: NavMenuConfig, menu: NavMenuName = "colleges") {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/nav/${menu}-menu`, value);
 }

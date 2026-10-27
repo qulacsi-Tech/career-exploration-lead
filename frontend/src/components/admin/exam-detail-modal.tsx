@@ -43,6 +43,7 @@ const TABS: { id: TabId; label: string }[] = [
 function toInput(e: AdminExam): ExamInput {
   return {
     name: e.name,
+    shortName: e.shortName ?? "",
     conductingBody: e.conductingBody,
     level: e.level,
     mode: e.mode,

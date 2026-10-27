@@ -84,10 +84,10 @@ export function ratioProblem(value: string): string | null {
   return RATIO.test(value.trim()) ? null : "Write the ratio as 15:1, both numbers above zero.";
 }
 
+/** A score may be any text. One that says percentile or percentage has its first number capped at 100. */
 export function scoreProblem(value: string): string | null {
   const numbers = [...value.replace(/,/g, "").matchAll(/\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
-  if (numbers.length === 0) return "A cut-off needs a number, such as 98 percentile or rank 1200.";
-  if (/percentile|%ile|\bpct\b/i.test(value) && numbers[0] > 100) return "A percentile must be between 0 and 100.";
+  if (numbers.length > 0 && /percentile|%ile|\bpct\b|%/i.test(value) && numbers[0] > 100) return "A percentile or percentage must be between 0 and 100.";
   return null;
 }
 

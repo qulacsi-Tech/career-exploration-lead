@@ -84,7 +84,8 @@ type Draft = {
   faqs: Faq[];
   homepageOn: boolean; homepageOrder: string; homepageLimit: string; homepageVisible: boolean;
   footerOn: boolean; footerColumn: string; footerOrder: string;
-  navOn: boolean; navOrder: string;
+  /** The header menu: whether, which category (an id, or "new"), and the new category's name. */
+  navOn: boolean; navGroup: string; navName: string;
   isPublished: boolean;
 };
 
@@ -93,19 +94,19 @@ const blankDraft = (): Draft => ({
   heading: "", subheading: "", authorName: "", authorRole: "", authorPhoto: "", intro: "", metaTitle: "", metaDescription: "", canonical: "", faqs: [],
   homepageOn: false, homepageOrder: "0", homepageLimit: "6", homepageVisible: true,
   footerOn: false, footerColumn: "", footerOrder: "0",
-  navOn: false, navOrder: "0",
+  navOn: false, navGroup: "", navName: "",
   isPublished: false,
 });
 
 function draftOf(c: Collection): Draft {
-  const { homepage, footer, nav } = c.placements ?? {};
+  const { homepage, footer } = c.placements ?? {};
   return {
     title: c.title, slug: c.slug, membership: c.membership, filters: c.filters ?? {}, rankingListSlug: c.rankingListSlug ?? "", collegeSlugs: c.collegeSlugs ?? [],
     heading: c.heading ?? "", subheading: c.subheading ?? "", authorName: c.author?.name ?? "", authorRole: c.author?.role ?? "", authorPhoto: c.author?.photo ?? "", intro: introText(c.seo?.intro),
     metaTitle: c.seo?.metaTitle ?? "", metaDescription: c.seo?.metaDescription ?? "", canonical: c.seo?.canonical ?? "", faqs: c.seo?.faqs ?? [],
     homepageOn: !!homepage, homepageOrder: String(homepage?.order ?? 0), homepageLimit: String(homepage?.limit ?? 6), homepageVisible: homepage?.isVisible ?? true,
     footerOn: !!footer, footerColumn: footer?.column ?? "", footerOrder: String(footer?.order ?? 0),
-    navOn: !!nav, navOrder: String(nav?.order ?? 0),
+    navOn: !!c.menuGroup, navGroup: c.menuGroup ?? "", navName: "",
     isPublished: c.isPublished,
   };
 }
@@ -128,7 +129,7 @@ function toPayload(d: Draft, isNew: boolean): Record<string, unknown> {
     collegeSlugs: d.membership === "picked" ? d.collegeSlugs : [],
     homepage: d.homepageOn ? { order: num(d.homepageOrder), limit: num(d.homepageLimit), isVisible: d.homepageVisible } : null,
     footer: d.footerOn ? { column: d.footerColumn.trim(), order: num(d.footerOrder) } : null,
-    nav: d.navOn ? { order: num(d.navOrder) } : null,
+    menu: d.navOn ? { group: d.navGroup, name: d.navName.trim() } : null,
     seo: {
       metaTitle: d.metaTitle.trim(),
       metaDescription: d.metaDescription.trim(),
@@ -466,10 +467,22 @@ function CollectionForm({ options, collection }: { options: AdminCollectionOptio
 
         {/* Where it shows */}
         <div className={`space-y-6 ${panel("where")}`}>
-          <AdminSubsection title="Header menu" description="A link under “Featured Collections” in the site header's colleges menu.">
+          <AdminSubsection title="Header menu" description="A link in the site header's colleges menu, under the category you choose.">
             <Toggle checked={d.navOn} onChange={(v) => set({ navOn: v })}>Show in the header menu</Toggle>
             {d.navOn && (
-              <div className="mt-3 max-w-xs"><Text label="Order in the menu" value={d.navOrder} onChange={(v) => set({ navOrder: v.replace(/\D/g, "") })} hint="Smaller comes first. Rename or hide it later in Sections → Navigation." /></div>
+              <div className="mt-3 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+                <Labelled label="Category" hint="The collection is listed under this category in the menu.">
+                  <select value={d.navGroup} onChange={(e) => set({ navGroup: e.target.value })} className={input}>
+                    <option value="" disabled>Choose a category</option>
+                    {options.menuGroups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+                    <option value="new">＋ Create a new category…</option>
+                  </select>
+                </Labelled>
+                {d.navGroup === "new" && (
+                  <Text label="New category name" required value={d.navName} max={60} onChange={(v) => set({ navName: v })} placeholder="e.g. Best for Placements" hint="Added to the menu with this collection in it." />
+                )}
+                <p className="text-xs text-ink-faint sm:col-span-2">A collection sits in one category. Rename, reorder or hide categories and links in Sections → Navigation.</p>
+              </div>
             )}
           </AdminSubsection>
           {/* Homepage band: switched off in the form for now. A collection already on the homepage keeps its placement, because it is still sent with the rest of the draft.
@@ -543,7 +556,7 @@ export function CollectionsAdmin({
           key: "shown",
           label: "Shown in",
           render: (c) => {
-            const where = [c.placements?.homepage && "Homepage", c.placements?.footer && "Footer", c.placements?.nav && "Menu"].filter(Boolean);
+            const where = [c.placements?.homepage && "Homepage", c.placements?.footer && "Footer", c.menuGroup && "Menu"].filter(Boolean);
             return where.length ? where.join(", ") : "—";
           },
         },
@@ -567,7 +580,7 @@ export function CollectionsAdmin({
           <AdminSubsection title="Where it shows">
             <p className="text-sm text-ink-soft">Homepage: {c.placements?.homepage ? `order ${c.placements.homepage.order}, ${c.placements.homepage.limit} cards${c.placements.homepage.isVisible ? "" : ", hidden"}` : "not shown"}</p>
             <p className="mt-1 text-sm text-ink-soft">Footer: {c.placements?.footer ? `${c.placements.footer.column}, order ${c.placements.footer.order}` : "not linked"}</p>
-            <p className="mt-1 text-sm text-ink-soft">Header menu: {c.placements?.nav ? `order ${c.placements.nav.order}` : "not shown"}</p>
+            <p className="mt-1 text-sm text-ink-soft">Header menu: {c.menuGroup ? `under ${options.menuGroups.find((g) => g.id === c.menuGroup)?.label ?? "a category"}` : "not shown"}</p>
           </AdminSubsection>
           <AdminSubsection title="Search copy">
             <p className="text-sm font-medium text-ink">{c.seo?.metaTitle || "—"}</p>

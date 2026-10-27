@@ -16,6 +16,7 @@ import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/adm
 import { AdminModal } from "@/components/admin/admin-modal";
 import { ListingHeaderButton } from "@/components/admin/listing-header-modal";
 import { ListingSlotsButton } from "@/components/admin/listing-slots-modal";
+import { PriorityButton, type PriorityLink } from "@/components/admin/priority-modal";
 import { StateCityFields } from "@/components/admin/state-city-fields";
 import { CategoryTicks, CourseTicks, type CoursePick } from "@/components/admin/college-editor/course-picker";
 import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
@@ -32,7 +33,7 @@ import { PlacementBreakdownTable } from "@/components/college/placement-breakdow
  * enough attached to it that showing any of it inline makes the list unusable
  * once there are more than a handful of records.
  */
-export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null }: { colleges: College[]; geo?: IndiaGeo; streams?: string[]; pools?: CollegePools | null }) {
+export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, priorityLinks = [] }: { colleges: College[]; geo?: IndiaGeo; streams?: string[]; pools?: CollegePools | null; priorityLinks?: PriorityLink[] }) {
   const [query, setQuery] = useState("");
   const [programSlug, setProgramSlug] = useState("");
   const [rankingSlug, setRankingSlug] = useState("");
@@ -101,7 +102,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null }
     const matching = q ? inStream.filter((c) => [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q))) : inStream;
     if (!sort) return matching; // the order the server sent: newest first
     const value = (c: College) =>
-      ({ name: c.name, location: `${c.city}, ${c.state}`, ownership: c.ownership, stream: c.stream, courses: c.coursesOffered, rating: nirfRank(c) ?? Number.MAX_SAFE_INTEGER })[sort.key];
+      ({ name: c.name, location: `${c.city}, ${c.state}`, ownership: c.ownership, stream: c.stream, courses: c.coursesOffered, rating: nirfRank(c) ?? Number.MAX_SAFE_INTEGER, priority: c.priority ?? Number.MAX_SAFE_INTEGER })[sort.key];
     const sign = sort.dir === "asc" ? 1 : -1;
     return [...matching].sort((a, b) => {
       const x = value(a);
@@ -120,6 +121,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null }
         description="Every institute in the directory, with its courses, fees, placements and SEO fields."
         actions={
           <>
+            <PriorityButton links={priorityLinks} />
             <ListingHeaderButton page="colleges" label="Header management" />
             <ListingSlotsButton page="colleges" label="Banners, filters & ads" />
             <button
@@ -219,6 +221,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null }
                 <SortHeader label="Stream" k="stream" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Courses" k="courses" sort={sort} onSort={toggleSort} />
                 <SortHeader label="NIRF" k="rating" sort={sort} onSort={toggleSort} />
+                <SortHeader label="Priority" k="priority" sort={sort} onSort={toggleSort} />
                 <th scope="col" className="sticky right-0 bg-surface py-2 pl-3 text-right font-semibold shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">Actions</th>
               </tr>
             </thead>
@@ -258,6 +261,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null }
                       </>
                     )}
                   </td>
+                  <td className="py-3 pr-3 tabular-nums text-ink-soft">{college.priority ?? <span className="text-ink-faint">—</span>}</td>
                   <td className="sticky right-0 bg-surface py-3 pl-3 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">
                     <div className="flex justify-end gap-2">
                       {/* View is switched off for now; the dialog behind it is kept.
@@ -451,8 +455,8 @@ function ViewCollegeModal({
           <AdminSubsection title="Cutoffs">
             <ul className="space-y-1 text-sm text-ink-soft">
               {(college.cutoffs ?? []).map((cutoff) => (
-                <li key={`${cutoff.exam}-${cutoff.category}`}>
-                  <span className="font-medium text-ink">{cutoff.exam}</span> · {cutoff.category} ·{" "}
+                <li key={`${cutoff.exam}-${cutoff.category}-${cutoff.course}-${cutoff.specialisation}`}>
+                  <span className="font-medium text-ink">{cutoff.exam}</span> · {[cutoff.course, cutoff.specialisation].filter(Boolean).join(" ") || "every programme"} · {cutoff.category} ·{" "}
                   {cutoff.score}
                 </li>
               ))}
@@ -483,7 +487,7 @@ function ViewCollegeModal({
   );
 }
 
-type SortKey = "name" | "location" | "ownership" | "stream" | "courses" | "rating";
+type SortKey = "name" | "location" | "ownership" | "stream" | "courses" | "rating" | "priority";
 
 function SortHeader({ label, k, sort, onSort }: { label: string; k: SortKey; sort: { key: SortKey; dir: "asc" | "desc" } | null; onSort: (k: SortKey) => void }) {
   const on = sort?.key === k;
@@ -820,6 +824,7 @@ function AddCollegeForm({ onDone, onDirty, geo, streams, pools }: { onDone: (for
         slugPlaceholder="bengaluru-institute-of-management"
         nameError={fieldErrors.name}
       />
+      <TextField label="Short name" name="shortName" placeholder="BIMS Bengaluru" maxLength={80} hint="Used where space is tight. Empty: the full name." />
 
       <StateCityFields geo={geo} />
 

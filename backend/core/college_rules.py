@@ -126,13 +126,14 @@ def check_ratio(value: str) -> str:
 
 
 def check_score(value: str) -> str:
-    """A cut-off: a percentile (0-100), a rank or marks. It needs a number; a percentile is capped."""
+    """A cut-off: any text ("98 percentile", "Rank 1200", "172/300 marks", "Closed"). If it says percentile or
+    percentage, its first number is capped at 100."""
     value = (value or "").strip()
+    if not value:
+        raise ValueError("A cut-off needs a score.")
     numbers = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", value.replace(",", ""))]
-    if not numbers:
-        raise ValueError("A cut-off needs a number, such as 98 percentile or rank 1200.")
-    if re.search(r"percentile|%ile|\bpct\b", value, re.IGNORECASE) and numbers[0] > 100:
-        raise ValueError("A percentile must be between 0 and 100.")
+    if numbers and re.search(r"percentile|%ile|\bpct\b|%", value, re.IGNORECASE) and numbers[0] > 100:
+        raise ValueError("A percentile or percentage must be between 0 and 100.")
     return value
 
 

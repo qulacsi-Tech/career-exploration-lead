@@ -7,7 +7,7 @@ from schemas.college import CollegeDetailSchema, CollegeFilterParams, CollegeLis
 from schemas.common import ListResponse, Meta, SuccessResponse
 from services.college import CollegeService
 from services.collections import CollectionService
-from routers.nav_menu import excluded_for
+from routers.nav_menu import menu_settings
 
 router = APIRouter(prefix="/colleges", tags=["colleges"])
 
@@ -52,8 +52,10 @@ async def list_colleges(
         if picked:
             params.slugs, params.order_list = picked
     if menu:
-        # A header-menu link can leave some institutes out of the list it opens.
-        params.exclude_slugs = await excluded_for(db, menu) or None
+        # A header-menu link can leave some institutes out of the list it opens, and put some first.
+        excluded, priority = await menu_settings(db, menu)
+        params.exclude_slugs = excluded or None
+        params.priority = priority or None
     svc = CollegeService(db)
     colleges, meta = await svc.list_colleges(params)
     return ListResponse[CollegeListSchema](data=colleges, meta=meta)

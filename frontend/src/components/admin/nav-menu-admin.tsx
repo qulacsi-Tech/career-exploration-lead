@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ChevronDown, Eye, EyeOff, FolderPlus, Search, Trash2, Users, X } from "lucide-react";
 import { loadLinkInstitutes, saveNavMenu } from "@/lib/admin-actions";
-import type { NavGroupConfig, NavItemConfig, NavMenuConfig } from "@/lib/api";
-import { customSource, ordered, type SourceGroup } from "@/components/colleges-menu-data";
-import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
+import type { NavGroupConfig, NavItemConfig, NavMenuConfig, NavMenuName } from "@/lib/api";
+import { ordered, withCollections, type SourceGroup, type SourceItem } from "@/components/colleges-menu-data";
+import { AdminSection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
 
 const input = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
@@ -14,10 +14,11 @@ const iconButton = "grid h-8 w-8 place-items-center rounded-lg border border-lin
 const ghostButton = "rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand";
 const primaryButton = "rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50";
 
-type CollectionLink = { slug: string; title: string; href: string };
+/** What an added category can hold. `slug` is what the menu saves for it; `hint` is the line shown under it when choosing. */
+type CollectionLink = { slug: string; title: string; href: string; hint?: string };
 
-const emptyGroup = (): NavGroupConfig => ({ label: "", hidden: false, limit: 0, order: [], items: {} });
-const emptyItem = (): NavItemConfig => ({ label: "", hidden: false, seoTitle: "", seoDescription: "", excluded: [] });
+const emptyGroup = (): NavGroupConfig => ({ label: "", hidden: false, limit: 0, order: [], items: {}, collections: [] });
+const emptyItem = (): NavItemConfig => ({ label: "", hidden: false, seoTitle: "", seoDescription: "", excluded: [], priority: {} });
 const newId = () => `custom-${(Math.random().toString(36) + "00000000").slice(2, 10)}`;
 
 /** Moves the entry at `from` by `by` places. */
@@ -37,10 +38,10 @@ function tidy(config: NavMenuConfig, source: SourceGroup[]): NavMenuConfig {
     if (!c) continue;
     const keys = new Set(g.items.map((i) => i.key));
     const items = Object.fromEntries(
-      Object.entries(c.items).filter(([k, v]) => keys.has(k) && (v.label || v.hidden || v.seoTitle || v.seoDescription || v.excluded.length > 0)),
+      Object.entries(c.items).filter(([k, v]) => keys.has(k) && (v.label || v.hidden || v.seoTitle || v.seoDescription || v.excluded.length > 0 || Object.keys(v.priority).length > 0)),
     );
     const order = c.order.filter((k) => keys.has(k));
-    if (c.label || c.hidden || c.limit || order.length || Object.keys(items).length) groups[g.id] = { ...c, order, items };
+    if (c.label || c.hidden || c.limit || order.length || c.collections.length || Object.keys(items).length) groups[g.id] = { ...c, order, items };
   }
   return { order: config.order.filter((id) => source.some((g) => g.id === id)), groups, custom: config.custom };
 }
@@ -51,7 +52,10 @@ function tidy(config: NavMenuConfig, source: SourceGroup[]): NavMenuConfig {
  * title and description each link's listing page gets, and which institutes a link leaves out. It
  * also adds categories of its own, each made of collections.
  */
-export function NavMenuAdmin({ source: builtIn, links, initial }: { source: SourceGroup[]; links: CollectionLink[]; initial: NavMenuConfig }) {
+export function NavMenuAdmin({ menu, source: builtIn, links, initial, actions }: { menu: NavMenuName; source: SourceGroup[]; links: CollectionLink[]; initial: NavMenuConfig; actions?: ReactNode }) {
+  // The colleges menu adds collections and can leave institutes out of a link; the courses menu adds courses and specialisations.
+  const isCourses = menu === "courses";
+  const noun = isCourses ? "course" : "collection";
   const router = useRouter();
   const [config, setConfig] = useState<NavMenuConfig>(initial);
   const [activeId, setActiveId] = useState(builtIn[0]?.id ?? "");
@@ -63,7 +67,7 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
   const [picker, setPicker] = useState<{ id: string } | null>(null);
   const [viewing, setViewing] = useState<{ groupId: string; key: string; label: string; href: string } | null>(null);
 
-  const source = useMemo(() => [...builtIn, ...customSource(config.custom, links)], [builtIn, config.custom, links]);
+  const source = useMemo(() => withCollections(builtIn, config, links), [builtIn, config, links]);
   const groups = ordered(source, config.order, (g) => g.id);
   const group = source.find((g) => g.id === activeId) ?? groups[0];
   const groupConfig = (id: string) => config.groups[id] ?? emptyGroup();
@@ -89,15 +93,25 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
     const g = source.find((s) => s.id === id);
     if (!g) return;
     const keys = ordered(g.items, groupConfig(id).order, (i) => i.key).map((i) => i.key);
-    setGroup(id, { order: move(keys, keys.indexOf(key), by) });
+    // A link moves among the links beside it (same parent); the ones under it stay under it.
+    const parentOf = (k: string) => {
+      const p = g.items.find((i) => i.key === k)?.parent;
+      return p && g.items.some((i) => i.key === p) ? p : "";
+    };
+    const siblings = keys.filter((k) => parentOf(k) === parentOf(key));
+    const other = siblings[siblings.indexOf(key) + by];
+    if (!other) return;
+    const next = [...keys];
+    const [x, y] = [next.indexOf(key), next.indexOf(other)];
+    [next[x], next[y]] = [next[y], next[x]];
+    setGroup(id, { order: next });
   };
 
   // Where each collection already is: in an added category, or in the built-in Featured Collections.
   const usedIn = useMemo(() => {
     const used = new Map<string, { groupId: string; label: string }>();
     for (const g of source) {
-      if (g.id !== "collection" && !g.custom) continue;
-      for (const item of g.items) used.set(item.key, { groupId: g.id, label: groupConfig(g.id).label || g.label });
+      for (const item of g.items) if (item.collection) used.set(item.key, { groupId: g.id, label: groupConfig(g.id).label || g.label });
     }
     return used;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,12 +124,17 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
     setOpenItem(null);
     setPicker(null);
   };
+  /** The collections of any category: an added one keeps them with the category, a built-in one in its settings. */
   const setCollections = (id: string, collections: string[]) => {
-    change((c) => ({ ...c, custom: c.custom.map((x) => (x.id === id ? { ...x, collections } : x)) }));
+    if (id.startsWith("custom-")) change((c) => ({ ...c, custom: c.custom.map((x) => (x.id === id ? { ...x, collections } : x)) }));
+    else setGroup(id, { collections });
     setPicker(null);
   };
   const renameCustom = (id: string, label: string) => change((c) => ({ ...c, custom: c.custom.map((x) => (x.id === id ? { ...x, label } : x)) }));
-  const removeFromCustom = (id: string, slug: string) => change((c) => ({ ...c, custom: c.custom.map((x) => (x.id === id ? { ...x, collections: x.collections.filter((s) => s !== slug) } : x)) }));
+  const removeCollection = (id: string, slug: string) => {
+    if (id.startsWith("custom-")) change((c) => ({ ...c, custom: c.custom.map((x) => (x.id === id ? { ...x, collections: x.collections.filter((s) => s !== slug) } : x)) }));
+    else setGroup(id, { collections: groupConfig(id).collections.filter((s) => s !== slug) });
+  };
   const deleteCustom = (id: string) => {
     change((c) => {
       const groups = { ...c.groups };
@@ -130,7 +149,7 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
     startTransition(async () => {
       const blank = config.custom.find((c) => !c.label.trim());
       if (blank) return setMessage({ kind: "error", text: "Every added category needs a name." });
-      const result = await saveNavMenu(tidy(config, source));
+      const result = await saveNavMenu(tidy(config, source), menu);
       if ("error" in result) {
         setMessage({ kind: "error", text: result.error });
         return;
@@ -142,22 +161,30 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
   };
 
   const gc = group ? groupConfig(group.id) : emptyGroup();
-  const items = group ? ordered(group.items, gc.order, (i) => i.key) : [];
-  const shown = items.filter((i) => !gc.items[i.key]?.hidden).length;
+  const flat = group ? ordered(group.items, gc.order, (i) => i.key) : [];
+  const nested = (i: SourceItem) => Boolean(i.parent && flat.some((p) => p.key === i.parent));
+  // Each link, then the ones under it.
+  const items = flat.filter((i) => !nested(i)).flatMap((i) => [i, ...flat.filter((child) => child.parent === i.key)]);
+  const beside = (i: SourceItem) => items.filter((o) => (nested(o) ? o.parent : "") === (nested(i) ? i.parent : ""));
+  const shown = flat.filter((i) => !nested(i) && !gc.items[i.key]?.hidden).length;
   const custom = group?.custom ? config.custom.find((c) => c.id === group.id) : undefined;
   const takenNames = source.map((g) => (groupConfig(g.id).label || g.label).toLowerCase());
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="Navigation"
-        description="The “Top Ranked Colleges” menu in the site header. The groups and links come from the directory, so a new course or city appears on its own. Here you choose which to show, their order and names, which institutes each link opens, and the page title and description each link's listing page gets. You can also add categories of your own, made of collections."
-        actions={
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <p className="max-w-3xl text-sm text-ink-soft">
+          {isCourses
+            ? "The “Courses” menu in the site header. The groups and links come from the catalogue, so a new course or specialisation appears on its own. Choose which to show and the order they come in (the first is the top priority), and add categories of your own, made of the courses and specialisations you pick."
+            : "The “Top Ranked Colleges” menu in the site header. The groups and links come from the directory, so a new course or city appears on its own. Choose which to show, their order and names, which institutes each link opens (and which come first), and the page title and description each link's listing page gets. You can also add categories of your own, made of collections."}
+        </p>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {actions}
           <button type="button" onClick={save} disabled={pending || !dirty} className={primaryButton}>
             {pending ? "Saving…" : "Save changes"}
           </button>
-        }
-      />
+        </div>
+      </div>
       {message && (
         <p role="status" className={`rounded-lg px-4 py-2.5 text-sm ${message.kind === "ok" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>
           {message.text}
@@ -202,14 +229,14 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
             description={gc.hidden ? "This category is hidden from the menu." : `${shown} of ${group.items.length} links shown.`}
             actions={
               <>
+                <button type="button" onClick={() => setPicker({ id: group.id })} className="inline-flex items-center gap-1.5 rounded-lg border border-brand px-3 py-1.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white">
+                  <FolderPlus className="h-4 w-4" aria-hidden="true" /> Add {noun}s
+                </button>
                 {custom && (
                   <>
-                    <button type="button" onClick={() => setPicker({ id: custom.id })} className="inline-flex items-center gap-1.5 rounded-lg border border-brand px-3 py-1.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white">
-                      <FolderPlus className="h-4 w-4" aria-hidden="true" /> Choose collections
-                    </button>
                     <button
                       type="button"
-                      onClick={() => window.confirm(`Delete the “${custom.label}” category from the menu? The collections themselves are not deleted.`) && deleteCustom(custom.id)}
+                      onClick={() => window.confirm(`Delete the “${custom.label}” category from the menu? The ${noun}s themselves are not deleted.`) && deleteCustom(custom.id)}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft transition hover:border-red-700 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" /> Delete
@@ -224,40 +251,41 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="nav-group-label" className="block text-xs font-semibold text-ink">Name in the menu</label>
+                <label htmlFor={`${menu}-group-label`} className="block text-xs font-semibold text-ink">Name in the menu</label>
                 {custom ? (
-                  <input id="nav-group-label" className={`mt-1.5 ${input}`} value={custom.label} maxLength={60} onChange={(e) => renameCustom(custom.id, e.target.value)} />
+                  <input id={`${menu}-group-label`} className={`mt-1.5 ${input}`} value={custom.label} maxLength={60} onChange={(e) => renameCustom(custom.id, e.target.value)} />
                 ) : (
-                  <input id="nav-group-label" className={`mt-1.5 ${input}`} value={gc.label} maxLength={60} placeholder={group.label} onChange={(e) => setGroup(group.id, { label: e.target.value })} />
+                  <input id={`${menu}-group-label`} className={`mt-1.5 ${input}`} value={gc.label} maxLength={60} placeholder={group.label} onChange={(e) => setGroup(group.id, { label: e.target.value })} />
                 )}
               </div>
               <div>
-                <label htmlFor="nav-group-limit" className="block text-xs font-semibold text-ink">Most links to show</label>
-                <input id="nav-group-limit" type="number" min={0} max={100} className={`mt-1.5 ${input}`} value={gc.limit || ""} placeholder="24 (the default)" onChange={(e) => setGroup(group.id, { limit: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} />
+                <label htmlFor={`${menu}-group-limit`} className="block text-xs font-semibold text-ink">Most links to show</label>
+                <input id={`${menu}-group-limit`} type="number" min={0} max={100} className={`mt-1.5 ${input}`} value={gc.limit || ""} placeholder="24 (the default)" onChange={(e) => setGroup(group.id, { limit: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} />
               </div>
             </div>
 
             {group.items.length === 0 ? (
               <p className="text-sm text-ink-soft">
-                {custom ? "No collections in this category yet. Use “Choose collections” to add some." : "The directory has nothing in this category yet, so it is not in the menu."}
+                {custom ? `No ${noun}s in this category yet. Use “Add ${noun}s” to add some.` : "The directory has nothing in this category yet, so it is not in the menu."}
               </p>
             ) : (
               <ul className="max-h-[34rem] divide-y divide-line-soft overflow-y-auto rounded-lg border border-line">
-                {items.map((item, i) => {
+                {items.map((item) => {
                   const c = gc.items[item.key] ?? emptyItem();
                   const open = openItem === item.key;
                   const hasSeo = Boolean(c.seoTitle || c.seoDescription);
                   // A collection carries its own SEO, set where the collection is edited.
-                  const seoHere = !custom && group.id !== "collection";
+                  const seoHere = !item.collection && !isCourses;
                   return (
                     <li key={item.key} className={c.hidden ? "bg-bg/60" : ""}>
-                      <div className="flex items-center gap-2 px-3 py-2">
-                        {custom ? (
-                          <button type="button" onClick={() => removeFromCustom(custom.id, item.key)} aria-label={`Remove ${item.label} from this category`} className={`${iconButton} hover:border-red-700 hover:text-red-700`}><X className="h-4 w-4" /></button>
+                      <div className={`flex items-center gap-2 py-2 pr-3 ${nested(item) ? "bg-bg-alt/40 pl-10" : "pl-3"}`}>
+                        {item.collection ? (
+                          <button type="button" onClick={() => removeCollection(group.id, item.key)} aria-label={`Remove ${item.label} from this category`} className={`${iconButton} hover:border-red-700 hover:text-red-700`}><X className="h-4 w-4" /></button>
                         ) : (
                           <input type="checkbox" aria-label={`Show ${item.label}`} checked={!c.hidden} onChange={(e) => setItem(group.id, item.key, { hidden: !e.target.checked })} className="h-4 w-4 accent-brand" />
                         )}
                         <input aria-label={`Name for ${item.label}`} className={`${input} ${c.hidden ? "opacity-50" : ""}`} value={c.label} maxLength={80} placeholder={item.label} onChange={(e) => setItem(group.id, item.key, { label: e.target.value })} />
+                        {!isCourses && (
                         <button
                           type="button"
                           onClick={() => setViewing({ groupId: group.id, key: item.key, label: c.label || item.label, href: item.href })}
@@ -268,13 +296,14 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
                           <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                           {c.excluded.length > 0 ? `${c.excluded.length} left out` : "Institutes"}
                         </button>
+                        )}
                         {seoHere && (
                           <button type="button" onClick={() => setOpenItem(open ? null : item.key)} aria-expanded={open} className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${hasSeo ? "border-brand/40 text-brand" : "border-line text-ink-soft"} hover:border-brand hover:text-brand`}>
                             SEO <ChevronDown className={`h-3.5 w-3.5 transition ${open ? "rotate-180" : ""}`} />
                           </button>
                         )}
-                        <button type="button" className={iconButton} aria-label={`Move ${item.label} up`} disabled={i === 0} onClick={() => moveItem(group.id, item.key, -1)}><ArrowUp className="h-4 w-4" /></button>
-                        <button type="button" className={iconButton} aria-label={`Move ${item.label} down`} disabled={i === items.length - 1} onClick={() => moveItem(group.id, item.key, 1)}><ArrowDown className="h-4 w-4" /></button>
+                        <button type="button" className={iconButton} aria-label={`Move ${item.label} up`} disabled={beside(item)[0] === item} onClick={() => moveItem(group.id, item.key, -1)}><ArrowUp className="h-4 w-4" /></button>
+                        <button type="button" className={iconButton} aria-label={`Move ${item.label} down`} disabled={beside(item).at(-1) === item} onClick={() => moveItem(group.id, item.key, 1)}><ArrowDown className="h-4 w-4" /></button>
                       </div>
                       {open && seoHere && (
                         <div className="space-y-3 border-t border-line-soft bg-bg/60 px-4 py-3">
@@ -302,7 +331,8 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
         <CategoryDialog
           key={picker.id || "new"}
           links={links}
-          editing={picker.id ? config.custom.find((c) => c.id === picker.id) : undefined}
+          editing={picker.id ? (config.custom.find((c) => c.id === picker.id) ?? { id: picker.id, label: groupConfig(picker.id).label || source.find((g) => g.id === picker.id)?.label || "", collections: groupConfig(picker.id).collections }) : undefined}
+          noun={noun}
           usedIn={usedIn}
           takenNames={takenNames}
           onClose={() => setPicker(null)}
@@ -332,7 +362,8 @@ export function NavMenuAdmin({ source: builtIn, links, initial }: { source: Sour
  * Adds a category (a name and some collections) or, for an added one, chooses its collections. A
  * collection already in another category is shown as added there and cannot be picked a second time.
  */
-function CategoryDialog({ links, editing, usedIn, takenNames, onClose, onAdd, onSetCollections }: {
+function CategoryDialog({ noun, links, editing, usedIn, takenNames, onClose, onAdd, onSetCollections }: {
+  noun: string;
   links: CollectionLink[];
   editing?: { id: string; label: string; collections: string[] };
   usedIn: Map<string, { groupId: string; label: string }>;
@@ -363,8 +394,8 @@ function CategoryDialog({ links, editing, usedIn, takenNames, onClose, onAdd, on
       open
       onClose={onClose}
       size="lg"
-      title={editing ? `Collections in “${editing.label}”` : "Add a category to the menu"}
-      description={editing ? "Tick the collections this category links to." : "Name it and choose the collections it links to. Each opens the colleges list with its filters applied."}
+      title={editing ? `${noun === "course" ? "Courses" : "Collections"} in “${editing.label}”` : "Add a category to the menu"}
+      description={editing ? `Tick the ${noun}s this category links to.` : noun === "course" ? "Name it and choose the courses and specialisations it links to." : "Name it and choose the collections it links to. Each opens the colleges list with its filters applied."}
       footer={
         <>
           <button type="button" onClick={onClose} className={ghostButton}>Cancel</button>
@@ -383,14 +414,14 @@ function CategoryDialog({ links, editing, usedIn, takenNames, onClose, onAdd, on
 
         <div>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold text-ink">Collections <span className="font-normal text-ink-faint">({chosen.length} chosen)</span></p>
+            <p className="text-xs font-semibold text-ink">{noun === "course" ? "Courses and specialisations" : "Collections"} <span className="font-normal text-ink-faint">({chosen.length} chosen)</span></p>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-faint" aria-hidden="true" />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search collections" aria-label="Search collections" className="w-52 rounded-lg border border-line bg-bg py-1.5 pl-8 pr-3 text-xs focus:border-brand focus:outline-none" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${noun}s`} aria-label={`Search ${noun}s`} className="w-52 rounded-lg border border-line bg-bg py-1.5 pl-8 pr-3 text-xs focus:border-brand focus:outline-none" />
             </div>
           </div>
           {links.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-ink-soft">No published collections yet. Create and publish one in Content → Collections first.</p>
+            <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-ink-soft">{noun === "course" ? "The catalogue has no published courses yet. Add them in Content → Catalogue first." : "No published collections yet. Create and publish one in Content → Collections first."}</p>
           ) : (
             <ul className="max-h-80 divide-y divide-line-soft overflow-y-auto rounded-lg border border-line">
               {shown.map((l) => {
@@ -403,7 +434,7 @@ function CategoryDialog({ links, editing, usedIn, takenNames, onClose, onAdd, on
                       <input type="checkbox" checked={on || taken} disabled={taken} onChange={() => toggle(l.slug)} className="h-4 w-4 accent-brand" />
                       <span className="min-w-0 flex-1">
                         <span className={`block truncate text-sm ${taken ? "text-ink-faint" : "text-ink"}`}>{l.title}</span>
-                        <span className="block truncate text-xs text-ink-faint">{l.href}</span>
+                        <span className="block truncate text-xs text-ink-faint">{l.hint ?? l.href}</span>
                       </span>
                       {taken && <span className="shrink-0 rounded-full bg-gold-soft px-2.5 py-0.5 text-xs font-semibold text-gold">Already added in {elsewhere.label}</span>}
                     </label>

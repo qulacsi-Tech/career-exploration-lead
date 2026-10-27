@@ -114,6 +114,8 @@ class NewCourse(BaseModel):
 
 class CollegeCreateBody(BaseModel):
     name: str = Field(min_length=2, max_length=500)
+    # Where space is tight (headings, menus); kept on the college's page record. Empty: the full name.
+    shortName: Optional[str] = Field(default=None, max_length=80)
     slug: str = Field(min_length=2, max_length=200, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
     city: str = Field(min_length=1, max_length=200)
     state: str = Field(min_length=1, max_length=200)
@@ -218,6 +220,7 @@ async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db
         ranking_rank=body.rankingRank,
         established=body.established,
         image=body.image or "",
+        detail={"shortName": body.shortName.strip()} if body.shortName and body.shortName.strip() else {},
         # Not public until someone has looked at it and published it.
         status="draft",
     )
@@ -324,6 +327,7 @@ class ExamFaqBody(BaseModel):
 
 class ExamUpdateBody(BaseModel):
     name: Optional[str] = None
+    shortName: Optional[str] = Field(default=None, max_length=100)
     conductingBody: Optional[str] = None
     description: Optional[str] = None
     registrationCloses: Optional[str] = None
@@ -351,6 +355,7 @@ class ExamUpdateBody(BaseModel):
 class ExamCreateBody(BaseModel):
     slug: str = Field(min_length=2, max_length=200, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
     name: str = Field(min_length=2, max_length=500)
+    shortName: Optional[str] = Field(default=None, max_length=100)
     conductingBody: str = Field(min_length=2, max_length=200)
     level: ExamLevel
     description: str = Field(min_length=1)
@@ -388,6 +393,7 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
         id=uuid.uuid4(),
         slug=body.slug,
         name=body.name,
+        short_name=(body.shortName or "").strip(),
         conducting_body=body.conductingBody,
         level=body.level,
         description=body.description,
@@ -417,6 +423,7 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
 
     values: dict = {}
     if body.name is not None:                values["name"] = body.name
+    if body.shortName is not None:           values["short_name"] = body.shortName.strip()
     if body.level is not None:               values["level"] = body.level
     if body.conductingBody is not None:      values["conducting_body"] = body.conductingBody
     if body.description is not None:         values["description"] = body.description

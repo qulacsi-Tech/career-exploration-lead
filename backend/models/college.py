@@ -35,6 +35,8 @@ class College(Base):
     institution_type = Column(String(20), nullable=False, default="College", server_default="College")
     ranking_authority = Column(String(100), nullable=True)
     ranking_rank = Column(Integer, nullable=True)
+    # Default priority: 1 is shown first. Empty: after the colleges that have one, by NIRF rank.
+    priority = Column(Integer, nullable=True, index=True)
     rating = Column(Float, nullable=False, default=0.0)
     review_count = Column(Integer, nullable=False, default=0)
     courses_offered = Column(Integer, nullable=False, default=0)

@@ -1,4 +1,4 @@
-import { adminGetContent, adminGetHomeCopy, adminGetFields, adminGetHeroItems, adminGetGeo, adminGetHomeLocations, adminGetLocationLabels, adminGetLocationPicker, adminGetLinkPool, adminGetNews, adminGetHomepage, adminGetTopExams, adminGetUniversities, adminListPrograms, ApiError } from "@/lib/api";
+import { adminGetContent, adminGetHomeCopy, adminGetFields, adminGetHeroItems, adminGetGeo, adminGetHomeLocations, adminGetLocationLabels, adminGetLocationPicker, adminGetLinkPool, adminGetNews, adminGetCategoryPriority, adminGetHomepage, adminGetTopExams, adminGetUniversities, adminListPrograms, ApiError } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
 import { HomepageSectionsAdmin } from "@/components/admin/homepage-sections-admin";
 
@@ -14,7 +14,7 @@ function named<T>(name: string, call: Promise<T>): Promise<T> {
 }
 
 export default async function AdminHomepageSectionsPage() {
-  const [homepage, careers, highlights, topExams, copy, programs, universities, locations, geo, locationLabels, fieldList, hero, picker, linkPool, news] = await withAdminToken((token) =>
+  const [homepage, careers, highlights, topExams, copy, programs, universities, locations, geo, locationLabels, fieldList, hero, picker, linkPool, news, categoryPriority] = await withAdminToken((token) =>
     Promise.all([
       named("homepage bands", adminGetHomepage(token)),
       named("careers", adminGetContent(token, "careers")),
@@ -31,6 +31,7 @@ export default async function AdminHomepageSectionsPage() {
       named("location picker", adminGetLocationPicker(token)),
       named("link pool", adminGetLinkPool(token)),
       named("news", adminGetNews(token)),
+      named("category priority", adminGetCategoryPriority(token)),
     ]),
   );
   return (
@@ -51,6 +52,7 @@ export default async function AdminHomepageSectionsPage() {
       fieldList={fieldList}
       heroItems={hero.items}
       heroMax={hero.max}
+      categoryPriority={categoryPriority}
     />
   );
 }

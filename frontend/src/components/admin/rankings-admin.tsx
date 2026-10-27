@@ -41,6 +41,8 @@ function EntriesEditor({
   );
 
   const available = colleges.filter((c) => !used.has(c.slug));
+  // A rank belongs to one college in a list: a row that repeats one says who has it.
+  const sharedWith = (row: Row) => (/^\d+$/.test(row.rank) ? rows.find((r) => r !== row && r.rank.trim() === row.rank.trim()) : undefined);
 
   return (
     <div className="space-y-3">
@@ -88,6 +90,11 @@ function EntriesEditor({
                 className="mt-1.5 w-full rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none"
               />
             </div>
+            {sharedWith(row) && (
+              <p role="alert" className="col-span-full -mt-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
+                Rank {row.rank} is already held by {nameOf(sharedWith(row)!.collegeSlug)}. Each rank belongs to one college in a list.
+              </p>
+            )}
             <button
               type="button"
               aria-label={`Remove ${nameOf(row.collegeSlug)}`}
@@ -103,7 +110,7 @@ function EntriesEditor({
       <AddEntry
         available={available}
         stream={stream}
-        onAdd={(slug) => setRows((prev) => [...prev, { collegeSlug: slug, rank: String(prev.length + 1), score: "" }])}
+        onAdd={(slug) => setRows((prev) => [...prev, { collegeSlug: slug, rank: String(Math.max(0, ...prev.map((r) => (/^\d+$/.test(r.rank) ? Number(r.rank) : 0))) + 1), score: "" }])}
       />
     </div>
   );
@@ -254,6 +261,7 @@ export function RankingsAdmin({
             <div className="space-y-6">
               <FieldGrid>
                 <TextField label="Name" name="name" defaultValue={list.name} required maxLength={300} />
+                <TextField label="Short name" name="shortName" defaultValue={list.shortName ?? ""} maxLength={100} hint="Used where space is tight (the header menu). Empty: the full name." />
                 <TextField label="Authority" name="authority" defaultValue={list.authority} required maxLength={200} />
                 <TextField
                   label="Year"
@@ -276,6 +284,7 @@ export function RankingsAdmin({
       renderAddForm={() => (
         <>
           <NameSlugFields nameLabel="Name" namePlaceholder="NIRF Management Rankings 2026" slugPlaceholder="nirf-management-2026" nameMaxLength={300} />
+          <TextField label="Short name" name="shortName" placeholder="NIRF Mgmt 2026" maxLength={100} hint="Used where space is tight (the header menu). Empty: the full name." />
           <TextField label="Authority" name="authority" placeholder="NIRF" required maxLength={200} />
           <TextField
             label="Year"

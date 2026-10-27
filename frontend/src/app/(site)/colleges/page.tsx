@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Eye, Flame, SearchX, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { ListingHero, introOf } from "@/components/colleges/listing-hero";
@@ -13,9 +14,13 @@ import { scopeFromParams } from "@/lib/listing-scope";
 import { getMenuSource, menuSeoFor } from "@/components/colleges-menu-data";
 import { badgesFor, listingFaqs, listingIntro, listingTitle } from "@/components/colleges/listing-meta";
 import type { RichTextDoc } from "@/lib/rich-text";
+import { getDefaultListingHref } from "@/lib/listing-default";
 
 /** The filters a collection presets, as they appear in the colleges address. */
 const COLLECTION_FILTER_KEYS = ["stream", "course", "specialisation", "city", "ownership", "level", "credential", "mode", "exam", "approval", "ranking_list"] as const;
+
+/** Anything in the address that narrows the list. With none of these the page has no scope and goes to the default list. */
+const SCOPE_PARAMS = [...COLLECTION_FILTER_KEYS, "q", "ranking_max", "fees_min", "fees_max", "min_rating"] as const;
 
 /** A rich-text intro as plain paragraphs. */
 function paragraphsOf(doc: RichTextDoc | undefined): string[] {
@@ -121,6 +126,13 @@ export default async function CollegesListingPage({
   const found: CollectionMeta | null = collectionSlug ? await getCollectionMeta(collectionSlug).catch(() => null) : null;
   const collection = found && (found.membership === "picked" || COLLECTION_FILTER_KEYS.some((k) => str(k))) ? found : null;
 
+  // There is no list of every college. With no filter left (or none to begin with) the page opens on the
+  // default list: the newest NIRF ranking, else another ranking, else the menu's first link.
+  if (!collection && !SCOPE_PARAMS.some((k) => str(k))) {
+    const to = await getDefaultListingHref();
+    if (to) redirect(to);
+  }
+
   const page = num(str("page")) ?? 1;
   const sort = str("sort") ?? "popularity";
   const query: CollegeParams = {
@@ -157,7 +169,7 @@ export default async function CollegesListingPage({
     getCollegeFacets().catch(() => NO_FACETS),
     getListingHeader("colleges", scopeFromParams(str)).catch(() => null),
     getRankings().catch(() => [] as RankingList[]),
-    getListingSlots("colleges").catch(() => null),
+    getListingSlots("colleges", scopeFromParams(str)).catch(() => null),
   ]);
   const slotList = slots?.slots ?? [];
   const groups = filterGroups(facets, rankingLists);
@@ -193,6 +205,9 @@ export default async function CollegesListingPage({
   const intro = collectionIntro.length > 0 ? collectionIntro : introOf(header, listingIntro(title, colleges, meta.total));
   // The author the collection names, else the one set for the colleges page.
   const author = collection?.author.name && header ? { ...header, name: collection.author.name, role: collection.author.role, photo: collection.author.photo } : collection?.author.name ? { name: collection.author.name, role: collection.author.role, photo: collection.author.photo, intro: "", title: "" } : header;
+  // The last thing narrowing the list stays: its chip has no remove button.
+  const scopeCount = applied.length + (collection ? 1 : 0) + (["q", "ranking_max", "min_rating"] as const).filter((k) => str(k)).length;
+  const lastOne = scopeCount <= 1;
   // The chip that ends the collection: the filters stay, its header and picked list go.
   const withoutCollection = (() => {
     const next = new URLSearchParams(search.toString());
@@ -249,18 +264,24 @@ export default async function CollegesListingPage({
             <SlidersHorizontal className="h-4 w-4 text-brand" />
             Filters
           </span>
-          {collection && (
-            <Link
-              href={withoutCollection}
-              scroll={false}
-              aria-label={`Leave the ${collection.title} collection`}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand-ink transition hover:bg-brand hover:text-white"
-            >
-              Collection: {collection.title}
-              <X className="h-3.5 w-3.5" />
-            </Link>
-          )}
-          {applied.map((f) => (
+          {collection &&
+            (lastOne ? (
+              <span className="inline-flex items-center rounded-lg bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand-ink">Collection: {collection.title}</span>
+            ) : (
+              <Link
+                href={withoutCollection}
+                scroll={false}
+                aria-label={`Leave the ${collection.title} collection`}
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-soft px-3 py-1.5 text-sm font-medium text-brand-ink transition hover:bg-brand hover:text-white"
+              >
+                Collection: {collection.title}
+                <X className="h-3.5 w-3.5" />
+              </Link>
+            ))}
+          {applied.map((f) =>
+            lastOne ? (
+              <span key={f.id} className="inline-flex items-center rounded-lg bg-bg-alt px-3 py-1.5 text-sm text-ink-soft">{f.label}</span>
+            ) : (
             <Link
               key={f.id}
               href={f.clear}
@@ -271,7 +292,8 @@ export default async function CollegesListingPage({
               {f.label}
               <X className="h-3.5 w-3.5" />
             </Link>
-          ))}
+            ),
+          )}
           {applied.length === 0 && !collection && <span className="text-sm text-ink-faint">None applied</span>}
           {applied.length > 1 && (
             <Link href="/colleges" className="text-sm font-medium text-brand hover:underline">

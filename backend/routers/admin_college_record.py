@@ -109,7 +109,11 @@ class PlacementRow(BaseModel):
 
 class CutoffRow(BaseModel):
     exam: str = Field(min_length=1, max_length=100)
+    # The caste category.
     category: str = Field(min_length=1, max_length=100)
+    # Empty: every programme. A course the college offers, or one specialisation of it.
+    course: str = Field(default="", max_length=200)
+    specialisation: str = Field(default="", max_length=200)
     score: str = Field(min_length=1, max_length=100)
     model_config = ConfigDict(extra="forbid")
 
@@ -278,7 +282,7 @@ def _record(c: College) -> dict:
             }
             for p in sorted(c.placements or [], key=lambda p: p.year, reverse=True)
         ],
-        "cutoffs": [{"exam": x.exam, "category": x.category, "score": x.score} for x in (c.cutoffs or [])],
+        "cutoffs": [{"exam": x.exam, "category": x.category, "course": x.course or "", "specialisation": x.specialisation or "", "score": x.score} for x in (c.cutoffs or [])],
         "reviews": [
             {
                 "id": str(r.id),
@@ -432,9 +436,10 @@ def _check(data: RecordBody) -> None:
         raise ValidationError("courses: a programme is listed more than once with the same specialisation.")
     seen = set()
     for cut in data.cutoffs:
-        key = (cut.exam.strip().lower(), cut.category.strip().lower())
+        key = (cut.exam.strip().lower(), cut.category.strip().lower(), cut.course.strip().lower(), cut.specialisation.strip().lower())
         if key in seen:
-            raise ValidationError(f"cutoffs: {cut.exam} / {cut.category} appears more than once.")
+            where = " ".join(x for x in (cut.course.strip(), cut.specialisation.strip()) if x) or "every programme"
+            raise ValidationError(f"cutoffs: {cut.exam} / {cut.category} for {where} appears more than once.")
         seen.add(key)
 
 
@@ -505,7 +510,7 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
                          highest_package=p.highest.strip() or None, placed_percent=p.placedPercent, top_recruiters=[r.strip() for r in p.topRecruiters if r.strip()],
                          breakdown=[{"category": b.category.strip(), "course": b.course.strip(), "specialisation": b.specialisation.strip(), "average": b.average.strip(), "highest": b.highest.strip(), "placed": b.placed, "students": b.students} for b in p.breakdown]))
     for k in data.cutoffs:
-        db.add(Cutoff(id=uuid.uuid4(), college_id=row.id, exam=k.exam.strip(), category=k.category.strip(), score=k.score.strip()))
+        db.add(Cutoff(id=uuid.uuid4(), college_id=row.id, exam=k.exam.strip(), category=k.category.strip(), course=k.course.strip(), specialisation=k.specialisation.strip(), score=k.score.strip()))
 
     # Reviews are matched by id, so one a visitor wrote keeps its author link when it is edited.
     existing = {str(r.id): r for r in row.reviews}

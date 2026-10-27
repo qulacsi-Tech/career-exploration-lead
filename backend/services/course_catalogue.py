@@ -54,7 +54,7 @@ def _spec_schema(s: Specialisation, counts: "CollegeCounts") -> SpecialisationSc
     )
 
 
-def _to_list_schema(c: CourseCatalogue, counts: "CollegeCounts") -> CourseCatalogueListSchema:
+def _to_list_schema(c: CourseCatalogue, counts: "CollegeCounts", specialisations: Optional[List[Specialisation]] = None) -> CourseCatalogueListSchema:
     return CourseCatalogueListSchema(
         slug=c.slug,
         name=c.name,
@@ -68,15 +68,14 @@ def _to_list_schema(c: CourseCatalogue, counts: "CollegeCounts") -> CourseCatalo
         examsAccepted=c.exams_accepted or [],
         collegeCount=counts.course(c.name, c.college_count),
         about=c.about,
+        priority=c.priority,
+        specialisations=[_spec_schema(s, counts) for s in (specialisations or [])],
     )
 
 
 def _to_detail_schema(c: CourseCatalogue, counts: "CollegeCounts") -> CourseCatalogueDetailSchema:
-    base = _to_list_schema(c, counts)
-    return CourseCatalogueDetailSchema(
-        **base.model_dump(),
-        specialisations=[_spec_schema(s, counts) for s in (c.specialisations or [])],
-    )
+    base = _to_list_schema(c, counts, c.specialisations or [])
+    return CourseCatalogueDetailSchema(**base.model_dump())
 
 
 class CourseCatalogueService:
@@ -93,7 +92,10 @@ class CourseCatalogueService:
         courses, total = await self.repo.list(page=page, limit=limit, stream=stream, level=level)
         pages = math.ceil(total / limit) if limit else 1
         counts = CollegeCounts(await self.repo.college_course_names())
-        return [_to_list_schema(c, counts) for c in courses], Meta(total=total, page=page, limit=limit, pages=pages)
+        # A specialisation can sit under several courses (its course_slugs), so each course takes every one that lists it.
+        specs = await self.repo.all_specialisations()
+        under = lambda c: [s for s in specs if c.slug in (s.course_slugs or [s.course_slug])]  # noqa: E731
+        return [_to_list_schema(c, counts, under(c)) for c in courses], Meta(total=total, page=page, limit=limit, pages=pages)
 
     async def get_course(self, slug: str) -> CourseCatalogueDetailSchema:
         course = await self.repo.get_by_slug(slug)

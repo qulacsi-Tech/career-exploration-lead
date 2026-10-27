@@ -27,6 +27,7 @@ import {
   percentOf,
   shortFee,
   shortNameOf,
+  cutoffLabel,
   programmeTitle,
 } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
@@ -401,7 +402,7 @@ export default async function CollegeOverviewPage({
             rows={(college.cutoffs ?? []).map((cutoff) => {
               const percent = percentOf(cutoff.score);
               return {
-                label: `${cutoff.exam} · ${cutoff.category}`,
+                label: cutoffLabel(cutoff),
                 display: cutoff.score,
                 fraction: percent === null ? null : percent / 100,
               };

@@ -18,6 +18,8 @@ class Exam(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String(200), nullable=False, unique=True, index=True)
     name = Column(String(500), nullable=False)
+    # Used where space is tight (menus, headings). Empty: the full name.
+    short_name = Column(String(100), nullable=False, default="", server_default="")
     conducting_body = Column(String(200), nullable=False)
     level = Column(Enum(ExamLevel, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     description = Column(Text, nullable=False)

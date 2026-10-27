@@ -30,11 +30,6 @@ async def footer_columns(db: DbSession):
     return SuccessResponse[list](data=await CollectionService(db).footer_columns())
 
 
-@router.get("/nav", response_model=SuccessResponse[list])
-async def nav_links(db: DbSession):
-    return SuccessResponse[list](data=await CollectionService(db).nav_links())
-
-
 @router.get("/links", response_model=SuccessResponse[list])
 async def collection_links(db: DbSession):
     """Every published collection with the address it opens, for the menu editor."""

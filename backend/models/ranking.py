@@ -13,6 +13,7 @@ class RankingList(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String(200), nullable=False, unique=True, index=True)
     name = Column(String(300), nullable=False)          # "NIRF Management 2026"
+    short_name = Column(String(100), nullable=False, default="", server_default="")  # where space is tight; empty: the full name
     authority = Column(String(200), nullable=False)     # "NIRF"
     year = Column(Integer, nullable=False)
     stream = Column(String(100), nullable=True, index=True)

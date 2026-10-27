@@ -16,13 +16,11 @@ import type { MenuGroup } from "@/components/colleges-menu";
  */
 export function MobileNav({
   links,
-  menuHref,
-  menu = [],
+  menus = [],
 }: {
   links: { label: string; href: string }[];
-  /** The link that opens as an expandable list of `menu` groups instead of a plain link. */
-  menuHref?: string;
-  menu?: MenuGroup[];
+  /** The links that open as an expandable list of groups instead of going straight to a page. */
+  menus?: { href: string; groups: MenuGroup[] }[];
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -74,8 +72,9 @@ export function MobileNav({
         className="absolute inset-x-0 top-full border-b border-line bg-surface shadow-lg lg:hidden"
       >
         <nav className="mx-auto flex max-w-7xl flex-col px-4 py-2 sm:px-6">
-          {links.map((link) =>
-            link.href === menuHref && menu.length > 0 ? (
+          {links.map((link) => {
+            const menu = menus.find((m) => m.href === link.href)?.groups ?? [];
+            return menu.length > 0 ? (
               <details key={link.href} className="border-b border-line-soft">
                 <summary className="cursor-pointer py-3 text-sm font-medium text-ink-soft hover:text-brand">{link.label}</summary>
                 <div className="pb-2 pl-3">
@@ -85,17 +84,25 @@ export function MobileNav({
                       <ul className="max-h-60 overflow-y-auto pb-2 pl-3">
                         {group.items.map((item) => (
                           <li key={item.href}>
-                            <Link href={item.href} onClick={() => setOpen(false)} className="block py-1.5 text-sm text-ink-soft hover:text-brand">
+                            <Link href={item.href} onClick={() => setOpen(false)} className={`block py-1.5 text-sm hover:text-brand ${item.children ? "font-semibold text-ink" : "text-ink-soft"}`}>
                               {item.label}
                             </Link>
+                            {item.children && (
+                              <ul className="pb-1 pl-3">
+                                {item.children.map((child) => (
+                                  <li key={child.href}>
+                                    <Link href={child.href} onClick={() => setOpen(false)} className="block py-1 text-sm text-ink-soft hover:text-brand">
+                                      {child.label}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </li>
                         ))}
                       </ul>
                     </details>
                   ))}
-                  <Link href={link.href} onClick={() => setOpen(false)} className="block py-2 text-sm font-semibold text-brand">
-                    View all colleges &rarr;
-                  </Link>
                 </div>
               </details>
             ) : (
@@ -107,8 +114,8 @@ export function MobileNav({
             >
               {link.label}
             </Link>
-            ),
-          )}
+            );
+          })}
         </nav>
       </div>
     </>

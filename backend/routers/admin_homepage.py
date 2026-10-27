@@ -122,6 +122,7 @@ def _exam_card(e, show: bool) -> dict:
     return {
         "slug": e.slug,
         "name": e.name,
+        "shortName": e.short_name or "",
         "conductingBody": e.conducting_body,
         "level": e.level.value if hasattr(e.level, "value") else str(e.level),
         "mode": e.mode or "",

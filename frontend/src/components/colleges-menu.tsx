@@ -3,16 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, ArrowUpRight, Building2, FolderOpen, ChevronDown, ChevronRight, ClipboardList, GraduationCap, Laptop, Layers, MapPin, Sparkles, Trophy,
+  ArrowUpRight, Building2, FolderOpen, ChevronDown, LayoutGrid, ChevronRight, ClipboardList, GraduationCap, Laptop, Layers, MapPin, Sparkles, Trophy, X,
   type LucideIcon,
 } from "lucide-react";
 
 /** One column-one entry of the menu ("Popular Courses") and the listing links under it. */
-export type MenuGroup = { label: string; icon?: string; items: { label: string; href: string }[] };
+export type MenuLink = { label: string; href: string };
+export type MenuGroup = { label: string; icon?: string; items: (MenuLink & { children?: MenuLink[] })[] };
 
 const ICONS: Record<string, LucideIcon> = {
   ranking: Trophy, course: GraduationCap, specialisation: Sparkles, location: MapPin,
-  type: Building2, level: Layers, mode: Laptop, exam: ClipboardList, collection: FolderOpen,
+  type: Building2, level: Layers, mode: Laptop, exam: ClipboardList, collection: FolderOpen, category: LayoutGrid,
 };
 
 /**
@@ -23,26 +24,22 @@ const ICONS: Record<string, LucideIcon> = {
 export function CollegesMenu({ label, href, groups }: { label: string; href: string; groups: MenuGroup[] }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  const show = () => {
-    clearTimeout(timer.current);
-    setOpen(true);
-  };
-  // A short delay lets the pointer cross the gap between the link and the panel.
-  const hide = () => {
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setOpen(false), 150);
-  };
+  const wrap = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // A click anywhere outside the menu closes it, so opening the other menu never leaves this one showing.
+    const onPointerDown = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
   }, [open]);
-
-  useEffect(() => () => clearTimeout(timer.current), []);
 
   if (groups.length === 0) {
     return <Link href={href} className="hover:text-brand">{label}</Link>;
@@ -51,22 +48,31 @@ export function CollegesMenu({ label, href, groups }: { label: string; href: str
   const group = groups[Math.min(active, groups.length - 1)];
 
   return (
-    <div onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}>
-      <Link
-        href={href}
+    <div ref={wrap}>
+      {/* Opens on click and stays open until it is closed with the cross (or Escape, or a link is followed). */}
+      <button
+        type="button"
         aria-expanded={open}
         aria-haspopup="true"
-        onClick={() => setOpen(false)}
+        onClick={() => setOpen((v) => !v)}
         className={`inline-flex items-center gap-1 py-2 hover:text-brand ${open ? "text-brand" : ""}`}
       >
         {label}
         <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} aria-hidden="true" />
-      </Link>
+      </button>
 
       {open && (
         <div className="tcp-menu-panel absolute inset-x-0 top-full overflow-hidden border-b border-brand/20 bg-gradient-to-br from-surface via-surface to-brand-soft/50 shadow-[0_24px_40px_-20px_rgba(123,26,42,0.35)]">
           <span aria-hidden className="tcp-float-slow pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-gold-soft/80 blur-2xl" />
           <span aria-hidden className="tcp-float pointer-events-none absolute -bottom-12 left-1/3 h-40 w-40 rounded-full bg-brand-soft/80 blur-2xl" />
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close menu"
+            className="absolute right-4 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border border-line bg-surface text-ink-soft shadow-sm transition hover:border-brand hover:text-brand sm:right-6 lg:right-8"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
 
           <div className="relative mx-auto grid max-w-6xl grid-cols-[18rem_minmax(0,1fr)] px-4 sm:px-6 lg:px-8">
             <ul className="space-y-1 border-r border-line/70 py-4 pr-4">
@@ -113,6 +119,24 @@ export function CollegesMenu({ label, href, groups }: { label: string; href: str
                 <ul className="grid grid-cols-2 gap-2.5 xl:grid-cols-3">
                   {group.items.map((item, i) => (
                     <li key={item.href} className="tcp-menu-item" style={{ "--i": i + 1 } as React.CSSProperties}>
+                      {item.children ? (
+                        // A link with others under it (a course and its specialisations): the link, then the ones beneath it.
+                        <div className="rounded-xl border border-line bg-surface/90 px-3.5 py-2.5">
+                          <Link href={item.href} onClick={() => setOpen(false)} className="group/link flex items-center justify-between gap-2 text-sm font-bold text-brand-ink transition hover:text-brand">
+                            <span className="truncate">{item.label}</span>
+                            <ArrowUpRight className="h-4 w-4 shrink-0 text-brand opacity-0 transition group-hover/link:opacity-100" aria-hidden="true" />
+                          </Link>
+                          <ul className="mt-2 flex flex-wrap gap-1.5">
+                            {item.children.map((child) => (
+                              <li key={child.href}>
+                                <Link href={child.href} onClick={() => setOpen(false)} className="inline-flex rounded-full border border-brand/30 bg-brand-soft/60 px-2.5 py-1 text-xs font-semibold text-brand-ink transition hover:border-brand hover:bg-brand hover:text-white">
+                                  {child.label}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : (
                       <Link
                         href={item.href}
                         onClick={() => setOpen(false)}
@@ -121,17 +145,11 @@ export function CollegesMenu({ label, href, groups }: { label: string; href: str
                         <span className="truncate">{item.label}</span>
                         <ArrowUpRight className="h-4 w-4 shrink-0 -translate-x-1 text-brand opacity-0 transition duration-200 group-hover/link:translate-x-0 group-hover/link:opacity-100" aria-hidden="true" />
                       </Link>
+                      )}
                     </li>
                   ))}
                 </ul>
 
-                <Link
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  className="tcp-wiggle mt-5 inline-flex items-center gap-1.5 rounded-full bg-brand px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark hover:shadow-md"
-                >
-                  View all colleges <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
               </div>
             </div>
           </div>

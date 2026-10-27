@@ -5,10 +5,11 @@ import type { AdminCourse } from "@/lib/api";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import { TextField, Field, NamesInput, ParentPicker } from "@/components/admin/admin-fields";
+import { CourseCollegesEditor } from "@/components/admin/course-colleges-editor";
 
 /**
  * The second level: B.Tech, B.E., MBA, BBA. A course is a name and the categories it sits under;
- * fees, duration and eligibility are entered per college, on the college form. A course can sit
+ * fees, duration and eligibility are entered per college, on the college form or in this course's Colleges tab. A course can sit
  * under several categories, and a college that picks one of them is offered this course.
  */
 export function CoursesAdmin({ courses, streams }: { courses: AdminCourse[]; streams: string[] }) {
@@ -62,6 +63,11 @@ export function CoursesAdmin({ courses, streams }: { courses: AdminCourse[]; str
               {picker(course.streams)}
             </FieldGrid>
           ),
+        },
+        {
+          id: "colleges",
+          label: "Colleges & details",
+          render: (course) => <CourseCollegesEditor slug={course.slug} name={course.name} />,
         },
       ]}
       onSave={(course, data) => saveCourse(course.slug, data)}

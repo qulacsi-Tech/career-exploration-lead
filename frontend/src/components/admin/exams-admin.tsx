@@ -61,6 +61,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
         <div className="space-y-6">
           <AdminSubsection title="Basic details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+              <Field label="Short name" value={exam.shortName || "—"} />
               <Field label="Conducting body" value={exam.conductingBody} />
               <Field label="Level" value={exam.level} />
               <Field label="Mode" value={exam.mode ?? "Not set"} />
@@ -117,6 +118,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
                 defaultSlug={exam.slug}
                 nameMaxLength={200}
               />
+              <TextField label="Short name" name="shortName" defaultValue={exam.shortName ?? ""} maxLength={100} hint="Used where space is tight. Empty: the full name." />
               <TextField
                 label="Conducting body"
                 name="conductingBody"
@@ -249,6 +251,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
             slugPlaceholder="common-admission-test-cat"
             nameMaxLength={200}
           />
+          <TextField label="Short name" name="shortName" placeholder="CAT" maxLength={100} hint="Used where space is tight. Empty: the full name." />
           <TextField label="Conducting body" name="conductingBody" placeholder="IIM" required maxLength={200} />
           <SelectField label="Level" name="level" options={["National", "State"]} />
           <SelectField label="Mode" name="mode" options={["Online", "Offline", "Hybrid"]} />

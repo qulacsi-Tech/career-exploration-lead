@@ -44,6 +44,16 @@ export function isRealPackage(value: string | undefined | null): value is string
   return !!value && /\d/.test(value);
 }
 
+/** What a cut-off is for: its course and specialisation ("B.Tech CSE"), or "" for every programme. */
+export function cutoffProgramme(c: { course?: string; specialisation?: string }): string {
+  return [c.course, c.specialisation].map((x) => (x ?? "").trim()).filter(Boolean).join(" ");
+}
+
+/** One line for a cut-off: "JEE Main · B.Tech CSE · General". */
+export function cutoffLabel(c: { exam: string; category: string; course?: string; specialisation?: string }): string {
+  return [c.exam, cutoffProgramme(c), c.category].filter(Boolean).join(" · ");
+}
+
 /** The figure to lead a placement summary with: the average package. */
 export function packageHeadline(placement: { average: string } | null | undefined): { label: string; value: string } | null {
   if (!placement) return null;
@@ -144,7 +154,7 @@ export function faqsFor(college: College): Faq[] {
     const first = college.cutoffs[0];
     faqs.push({
       question: `What is the cut-off for ${college.name}?`,
-      answer: `The most recent ${first.exam} cut-off for the ${first.category.toLowerCase()} category was ${first.score}. Cut-offs vary by exam and category — the Cut-Offs page lists all of them.`,
+      answer: `The most recent ${first.exam} cut-off${cutoffProgramme(first) ? ` for ${cutoffProgramme(first)}` : ""} for the ${first.category.toLowerCase()} category was ${first.score}. Cut-offs vary by exam, caste category and programme — the Cut-Offs page lists all of them.`,
     });
   }
 

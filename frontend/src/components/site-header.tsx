@@ -4,11 +4,13 @@ import { MobileNav } from "@/components/mobile-nav";
 import { HeaderAccount } from "@/components/header-account";
 import { CollegesMenu } from "@/components/colleges-menu";
 import { getCollegesMenu } from "@/components/colleges-menu-data";
+import { getCoursesMenu } from "@/components/courses-menu-data";
 
 const COLLEGES_LINK = { label: "Top Ranked Colleges", href: "/colleges" };
+const COURSES_LINK = { label: "Courses", href: "/courses" };
 
 const navLinks = [
-  { label: "Courses", href: "/courses" },
+  COURSES_LINK,
   COLLEGES_LINK,
   { label: "Compare", href: "/compare" },
   { label: "News", href: "/articles" },
@@ -16,7 +18,7 @@ const navLinks = [
 ];
 
 export async function SiteHeader() {
-  const collegesMenu = await getCollegesMenu();
+  const [collegesMenu, coursesMenu] = await Promise.all([getCollegesMenu(), getCoursesMenu()]);
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
@@ -34,6 +36,8 @@ export async function SiteHeader() {
           {navLinks.map((link) =>
             link === COLLEGES_LINK ? (
               <CollegesMenu key={link.href} label={link.label} href={link.href} groups={collegesMenu} />
+            ) : link === COURSES_LINK ? (
+              <CollegesMenu key={link.href} label={link.label} href={link.href} groups={coursesMenu} />
             ) : (
               <Link key={link.href} href={link.href} className="hover:text-brand">
                 {link.label}
@@ -48,7 +52,7 @@ export async function SiteHeader() {
         <HeaderAccount />
 
         {/* Below lg the links above are hidden, so they move in here. */}
-        <MobileNav links={navLinks} menuHref={COLLEGES_LINK.href} menu={collegesMenu} />
+        <MobileNav links={navLinks} menus={[{ href: COLLEGES_LINK.href, groups: collegesMenu }, { href: COURSES_LINK.href, groups: coursesMenu }]} />
       </div>
     </header>
   );

@@ -14,6 +14,7 @@ def _to_schema(exam: Exam) -> ExamSchema:
     return ExamSchema(
         slug=exam.slug,
         name=exam.name,
+        shortName=exam.short_name or "",
         conductingBody=exam.conducting_body,
         level=exam.level.value if hasattr(exam.level, "value") else str(exam.level),
         description=exam.description,

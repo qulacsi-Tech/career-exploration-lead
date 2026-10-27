@@ -160,11 +160,12 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   // Cut-offs
   const cuts = new Set<string>();
   r.cutoffs.forEach((c, i) => {
-    const label = `${c.exam.trim() || "Exam"} / ${c.category.trim() || "category"}`;
+    const where = [c.course, c.specialisation].map((x) => x.trim()).filter(Boolean).join(" ");
+    const label = `${c.exam.trim() || "Exam"} / ${c.category.trim() || "caste"}${where ? ` / ${where}` : ""}`;
     if (!c.exam.trim()) out.cutoffs.push(`Cut-off ${i + 1}: choose the exam.`);
     if (!c.score.trim()) out.cutoffs.push(`${label}: the score is required.`);
     else add("cutoffs", scoreProblem(c.score) && `${label}: ${scoreProblem(c.score)}`);
-    const key = `${c.exam.trim().toLowerCase()}|${c.category.trim().toLowerCase()}`;
+    const key = [c.exam, c.category, c.course, c.specialisation].map((x) => x.trim().toLowerCase()).join("|");
     if (c.exam.trim() && cuts.has(key)) out.cutoffs.push(`${label} is listed more than once.`);
     cuts.add(key);
   });

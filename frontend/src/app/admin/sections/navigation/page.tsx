@@ -1,18 +1,31 @@
-import { adminGetNavMenuConfig, getCollectionLinks } from "@/lib/api";
+import { adminGetCatalogue, adminGetCollegePools, adminGetNavMenuConfig, getCollectionLinks } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
 import { EMPTY_NAV, getMenuSource } from "@/components/colleges-menu-data";
-import { NavMenuAdmin } from "@/components/admin/nav-menu-admin";
+import { getCoursesMenuData } from "@/components/courses-menu-data";
+import { NavigationAdmin } from "@/components/admin/navigation-admin";
 
 /*
-  Server component: the directory's own groups and links (what the menu could show), every published
-  collection (what an added category can hold), and the admin's saved choices on top of them. The
-  added categories are built in the browser from the choices, so they change as they are edited.
+  Server component: for each header menu, the groups and links the site could put in it (what the
+  directory or catalogue holds), what an added category can hold (every published collection, or every
+  course and specialisation), and the admin's saved choices on top. The added categories are built in
+  the browser from the choices, so they change as they are edited.
 */
 export default async function AdminNavigationPage() {
-  const [source, links, config] = await Promise.all([
+  const [collegeSource, collectionLinks, collegeConfig, courseData, courseConfig, catalogue, pools] = await Promise.all([
     getMenuSource(EMPTY_NAV, false),
     getCollectionLinks().catch(() => []),
-    withAdminToken((token) => adminGetNavMenuConfig(token)),
+    withAdminToken((token) => adminGetNavMenuConfig(token, "colleges")),
+    getCoursesMenuData(),
+    withAdminToken((token) => adminGetNavMenuConfig(token, "courses")),
+    // The courses with the info typed for each (not the cached public list), and the exams the info can name.
+    withAdminToken((token) => adminGetCatalogue(token)),
+    withAdminToken((token) => adminGetCollegePools(token)).catch(() => null),
   ]);
-  return <NavMenuAdmin source={source} links={links} initial={config} />;
+  return (
+    <NavigationAdmin
+      colleges={{ source: collegeSource, links: collectionLinks, initial: collegeConfig }}
+      courses={{ source: courseData.directory, links: courseData.options, initial: courseConfig }}
+      courseInfo={{ courses: catalogue.courses, exams: pools?.exams ?? [] }}
+    />
+  );
 }

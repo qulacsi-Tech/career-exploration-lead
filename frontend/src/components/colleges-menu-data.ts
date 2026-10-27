@@ -1,27 +1,44 @@
-import { getCollectionLinks, getCollectionNav, getCollegeFacets, getNavMenuConfig, getRankings, type NavCustomGroup, type NavMenuConfig } from "@/lib/api";
+import { getCollectionLinks, getCollegeFacets, getNavMenuConfig, getRankings, type NavCustomGroup, type NavMenuConfig } from "@/lib/api";
 import { scopeOfHref } from "@/lib/listing-scope";
 import type { MenuGroup } from "@/components/colleges-menu";
 
 const MAX_ITEMS = 24;
 
 /** A link as the directory has it, before the admin's choices are applied. `key` is what the choices are filed under. */
-export type SourceItem = { key: string; label: string; href: string };
+/** `collection` marks a link the admin added: a collection, not something the directory holds. */
+/** `parent` is the key of the link this one sits under in its group (a specialisation under its course). */
+export type SourceItem = { key: string; label: string; href: string; collection?: boolean; parent?: string };
 /** `custom` marks a category the admin added; its links are collections, not directory facets. */
 export type SourceGroup = { id: string; label: string; icon: string; items: SourceItem[]; custom?: boolean };
 
 export const EMPTY_NAV: NavMenuConfig = { order: [], groups: {}, custom: [] };
 
-/** The categories the admin added, each with the collections it holds. A collection that is no longer published is left out. */
-export function customSource(custom: NavCustomGroup[], links: { slug: string; title: string; href: string }[]): SourceGroup[] {
+type CollectionLink = { slug: string; title: string; href: string };
+
+/** The links for these collections, in this order. A collection that is no longer published is left out. */
+function collectionItems(slugs: string[], links: CollectionLink[]): SourceItem[] {
+  return slugs.flatMap((slug) => {
+    const link = links.find((l) => l.slug === slug);
+    return link ? [{ key: slug, label: link.title, href: link.href, collection: true }] : [];
+  });
+}
+
+/** The directory's groups with the collections the admin added to them (first), then the categories the admin made. */
+export function withCollections(directory: SourceGroup[], config: NavMenuConfig, links: CollectionLink[]): SourceGroup[] {
+  return [
+    ...directory.map((g) => ({ ...g, items: [...collectionItems(config.groups[g.id]?.collections ?? [], links), ...g.items] })),
+    ...customSource(config.custom, links),
+  ];
+}
+
+/** The categories the admin added, each with the collections it holds. */
+export function customSource(custom: NavCustomGroup[], links: CollectionLink[]): SourceGroup[] {
   return custom.map((c) => ({
     id: c.id,
     label: c.label,
     icon: "collection",
     custom: true,
-    items: c.collections.flatMap((slug) => {
-      const link = links.find((l) => l.slug === slug);
-      return link ? [{ key: slug, label: link.title, href: link.href }] : [];
-    }),
+    items: collectionItems(c.collections, links),
   }));
 }
 
@@ -33,19 +50,20 @@ const to = (key: string, value: string): SourceItem => ({ key: value, label: val
  * If the API is unreachable the groups are empty and the header falls back to a plain link.
  */
 export async function getMenuSource(config: NavMenuConfig = EMPTY_NAV, withCustom = true): Promise<SourceGroup[]> {
-  const [facets, rankings, collections, links] = await Promise.all([
+  const hasCollections = config.custom.length > 0 || Object.values(config.groups).some((g) => g.collections.length > 0);
+  const [facets, rankings, links] = await Promise.all([
     getCollegeFacets().catch(() => null),
     getRankings().catch(() => []),
-    getCollectionNav().catch(() => []),
-    withCustom && config.custom.length > 0 ? getCollectionLinks().catch(() => []) : Promise.resolve([]),
+    withCustom && hasCollections ? getCollectionLinks().catch(() => []) : Promise.resolve([]),
   ]);
 
-  return [
+  const directory: SourceGroup[] = [
     {
       id: "ranking", label: "Top Ranked Colleges", icon: "ranking",
       items: rankings.map((l) => ({
         key: l.slug,
-        label: l.name.includes(String(l.year)) ? l.name : `${l.name} ${l.year}`,
+        // The short name when the admin gave one, so a long list name does not get cut off in the menu.
+        label: l.shortName?.trim() || (l.name.includes(String(l.year)) ? l.name : `${l.name} ${l.year}`),
         href: `/colleges?ranking_list=${encodeURIComponent(l.slug)}`,
       })),
     },
@@ -56,10 +74,9 @@ export async function getMenuSource(config: NavMenuConfig = EMPTY_NAV, withCusto
     { id: "level", label: "Colleges by Level", icon: "level", items: ["UG", "PG", "Doctorate"].map((v) => to("level", v)) },
     { id: "mode", label: "Mode of Study", icon: "mode", items: (facets?.modes ?? []).map((v) => to("mode", v)) },
     { id: "exam", label: "Exams Accepted", icon: "exam", items: (facets?.exams ?? []).map((v) => to("exam", v)) },
-    // Collections made in Content > Collections that are set to show in the menu; each opens its own preset listing.
-    { id: "collection", label: "Featured Collections", icon: "collection", items: collections.map((c) => ({ key: c.slug, label: c.title, href: c.href })) },
-    ...(withCustom ? customSource(config.custom, links) : []),
   ];
+  // Collections the admin put in a category (here, or in Content > Collections) sit with its other links.
+  return withCustom ? withCollections(directory, config, links) : directory;
 }
 
 /** `ids` first, in that order, then whatever is left in its own order. */
@@ -69,9 +86,9 @@ export function ordered<T>(list: T[], ids: string[], idOf: (item: T) => string):
   return list.map((item, i) => ({ item, i })).sort((a, b) => at(a.item) - at(b.item) || a.i - b.i).map((x) => x.item);
 }
 
-/** A link that leaves institutes out carries which link it is, so the listing it opens can leave them out. */
-function withMenuMark(href: string, group: string, key: string, excluded: string[] | undefined): string {
-  if (!excluded || excluded.length === 0) return href;
+/** A link that leaves institutes out, or puts some first, carries which link it is, so the listing it opens can do the same. */
+function withMenuMark(href: string, group: string, key: string, item: { excluded?: string[]; priority?: Record<string, number> } | undefined): string {
+  if (!item || ((item.excluded ?? []).length === 0 && Object.keys(item.priority ?? {}).length === 0)) return href;
   return `${href}${href.includes("?") ? "&" : "?"}menu=${encodeURIComponent(`${group}:${key}`)}`;
 }
 
@@ -81,10 +98,17 @@ export function applyMenuConfig(source: SourceGroup[], config: NavMenuConfig, ma
     .flatMap((g) => {
       const c = config.groups[g.id];
       if (c?.hidden) return [];
-      const items = ordered(g.items, c?.order ?? [], (i) => i.key)
-        .filter((i) => !c?.items[i.key]?.hidden)
-        .map((i) => ({ label: c?.items[i.key]?.label || i.label, href: withMenuMark(i.href, g.id, i.key, c?.items[i.key]?.excluded) }))
-        .slice(0, c?.limit || maxItems);
+      const shape = (i: SourceItem) => ({ label: c?.items[i.key]?.label || i.label, href: withMenuMark(i.href, g.id, i.key, c?.items[i.key]) });
+      // A link under another one goes when its parent goes.
+      const shown = ordered(g.items, c?.order ?? [], (i) => i.key).filter((i) => !c?.items[i.key]?.hidden && !(i.parent && c?.items[i.parent]?.hidden));
+      const isChild = (i: SourceItem) => Boolean(i.parent && g.items.some((p) => p.key === i.parent));
+      const items = shown
+        .filter((i) => !isChild(i))
+        .slice(0, c?.limit || maxItems)
+        .map((i) => {
+          const children = shown.filter((child) => child.parent === i.key).map(shape);
+          return children.length > 0 ? { ...shape(i), children } : shape(i);
+        });
       return items.length > 0 ? [{ label: c?.label || g.label, icon: g.icon, items }] : [];
     });
 }

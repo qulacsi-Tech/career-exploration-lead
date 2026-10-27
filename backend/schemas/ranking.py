@@ -13,6 +13,8 @@ class RankingEntrySchema(BaseModel):
 class RankingListSchema(BaseModel):
     slug: str
     name: str
+    # Where space is tight. Empty: the full name.
+    shortName: str = ""
     authority: str
     year: int
     stream: Optional[str] = None

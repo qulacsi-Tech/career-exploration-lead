@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Copy, Image as ImageIcon, LayoutPanelTop, ListFilter, Megaphone, Plus, Trash2 } from "lucide-react";
-import { loadListingSlots, saveListingSlots } from "@/lib/admin-actions";
+import { loadListingSlots, loadSlotTargets, resetListingSlots, saveListingSlots } from "@/lib/admin-actions";
 import type { ListingPage, ListingSlot, SlotGroup, SlotType } from "@/lib/api";
 import type { MenuGroup } from "@/components/colleges-menu";
+import { scopeOfHref } from "@/lib/listing-scope";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { ICONS, ListingSlotView, PRESETS } from "@/components/colleges/listing-slot";
 
+const SELECT = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
 const INPUT = "mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
 
 const TYPES: Record<SlotType, { label: string; Icon: typeof Megaphone }> = {
@@ -71,19 +73,65 @@ function SlotsDialog({ page, onClose }: { page: ListingPage; onClose: () => void
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  // What the dialog edits: the page's set, or the one written for a selection of the header menu.
+  const [targets, setTargets] = useState<MenuGroup[]>([]);
+  const [custom, setCustom] = useState<Set<string>>(new Set());
+  const [groupLabel, setGroupLabel] = useState("");
+  const [scope, setScope] = useState("");
+  const [hasOwn, setHasOwn] = useState(true);
+  const [reloads, setReloads] = useState(0);
+
   useEffect(() => {
     let alive = true;
-    loadListingSlots(page).then((result) => {
+    loadSlotTargets(page).then((result) => {
       if (!alive) return;
       if (result.error !== undefined) return setError(result.error);
-      setSlots(result.slots);
-      setMenu(result.groups);
-      setSelected(result.slots[0]?.id ?? "");
+      setTargets(result.groups);
+      setCustom(new Set(result.custom));
     });
     return () => {
       alive = false;
     };
   }, [page]);
+
+  // The set for what is selected: when the dialog opens, when the selection changes, after a reset.
+  useEffect(() => {
+    let alive = true;
+    loadListingSlots(page, scope || undefined).then((result) => {
+      if (!alive) return;
+      if (result.error !== undefined) return setError(result.error);
+      setSlots(result.slots);
+      setMenu(result.groups);
+      setHasOwn(result.custom);
+      setSelected(result.slots[0]?.id ?? "");
+    });
+    return () => {
+      alive = false;
+    };
+  }, [page, scope, reloads]);
+
+  // Choosing something else clears the list until its own arrives, so the old items are never shown under the new name.
+  const changeScope = (next: string) => {
+    setSlots(null);
+    setSaved(false);
+    setError(null);
+    setScope(next);
+  };
+  const reset = () => {
+    startTransition(async () => {
+      const result = await resetListingSlots(page, scope);
+      if ("error" in result) return setError(result.error);
+      setCustom((c) => {
+        const next = new Set(c);
+        next.delete(scope);
+        return next;
+      });
+      setSlots(null);
+      setReloads((n) => n + 1);
+    });
+  };
+  const group = targets.find((g) => g.label === groupLabel);
+  const url = scope ? `/${page}?${scope}` : `/${page}`;
 
   const edit = (next: ListingSlot[]) => {
     setSlots(next);
@@ -123,9 +171,11 @@ function SlotsDialog({ page, onClose }: { page: ListingPage; onClose: () => void
   const save = () => {
     if (!slots) return;
     startTransition(async () => {
-      const result = await saveListingSlots(page, slots);
+      const result = await saveListingSlots(page, slots, scope || undefined);
       if ("error" in result) return setError(result.error);
       setSaved(true);
+      setHasOwn(true);
+      if (scope) setCustom((c) => new Set(c).add(scope));
     });
   };
 
@@ -144,10 +194,15 @@ function SlotsDialog({ page, onClose }: { page: ListingPage; onClose: () => void
       onClose={onClose}
       size="full"
       title="Banners, filters & ads"
-      description="What shows between the listed colleges: where, how often and how it looks. The preview on the right is what visitors will see."
+      description={`What shows between the listed colleges on ${url}: where, how often and how it looks. The preview on the right is what visitors will see.`}
       footer={
         <div className="flex w-full items-center justify-end gap-3">
           {saved && <span className="mr-auto text-sm text-emerald-700">Saved. The listing is updated.</span>}
+          {!saved && scope && hasOwn && (
+            <button type="button" onClick={reset} disabled={pending} className="mr-auto text-sm text-ink-soft underline hover:text-brand">
+              Reset to the page&rsquo;s items
+            </button>
+          )}
           <button type="button" onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-brand">
             {saved ? "Close" : "Cancel"}
           </button>
@@ -163,6 +218,49 @@ function SlotsDialog({ page, onClose }: { page: ListingPage; onClose: () => void
       }
     >
       {error && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
+      {/* Which list the items belong to: the page, or one item of the header menu. Same choice as Header management. */}
+      <div className="mb-5 rounded-xl border border-line bg-bg-alt p-4">
+        <p className="text-xs font-semibold text-ink">These items show when a visitor opens</p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <select
+            aria-label="Menu section"
+            value={groupLabel}
+            onChange={(e) => {
+              setGroupLabel(e.target.value);
+              changeScope("");
+            }}
+            className={SELECT}
+          >
+            <option value="">All colleges (the page&rsquo;s own items)</option>
+            {targets.map((g) => (
+              <option key={g.label} value={g.label}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+          <select aria-label="Menu selection" value={scope} disabled={!group} onChange={(e) => changeScope(e.target.value)} className={`${SELECT} disabled:opacity-50`}>
+            <option value="">{group ? "Pick one…" : "—"}</option>
+            {group?.items.map((item) => {
+              const itemScope = scopeOfHref(item.href);
+              return (
+                <option key={item.href} value={itemScope}>
+                  {custom.has(itemScope) ? "● " : ""}
+                  {item.label}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+        <p className="mt-2 text-xs text-ink-faint">
+          {scope
+            ? hasOwn
+              ? "This selection has its own items. Saving changes them."
+              : "This selection shows the page's items. Saving gives it a set of its own, starting from these."
+            : "Used for the page and for every selection without its own items."}{" "}
+          A &ldquo;●&rdquo; marks selections that already have their own.
+        </p>
+      </div>
+
       {!slots && !error && <p className="text-sm text-ink-soft">Loading…</p>}
 
       {slots && (

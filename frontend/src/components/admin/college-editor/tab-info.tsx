@@ -47,7 +47,7 @@ export function InfoTab({ record, update, pools, slug }: EditorProps) {
 
           <Card title="Masthead" description="The title and chips at the top of every page of this college.">
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <TextInput id="ci-short" label="Short title" max={80} value={record.detail.shortName} onChange={(v) => detail({ shortName: v })} hint="e.g. BIMS Bengaluru. Empty: the initials and city." />
+              <TextInput id="ci-short" label="Short name" max={80} value={record.detail.shortName} onChange={(v) => detail({ shortName: v })} hint="e.g. BIMS Bengaluru. Used where space is tight. Empty: the full name." />
               <TextInput id="ci-tagline" label="Heading after the title" max={160} value={record.detail.tagline} onChange={(v) => detail({ tagline: v })} hint="e.g. Courses, Fees, Admission 2027. Empty: a default." />
             </div>
             <ChipInput id="ci-approvals" label="Approvals" value={record.approvals} onChange={(v) => set("approvals", v)} suggestions={pools.approvals} max={20} maxChars={TAG_MAX_CHARS} hint={`Shown as chips: AICTE, NAAC A++, UGC. Up to ${TAG_MAX_CHARS} characters each.`} />

@@ -37,6 +37,10 @@ class CourseCatalogueRepository:
         result = await self.db.execute(stmt.offset(offset).limit(limit))
         return list(result.scalars().unique()), total
 
+    async def all_specialisations(self) -> List[Specialisation]:
+        """Every specialisation, to attach to each course it sits under."""
+        return list((await self.db.execute(select(Specialisation).order_by(Specialisation.name))).scalars())
+
     async def college_course_names(self) -> List[Tuple[object, str]]:
         """Every (college, course name) pair in the directory, for counting colleges per course."""
         # The specialisation is appended, so "MBA" + "Finance" counts for the course MBA and for Finance alike.

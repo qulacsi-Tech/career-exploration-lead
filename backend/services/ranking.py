@@ -25,6 +25,7 @@ class RankingService:
             RankingListSchema(
                 slug=rl.slug,
                 name=rl.name,
+                shortName=rl.short_name or "",
                 authority=rl.authority,
                 year=rl.year,
                 stream=rl.stream,
@@ -45,6 +46,7 @@ class RankingService:
         return RankingListSchema(
             slug=rl.slug,
             name=rl.name,
+            shortName=rl.short_name or "",
             authority=rl.authority,
             year=rl.year,
             stream=rl.stream,

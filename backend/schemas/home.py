@@ -58,6 +58,8 @@ class RecommendedUniversitySchema(BaseModel):
     state: str
     image: str = ""
     institutionType: str = "College"
+    # The category it is listed under, so the row can follow the admin's category priority.
+    stream: str = ""
 
     model_config = ConfigDict(populate_by_name=True)
 

@@ -35,6 +35,7 @@ def _to_list_schema(college: College) -> CollegeListSchema:
     return CollegeListSchema(
         status=college.status or "published",
         isFeatured=bool(college.is_featured),
+        priority=college.priority,
         viewCount=college.view_count or 0,
         logo=page_record.get("logo") or "",
         brochureUrl=page_record.get("brochureUrl") or "",
@@ -156,7 +157,7 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
         placement=placement,
         placements=history,
         cutoffs=[
-            CutoffSchema(exam=c.exam, category=c.category, score=c.score)
+            CutoffSchema(exam=c.exam, category=c.category, course=c.course or "", specialisation=c.specialisation or "", score=c.score)
             for c in (college.cutoffs or [])
         ],
         shortName=extra.shortName,
@@ -254,7 +255,7 @@ class CollegeService:
         rows = (await self.repo.db.execute(select(College).where(College.slug.in_(slugs), College.status == "published"))).scalars().all()
         by_slug = {c.slug: c for c in rows}
         return [
-            {"slug": c.slug, "name": c.name, "city": c.city, "state": c.state, "image": c.image or "", "institutionType": c.institution_type or "College"}
+            {"slug": c.slug, "name": c.name, "city": c.city, "state": c.state, "image": c.image or "", "institutionType": c.institution_type or "College", "stream": c.stream or ""}
             for c in (by_slug[s] for s in slugs if s in by_slug)
         ]
 

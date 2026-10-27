@@ -28,7 +28,11 @@ import { CountUp } from "@/components/college/reveal";
 
 export type CutoffItem = {
   exam: string;
+  /** The caste category: General, OBC, SC, ST... */
   category: string;
+  /** Empty: every programme. */
+  course?: string;
+  specialisation?: string;
   score: string;
 };
 
@@ -84,6 +88,25 @@ function Dial({ percent }: { percent: number }) {
   );
 }
 
+/** A score that is not a percentile: its first figure large with the rest beneath, or the words themselves when there is no figure. */
+function PlainScore({ score }: { score: string }) {
+  const figure = score.match(/\d[\d,]*(?:\.\d+)?/)?.[0];
+  if (!figure) {
+    return (
+      <div className="flex h-32 w-32 items-center justify-center rounded-full border-8 border-line-soft px-3 text-center">
+        <span className="line-clamp-4 font-display text-sm font-bold leading-snug text-ink">{score}</span>
+      </div>
+    );
+  }
+  const rest = score.replace(figure, "").trim().replace(/^[-:\s]+/, "");
+  return (
+    <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full border-8 border-line-soft px-2 text-center">
+      <span className="font-display text-2xl font-extrabold text-ink">{figure}</span>
+      <span className="line-clamp-2 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{rest || "score"}</span>
+    </div>
+  );
+}
+
 export function CutoffCards({ cutoffs }: { cutoffs: CutoffItem[] }) {
   return (
     <RevealGroup className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -91,7 +114,7 @@ export function CutoffCards({ cutoffs }: { cutoffs: CutoffItem[] }) {
         const percent = asPercent(cutoff.score);
 
         return (
-          <RevealItem key={`${cutoff.exam}-${cutoff.category}-${i}`}>
+          <RevealItem key={`${cutoff.exam}-${cutoff.category}-${cutoff.course}-${cutoff.specialisation}-${i}`}>
             <article className="group relative h-full overflow-hidden rounded-3xl border border-line bg-surface p-6 text-center transition-all duration-500 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lg">
               {/* A faint ghost of the exam name behind the dial, so the card
                   has depth without another border or panel in it. */}
@@ -106,7 +129,13 @@ export function CutoffCards({ cutoffs }: { cutoffs: CutoffItem[] }) {
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
                   {cutoff.exam}
                 </p>
-                <p className="mt-1 text-xs text-ink-faint">{cutoff.category} category</p>
+                {/* The programme it is for, set apart: this is what tells two cards of the same exam apart. */}
+                {[cutoff.course, cutoff.specialisation].some((x) => x?.trim()) && (
+                  <p className="mt-1.5 inline-block rounded-full bg-brand-soft px-3 py-0.5 text-xs font-bold text-brand-ink">
+                    {[cutoff.course, cutoff.specialisation].filter((x) => x?.trim()).join(" · ")}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-ink-faint">Caste: {cutoff.category}</p>
 
                 <div className="mt-5 flex justify-center">
                   {percent !== null ? (
@@ -114,19 +143,12 @@ export function CutoffCards({ cutoffs }: { cutoffs: CutoffItem[] }) {
                   ) : (
                     /* Same 128px box as the dial, so a mixed row of cards keeps
                        one baseline instead of stepping up and down. */
-                    <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full border-8 border-line-soft">
-                      <span className="font-display text-2xl font-extrabold text-ink">
-                        {cutoff.score.match(/[\d.]+/)?.[0] ?? cutoff.score}
-                      </span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-                        {cutoff.score.replace(/[\d.\s]+/, "") || "score"}
-                      </span>
-                    </div>
+                    <PlainScore score={cutoff.score} />
                   )}
                 </div>
 
                 <p className="mt-5 text-sm text-ink-soft">
-                  Closing score for {cutoff.exam} in the {cutoff.category.toLowerCase()} category.
+                  Closing score for {cutoff.exam}{[cutoff.course, cutoff.specialisation].some((x) => x?.trim()) ? ` in ${[cutoff.course, cutoff.specialisation].filter((x) => x?.trim()).join(" ")}` : ""} for the {cutoff.category} caste category.
                 </p>
               </div>
             </article>

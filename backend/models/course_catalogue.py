@@ -27,6 +27,8 @@ class CourseCatalogue(Base):
     average_fees = Column(String(100), nullable=True)
     exams_accepted = Column(JSONB, nullable=False, default=list)
     college_count = Column(Integer, nullable=False, default=0)
+    # 1 is shown first in the Courses list and menu; empty comes after those that have one.
+    priority = Column(Integer, nullable=True, index=True)
     about = Column(Text, nullable=True)
     is_published = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

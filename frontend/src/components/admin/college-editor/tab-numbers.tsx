@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { scoreProblem } from "@/lib/college-rules";
 import type { CollegeRankings, PlacementBreakdown, RankingListHead, RecordCourse, RecordCutoff, RecordPlacement } from "@/lib/api";
-import { loadCollegeRankings, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
+import { checkRankHolder, loadCollegeRankings, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
 import { AmountField } from "@/components/admin/range-field";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { packageProblem } from "@/lib/college-rules";
 import { CategoryTicks, CourseTicks, type CoursePick } from "@/components/admin/college-editor/course-picker";
-import { AddButton, Card, ChipInput, DurationField, EmptyNote, NumberInput, Row, SelectInput, TextInput, move } from "@/components/admin/college-editor/shared";
+import { AddButton, Card, ChipInput, DurationField, EmptyNote, Labelled, NumberInput, Row, SelectInput, TextInput, inputCls, move } from "@/components/admin/college-editor/shared";
 
 /*
   The tabs that are tables of figures: Courses & Fees, Placements, Cut-Offs and Rankings.
@@ -228,31 +229,179 @@ export function PlacementsTab({ record, update, pools }: EditorProps) {
 
 // ── Cut-offs ─────────────────────────────────────────────────────────────────
 
+/** What a cut-off score is measured in. The score is saved as one piece of text ("98 percentile", "Rank 1200"), so it reads the same everywhere. */
+const SCORE_TYPES = [
+  { id: "percentile", label: "Percentile", hint: "e.g. 98.5 (0 to 100)" },
+  { id: "percentage", label: "Percentage", hint: "e.g. 72 (0 to 100)" },
+  { id: "rank", label: "Rank", hint: "e.g. 1200, or 1200 - 1500" },
+  { id: "marks", label: "Marks", hint: "e.g. 172, or 172/300" },
+  { id: "number", label: "Number", hint: "A plain figure" },
+  { id: "text", label: "Text", hint: "Anything, e.g. Closed or To be announced" },
+] as const;
+type ScoreType = (typeof SCORE_TYPES)[number]["id"];
+
+/** The type and value a saved score stands for. Anything that is not one of the shapes below is text. */
+function parseScore(text: string): { type: ScoreType | null; value: string } {
+  const t = text.trim();
+  if (!t) return { type: null, value: "" };
+  let m: RegExpExecArray | null;
+  if ((m = /^(.*?)\s*percentile$/i.exec(t))) return { type: "percentile", value: m[1] };
+  if ((m = /^(.*?)\s*%$/.exec(t))) return { type: "percentage", value: m[1] };
+  if ((m = /^rank\s+(.+)$/i.exec(t))) return { type: "rank", value: m[1] };
+  if ((m = /^([\d.,/\s-]+?)\s*marks?$/i.exec(t))) return { type: "marks", value: m[1] };
+  if (/^[\d.,]+$/.test(t)) return { type: "number", value: t };
+  return { type: "text", value: t };
+}
+
+function composeScore(type: ScoreType, value: string): string {
+  const v = value.trim();
+  if (!v) return "";
+  return { percentile: `${v} percentile`, percentage: `${v}%`, rank: `Rank ${v}`, marks: `${v} marks`, number: v, text: v }[type];
+}
+
+/** A cut-off score: pick what it is measured in, then type the value (any characters). */
+function ScoreInput({ id, value, onChange }: { id: string; value: string; onChange: (next: string) => void }) {
+  const parsed = parseScore(value);
+  // With nothing typed yet the chosen type is remembered here; once there is a value it is the value's own.
+  const [chosen, setChosen] = useState<ScoreType>(parsed.type ?? "percentile");
+  const type = parsed.type ?? chosen;
+  const info = SCORE_TYPES.find((t) => t.id === type)!;
+  const problem = scoreProblem(value);
+
+  return (
+    <Labelled id={id} label="Score" required hint={problem ? undefined : info.hint}>
+      <div className="mt-1.5 flex gap-2">
+        <select
+          aria-label="Score type"
+          value={type}
+          onChange={(e) => {
+            const next = e.target.value as ScoreType;
+            setChosen(next);
+            onChange(composeScore(next, parsed.value));
+          }}
+          className="shrink-0 rounded-lg border border-line bg-bg px-2 py-2 text-sm text-ink focus:border-brand focus:outline-none"
+        >
+          {SCORE_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+        <input id={id} value={parsed.value} maxLength={80} aria-required="true" onChange={(e) => onChange(composeScore(type, e.target.value))} placeholder={type === "text" ? "e.g. Closed" : "e.g. 98"} className={inputCls} />
+      </div>
+      {problem && <p role="alert" className="mt-1 text-xs text-red-700">{problem}</p>}
+    </Labelled>
+  );
+}
+
+const blankCutoff = (): RecordCutoff => ({ exam: "", category: "General", course: "", specialisation: "", score: "" });
+const cutoffKey = (c: RecordCutoff) => [c.exam, c.category, c.course, c.specialisation].map((x) => x.trim().toLowerCase()).join("|");
+
+/**
+ * The score needed for each entrance exam and caste, by course, and by specialisation under it (CSE, EEE...).
+ * A card is one exam, caste and course; under it, a line for each specialisation with its own score, so "B.Tech: CSE 98,
+ * EEE 92" is one card. A line with no specialisation is the course as a whole, and a card with no course applies to every
+ * programme. Underneath each line is still a cut-off of its own, which is how it is saved and shown on the college page.
+ * The courses and specialisations offered are the ones ticked on the Courses & Fees tab.
+ */
 export function CutoffsTab({ record, update, pools }: EditorProps) {
   const rows = record.cutoffs;
   const set = (list: RecordCutoff[]) => update((r) => ({ ...r, cutoffs: list }));
   const patch = (i: number, change: Partial<RecordCutoff>) => set(rows.map((c, n) => (n === i ? { ...c, ...change } : c)));
+  const courseNames = [...new Set(record.courses.map((c) => c.name).filter(Boolean))];
+  const specsOf = (course: string) => [...new Set(record.courses.filter((c) => (!course || c.name === course) && c.specialisation).map((c) => c.specialisation))];
+
   const seen = new Map<string, number>();
-  rows.forEach((c) => seen.set(`${c.exam.trim().toLowerCase()}|${c.category.trim().toLowerCase()}`, (seen.get(`${c.exam.trim().toLowerCase()}|${c.category.trim().toLowerCase()}`) ?? 0) + 1));
+  rows.forEach((c) => seen.set(cutoffKey(c), (seen.get(cutoffKey(c)) ?? 0) + 1));
+
+  // A card per exam + caste + course, in the order each first appears. A card with no exam yet stands alone.
+  const groups: { key: string; at: number[] }[] = [];
+  rows.forEach((c, i) => {
+    const key = c.exam.trim() ? [c.exam, c.category, c.course].map((x) => x.trim().toLowerCase()).join("|") : `new-${i}`;
+    const found = groups.find((g) => g.key === key);
+    if (found) found.at.push(i);
+    else groups.push({ key, at: [i] });
+  });
+
+  /** Changes the exam, caste or course of every line in a card. */
+  const patchGroup = (at: number[], change: Partial<RecordCutoff>) =>
+    set(rows.map((r, n) => {
+      if (!at.includes(n)) return r;
+      const next = { ...r, ...change };
+      // A specialisation belongs to a course: one the new course does not offer is dropped.
+      return "course" in change && next.specialisation && !specsOf(next.course).includes(next.specialisation) ? { ...next, specialisation: "" } : next;
+    }));
+  const addLine = (at: number[]) => {
+    const last = at[at.length - 1];
+    const head = rows[at[0]];
+    const used = new Set(at.map((n) => rows[n].specialisation));
+    const next = specsOf(head.course).find((sp) => !used.has(sp)) ?? "";
+    const line: RecordCutoff = { exam: head.exam, category: head.category, course: head.course, specialisation: next, score: "" };
+    set([...rows.slice(0, last + 1), line, ...rows.slice(last + 1)]);
+  };
 
   return (
     <Card
       title="Cut-offs"
-      description="The score needed for each entrance exam and category. The Cut-Offs tab draws a bar for a percentile and shows other scores as they are."
-      actions={<AddButton onClick={() => set([...rows, { exam: "", category: "General", score: "" }])} disabled={rows.length >= 200}>Add a cut-off</AddButton>}
+      description="The score needed for each entrance exam and caste. Pick a course to give it its own, and add a line for each specialisation (CSE, EEE...) with its own score. The Cut-Offs tab draws a bar for a percentile and shows other scores as they are."
+      actions={<AddButton onClick={() => set([...rows, blankCutoff()])} disabled={rows.length >= 200}>Add a cut-off</AddButton>}
     >
       {rows.length === 0 ? (
         <EmptyNote>No cut-offs. The Cut-Offs tab shows an empty message.</EmptyNote>
       ) : (
-        <ul className="space-y-3">
-          {rows.map((c, i) => {
-            const duplicate = (seen.get(`${c.exam.trim().toLowerCase()}|${c.category.trim().toLowerCase()}`) ?? 0) > 1;
+        <ul className="space-y-4">
+          {groups.map((g) => {
+            const head = rows[g.at[0]];
+            const specs = specsOf(head.course);
+            const full = specs.length > 0 && g.at.length >= specs.length + 1;
             return (
-              <Row key={i} title={`${c.exam || "Exam"} · ${c.category || "Category"}`} index={i} count={rows.length} onRemove={() => set(rows.filter((_, n) => n !== i))} error={duplicate ? "This exam and category is listed more than once." : undefined}>
+              <Row
+                key={g.key}
+                title={[head.exam || "Exam", head.category || "Caste", head.course || "every programme"].join(" · ")}
+                index={0}
+                count={1}
+                onRemove={() => set(rows.filter((_, n) => !g.at.includes(n)))}
+              >
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <SelectInput id={`cu-${i}-exam`} label="Exam" required value={c.exam} onChange={(v) => patch(i, { exam: v })} options={pools.exams} placeholder="Choose an exam" />
-                  <SelectInput id={`cu-${i}-cat`} label="Category" value={c.category} onChange={(v) => patch(i, { category: v })} options={CATEGORIES} />
-                  <TextInput id={`cu-${i}-score`} label="Score" required max={100} value={c.score} onChange={(v) => patch(i, { score: v })} placeholder="e.g. 98 percentile" hint="A percentile (0-100), a rank or marks." />
+                  <SelectInput id={`cu-${g.at[0]}-exam`} label="Exam" required value={head.exam} onChange={(v) => patchGroup(g.at, { exam: v })} options={pools.exams} placeholder="Choose an exam" />
+                  <SelectInput id={`cu-${g.at[0]}-cat`} label="Caste" value={head.category} onChange={(v) => patchGroup(g.at, { category: v })} options={CATEGORIES} />
+                  <SelectInput
+                    id={`cu-${g.at[0]}-course`}
+                    label="Course"
+                    value={head.course}
+                    onChange={(v) => patchGroup(g.at, { course: v })}
+                    options={courseNames}
+                    placeholder="All courses"
+                    hint={courseNames.length === 0 ? "Tick the courses on the Courses & Fees tab first." : "Leave as All courses for a cut-off that applies to every programme."}
+                  />
+                </div>
+
+                <div className="mt-4 rounded-lg border border-line bg-surface p-3">
+                  <p className="text-xs font-semibold text-ink">Cut-off{head.course ? ` for ${head.course}` : ""} <span className="font-normal text-ink-faint">— one line for each specialisation</span></p>
+                  <ul className="mt-2 space-y-3">
+                    {g.at.map((i) => {
+                      const c = rows[i];
+                      const duplicate = (seen.get(cutoffKey(c)) ?? 0) > 1;
+                      const taken = new Set(g.at.filter((n) => n !== i).map((n) => rows[n].specialisation));
+                      return (
+                        <li key={i} className="grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                          <SelectInput id={`cu-${i}-spec`} label="Specialisation" value={c.specialisation} onChange={(v) => patch(i, { specialisation: v })} options={specs.filter((sp) => !taken.has(sp))} placeholder={head.course ? `${head.course} as a whole` : "All specialisations"} />
+                          <ScoreInput id={`cu-${i}-score`} value={c.score} onChange={(v) => patch(i, { score: v })} />
+                          {g.at.length > 1 ? (
+                            <button type="button" aria-label="Remove this line" onClick={() => set(rows.filter((_, n) => n !== i))} className="mb-1 rounded-lg border border-line px-3 py-2 text-xs text-ink-soft hover:border-red-700 hover:text-red-700">Remove line</button>
+                          ) : (
+                            <span />
+                          )}
+                          {duplicate && <p role="alert" className="text-xs text-red-700 md:col-span-3">This specialisation is listed more than once for this exam, caste and course.</p>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => addLine(g.at)}
+                    disabled={!head.exam || full || rows.length >= 200}
+                    className="mt-3 rounded-lg border border-brand px-3 py-1.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-brand"
+                  >
+                    + Add a specialisation
+                  </button>
+                  {head.course && specs.length === 0 && <p className="mt-2 text-xs text-ink-faint">{head.course} has no specialisations ticked on the Courses &amp; Fees tab.</p>}
                 </div>
               </Row>
             );
@@ -275,6 +424,8 @@ export function RankingsTab({ slug }: EditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [listSlug, setListSlug] = useState("");
   const [rank, setRank] = useState<number | null>(null);
+  /** Who already has the rank typed in the chosen list. A rank belongs to one college in a list. */
+  const [taken, setTaken] = useState<string | null>(null);
   const [score, setScore] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -288,6 +439,23 @@ export function RankingsTab({ slug }: EditorProps) {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  useEffect(() => {
+    if (!listSlug || rank === null || rank < 1 || !Number.isInteger(rank)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTaken(null);
+      return;
+    }
+    let current = true;
+    const timer = setTimeout(async () => {
+      const result = await checkRankHolder(listSlug, rank, slug);
+      if (current) setTaken("error" in result || !result.holder ? null : `Rank ${rank} in ${result.list} is already held by ${result.holder.name}. Choose another rank, or change theirs first.`);
+    }, 300);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [listSlug, rank, slug]);
 
   const run = (job: () => Promise<{ ok: true } | { error: string }>, after?: () => void) =>
     startTransition(async () => {
@@ -366,13 +534,14 @@ export function RankingsTab({ slug }: EditorProps) {
                 <button
                   type="button"
                   onClick={add}
-                  disabled={pending || !listSlug || rank === null || rank < 1 || !Number.isInteger(rank)}
+                  disabled={pending || !listSlug || rank === null || rank < 1 || !Number.isInteger(rank) || taken !== null}
                   className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50"
                 >
                   {pending ? "Adding…" : "Add ranking"}
                 </button>
               </div>
             )}
+            {taken && <p role="alert" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">{taken}</p>}
           </div>
         </>
       )}

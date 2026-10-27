@@ -4,6 +4,7 @@ import { PageSectionsAdmin } from "@/components/admin/page-sections-admin";
 import { HeroItemsEditor } from "@/components/admin/hero-items-editor";
 import { TopCollegesEditor } from "@/components/admin/top-colleges-editor";
 import { TopExamsEditor } from "@/components/admin/top-exams-editor";
+import type { CategoryPriority } from "@/lib/api";
 import type { AdminField, AdminHeroItem, AdminHomeLocation, AdminHomepage, AdminLocationLabel, IndiaGeo, LinkPool, AdminNews, LocationPicker, AdminProgram, ProgramSourceCourse, AdminTopExams, AdminUniversities } from "@/lib/api";
 import { RecommendedProgramsManager } from "@/components/admin/recommended-programs-manager";
 import { HomeLocationsEditor } from "@/components/admin/home-locations-editor";
@@ -13,6 +14,7 @@ import { HeroCopyEditor, PromoBannerEditor, SectionCopyEditor, StoryCopyEditor }
 import { CareerPanelsManager, DataTilesManager, type PanelDraft, type TileDraft } from "@/components/admin/home-content-managers";
 import { RecommendedCollegesManager } from "@/components/admin/recommended-colleges-manager";
 import { NewsManager } from "@/components/admin/news-manager";
+import { CategoryPriorityCard } from "@/components/admin/category-priority-card";
 
 /*
   Defaults mirror what app/(site)/page.tsx renders today, so this screen opens
@@ -42,6 +44,7 @@ export function HomepageSectionsAdmin({
   fieldList,
   heroItems,
   heroMax,
+  categoryPriority,
 }: {
   homepage: AdminHomepage;
   careers: PanelDraft[];
@@ -59,7 +62,9 @@ export function HomepageSectionsAdmin({
   fieldList: AdminField[];
   heroItems: AdminHeroItem[];
   heroMax: number;
+  categoryPriority: CategoryPriority;
 }) {
+  const categories = fieldList.map((f) => f.name);
   return (
     <PageSectionsAdmin
       title="Homepage"
@@ -118,13 +123,16 @@ export function HomepageSectionsAdmin({
           id: "college-bands",
           label: "Top Colleges",
           render: () => (
-            <TopCollegesEditor
-              data={homepage}
-              geo={geo}
-              streams={fieldList.map((f) => f.name)}
-              wording={copy.collegeCard}
-              picker={locationPicker}
-            />
+            <div className="space-y-6">
+              <CategoryPriorityCard section="topColleges" categories={categories} initial={categoryPriority.topColleges} where="among the category tabs of the Top Colleges row" />
+              <TopCollegesEditor
+                data={homepage}
+                geo={geo}
+                streams={categories}
+                wording={copy.collegeCard}
+                picker={locationPicker}
+              />
+            </div>
           ),
         },
         {
@@ -139,6 +147,7 @@ export function HomepageSectionsAdmin({
                 copy={copy.topExams}
                 show={["heading", "accent", "subheading"]}
               />
+              <CategoryPriorityCard section="topExams" categories={categories} initial={categoryPriority.topExams} where="among the category tabs of the Top Exams row" />
               <TopExamsEditor streams={fieldList.map((f) => f.name)} topExams={topExams} wording={copy.examCard} />
             </div>
           ),
@@ -176,6 +185,7 @@ export function HomepageSectionsAdmin({
                 copy={copy.careers}
                 show={["heading", "accent", "subheading"]}
               />
+              <CategoryPriorityCard section="careers" categories={categories} initial={categoryPriority.careers} where="among the category tabs of Explore Careers" />
               <CareerPanelsManager panels={careers} pool={linkPool} categories={fieldList.map((f) => f.name)} />
               <PromoBannerEditor copy={copy.promoBanner} />
             </div>
@@ -193,6 +203,7 @@ export function HomepageSectionsAdmin({
                 copy={copy.universities}
                 extra="itemSubline"
               />
+              <CategoryPriorityCard section="universities" categories={categories} initial={categoryPriority.universities} where="in the recommended colleges row (colleges of that category are shown first)" />
               <RecommendedCollegesManager chosen={universities.colleges.map((c) => c.slug)} picker={locationPicker} />
             </div>
           ),

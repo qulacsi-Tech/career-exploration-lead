@@ -17,7 +17,8 @@ import { collegePhotoSet, photoSetLedBy } from "@/lib/college-images";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
 import { STATIC_LOCATIONS } from "@/lib/sample-locations";
 import { getHighlightsByLocation } from "@/lib/location-colleges";
-import { getCollectionBands, getHomeData, type HomeLocation } from "@/lib/api";
+import { getCategoryPriority, getCollectionBands, getHomeData, NO_CATEGORY_PRIORITY, type HomeLocation } from "@/lib/api";
+import { ordered } from "@/components/colleges-menu-data";
 
 /**
  * The photos of a programme card. A programme added in the admin has no photo shipped
@@ -71,11 +72,16 @@ export default async function Home() {
   const programs      = home?.recommendedPrograms ?? [];
   const careerPanels  = home?.careerPanels        ?? [];
   const universities  = home?.recommendedUniversities ?? [];
+  // Which category comes first in each section: the admin's priority, then the Fields list's order for the rest.
+  const priority      = await getCategoryPriority().catch(() => NO_CATEGORY_PRIORITY);
   const highlights    = home?.dataHighlights      ?? [];
   // The Fields grid and every stream link below come from the admin's list, nothing hard-coded.
   const fields        = home?.fields             ?? [];
   const heroItems     = home?.heroItems          ?? [];
   const streamTabs    = fields.map((f) => f.name);
+  const tabsFor       = (order: string[]) => ordered(streamTabs, order, (name) => name);
+  // The recommended colleges row: categories in priority order, the admin's own order within each.
+  const rankedUniversities = ordered(universities, priority.universities, (u) => u.stream ?? "");
 
   // ── Collections (college bands) stay on local data until the collections ──
   // ── CMS API ships in a later phase                                        ──
@@ -144,7 +150,7 @@ export default async function Home() {
               slug={collection.slug}
               colleges={bandRows}
               totals={totals ?? {}}
-              categories={streamTabs}
+              categories={tabsFor(priority.topColleges)}
               limit={limit ?? 6}
               label={collection.heading || collection.title}
               buttonLabel={copy.collegeCard.buttonLabel}
@@ -167,7 +173,7 @@ export default async function Home() {
               <p className="mt-2 text-sm text-ink-soft">{copy.topExams.subheading}</p>
             )}
           </div>
-          <TopExamsRow exams={topExams} categories={streamTabs} labels={copy.examCard} />
+          <TopExamsRow exams={topExams} categories={tabsFor(priority.topExams)} labels={copy.examCard} />
         </div>
       </section>
 
@@ -211,7 +217,7 @@ export default async function Home() {
                 <p className="mt-2 text-sm text-ink-soft">{copy.careers.subheading}</p>
               )}
             </div>
-            <CareerPanelsRow panels={careerPanels} categories={streamTabs} />
+            <CareerPanelsRow panels={careerPanels} categories={tabsFor(priority.careers)} />
             {/* Promo banner */}
             <div className="relative mt-12 overflow-hidden rounded-2xl bg-brand px-8 py-10 sm:px-12">
               <div className="relative z-10 max-w-md">
@@ -251,12 +257,12 @@ export default async function Home() {
       )}
 
       {/* Recommended colleges and universities: two at a time, in the order the admin chose */}
-      {universities.length > 0 && (
+      {rankedUniversities.length > 0 && (
         <AutoStoryFrame
           layout="split"
           title={copy.universities.heading}
           highlight={copy.universities.accent}
-          items={universities.map((university) => ({
+          items={rankedUniversities.map((university) => ({
             key: university.slug,
             eyebrow: university.institutionType || "College",
             headline: university.name,

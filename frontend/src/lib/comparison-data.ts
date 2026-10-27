@@ -125,7 +125,7 @@ export const compareRows: CompareRow[] = [
     label: "Cutoffs",
     value: (c) =>
       c.cutoffs?.length
-        ? (c.cutoffs ?? []).map((cut) => `${cut.exam} ${cut.category}: ${cut.score}`).join(" · ")
+        ? (c.cutoffs ?? []).map((cut) => `${[cut.exam, cut.course, cut.specialisation, cut.category].filter(Boolean).join(" ")}: ${cut.score}`).join(" · ")
         : "—",
   },
   {

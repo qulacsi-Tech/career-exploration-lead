@@ -38,16 +38,32 @@ import {
   adminPutTopExams,
   adminPutHomeCopy,
   adminPutNavMenuConfig,
+  adminGetDefaultPriorities,
+  adminPutCategoryPriority,
+  type CategoryPrioritySection,
+  adminGetCourseColleges,
+  adminPutCourseColleges,
+  adminPutCourseInfo,
+  type CourseInfo,
+  type CollegeCourseRow,
+  type CourseCollegesData,
+  adminSetDefaultPriorities,
+  adminSetMenuPriorities,
+  adminRankHolder,
+  type PriorityRow,
   getColleges,
   type CollegeParams,
   adminPreviewCollection,
   type CollectionPreview,
   type NavMenuConfig,
+  type NavMenuName,
   adminGetListingHeader,
   adminPutListingHeader,
   adminResetListingHeader,
   adminListingHeaderScopes,
   adminGetListingSlots,
+  adminResetListingSlots,
+  adminListingSlotScopes,
   adminPutListingSlots,
   type ListingSlot,
   adminGetCollegeRankings,
@@ -139,11 +155,11 @@ const COLLEGE_EDIT_FIELDS = [
 ] as const;
 
 const COLLEGE_CREATE_FIELDS = [
-  "name", "city", "state", "ownership", "institutionType", "feesRange", "about", "established",
+  "name", "shortName", "city", "state", "ownership", "institutionType", "feesRange", "about", "established",
 ] as const;
 
 const EXAM_EDIT_FIELDS = [
-  "name", "conductingBody", "description", "registrationCloses", "examDate",
+  "name", "shortName", "conductingBody", "description", "registrationCloses", "examDate",
   "mode", "frequency", "applicationFee", "officialSite",
   "durationMinutes", "sections", "syllabus",
 ] as const;
@@ -475,6 +491,42 @@ export async function saveCourse(slug: string, form: FormData): Promise<AdminAct
   return result;
 }
 
+/** Saves which category comes first in one homepage section. */
+export async function saveCategoryPriority(section: CategoryPrioritySection, order: string[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/homepage", (token) => adminPutCategoryPriority(token, section, order));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** Saves the info typed for a course: what its card shows. An empty field is cleared and not shown. */
+export async function saveCourseInfo(slug: string, info: CourseInfo): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) => adminPutCourseInfo(token, slug, info));
+  if ("ok" in result) revalidatePath("/", "layout");
+  return result;
+}
+
+/** The colleges and what each says about a course, for the Colleges tab of the course editor. */
+export async function loadCourseColleges(slug: string): Promise<CourseCollegesData | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminGetCourseColleges(token, slug);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: "Could not load the colleges. Try again." };
+  }
+}
+
+/** Saves which colleges teach a course and each one's duration, mode, fees and exams. */
+export async function saveCourseColleges(slug: string, colleges: { slug: string; rows: CollegeCourseRow[] }[]): Promise<AdminActionResult> {
+  const result = await attempt("/admin/catalogue", (token) => adminPutCourseColleges(token, slug, colleges));
+  if ("ok" in result) {
+    revalidatePath("/courses", "layout");
+    revalidatePath("/colleges", "layout");
+    revalidatePath("/admin/colleges");
+  }
+  return result;
+}
+
 /** The names typed on an add form: the chips and whatever is still in the box, once each. */
 function typedNames(form: FormData): string[] {
   const seen = new Map<string, string>();
@@ -621,6 +673,7 @@ function rankingBody(form: FormData): { value: Record<string, unknown> } | { err
   return {
     value: {
       name: String(form.get("name") ?? "").trim(),
+      shortName: String(form.get("shortName") ?? "").trim(),
       authority: String(form.get("authority") ?? "").trim(),
       // Non-numeric text is passed through so the API reports it by field name.
       year: /^\d+$/.test(yearText) ? Number(yearText) : yearText,
@@ -834,6 +887,7 @@ function examSlug(name: string): string {
 function examBody(input: ExamInput) {
   return {
     name: input.name.trim(),
+    shortName: input.shortName.trim(),
     conductingBody: input.conductingBody.trim(),
     level: input.level,
     description: input.description.trim(),
@@ -912,6 +966,46 @@ export async function saveHomeCopy(
   return result;
 }
 
+/** Every college with its default priority, in the order the lists show them now. */
+export async function loadDefaultPriorities(): Promise<{ colleges: PriorityRow[] } | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return { colleges: await adminGetDefaultPriorities(token) };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: "Could not load the colleges. Try again." };
+  }
+}
+
+function revalidateListings() {
+  revalidatePath("/colleges", "layout");
+  revalidatePath("/", "layout");
+}
+
+/** Saves the default priority of each college named: a whole number, or null to clear it. */
+export async function saveDefaultPriorities(priorities: Record<string, number | null>): Promise<AdminActionResult> {
+  const result = await attempt("/admin/colleges", (token) => adminSetDefaultPriorities(token, priorities));
+  if ("ok" in result) revalidateListings();
+  return result;
+}
+
+/** Saves the priorities of the institutes in one header-menu link's list. `menu` is "<category id>:<link key>". */
+export async function saveMenuPriorities(menu: string, priority: Record<string, number>): Promise<AdminActionResult> {
+  const result = await attempt("/admin/colleges", (token) => adminSetMenuPriorities(token, menu, priority));
+  if ("ok" in result) revalidateListings();
+  return result;
+}
+
+/** Who already holds a rank in a ranking list, for the warning shown while a rank is typed. */
+export async function checkRankHolder(list: string, rank: number, exclude: string): Promise<{ holder: { slug: string; name: string } | null; list: string } | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminRankHolder(token, list, rank, exclude);
+  } catch {
+    return { error: "Could not check the rank." };
+  }
+}
+
 /** The institutes a menu link opens by default, for the eye dialog where some can be left out. Read from the same listing the visitor gets. */
 export async function loadLinkInstitutes(href: string): Promise<{ colleges: { slug: string; name: string; city: string }[]; truncated: boolean } | { error: string }> {
   await requireAdminToken();
@@ -937,8 +1031,8 @@ export async function loadLinkInstitutes(href: string): Promise<{ colleges: { sl
 }
 
 /** Saves what the admin decided about the header's colleges menu: shown or hidden, order, names and SEO. */
-export async function saveNavMenu(config: NavMenuConfig): Promise<AdminActionResult> {
-  const result = await attempt("/admin/sections/navigation", (token) => adminPutNavMenuConfig(token, config));
+export async function saveNavMenu(config: NavMenuConfig, menu: NavMenuName = "colleges"): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/navigation", (token) => adminPutNavMenuConfig(token, config, menu));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }
@@ -1365,12 +1459,24 @@ export async function loadHeaderTargets(page: ListingPage) {
   }
 }
 
-/** The banners, filter strips and ads between the colleges, for the manager dialog (with the menu's options, for the preview chips). */
-export async function loadListingSlots(page: ListingPage) {
+/** What the slots dialog can edit: every selection in the colleges menu, and which already have a set of their own. */
+export async function loadSlotTargets(page: ListingPage) {
   const token = await requireAdminToken();
   try {
-    const [{ slots }, groups] = await Promise.all([adminGetListingSlots(token, page), getCollegesMenu(8)]);
-    return { slots, groups };
+    const [groups, custom] = await Promise.all([getMenuSource(EMPTY_NAV, false).then((source) => applyMenuConfig(source, EMPTY_NAV, Infinity)), adminListingSlotScopes(token, page)]);
+    return { groups, custom };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: "Could not load the menu selections. Try again." };
+  }
+}
+
+/** The banners, filter strips and ads between the colleges for the page or one selection, for the manager dialog (with the menu's options, for the preview chips). */
+export async function loadListingSlots(page: ListingPage, scope?: string) {
+  const token = await requireAdminToken();
+  try {
+    const [{ slots, custom }, groups] = await Promise.all([adminGetListingSlots(token, page, scope), getCollegesMenu(8)]);
+    return { slots, custom, groups };
   } catch (err) {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
     if (err instanceof ApiError) return { error: err.message };
@@ -1378,9 +1484,16 @@ export async function loadListingSlots(page: ListingPage) {
   }
 }
 
-export async function saveListingSlots(page: ListingPage, slots: ListingSlot[]): Promise<AdminActionResult> {
-  const result = await attempt(`/admin/${page}`, (token) => adminPutListingSlots(token, page, slots));
-  if ("ok" in result) revalidatePath(`/${page}`);
+export async function saveListingSlots(page: ListingPage, slots: ListingSlot[], scope?: string): Promise<AdminActionResult> {
+  const result = await attempt(`/admin/${page}`, (token) => adminPutListingSlots(token, page, slots, scope));
+  if ("ok" in result) revalidatePath(`/${page}`, "layout");
+  return result;
+}
+
+/** Give a selection back the page's own banners, filters and ads. */
+export async function resetListingSlots(page: ListingPage, scope: string): Promise<AdminActionResult> {
+  const result = await attempt(`/admin/${page}`, (token) => adminResetListingSlots(token, page, scope));
+  if ("ok" in result) revalidatePath(`/${page}`, "layout");
   return result;
 }
 

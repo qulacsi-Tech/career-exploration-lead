@@ -54,6 +54,7 @@ class EntryBody(BaseModel):
 
 class RankingBody(BaseModel):
     name: str = Field(min_length=2, max_length=300)
+    shortName: str = Field(default="", max_length=100)
     authority: str = Field(min_length=2, max_length=200)
     year: int = Field(ge=1990)
     stream: Optional[str] = Field(default=None, max_length=100)
@@ -83,12 +84,17 @@ async def _check_entries(db, entries: list[EntryBody]) -> None:
     ranks = [e.rank for e in entries]
     if len(set(slugs)) != len(slugs):
         raise ValidationError("entries: a college appears more than once.")
+    known_names = {slug: name for slug, name in (await db.execute(select(College.slug, College.name).where(College.slug.in_(slugs)))).all()} if slugs else {}
     if len(set(ranks)) != len(ranks):
-        raise ValidationError("entries: two colleges share a rank.")
+        # Say who: the first rank given to two colleges, and both of them.
+        holders: dict[int, list[str]] = {}
+        for e in entries:
+            holders.setdefault(e.rank, []).append(known_names.get(e.collegeSlug, e.collegeSlug))
+        rank, who = next((r, w) for r, w in holders.items() if len(w) > 1)
+        raise ValidationError(f"entries: rank {rank} is given to both {who[0]} and {who[1]}. Each rank belongs to one college in a list.")
     if not slugs:
         return
-    known = set((await db.execute(select(College.slug).where(College.slug.in_(slugs)))).scalars().all())
-    missing = [s for s in slugs if s not in known]
+    missing = [s for s in slugs if s not in known_names]
     if missing:
         raise ValidationError(f"entries: unknown college '{missing[0]}'.")
 
@@ -105,6 +111,7 @@ def _list_out(rl: RankingList) -> dict:
         "id": str(rl.id),
         "slug": rl.slug,
         "name": rl.name,
+        "shortName": rl.short_name or "",
         "authority": rl.authority,
         "year": rl.year,
         "stream": rl.stream,
@@ -181,6 +188,17 @@ async def admin_college_rankings(college_slug: str, _admin: AdminPayload, db: Db
     return SuccessResponse[dict](data={"entries": mine, "available": available})
 
 
+@router.get("/{slug}/rank/{rank}", response_model=SuccessResponse[dict])
+async def admin_rank_holder(slug: str, rank: int, _admin: AdminPayload, db: DbSession, exclude: Optional[str] = None):
+    """Who holds a rank in a list, for the warning shown while a rank is being typed. `exclude` is the college being edited."""
+    rl = await _by_slug(db, slug)
+    entry = next((e for e in rl.entries if e.rank == rank and e.college_slug != exclude), None)
+    if entry is None:
+        return SuccessResponse[dict](data={"holder": None, "list": rl.name})
+    name = (await db.execute(select(College.name).where(College.slug == entry.college_slug))).scalar_one_or_none() or entry.college_slug
+    return SuccessResponse[dict](data={"holder": {"slug": entry.college_slug, "name": name}, "list": rl.name})
+
+
 @router.put("/{slug}/entries/{college_slug}", response_model=SuccessResponse[dict])
 async def admin_set_entry(slug: str, college_slug: str, _admin: AdminPayload, db: DbSession, body: dict):
     """Puts one college in a list at a rank, or changes its rank there."""
@@ -190,7 +208,8 @@ async def admin_set_entry(slug: str, college_slug: str, _admin: AdminPayload, db
         raise NotFoundError("College")
     clash = next((e for e in rl.entries if e.rank == data.rank and e.college_slug != college_slug), None)
     if clash is not None:
-        raise ConflictError("RANK_TAKEN", f"Rank {data.rank} in {rl.name} already belongs to another college.")
+        holder = (await db.execute(select(College.name).where(College.slug == clash.college_slug))).scalar_one_or_none() or clash.college_slug
+        raise ConflictError("RANK_TAKEN", f"Rank {data.rank} in {rl.name} is already held by {holder}. Choose another rank, or change theirs first.")
     entry = next((e for e in rl.entries if e.college_slug == college_slug), None)
     if entry is None:
         db.add(RankingEntry(id=uuid.uuid4(), ranking_list_id=rl.id, college_slug=college_slug, rank=data.rank, score=data.score))
@@ -236,6 +255,7 @@ async def admin_create_ranking(_admin: AdminPayload, db: DbSession, body: dict):
         id=uuid.uuid4(),
         slug=data.slug,
         name=data.name,
+        short_name=data.shortName.strip(),
         authority=data.authority,
         year=data.year,
         stream=data.stream,
@@ -256,6 +276,7 @@ async def admin_update_ranking(slug: str, _admin: AdminPayload, db: DbSession, b
     await _check_entries(db, data.entries)
 
     rl.name = data.name
+    rl.short_name = data.shortName.strip()
     rl.authority = data.authority
     rl.year = data.year
     rl.stream = data.stream

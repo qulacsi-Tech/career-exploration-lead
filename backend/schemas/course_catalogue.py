@@ -29,11 +29,13 @@ class CourseCatalogueListSchema(BaseModel):
     examsAccepted: List[str]
     collegeCount: int
     about: Optional[str] = None
+    # Set in the admin: 1 is shown first. None when the course has none.
+    priority: Optional[int] = None
+    # The branches offered under it (Finance, Marketing...), with the colleges offering each.
+    specialisations: List[SpecialisationSchema] = []
 
     model_config = ConfigDict(populate_by_name=True)
 
 
 class CourseCatalogueDetailSchema(CourseCatalogueListSchema):
-    specialisations: List[SpecialisationSchema] = []
-
     model_config = ConfigDict(populate_by_name=True)

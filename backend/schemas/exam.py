@@ -10,6 +10,8 @@ class ExamFaqSchema(BaseModel):
 class ExamSchema(BaseModel):
     slug: str
     name: str
+    # Where space is tight. Empty: the full name.
+    shortName: str = ""
     conductingBody: str
     level: str
     description: str

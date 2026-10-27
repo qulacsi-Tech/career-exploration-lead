@@ -144,6 +144,9 @@ def _apply_filters(stmt, params: CollegeFilterParams):
     if params.exclude_slugs:
         stmt = stmt.where(College.slug.not_in(params.exclude_slugs))
 
+    # A header-menu link's own priorities come before everything else.
+    menu_first = [case(*[(College.slug == s, n) for s, n in params.priority.items()], else_=1000000)] if params.priority else []
+
     # Sort
     # Every order ends on the name and id, so ties (most colleges have no reviews yet) fall the same way
     # on every request and on every page, instead of in whatever order the database happens to return.
@@ -176,13 +179,23 @@ def _apply_filters(stmt, params: CollegeFilterParams):
                 .where(RankingList.slug == params.order_list, RankingEntry.college_slug == College.slug)
                 .scalar_subquery()
             )
-            stmt = stmt.order_by(func.coalesce(picked_rank, 1000000), position, College.id)
+            stmt = stmt.order_by(*menu_first, func.coalesce(picked_rank, 1000000), position, College.id)
         else:
-            stmt = stmt.order_by(position, College.id)
+            stmt = stmt.order_by(*menu_first, position, College.id)
     elif list_rank is not None:  # popularity inside a ranking list is the list's own order
-        stmt = stmt.order_by(list_rank, College.id)
-    else:  # popularity (default)
-        stmt = stmt.order_by(College.review_count.desc(), College.name, College.id)
+        stmt = stmt.order_by(*menu_first, list_rank, College.id)
+    else:
+        # Popularity (default): the priority set for the link, then the college's default priority, then its
+        # NIRF rank (a college with none after those that have one), then how much it is reviewed.
+        stmt = stmt.order_by(
+            *menu_first,
+            func.coalesce(College.priority, 1000000),
+            case((or_(College.ranking_rank.is_(None), College.ranking_rank <= 0), 1), else_=0),
+            College.ranking_rank.asc(),
+            College.review_count.desc(),
+            College.name,
+            College.id,
+        )
 
     return stmt
 

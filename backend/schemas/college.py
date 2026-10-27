@@ -67,7 +67,11 @@ class PlacementSchema(BaseModel):
 
 class CutoffSchema(BaseModel):
     exam: str
+    # The caste category: General, OBC, SC, ST...
     category: str
+    # Empty: every programme.
+    course: str = ""
+    specialisation: str = ""
     score: str
 
     model_config = ConfigDict(populate_by_name=True)
@@ -116,6 +120,8 @@ class CollegeListSchema(BaseModel):
     # Listing badges: set in the admin (featured) and counted from page visits (views).
     isFeatured: bool = False
     viewCount: int = 0
+    # The default priority set in the admin (1 first); None when the college has none.
+    priority: Optional[int] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -191,3 +197,5 @@ class CollegeFilterParams(BaseModel):
     order_list: Optional[str] = None
     # Colleges a header-menu link leaves out.
     exclude_slugs: Optional[List[str]] = None
+    # A header-menu link's own priorities, slug -> 1, 2, 3...: those colleges come first, in that order.
+    priority: Optional[dict[str, int]] = None
