@@ -6,20 +6,24 @@ import type { SourceGroup } from "@/components/colleges-menu-data";
 import { AdminPageHeader } from "@/components/admin/admin-section";
 import { NavMenuAdmin } from "@/components/admin/nav-menu-admin";
 import { CourseInfoButton } from "@/components/admin/course-info-modal";
+import { ChromeAdmin } from "@/components/admin/chrome-admin";
+import type { SiteChrome } from "@/lib/api";
+import type { FooterColumn } from "@/lib/chrome-order";
 
 type MenuProps = { source: SourceGroup[]; links: { slug: string; title: string; href: string; hint?: string }[]; initial: NavMenuConfig };
 
-const TABS: { id: NavMenuName; label: string }[] = [
+const TABS: { id: NavMenuName | "chrome"; label: string }[] = [
   { id: "colleges", label: "Top Colleges" },
   { id: "courses", label: "Top Courses" },
+  { id: "chrome", label: "Header & Footer" },
 ];
 
 /**
  * Sections → Navigation: one tab for each header menu. Both stay mounted, so edits in one tab are still
  * there when the other is looked at; each saves on its own.
  */
-export function NavigationAdmin({ colleges, courses, courseInfo }: { colleges: MenuProps; courses: MenuProps; courseInfo: { courses: AdminCourse[]; exams: string[] } }) {
-  const [tab, setTab] = useState<NavMenuName>("colleges");
+export function NavigationAdmin({ colleges, courses, courseInfo, chrome }: { colleges: MenuProps; courses: MenuProps; courseInfo: { courses: AdminCourse[]; exams: string[] }; chrome: { initial: SiteChrome; source: FooterColumn[] } }) {
+  const [tab, setTab] = useState<NavMenuName | "chrome">("colleges");
   const props = { colleges, courses };
 
   return (
@@ -43,7 +47,11 @@ export function NavigationAdmin({ colleges, courses, courseInfo }: { colleges: M
       </div>
       {TABS.map((t) => (
         <div key={t.id} role="tabpanel" id={`nav-panel-${t.id}`} aria-labelledby={`nav-tab-${t.id}`} hidden={tab !== t.id}>
-          <NavMenuAdmin menu={t.id} {...props[t.id]} actions={t.id === "courses" ? <CourseInfoButton courses={courseInfo.courses} exams={courseInfo.exams} /> : undefined} />
+          {t.id === "chrome" ? (
+            <ChromeAdmin initial={chrome.initial} source={chrome.source} />
+          ) : (
+            <NavMenuAdmin menu={t.id} {...props[t.id]} actions={t.id === "courses" ? <CourseInfoButton courses={courseInfo.courses} exams={courseInfo.exams} /> : undefined} />
+          )}
         </div>
       ))}
     </div>

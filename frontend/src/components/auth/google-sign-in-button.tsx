@@ -85,7 +85,7 @@ function loadGoogleScript(): Promise<void> {
  * Until NEXT_PUBLIC_GOOGLE_CLIENT_ID is set it shows a dev-only note (nothing in
  * production), so there is never a button that does nothing.
  */
-export function GoogleSignInButton({ next, text = "continue_with" }: { next?: string; text?: "continue_with" | "signup_with" | "signin_with" }) {
+export function GoogleSignInButton({ next, text = "continue_with", dividerText = "or" }: { next?: string; text?: "continue_with" | "signup_with" | "signin_with"; /** The word in the line above the button (an empty string leaves the line out). */ dividerText?: string }) {
   const holder = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -142,13 +142,15 @@ export function GoogleSignInButton({ next, text = "continue_with" }: { next?: st
 
   return (
     <div>
-      <div className="flex items-center gap-3 text-xs text-ink-faint">
-        <span className="h-px flex-1 bg-line" />
-        or
-        <span className="h-px flex-1 bg-line" />
-      </div>
+      {dividerText && (
+        <div className="flex items-center gap-3 text-xs text-ink-faint">
+          <span className="h-px flex-1 bg-line" />
+          {dividerText}
+          <span className="h-px flex-1 bg-line" />
+        </div>
+      )}
 
-      <div className={`mt-4 flex min-h-[44px] justify-center ${pending ? "pointer-events-none opacity-60" : ""}`}>
+      <div className={`${dividerText ? "mt-3" : ""} flex min-h-[44px] justify-center ${pending ? "pointer-events-none opacity-60" : ""}`}>
         <div ref={holder} className="w-full" />
       </div>
 

@@ -69,6 +69,8 @@ export const adminNav: AdminNavSection[] = [
       { label: "Homepage", href: "/admin/sections/homepage", phase: 1 },
       // The header's "Top Ranked Colleges" menu: which categories and links show, their names and SEO.
       { label: "Navigation", href: "/admin/sections/navigation", phase: 1 },
+      // The words and the picture on the log in and sign up pages.
+      { label: "Login & Signup", href: "/admin/auth-pages", phase: 1 },
     ],
   },
   {

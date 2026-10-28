@@ -62,6 +62,11 @@ import {
   adminResetListingHeader,
   adminListingHeaderScopes,
   adminGetListingSlots,
+  adminPutSiteChrome,
+  type SiteChrome,
+  adminPutAuthPage,
+  adminResetAuthPage,
+  type AuthPageCopy,
   adminGetNews,
   adminResetListingSlots,
   adminListingSlotScopes,
@@ -1136,7 +1141,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "gallery") {
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "gallery") {
     return { error: "Unknown image slot." };
   }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
@@ -1636,5 +1641,27 @@ export async function setOnlineOfferingEnabled(id: string, enabled: boolean): Pr
     revalidatePath("/colleges", "layout");
     revalidatePath("/college", "layout");
   }
+  return result;
+}
+
+// ── Log in and sign up pages ──
+
+export async function saveAuthPage(page: "login" | "signup", value: AuthPageCopy): Promise<AdminActionResult> {
+  const result = await attempt("/admin/auth-pages", (token) => adminPutAuthPage(token, page, value));
+  if ("ok" in result) revalidatePath(page === "login" ? "/login" : "/register");
+  return result;
+}
+
+export async function resetAuthPage(page: "login" | "signup"): Promise<AdminActionResult> {
+  const result = await attempt("/admin/auth-pages", (token) => adminResetAuthPage(token, page));
+  if ("ok" in result) revalidatePath(page === "login" ? "/login" : "/register");
+  return result;
+}
+
+// ── Header and footer arrangement ──
+
+export async function saveSiteChrome(value: SiteChrome): Promise<AdminActionResult> {
+  const result = await attempt("/admin/sections/navigation", (token) => adminPutSiteChrome(token, value));
+  if ("ok" in result) revalidatePath("/", "layout");
   return result;
 }

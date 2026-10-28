@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "@/lib/auth-actions";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { PasswordInput } from "@/components/ui/password-input";
+import type { AuthPageCopy } from "@/lib/api";
 
 /**
  * Login form.
@@ -15,16 +16,19 @@ import { PasswordInput } from "@/components/ui/password-input";
  * A form action rather than a client-side fetch keeps the password out of the
  * URL and out of browser-readable storage; a GET form would put it in history
  * and server logs.
+ *
+ * The words come from `copy` (Listings & Pages > Login & Signup in the admin); the fields and what they
+ * do are fixed.
  */
-export function LoginForm({ next, idle = false }: { next?: string; idle?: boolean }) {
+const PILL = "mt-1 w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none";
+
+export function LoginForm({ next, idle = false, copy }: { next?: string; idle?: boolean; copy: AuthPageCopy }) {
   const [state, formAction, pending] = useActionState(signIn, undefined);
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
-      <h1 className="font-display text-xl font-bold text-ink">Log in</h1>
-      <p className="mt-1 text-sm text-ink-soft">
-        Save colleges, track applications and pick up where you left off.
-      </p>
+    <div>
+      <h1 className="text-center font-display text-2xl font-extrabold text-ink sm:text-3xl">{copy.heading}</h1>
+      {copy.subheading && <p className="mt-1.5 text-center text-sm text-ink-soft">{copy.subheading}</p>}
 
       {idle && (
         <p role="status" className="mt-4 rounded-lg border border-line bg-bg-alt px-3 py-2 text-sm text-ink-soft">
@@ -32,11 +36,11 @@ export function LoginForm({ next, idle = false }: { next?: string; idle?: boolea
         </p>
       )}
 
-      <form className="mt-6 space-y-4" action={formAction}>
+      <form className="mt-5 space-y-3.5" action={formAction}>
         {next && <input type="hidden" name="next" value={next} />}
         <div>
           <label htmlFor="email" className="block text-xs font-semibold text-ink">
-            Email
+            {copy.emailLabel}
           </label>
           <input
             id="email"
@@ -44,32 +48,30 @@ export function LoginForm({ next, idle = false }: { next?: string; idle?: boolea
             type="email"
             autoComplete="email"
             required
-            placeholder="you@example.com"
-            className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+            placeholder={copy.emailPlaceholder}
+            className={PILL}
           />
         </div>
 
         <div>
           <label htmlFor="password" className="block text-xs font-semibold text-ink">
-            Password
+            {copy.passwordLabel}
           </label>
           <PasswordInput
             id="password"
             name="password"
             autoComplete="current-password"
             required
-            className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm text-ink focus:border-brand focus:outline-none"
+            className={PILL}
           />
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-ink-soft">
-          <input
-            type="checkbox"
-            name="remember"
-            className="h-4 w-4 rounded border-line text-brand focus:ring-brand"
-          />
-          Keep me signed in
-        </label>
+        {copy.rememberLabel && (
+          <label className="flex items-center gap-2 text-xs text-ink-soft">
+            <input type="checkbox" name="remember" className="h-4 w-4 rounded border-line text-brand focus:ring-brand" />
+            {copy.rememberLabel}
+          </label>
+        )}
 
         {state?.error && (
           <p role="alert" className="text-sm text-red-700">
@@ -80,22 +82,24 @@ export function LoginForm({ next, idle = false }: { next?: string; idle?: boolea
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
+          className="w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:opacity-60"
         >
-          {pending ? "Logging in…" : "Log in"}
+          {pending ? "Logging in…" : copy.submitLabel}
         </button>
       </form>
 
-      <div className="mt-6">
-        <GoogleSignInButton next={next} text="continue_with" />
+      <div className="mt-4">
+        <GoogleSignInButton next={next} text="continue_with" dividerText={copy.dividerText} />
       </div>
 
-      <p className="mt-6 text-center text-sm text-ink-soft">
-        New here?{" "}
-        <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="font-semibold text-brand hover:underline">
-          Create an account
-        </Link>
-      </p>
+      {(copy.switchText || copy.switchLink) && (
+        <p className="mt-5 text-center text-sm text-ink-soft">
+          {copy.switchText}{" "}
+          <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="font-semibold text-ink underline underline-offset-4 hover:text-brand">
+            {copy.switchLink}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

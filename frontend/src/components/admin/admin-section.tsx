@@ -23,11 +23,14 @@ export function AdminPageHeader({
   description?: string;
   actions?: ReactNode;
 }) {
+  // The top bar already names the page, so the title is only for screen readers. What is left is the line
+  // that says what the screen is for and the buttons that belong to it, in one compact row.
+  if (!description && !actions) return <h1 className="sr-only">{title}</h1>;
   return (
-    <div className="flex flex-col gap-3 border-b border-line pb-5 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-ink">{title}</h1>
-        {description && <p className="mt-1 max-w-2xl text-sm text-ink-soft">{description}</p>}
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="sr-only">{title}</h1>
+        {description && <p className="max-w-2xl text-sm text-ink-soft">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
     </div>
@@ -46,7 +49,7 @@ export function AdminSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-line bg-surface">
+    <section className="rounded-2xl border border-white/80 bg-white/85 shadow-[0_10px_40px_-22px_rgba(123,26,42,0.3)] backdrop-blur">
       <header className="flex flex-col gap-2 border-b border-line-soft px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-base font-semibold text-ink">{title}</h2>

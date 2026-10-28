@@ -5,13 +5,14 @@ import Link from "next/link";
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { signUp } from "@/lib/auth-actions";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import type { AuthPageCopy } from "@/lib/api";
 
 type FieldErrors = Partial<
   Record<"name" | "email" | "phone" | "password" | "confirm" | "terms", string>
 >;
 
 const BASE_FIELD =
-  "mt-1.5 w-full rounded-lg border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:outline-none";
+  "mt-1 w-full rounded-xl border bg-bg px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:outline-none";
 
 function fieldClass(invalid?: string, extra = "") {
   return `${BASE_FIELD} ${
@@ -54,7 +55,7 @@ function strength(password: string) {
  * trust the client. Values survive a failed submit; focus moves to the first
  * problem, and to the confirmation once it succeeds.
  */
-export function RegisterForm({ next }: { next?: string }) {
+export function RegisterForm({ next, copy }: { next?: string; copy: AuthPageCopy }) {
   const [state, formAction, busy] = useActionState(signUp, undefined);
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
   const [password, setPassword] = useState("");
@@ -106,11 +107,9 @@ export function RegisterForm({ next }: { next?: string }) {
   };
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
-      <h1 className="font-display text-xl font-bold text-ink">Create your account</h1>
-      <p className="mt-1 text-sm text-ink-soft">
-        Shortlist colleges, save comparisons and pick up where you left off.
-      </p>
+    <div>
+      <h1 className="text-center font-display text-2xl font-extrabold text-ink sm:text-3xl">{copy.heading}</h1>
+      {copy.subheading && <p className="mt-1.5 text-center text-sm text-ink-soft">{copy.subheading}</p>}
 
       {formError && (
         <div
@@ -122,8 +121,9 @@ export function RegisterForm({ next }: { next?: string }) {
         </div>
       )}
 
-      <form action={formAction} onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
+      <form action={formAction} onSubmit={handleSubmit} noValidate className="mt-5 space-y-3">
         {next && <input type="hidden" name="next" value={next} />}
+        <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="reg-name" className="block text-xs font-semibold text-ink">
             Full name
@@ -140,27 +140,6 @@ export function RegisterForm({ next }: { next?: string }) {
           {errors.name && (
             <p id="reg-name-error" className="mt-1 text-xs text-red-700">
               {errors.name}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="reg-email" className="block text-xs font-semibold text-ink">
-            Email
-          </label>
-          <input
-            id="reg-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            aria-invalid={!!errors.email}
-            aria-describedby={errors.email ? "reg-email-error" : undefined}
-            className={fieldClass(errors.email)}
-          />
-          {errors.email && (
-            <p id="reg-email-error" className="mt-1 text-xs text-red-700">
-              {errors.email}
             </p>
           )}
         </div>
@@ -187,6 +166,29 @@ export function RegisterForm({ next }: { next?: string }) {
           )}
         </div>
 
+        </div>
+        <div>
+          <label htmlFor="reg-email" className="block text-xs font-semibold text-ink">
+            Email
+          </label>
+          <input
+            id="reg-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "reg-email-error" : undefined}
+            className={fieldClass(errors.email)}
+          />
+          {errors.email && (
+            <p id="reg-email-error" className="mt-1 text-xs text-red-700">
+              {errors.email}
+            </p>
+          )}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="reg-password" className="block text-xs font-semibold text-ink">
             Password
@@ -261,6 +263,7 @@ export function RegisterForm({ next }: { next?: string }) {
           )}
         </div>
 
+        </div>
         <div>
           <label className="flex items-start gap-2 text-xs text-ink-soft">
             <input
@@ -301,23 +304,25 @@ export function RegisterForm({ next }: { next?: string }) {
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
         >
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-          {busy ? "Creating account…" : "Create account"}
+          {busy ? "Creating account…" : copy.submitLabel}
         </button>
       </form>
 
-      <div className="mt-5">
-        <GoogleSignInButton next={next} text="signup_with" />
+      <div className="mt-4">
+        <GoogleSignInButton next={next} text="signup_with" dividerText={copy.dividerText} />
       </div>
 
-      <p className="mt-6 text-center text-sm text-ink-soft">
-        Already have an account?{" "}
-        <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-semibold text-brand hover:underline">
-          Log in
-        </Link>
-      </p>
+      {(copy.switchText || copy.switchLink) && (
+        <p className="mt-5 text-center text-sm text-ink-soft">
+          {copy.switchText}{" "}
+          <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-semibold text-ink underline underline-offset-4 hover:text-brand">
+            {copy.switchLink}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

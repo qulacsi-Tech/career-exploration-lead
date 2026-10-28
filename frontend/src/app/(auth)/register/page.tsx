@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { RegisterForm } from "@/components/auth/register-form";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { getAuthCopy } from "@/lib/auth-page";
 
 export const metadata: Metadata = {
   title: "Create an account — TopCollegePath",
@@ -17,5 +19,10 @@ export const metadata: Metadata = {
  */
 export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
   const { next } = await searchParams;
-  return <RegisterForm next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined} />;
+  const copy = await getAuthCopy("signup");
+  return (
+    <AuthShell copy={copy} wide>
+      <RegisterForm next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined} copy={copy} />
+    </AuthShell>
+  );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
+import { AuthCard } from "@/components/auth/auth-card";
 import { getAdminToken } from "@/lib/admin-session";
 import { getUserToken } from "@/lib/user-session";
 
@@ -17,5 +18,9 @@ export const metadata: Metadata = {
 export default async function ChangePasswordPage() {
   // Anyone given a temporary password lands here: a student, or a college admin or other staff.
   if (!(await getUserToken()) && !(await getAdminToken())) redirect("/login");
-  return <ChangePasswordForm />;
+  return (
+    <AuthCard>
+      <ChangePasswordForm />
+    </AuthCard>
+  );
 }

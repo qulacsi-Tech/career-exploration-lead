@@ -1,39 +1,12 @@
 import Link from "next/link";
-import { SiteLogo } from "@/components/site-logo";
-import { getExams, getFooterColumns } from "@/lib/api";
-
-/**
- * The company column, which is not a collection: it links to static pages. The
- * college columns come from `footerColumns()` and are editable under Content →
- * Collections; the Exams column is built from the exams in the directory.
- */
-const companyColumns = [
-  {
-    title: "Company",
-    links: [
-      { label: "About Us", href: "/about" },
-      { label: "Contact Us", href: "/enquiry" },
-      { label: "Privacy Policy", href: "/privacy" },
-      { label: "Terms of Use", href: "/terms" },
-    ],
-  },
-];
+import { BrandLogo } from "@/components/brand-logo";
+import { arrangeFooter, getFooterSource } from "@/lib/footer-data";
+import { loadSiteChrome } from "@/lib/site-chrome";
 
 export async function SiteFooter() {
-  const dynamicColumns = await getFooterColumns();
-  // Featured exams first, then the rest. An unreachable API just leaves the column out.
-  const exams = await getExams({ limit: 50 })
-    .then((r) => [...r.data].sort((a, b) => Number(!!b.image) - Number(!!a.image)).slice(0, 4))
-    .catch(() => []);
-  const examColumn = {
-    title: "Exams",
-    links: exams.map((exam) => ({
-      // The short form: "Common Admission Test (CAT)" does not fit a footer column.
-      label: exam.name.replace(/^.*\(([^)]+)\)$/, "$1"),
-      href: `/exams/${exam.slug}`,
-    })),
-  };
-  const staticColumns = [...(examColumn.links.length > 0 ? [examColumn] : []), ...companyColumns];
+  // The columns and links in the order set under Navigation > Header & Footer, and the logo chosen there.
+  const [source, chrome] = await Promise.all([getFooterSource(), loadSiteChrome()]);
+  const columns = arrangeFooter(source, chrome);
   return (
     <footer className="border-t border-line bg-ink text-white">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -67,7 +40,7 @@ export async function SiteFooter() {
           here was a string with href="#".
         */}
         <div className="grid grid-cols-2 gap-8 py-10 sm:grid-cols-4">
-          {[...dynamicColumns, ...staticColumns].map((col) => (
+          {columns.map((col) => (
             <div key={col.title}>
               <p className="font-display text-sm font-semibold text-white">{col.title}</p>
               <ul className="mt-3 space-y-2 text-sm text-white/60">
@@ -94,7 +67,7 @@ export async function SiteFooter() {
             header's — both lockups render on every page.
           */}
           <Link href="/" className="shrink-0" aria-label="TopCollegePath — home">
-            <SiteLogo idPrefix="ctlogo-footer" surface="dark" className="h-20 w-auto" />
+            <BrandLogo logo={chrome.footerLogo} idPrefix="ctlogo-footer" surface="dark" className="h-20 w-auto" />
           </Link>
           <div className="flex flex-col gap-1 sm:items-end">
             <p>&copy; {new Date().getFullYear()} CollegeTime. All rights reserved.</p>

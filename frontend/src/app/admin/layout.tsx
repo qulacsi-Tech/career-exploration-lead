@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { requireAdminToken } from "@/lib/admin-session";
-import { getMe } from "@/lib/api";
+import { adminGetSiteChrome, getMe } from "@/lib/api";
+import { CHROME_DEFAULTS } from "@/lib/chrome-order";
 import { canUsePanel } from "@/lib/roles";
 
 /*
@@ -27,5 +28,13 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   // A temporary password has to be replaced before anything else in the panel opens.
   if (me.mustChangePassword) redirect("/change-password");
 
-  return <AdminShell user={{ name: me.name, role: me.role }}>{children}</AdminShell>;
+  // The header logo chosen under Navigation > Header & Footer, so the panel carries the same mark. Read fresh,
+  // not from the public cache, so a change shows at once.
+  const chrome = await adminGetSiteChrome(token).catch(() => CHROME_DEFAULTS);
+
+  return (
+    <AdminShell user={{ name: me.name, role: me.role }} logo={chrome.headerLogo}>
+      {children}
+    </AdminShell>
+  );
 }

@@ -1658,7 +1658,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "gallery", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "gallery", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);
@@ -2822,4 +2822,76 @@ export async function adminGetNavMenuConfig(token: string, menu: NavMenuName = "
 
 export async function adminPutNavMenuConfig(token: string, value: NavMenuConfig, menu: NavMenuName = "colleges") {
   return adminRequest<{ message: string }>(token, "PUT", `/admin/nav/${menu}-menu`, value);
+}
+
+// ── Log in and sign up pages ────────────────────────────────────────────────
+
+/** What one of the two pages says, and its picture panel. */
+export type AuthPageCopy = {
+  heading: string;
+  subheading: string;
+  emailLabel: string;
+  emailPlaceholder: string;
+  passwordLabel: string;
+  rememberLabel: string;
+  submitLabel: string;
+  dividerText: string;
+  switchText: string;
+  switchLink: string;
+  /** /api/uploads/... Empty: the built-in coloured panel. */
+  image: string;
+  imageAlt: string;
+  panelTitle: string;
+  panelText: string;
+  /** Short lines shown as small cards on the panel. */
+  highlights: string[];
+};
+export type AuthPages = { login: AuthPageCopy; signup: AuthPageCopy };
+
+export async function apiFetchAuthPage(): Promise<AuthPages> {
+  return apiFetch<AuthPages>("/auth-page");
+}
+
+export async function adminGetAuthPage(token: string): Promise<AuthPages & { defaults: AuthPages }> {
+  return adminRequest<AuthPages & { defaults: AuthPages }>(token, "GET", "/admin/auth-page");
+}
+
+export async function adminPutAuthPage(token: string, page: "login" | "signup", value: AuthPageCopy) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/auth-page/${page}`, value);
+}
+
+export async function adminResetAuthPage(token: string, page: "login" | "signup") {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/auth-page/${page}`);
+}
+
+// ── Header and footer arrangement ───────────────────────────────────────────
+
+export type HeaderLinkId = "courses" | "colleges" | "compare" | "news";
+export type HeaderItemConfig = { id: HeaderLinkId; label: string; hidden: boolean };
+
+/** How the admin arranged the site's header and footer. Anything not named keeps its place after the ones that are. */
+/** One logo spot: a picture (/api/uploads/...), some text, or both with the text beside the picture. All empty: the built-in logo. */
+export type LogoConfig = { image: string; text: string; alt: string };
+
+export type SiteChrome = {
+  /** The header and the footer can have different logos. */
+  headerLogo: LogoConfig;
+  footerLogo: LogoConfig;
+  headerItems: HeaderItemConfig[];
+  /** Footer column titles, in the order to show them. */
+  footerColumnOrder: string[];
+  /** Each footer column's link addresses, in order, by column title. */
+  footerLinkOrder: Record<string, string[]>;
+};
+
+export async function getSiteChrome(): Promise<SiteChrome> {
+  return apiFetch<SiteChrome>("/site-chrome");
+}
+
+export async function adminGetSiteChrome(token: string): Promise<SiteChrome> {
+  return adminRequest<SiteChrome>(token, "GET", "/admin/site-chrome");
+}
+
+export async function adminPutSiteChrome(token: string, value: SiteChrome) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/site-chrome", value);
 }

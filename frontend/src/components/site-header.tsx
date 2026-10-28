@@ -1,24 +1,16 @@
 import Link from "next/link";
-import { SiteLogo } from "@/components/site-logo";
+import { BrandLogo } from "@/components/brand-logo";
 import { MobileNav } from "@/components/mobile-nav";
 import { HeaderAccount } from "@/components/header-account";
 import { CollegesMenu } from "@/components/colleges-menu";
 import { getCollegesMenu } from "@/components/colleges-menu-data";
 import { getCoursesMenu } from "@/components/courses-menu-data";
-
-const COLLEGES_LINK = { label: "Top Ranked Colleges", href: "/colleges" };
-const COURSES_LINK = { label: "Courses", href: "/courses" };
-
-const navLinks = [
-  COURSES_LINK,
-  COLLEGES_LINK,
-  { label: "Compare", href: "/compare" },
-  { label: "News", href: "/articles" },
-  // { label: "Study Abroad", href: "/study-abroad" },
-];
+import { HEADER_HREF, loadSiteChrome, visibleHeaderItems } from "@/lib/site-chrome";
 
 export async function SiteHeader() {
-  const [collegesMenu, coursesMenu] = await Promise.all([getCollegesMenu(), getCoursesMenu()]);
+  // The logo, and the order and wording of the links, as set under Navigation > Header & Footer.
+  const [collegesMenu, coursesMenu, chrome] = await Promise.all([getCollegesMenu(), getCoursesMenu(), loadSiteChrome()]);
+  const navLinks = visibleHeaderItems(chrome);
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 sm:px-6 lg:px-8">
@@ -29,17 +21,17 @@ export async function SiteHeader() {
           {/* Tagline included, per the client's 5 Sep note. 3.66:1, so height
               drives width: 56px tall is 205px wide, 64px is 234px, 72px is
               263px — which the row has room for beside the nav. */}
-          <SiteLogo className="h-14 w-auto sm:h-16 lg:h-[72px]" />
+          <BrandLogo logo={chrome.headerLogo} className="h-14 w-auto sm:h-16 lg:h-[72px]" />
         </Link>
 
         <nav className="ml-auto hidden items-center gap-6 text-sm font-medium text-ink-soft lg:flex">
           {navLinks.map((link) =>
-            link === COLLEGES_LINK ? (
-              <CollegesMenu key={link.href} label={link.label} href={link.href} groups={collegesMenu} />
-            ) : link === COURSES_LINK ? (
-              <CollegesMenu key={link.href} label={link.label} href={link.href} groups={coursesMenu} />
+            link.id === "colleges" ? (
+              <CollegesMenu key={link.id} label={link.label} href={link.href} groups={collegesMenu} />
+            ) : link.id === "courses" ? (
+              <CollegesMenu key={link.id} label={link.label} href={link.href} groups={coursesMenu} />
             ) : (
-              <Link key={link.href} href={link.href} className="hover:text-brand">
+              <Link key={link.id} href={link.href} className="hover:text-brand">
                 {link.label}
               </Link>
             ),
@@ -52,7 +44,10 @@ export async function SiteHeader() {
         <HeaderAccount />
 
         {/* Below lg the links above are hidden, so they move in here. */}
-        <MobileNav links={navLinks} menus={[{ href: COLLEGES_LINK.href, groups: collegesMenu }, { href: COURSES_LINK.href, groups: coursesMenu }]} />
+        <MobileNav
+          links={navLinks.map((l) => ({ label: l.label, href: l.href }))}
+          menus={[{ href: HEADER_HREF.colleges, groups: collegesMenu }, { href: HEADER_HREF.courses, groups: coursesMenu }]}
+        />
       </div>
     </header>
   );

@@ -18,7 +18,7 @@ import { mediaUrl } from "@/lib/media";
 */
 
 type Slot = {
-  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "article_figure" | "logo" | "gallery";
+  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "gallery";
   label: string;
   recommended: [number, number];
   minimum: [number, number];
@@ -85,6 +85,17 @@ const SLOTS: Record<Slot["kind"], Slot> = {
     notes: [
       "Shown in a small square tile on the college page, over the banner. A square picture with some space around the mark works best.",
       "Without a logo the tile shows the college's initials.",
+    ],
+  },
+  site_logo: {
+    kind: "site_logo",
+    label: "Site logo",
+    recommended: [800, 220],
+    minimum: [240, 60],
+    previewClass: "aspect-[11/3] max-w-[320px]",
+    notes: [
+      "Shown in the header at about 72px tall and in the footer at 80px, on a white and a dark background. A wide logo with a transparent background (PNG) works best.",
+      "On the dark footer a dark logo can be hard to read; use a mark that holds up on both, or keep the built-in logo.",
     ],
   },
   gallery: {

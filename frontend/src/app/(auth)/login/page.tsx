@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { getAuthCopy } from "@/lib/auth-page";
 
 export const metadata: Metadata = {
   title: "Log in — TopCollegePath",
@@ -15,10 +17,14 @@ export const metadata: Metadata = {
 */
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next, idle } = await searchParams;
+  const copy = await getAuthCopy("login");
   return (
-    <LoginForm
-      next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined}
-      idle={idle === "1"}
-    />
+    <AuthShell copy={copy}>
+      <LoginForm
+        next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined}
+        idle={idle === "1"}
+        copy={copy}
+      />
+    </AuthShell>
   );
 }
