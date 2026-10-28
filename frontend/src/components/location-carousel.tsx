@@ -61,7 +61,7 @@ export function LocationCarousel({
       {/* The heading scrolls away; only the cards pin. */}
       <div className="mx-auto w-[90%] max-w-[1500px] pb-2 sm:pb-3">
         {copy.eyebrow && (
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-faint">{copy.eyebrow}</span>
+          <span className="text-[11px] font-semibold text-ink-faint">{copy.eyebrow}</span>
         )}
         <h2 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
           {copy.heading} {copy.accent && <span className="italic text-brand">{copy.accent}</span>}
@@ -180,12 +180,12 @@ function DestinationCard({
         <div className="absolute inset-0 flex flex-col p-2.5 sm:p-3">
           <div className="flex items-start justify-between gap-2">
             {highlight ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white shadow-sm">
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm">
                 <Star className="h-3 w-3 fill-current" aria-hidden="true" />
                 Featured
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink shadow-sm backdrop-blur">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-ink shadow-sm backdrop-blur">
                 <Building2 className="h-3 w-3 text-brand" aria-hidden="true" />
                 {location.collegeCount}+ {card.institutionsLabel}
               </span>
@@ -201,7 +201,7 @@ function DestinationCard({
               <>
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2">
                 {highlight && (highlight.stream || highlight.city) && (
-                  <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/90 [text-shadow:0_1px_6px_rgba(0,0,0,0.7)] sm:text-[11px]">
+                  <p className="text-[10px] font-medium text-white/90 [text-shadow:0_1px_6px_rgba(0,0,0,0.7)] sm:text-[11px]">
                     {[highlight.stream, highlight.city].filter(Boolean).join("  ·  ")}
                   </p>
                 )}
@@ -233,7 +233,7 @@ function DestinationCard({
                 <div key={stat.label} className="flex min-w-0 flex-col items-center rounded-xl border border-white/20 bg-white/10 px-1.5 py-2 text-center text-white backdrop-blur-md">
                   <stat.icon className="h-3 w-3 text-white/80" strokeWidth={1.75} aria-hidden="true" />
                   <dd className="mt-1 max-w-full truncate font-display text-sm font-semibold leading-none tracking-tight sm:text-base">{stat.value}</dd>
-                  <dt className="mt-1 max-w-full text-[9px] font-medium uppercase leading-tight tracking-[0.1em] text-white/70">{stat.label}</dt>
+                  <dt className="mt-1 max-w-full text-[9px] font-medium leading-tight text-white/70">{stat.label}</dt>
                 </div>
               ))}
             </dl>
@@ -326,7 +326,7 @@ function CollegeTicker({ colleges }: { colleges: { slug: string; name: string }[
 
   return (
     <div className="mt-1 min-w-0">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-faint">Institutions here</p>
+      <p className="text-[11px] font-semibold text-ink-faint">Institutions here</p>
       <div
         className={`college-ticker relative mt-2 h-36 overflow-hidden ${moving ? "" : "overflow-y-auto"}`}
         style={{ maskImage: "linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent)" }}

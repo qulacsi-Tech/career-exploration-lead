@@ -448,7 +448,7 @@ export function PeerGrid({ peers, visible = 4 }: { peers: PeerItem[]; visible?: 
               <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-ink-soft">
                 <span>{peer.ownership}</span>
                 <span aria-hidden>&bull;</span>
-                <span className="uppercase">{peer.city}, {peer.state}</span>
+                <span className="">{peer.city}, {peer.state}</span>
                 <span aria-hidden>&bull;</span>
                 <Stars score={peer.score} className="h-3.5 w-3.5" />
                 <span>{plural(peer.reviewCount, "review")}</span>

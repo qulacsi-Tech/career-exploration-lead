@@ -181,7 +181,7 @@ export function RecommendedProgramsManager({
           <div className="overflow-x-auto rounded-xl border border-line">
             <table className="w-full min-w-[920px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
+                <tr className="border-b border-line bg-bg-alt text-left text-xs text-ink-faint">
                   <th scope="col" className="px-3 py-2.5 font-semibold">On homepage</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Programme</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">University</th>

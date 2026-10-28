@@ -2515,11 +2515,20 @@ export type SlotPreset = "brand" | "amber" | "emerald" | "ocean" | "plum" | "nig
 export type SlotIcon = "compare" | "handshake" | "target" | "sparkles" | "graduation" | "none";
 export type SlotGroup = "location" | "ranking" | "course" | "specialisation" | "credential" | "level" | "mode" | "fees" | "ownership" | "exam" | "approval";
 
-/** One item between the colleges. Shown after `after` colleges, and again every `every` more (0: once). */
+/** The pages that take banners and ads: the colleges list, the news list, and one news story. */
+export type SlotPage = "colleges" | "articles" | "article";
+
+/** Where an item sits: between the listed items, above or below them all, in the left column (news list) or in the right-hand column. */
+export type SlotPlacement = "inline" | "top" | "bottom" | "left" | "sidebar";
+
+/** One item between the listed ones. Shown after `after` of them, and again every `every` more (0: once). In the sidebar, `after` counts the column's own blocks. */
 export type ListingSlot = {
   id: string;
   type: SlotType;
   enabled: boolean;
+  placement?: SlotPlacement;
+  /** Story page only: the stories (slugs) it shows on. Empty or absent: every story. */
+  articles?: string[];
   after: number;
   every: number;
   bgMode: "preset" | "gradient" | "solid" | "image";
@@ -2547,24 +2556,24 @@ export type ListingSlot = {
 export type ListingSlots = { slots: ListingSlot[]; custom: boolean };
 
 /** The set for a selection of the header menu ("course=MBA"), else the page's. */
-export async function getListingSlots(page: ListingPage, scope?: string): Promise<ListingSlots> {
+export async function getListingSlots(page: SlotPage, scope?: string): Promise<ListingSlots> {
   return apiFetch<ListingSlots>(`/listing-slots/${page}${scopeQuery(scope)}`);
 }
 
-export async function adminGetListingSlots(token: string, page: ListingPage, scope?: string): Promise<ListingSlots> {
+export async function adminGetListingSlots(token: string, page: SlotPage, scope?: string): Promise<ListingSlots> {
   return adminRequest<ListingSlots>(token, "GET", `/admin/listing-slots/${page}${scopeQuery(scope)}`);
 }
 
-export async function adminPutListingSlots(token: string, page: ListingPage, slots: ListingSlot[], scope?: string) {
+export async function adminPutListingSlots(token: string, page: SlotPage, slots: ListingSlot[], scope?: string) {
   return adminRequest<{ message: string }>(token, "PUT", `/admin/listing-slots/${page}${scopeQuery(scope)}`, { slots });
 }
 
-export async function adminResetListingSlots(token: string, page: ListingPage, scope: string) {
+export async function adminResetListingSlots(token: string, page: SlotPage, scope: string) {
   return adminRequest<{ message: string }>(token, "DELETE", `/admin/listing-slots/${page}${scopeQuery(scope)}`);
 }
 
 /** The selections that already have a set of their own. */
-export async function adminListingSlotScopes(token: string, page: ListingPage): Promise<string[]> {
+export async function adminListingSlotScopes(token: string, page: SlotPage): Promise<string[]> {
   return adminRequest<string[]>(token, "GET", `/admin/listing-slots/${page}/scopes`);
 }
 

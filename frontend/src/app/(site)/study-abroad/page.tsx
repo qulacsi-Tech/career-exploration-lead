@@ -33,7 +33,7 @@ export default async function StudyAbroadPage() {
 
       {/* Intro */}
       <header className="mt-4 max-w-3xl">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-faint">
+        <span className="text-[11px] font-semibold text-ink-faint">
           Study Abroad
         </span>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
@@ -116,7 +116,7 @@ export default async function StudyAbroadPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
                 {index + 1}
               </span>
-              <span className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+              <span className="mt-3 text-[11px] font-semibold text-brand">
                 {step.window}
               </span>
               <h3 className="mt-1 font-display text-base font-bold leading-snug text-ink">
@@ -214,7 +214,7 @@ function Fact({
     <div className="flex items-start gap-2">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
       <div className="min-w-0">
-        <dt className="text-[11px] uppercase tracking-[0.12em] text-ink-faint">{label}</dt>
+        <dt className="text-[11px] text-ink-faint">{label}</dt>
         <dd className="text-sm font-medium text-ink">{value}</dd>
       </div>
     </div>

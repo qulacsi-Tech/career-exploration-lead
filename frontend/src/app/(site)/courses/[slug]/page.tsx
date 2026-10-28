@@ -191,7 +191,7 @@ export default async function CourseDetailPage({
             <p className="max-w-3xl text-sm leading-relaxed text-ink-soft">{course.eligibility ?? "—"}</p>
             {course.modes.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium uppercase tracking-wider text-ink-faint">Modes</span>
+                <span className="text-xs font-medium text-ink-faint">Modes</span>
                 {course.modes.map((mode) => (
                   <span key={mode} className="rounded-lg bg-bg-alt px-3 py-1.5 text-sm text-ink-soft">
                     {mode}
@@ -287,7 +287,7 @@ export default async function CourseDetailPage({
 
           {otherCourses.length > 0 && (
             <div className="rounded-2xl bg-brand-soft p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-brand">{course.stream}</p>
+              <p className="text-xs font-semibold text-brand">{course.stream}</p>
               <p className="mt-1 font-display text-lg font-semibold text-brand-ink">Related Courses</p>
               <ul className="mt-4 space-y-2.5 text-sm text-brand-ink/80">
                 {otherCourses.map((c) => (

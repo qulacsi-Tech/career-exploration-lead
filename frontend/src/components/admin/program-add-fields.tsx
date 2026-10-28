@@ -146,7 +146,7 @@ export function ProgramAddFields({
                   <span className="block truncate font-medium text-ink">{c.name}</span>
                   <span className="block text-xs text-ink-faint">{c.city}</span>
                 </span>
-                {course && offering.has(c.slug) && <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-800">Offers this</span>}
+                {course && offering.has(c.slug) && <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">Offers this</span>}
               </label>
             </li>
           ))}
@@ -164,7 +164,7 @@ export function ProgramAddFields({
               <li key={slug} className="rounded-xl border border-line bg-bg-alt/50 p-4">
                 <p className="mb-3 text-sm font-semibold text-ink">
                   {colleges.find((c) => c.slug === slug)?.name}
-                  <span className={`ml-2 rounded-full px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide ${f.fromRecord ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-900"}`}>
+                  <span className={`ml-2 rounded-full px-2 py-0.5 align-middle text-[10px] font-semibold ${f.fromRecord ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-900"}`}>
                     {f.fromRecord ? "From the college record" : "Enter here"}
                   </span>
                 </p>

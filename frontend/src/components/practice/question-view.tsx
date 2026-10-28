@@ -96,7 +96,7 @@ function StimulusPane({ stimulus }: { stimulus: Stimulus }) {
     <>
       <aside className="flex min-h-0 flex-col rounded-xl border border-line bg-bg-alt">
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+          <p className="text-[11px] font-semibold text-ink-faint">
             {stimulus.label}
           </p>
           <button

@@ -1,4 +1,4 @@
-"""The banners, filter strips and ads shown between the colleges on a listing page.
+"""The banners, filter strips and ads shown between the colleges on a listing page, and the banners and ads on the articles pages.
 
 Each slot says what it is (a banner, a strip of one-tap filters, or an advertiser's picture), where
 it goes (after how many colleges, and whether it repeats) and how it looks (a preset or custom
@@ -25,7 +25,9 @@ from models.site_content import SiteContent
 from routers.listing_header import _scope
 from schemas.common import SuccessResponse
 
-Page = Literal["colleges"]
+# "articles" is the news listing, "article" one story. Both take banners and ads only (a filter strip
+# is a college-filter idea), and neither has a menu selection to scope to.
+Page = Literal["colleges", "articles", "article"]
 
 public_router = APIRouter(prefix="/listing-slots", tags=["listings"])
 router = APIRouter(prefix="/admin/listing-slots", tags=["admin"])
@@ -43,8 +45,16 @@ class Slot(BaseModel):
     id: str = Field(min_length=1, max_length=40)
     type: Literal["banner", "filter", "ad"]
     enabled: bool = True
-    # Shown after this many colleges on the page, then again every `every` colleges (0: once).
-    after: int = Field(default=3, ge=1, le=100)
+    # Where it goes: between the items of the list (colleges, stories, or the sections of a story), or in
+    # the right-hand column.
+    # inline: between the listed items. top / bottom: above or below the whole list. left: the left column
+    # (the news list only, under its filters). sidebar: the right-hand column.
+    placement: Literal["inline", "top", "bottom", "left", "sidebar"] = "inline"
+    # Story page only: the stories (by slug) the item shows on. Empty: every story.
+    articles: list[str] = Field(default_factory=list, max_length=100)
+    # Inline: shown after this many items, then again every `every` (0: once). Sidebar: after this many of
+    # the column's own blocks (0 is the top of the column) and never repeated.
+    after: int = Field(default=3, ge=0, le=100)
     every: int = Field(default=0, ge=0, le=100)
 
     # Look (banner and filter strip)
@@ -163,12 +173,17 @@ async def _current(db, page: str, scope: str = "") -> dict:
     page_set = _body(await _row(db, _key(page)))
     if page_set is not None:
         return {**page_set, "custom": not scope}
-    return {"slots": DEFAULT_SLOTS, "custom": False}
+    return {"slots": DEFAULT_SLOTS if page == "colleges" else [], "custom": False}
+
+
+def _page_scope(page: str, scope: str) -> str:
+    """Only the colleges page has selections of the header menu to scope to."""
+    return _scope(scope) if page == "colleges" else ""
 
 
 @public_router.get("/{page}", response_model=SuccessResponse[dict])
 async def get_listing_slots(page: Page, db: DbSession, scope: str = Query(default="", max_length=80)):
-    return SuccessResponse[dict](data=await _current(db, page, _scope(scope)))
+    return SuccessResponse[dict](data=await _current(db, page, _page_scope(page, scope)))
 
 
 @router.get("/{page}/scopes", response_model=SuccessResponse[list[str]])
@@ -181,12 +196,12 @@ async def admin_listing_slot_scopes(page: Page, _admin: AdminPayload, db: DbSess
 
 @router.get("/{page}", response_model=SuccessResponse[dict])
 async def admin_get_listing_slots(page: Page, _admin: AdminPayload, db: DbSession, scope: str = Query(default="", max_length=80)):
-    return SuccessResponse[dict](data=await _current(db, page, _scope(scope)))
+    return SuccessResponse[dict](data=await _current(db, page, _page_scope(page, scope)))
 
 
 @router.put("/{page}", response_model=SuccessResponse[dict])
 async def admin_put_listing_slots(page: Page, _admin: AdminPayload, db: DbSession, body: dict, scope: str = Query(default="", max_length=80)):
-    scope = _scope(scope)
+    scope = _page_scope(page, scope)
     try:
         value = SlotsBody.model_validate(body).model_dump()
     except PydanticValidationError as exc:
@@ -195,6 +210,15 @@ async def admin_put_listing_slots(page: Page, _admin: AdminPayload, db: DbSessio
         raise ValidationError(f"{field}: {first['msg']}") from exc
     if len({s["id"] for s in value["slots"]}) != len(value["slots"]):
         raise ValidationError("slots: every item needs its own id")
+    if page != "article" and any(s["articles"] for s in value["slots"]):
+        raise ValidationError("slots: choosing stories is only for the story page")
+    if page != "colleges" and any(s["type"] == "filter" for s in value["slots"]):
+        raise ValidationError("slots: a filter strip is only for the colleges page")
+    allowed = {"colleges": {"inline"}, "articles": {"inline", "top", "bottom", "left", "sidebar"}, "article": {"top", "bottom", "sidebar"}}[page]
+    if any(s["placement"] not in allowed for s in value["slots"]):
+        raise ValidationError("slots: that position is not available on this page")
+    if any(s["placement"] == "inline" and s["after"] < 1 for s in value["slots"]):
+        raise ValidationError("slots: an item between the listed ones is shown after at least 1")
 
     key = _key(page, scope)
     row = await _row(db, key)

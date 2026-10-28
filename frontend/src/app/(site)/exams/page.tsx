@@ -196,7 +196,7 @@ export default async function ExamsIndexPage({
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           {deadlines.length > 0 && (
             <div className="rounded-2xl bg-brand-soft p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-brand">Closing soon</p>
+              <p className="text-xs font-semibold text-brand">Closing soon</p>
               <p className="mt-1 font-display text-lg font-semibold text-brand-ink">Upcoming Deadlines</p>
               <ul className="mt-4 space-y-2.5 text-sm text-brand-ink/80">
                 {deadlines.map((e) => (

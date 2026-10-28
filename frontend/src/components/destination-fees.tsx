@@ -60,7 +60,7 @@ export function DestinationFees({
     >
       {average && (
         <div className="min-w-0 px-4 py-3.5 sm:px-5">
-          <p className="truncate text-[11px] font-medium uppercase tracking-[0.14em] text-ink-faint">{averageLabel}</p>
+          <p className="truncate text-[11px] font-medium text-ink-faint">{averageLabel}</p>
           <p className="mt-1.5 truncate font-display text-xl font-medium tracking-tight text-ink sm:text-2xl lg:text-[1.7rem]">
             {average}
           </p>
@@ -70,7 +70,7 @@ export function DestinationFees({
       {count > 0 && (
         <div className="min-w-0 px-4 py-3.5 sm:px-5">
           <div className="flex items-center justify-between gap-3">
-            <p className="truncate text-[11px] font-medium uppercase tracking-[0.14em] text-ink-faint">{coursesLabel}</p>
+            <p className="truncate text-[11px] font-medium text-ink-faint">{coursesLabel}</p>
             {many && (
               <span aria-hidden="true" className="fees-dots flex shrink-0 items-center gap-1">
                 {courses.map((row, i) => (

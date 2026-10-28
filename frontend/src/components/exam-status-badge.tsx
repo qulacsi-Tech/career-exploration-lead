@@ -24,7 +24,7 @@ export function ExamStatusBadge({ label, className = "" }: { label?: string | nu
   if (!text) return null;
   const tone = examBadgeTone(text);
   return (
-    <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] shadow-sm ${TONE[tone]} ${className}`}>
+    <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold shadow-sm ${TONE[tone]} ${className}`}>
       {tone === "live" && (
         <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/80" />

@@ -58,17 +58,20 @@ export function ListingSlotView({
   slot,
   chips = [],
   preview = false,
+  compact = false,
 }: {
   slot: ListingSlot;
   chips?: { label: string; href: string }[];
   preview?: boolean;
+  /** For a narrow column: the banner stacks its text and button instead of lying them side by side. */
+  compact?: boolean;
 }) {
   if (slot.type === "ad") return <AdView slot={slot} preview={preview} />;
   if (slot.type === "filter") return <StripView slot={slot} chips={chips} />;
-  return <BannerView slot={slot} />;
+  return <BannerView slot={slot} compact={compact} />;
 }
 
-function BannerView({ slot }: { slot: ListingSlot }) {
+function BannerView({ slot, compact }: { slot: ListingSlot; compact: boolean }) {
   const { className, style } = look(slot);
   const light = slot.tone === "light";
   const Icon = slot.icon !== "none" ? ICONS[slot.icon].Icon : null;
@@ -77,23 +80,23 @@ function BannerView({ slot }: { slot: ListingSlot }) {
     <aside
       aria-label="Promotion"
       style={style}
-      className={`tcp-shimmer relative overflow-hidden rounded-2xl px-6 py-6 shadow-md sm:px-8 ${className} ${light ? "text-white" : "text-ink"}`}
+      className={`tcp-shimmer relative overflow-hidden rounded-2xl px-6 py-6 shadow-md ${compact ? "" : "sm:px-8"} ${className} ${light ? "text-white" : "text-ink"}`}
     >
       <span aria-hidden="true" className={`tcp-float absolute -right-6 -top-8 h-36 w-36 rounded-full ${light ? "bg-white/10" : "bg-brand/10"}`} />
       <span aria-hidden="true" className={`tcp-float-slow absolute bottom-[-2.5rem] right-32 h-24 w-24 rounded-full ${light ? "bg-white/10" : "bg-gold/20"}`} />
       {Icon && (
-        <Icon aria-hidden="true" className={`tcp-float absolute right-8 top-1/2 hidden h-24 w-24 -translate-y-1/2 sm:block ${light ? "text-white/25" : "text-brand/20"}`} />
+        <Icon aria-hidden="true" className={`tcp-float absolute right-8 top-1/2 hidden h-24 w-24 -translate-y-1/2 ${compact ? "" : "sm:block"} ${light ? "text-white/25" : "text-brand/20"}`} />
       )}
       {slot.sponsored && (
-        <span className={`absolute right-3 top-2 text-[10px] font-semibold uppercase tracking-widest ${light ? "text-white/70" : "text-ink-faint"}`}>
+        <span className={`absolute right-3 top-2 text-[10px] font-semibold ${light ? "text-white/70" : "text-ink-faint"}`}>
           Sponsored
         </span>
       )}
 
-      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:pr-28">
+      <div className={`relative flex flex-col gap-4 ${compact ? "" : "sm:flex-row sm:items-center sm:justify-between sm:pr-28"}`}>
         <div className="min-w-0">
-          <p className="font-display text-xl font-extrabold leading-tight sm:text-2xl">{slot.title || "Your headline here"}</p>
-          {slot.text && <p className={`mt-1.5 max-w-xl text-sm leading-relaxed sm:text-base ${light ? "text-white/90" : "text-ink-soft"}`}>{slot.text}</p>}
+          <p className={`font-display text-xl font-extrabold leading-tight ${compact ? "" : "sm:text-2xl"}`}>{slot.title || "Your headline here"}</p>
+          {slot.text && <p className={`mt-1.5 max-w-xl text-sm leading-relaxed ${compact ? "" : "sm:text-base"} ${light ? "text-white/90" : "text-ink-soft"}`}>{slot.text}</p>}
         </div>
         {slot.buttonLabel && slot.buttonHref && (
           <Link
@@ -127,7 +130,7 @@ function StripView({ slot, chips }: { slot: ListingSlot; chips: { label: string;
       <span aria-hidden="true" className={`tcp-float-slow absolute -left-6 -top-6 h-24 w-24 rounded-full ${light ? "bg-white/10" : "bg-brand/10"}`} />
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="shrink-0 lg:w-56">
-          <p className="font-display text-lg font-extrabold uppercase leading-tight tracking-wide">{slot.title || "Filter"}</p>
+          <p className="font-display text-lg font-extrabold leading-tight">{slot.title || "Filter"}</p>
           {slot.hint && <p className={`text-xs ${light ? "text-white/80" : "text-ink-soft"}`}>{slot.hint}</p>}
         </div>
         <ul className="flex flex-wrap gap-2">
@@ -183,7 +186,7 @@ function AdView({ slot, preview }: { slot: ListingSlot; preview: boolean }) {
         picture
       )}
       {slot.sponsored && (
-        <span className="absolute right-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-white">Sponsored</span>
+        <span className="absolute right-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">Sponsored</span>
       )}
     </aside>
   );

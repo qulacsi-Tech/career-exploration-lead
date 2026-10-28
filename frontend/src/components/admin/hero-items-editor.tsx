@@ -97,7 +97,7 @@ export function HeroItemsEditor({ items: initial, max }: { items: AdminHeroItem[
             <div className="-mx-5 overflow-x-auto px-5">
               <table className="w-full min-w-[760px] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+                  <tr className="border-b border-line text-left text-xs text-ink-faint">
                     <th scope="col" className="w-10 py-2 pr-3 font-semibold">
                       #
                     </th>

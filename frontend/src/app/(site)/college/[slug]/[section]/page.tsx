@@ -271,7 +271,7 @@ function Courses({ college }: { college: College }) {
                 </ul>
                 {course.onlineOffered && (
                   <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
-                    <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Also online</span>
+                    <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white">Also online</span>
                     {course.onlineDuration && (
                       <span className="inline-flex items-center gap-1.5">
                         <Clock className="h-4 w-4" />
@@ -356,7 +356,7 @@ function Fees({ college }: { college: College }) {
         <div className="-mx-2 overflow-x-auto px-2">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead>
-              <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-faint">
+              <tr className="border-b border-line text-xs text-ink-faint">
                 <th scope="col" className="py-3 pr-4 font-semibold">
                   Programme
                 </th>
@@ -387,7 +387,7 @@ function Fees({ college }: { college: College }) {
                   ? [
                       <tr key={`${programmeTitle(course)}-${i}-online`} className="border-b border-line-soft bg-sky-50/50">
                         <th scope="row" className="py-4 pr-4 font-semibold text-ink">
-                          {programmeTitle(course)} <span className="ml-1 rounded-full bg-sky-600 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-white">Online</span>
+                          {programmeTitle(course)} <span className="ml-1 rounded-full bg-sky-600 px-2 py-0.5 align-middle text-[10px] font-bold text-white">Online</span>
                         </th>
                         <td className="py-4 pr-4 text-ink-soft">{course.onlineDuration || "—"}</td>
                         <td className="py-4 pr-4 text-ink-soft">Online</td>
@@ -578,7 +578,7 @@ function Placements({ college }: { college: College }) {
           <div className="-mx-2 overflow-x-auto px-2">
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
-                <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-faint">
+                <tr className="border-b border-line text-xs text-ink-faint">
                   <th scope="col" className="py-3 pr-4 font-semibold">Year</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Average</th>
                   <th scope="col" className="py-3 pr-4 font-semibold">Highest</th>

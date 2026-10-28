@@ -101,7 +101,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
             )}
             {exam.syllabus ? (
               <div className="mt-4">
-                <p className="text-xs font-semibold text-ink-faint uppercase">Syllabus outline</p>
+                <p className="text-xs font-semibold text-ink-faint">Syllabus outline</p>
                 <p className="mt-1 text-xs leading-relaxed text-ink-soft whitespace-pre-wrap">{exam.syllabus}</p>
               </div>
             ) : null}

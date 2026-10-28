@@ -37,7 +37,7 @@ export function CourseCard({ course, activeSpecialisation }: { course: CourseCat
           <span className="mt-0.5 bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-4xl font-extrabold leading-none tracking-tight text-transparent transition duration-300 group-hover:scale-110">
             {course.collegeCount.toLocaleString("en-IN")}
           </span>
-          <span className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-brand">{course.collegeCount === 1 ? "College" : "Colleges"}</span>
+          <span className="mt-1.5 text-[11px] font-bold text-brand">{course.collegeCount === 1 ? "College" : "Colleges"}</span>
         </div>
 
         <div className="min-w-0 flex-1">
@@ -62,7 +62,7 @@ export function CourseCard({ course, activeSpecialisation }: { course: CourseCat
 
           {/* The end of the path: the specialisations, each opening the colleges that teach exactly that. */}
           <div className="mt-4 rounded-xl border border-brand/20 bg-gradient-to-r from-brand-soft/70 to-bg-alt/40 px-4 py-3">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand">
               <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
               Specialisations
               {specs.length > 0 && <span className="rounded-full bg-brand px-1.5 py-px text-[10px] text-white">{specs.length}</span>}

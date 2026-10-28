@@ -91,7 +91,7 @@ export function CoursesTab({ record, update, pools }: EditorProps) {
                     <p className="text-sm font-semibold text-ink">
                       {c.name || `Programme ${i + 1}`}
                       {c.specialisation && <span className="font-normal text-ink-soft"> · {c.specialisation}</span>}
-                      <span className={`ml-2 rounded-full px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide ${done ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-900"}`}>
+                      <span className={`ml-2 rounded-full px-2 py-0.5 align-middle text-[10px] font-semibold ${done ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-900"}`}>
                         {done ? "Complete" : "Needs details"}
                       </span>
                     </p>

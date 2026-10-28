@@ -235,7 +235,7 @@ export function FieldModal({ field, onClose }: { field: AdminField | null; onClo
               </span>
               <span className="max-h-8 max-w-full overflow-hidden font-display text-[11px] font-medium leading-tight text-ink [overflow-wrap:anywhere]">{draft.name.trim() || "Name"}</span>
             </span>
-            <span className="mt-2 text-[9px] font-medium uppercase tracking-[0.12em] text-ink-soft">Avg CTC</span>
+            <span className="mt-2 text-[9px] font-medium text-ink-soft">Avg CTC</span>
             <span className="text-[11px] font-medium text-ink-soft">{draft.avgCtc.trim() || "—"}</span>
           </div>
         </div>

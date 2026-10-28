@@ -7,7 +7,10 @@ import { Chip } from "@/components/ui/chip";
 import { CollegeCard } from "@/components/college-card";
 import { ArticleSections } from "@/components/article-sections";
 import { sectionAnchor } from "@/lib/article-sections";
-import { getArticle, getArticleSlugs, getArticles, getCollege } from "@/lib/api";
+import { Fragment } from "react";
+import { getArticle, getArticleSlugs, getArticles, getCollege, getListingSlots } from "@/lib/api";
+import { ListingSlotView } from "@/components/colleges/listing-slot";
+import { sidebarSlots, slotsAt, slotsForStory, withSidebarSlots } from "@/lib/slot-layout";
 import { articleImage } from "@/lib/article-images";
 import { mediaUrl } from "@/lib/media";
 
@@ -83,6 +86,11 @@ export default async function ArticlePage({
     : [];
 
   const sections = article.sections ?? [];
+  // Banners and ads set in the admin (Articles > Story page): between the sections or in the right column.
+  const slots = slotsForStory((await getListingSlots("article").catch(() => null))?.slots ?? [], slug);
+  const column = sidebarSlots(slots);
+  const top = slotsAt(slots, "top");
+  const bottom = slotsAt(slots, "bottom");
   const picture = articleImage(article.slug, article.image);
 
   return (
@@ -123,12 +131,30 @@ export default async function ArticlePage({
             <img src={mediaUrl(picture)} alt={article.title} className="mt-6 aspect-[20/9] w-full max-w-3xl rounded-xl border border-line object-cover" />
           )}
 
-          {sections.length > 0 && <ArticleSections sections={sections} />}
+          {top.length > 0 && (
+            <div className="mt-6 max-w-3xl space-y-4">
+              {top.map((slot) => (
+                <ListingSlotView key={slot.id} slot={slot} />
+              ))}
+            </div>
+          )}
+
+          {sections.length > 0 && (
+            <ArticleSections sections={sections} />
+          )}
 
           {sections.length === 0 && bodyParagraphs.length > 0 && (
             <div className="mt-6 max-w-3xl space-y-4 border-t border-line pt-6 text-sm leading-relaxed text-ink-soft">
               {bodyParagraphs.map((para, i) => (
                 <p key={i}>{para}</p>
+              ))}
+            </div>
+          )}
+
+          {bottom.length > 0 && (
+            <div className="mt-8 max-w-3xl space-y-4">
+              {bottom.map((slot) => (
+                <ListingSlotView key={slot.id} slot={slot} />
               ))}
             </div>
           )}
@@ -148,8 +174,10 @@ export default async function ArticlePage({
         </article>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          {sections.filter((s) => s.heading).length > 1 && (
-            <nav aria-label="In this article" className="rounded-2xl bg-brand-soft p-5">
+          {withSidebarSlots(
+            [
+          sections.filter((s) => s.heading).length > 1 ? (
+            <nav key="toc" aria-label="In this article" className="rounded-2xl bg-brand-soft p-5">
               <p className="font-display text-lg font-semibold text-brand-ink">In this article</p>
               <ol className="mt-3 space-y-2 text-sm">
                 {sections.map((s, i) =>
@@ -163,9 +191,9 @@ export default async function ArticlePage({
                 )}
               </ol>
             </nav>
-          )}
+          ) : null,
 
-          <div className="rounded-2xl bg-brand-soft p-5">
+          <div key="help" className="rounded-2xl bg-brand-soft p-5">
             <p className="font-display text-lg font-semibold text-brand-ink">Need help deciding?</p>
             <p className="mt-2 text-sm text-brand-ink/80">
               Talk to an admission counsellor about the colleges in this article.
@@ -176,10 +204,10 @@ export default async function ArticlePage({
             >
               Get Free Counselling
             </Link>
-          </div>
+          </div>,
 
-          {more.length > 0 && (
-            <div className="rounded-2xl bg-brand-soft p-5">
+          more.length > 0 ? (
+            <div key="more" className="rounded-2xl bg-brand-soft p-5">
               <p className="font-display text-lg font-semibold text-brand-ink">More articles</p>
               <ul className="mt-3 space-y-3">
                 {more.map((other) => (
@@ -195,6 +223,10 @@ export default async function ArticlePage({
                 ))}
               </ul>
             </div>
+          ) : null,
+            ].filter(Boolean),
+            column,
+            (slot) => <ListingSlotView key={slot.id} slot={slot} compact />,
           )}
         </aside>
       </div>

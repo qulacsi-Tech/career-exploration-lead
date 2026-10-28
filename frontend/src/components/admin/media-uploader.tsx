@@ -202,7 +202,7 @@ export function MediaUploader({
                   labelled tile rather than a broken image box. */}
               {isPdf(image.file) ? (
                 <div className="flex h-24 w-full shrink-0 flex-col items-center justify-center rounded-md border border-line bg-bg-alt sm:w-36">
-                  <span className="rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                  <span className="rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">
                     PDF
                   </span>
                   <span className="mt-1 px-2 text-center text-[11px] text-ink-faint">

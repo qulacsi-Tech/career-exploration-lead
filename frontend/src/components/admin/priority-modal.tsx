@@ -187,7 +187,7 @@ function PriorityDialog({ links, onClose }: { links: PriorityLink[]; onClose: ()
             </div>
             <div className="max-h-[26rem] overflow-y-auto rounded-lg border border-line">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-surface text-left text-xs uppercase tracking-wide text-ink-faint">
+                <thead className="sticky top-0 bg-surface text-left text-xs text-ink-faint">
                   <tr className="border-b border-line">
                     <th scope="col" className="px-3 py-2 font-semibold">Institute</th>
                     <th scope="col" className="px-3 py-2 font-semibold">City</th>

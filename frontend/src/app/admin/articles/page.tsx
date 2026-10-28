@@ -2,6 +2,7 @@ import { adminGetFields, adminGetLocationPicker, adminGetNews } from "@/lib/api"
 import { withAdminToken } from "@/lib/admin-session";
 import { AdminPageHeader } from "@/components/admin/admin-section";
 import { NewsManager } from "@/components/admin/news-manager";
+import { ListingSlotsButton } from "@/components/admin/listing-slots-modal";
 
 /*
   Server component: every article, and which ones the homepage news spread pins.
@@ -19,6 +20,12 @@ export default async function AdminArticlesPage() {
       <AdminPageHeader
         title="Articles"
         description="Every article on the site: write, publish or unpublish, edit and delete. Pinning decides which ones the homepage news shows."
+        actions={
+          <>
+            <ListingSlotsButton page="articles" label="News list: banners & ads" />
+            <ListingSlotsButton page="article" label="Story page: banners & ads" />
+          </>
+        }
       />
       <NewsManager news={news} categories={fields.map((f) => f.name)} picker={picker} />
     </div>

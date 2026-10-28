@@ -70,11 +70,11 @@ export function DiffView({ diff }: { diff: FieldChange[] }) {
           ) : (
             <div className="grid gap-2 text-sm sm:grid-cols-2">
               <p className="min-w-0 break-words rounded-lg bg-red-50 px-3 py-2 text-red-900">
-                <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-red-700">Now</span>
+                <span className="mb-0.5 block text-[10px] font-semibold text-red-700">Now</span>
                 {text(change.before)}
               </p>
               <p className="min-w-0 break-words rounded-lg bg-brand-soft px-3 py-2 text-brand-ink">
-                <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-brand">Proposed</span>
+                <span className="mb-0.5 block text-[10px] font-semibold text-brand">Proposed</span>
                 {text(change.after)}
               </p>
             </div>

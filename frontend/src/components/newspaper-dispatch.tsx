@@ -110,7 +110,7 @@ export function NewspaperDispatch({
         {/* Rail above the book */}
         <div className="mx-auto mb-6 flex w-full max-w-[1700px] flex-wrap items-end justify-between gap-4">
           <div>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-faint">
+            <span className="text-[11px] font-semibold text-ink-faint">
               Off the press
             </span>
             <h2 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
@@ -238,7 +238,7 @@ export function NewspaperDispatch({
 function Masthead({ edition, total }: { edition: number; total: number }) {
   return (
     <div className="px-6 pt-5 sm:px-10">
-      <div className="flex items-center justify-between border-b-4 border-double border-ink/25 pb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-faint">
+      <div className="flex items-center justify-between border-b-4 border-double border-ink/25 pb-3 text-[10px] font-semibold text-ink-faint">
         <span>Vol. XII</span>
         <span className="hidden sm:inline">Campus Desk · India</span>
         <span>
@@ -253,7 +253,7 @@ function Masthead({ edition, total }: { edition: number; total: number }) {
 function LeadPage({ lead }: { lead: Article }) {
   return (
     <article>
-      <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+      <span className="text-[11px] font-bold text-brand">
         Lead story
       </span>
 
@@ -283,7 +283,7 @@ function LeadPage({ lead }: { lead: Article }) {
 
       <Link
         href={`/articles/${lead.slug}`}
-        className="mt-5 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-brand hover:underline"
+        className="mt-5 inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline"
       >
         Continue reading <ArrowUpRight className="h-3.5 w-3.5" />
       </Link>
@@ -303,7 +303,7 @@ function BriefsPage({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink">
+      <span className="text-[11px] font-bold text-ink">
         Also in this edition
       </span>
 
@@ -311,7 +311,7 @@ function BriefsPage({
         {briefs.map((brief) => (
           <li key={brief.slug} className="py-4">
             <Link href={`/articles/${brief.slug}`} className="group block">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
+              <p className="text-[10px] font-semibold text-ink-faint">
                 {brief.date}
               </p>
               <p className="mt-1 font-display text-base font-bold leading-snug text-ink group-hover:text-brand">
@@ -324,7 +324,7 @@ function BriefsPage({
       </ul>
 
       {/* Folio, as it sits at the foot of a right-hand page */}
-      <p className="mt-6 border-t border-ink/15 pt-3 text-right text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-faint">
+      <p className="mt-6 border-t border-ink/15 pt-3 text-right text-[10px] font-semibold text-ink-faint">
         Page {String(edition + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
       </p>
     </div>

@@ -123,7 +123,7 @@ export function CourseCollegesEditor({ slug, name }: { slug: string; name: strin
               <div className="flex items-center gap-3 px-4 py-2.5">
                 <input type="checkbox" checked={Boolean(rows)} onChange={() => toggle(c.slug)} aria-label={`${c.name} teaches ${name}`} className="h-4 w-4 accent-brand" />
                 <button type="button" onClick={() => rows && setOpen(isOpen ? null : c.slug)} className="min-w-0 flex-1 text-left" disabled={!rows}>
-                  <span className="block truncate text-sm font-medium text-ink">{c.name}{c.status !== "published" && <span className="ml-2 rounded-full bg-gold-soft px-2 py-0.5 text-[10px] font-bold uppercase text-gold">{c.status}</span>}</span>
+                  <span className="block truncate text-sm font-medium text-ink">{c.name}{c.status !== "published" && <span className="ml-2 rounded-full bg-gold-soft px-2 py-0.5 text-[10px] font-bold text-gold">{c.status}</span>}</span>
                   <span className="block truncate text-xs text-ink-faint">{[c.city, c.stream].filter(Boolean).join(" · ")}</span>
                 </button>
                 {rows && (

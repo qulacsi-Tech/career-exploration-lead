@@ -208,7 +208,7 @@ function CompareTray() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur sm:px-6"
     >
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+        <span className="text-xs font-semibold text-ink-faint">
           Comparing
         </span>
 

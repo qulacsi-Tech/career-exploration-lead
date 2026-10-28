@@ -65,7 +65,7 @@ export function ListingHero({
         </div>
 
         <div className="min-w-0">
-          <p className="mb-1.5 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-brand">
+          <p className="mb-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-brand">
             <Sparkles className="tcp-wiggle h-3.5 w-3.5" aria-hidden="true" />
             Your shortlist starts here
           </p>

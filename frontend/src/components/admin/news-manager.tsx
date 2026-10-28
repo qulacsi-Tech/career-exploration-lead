@@ -132,7 +132,7 @@ export function NewsManager({ news, categories, picker }: { news: AdminNews; cat
           <div className="overflow-x-auto rounded-xl border border-line">
             <table className="w-full min-w-[860px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
+                <tr className="border-b border-line bg-bg-alt text-left text-xs text-ink-faint">
                   <th scope="col" className="px-3 py-2.5 font-semibold">Pinned</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Article</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Category</th>

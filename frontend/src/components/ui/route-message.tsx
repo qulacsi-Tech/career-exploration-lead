@@ -61,7 +61,7 @@ export function RouteMessage({
       </div>
 
       <div className="mt-14">
-        <h2 className="text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-faint">
+        <h2 className="text-center text-[11px] font-semibold text-ink-faint">
           Where you might be headed
         </h2>
 

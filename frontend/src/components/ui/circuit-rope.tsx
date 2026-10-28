@@ -192,7 +192,7 @@ export function SectionCircuitBridge() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
               </span>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-ink">
+              <span className="text-[11px] font-bold text-ink">
                 Circuit Conduit &bull; Location Connected to Stream
               </span>
             </motion.div>

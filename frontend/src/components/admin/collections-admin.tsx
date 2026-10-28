@@ -326,7 +326,7 @@ function SnippetPreview({ d }: { d: Draft }) {
   const description = d.metaDescription.trim() || d.subheading.trim() || `Browse ${d.title.trim() || "this collection"} on fees, placements, rankings and admissions.`;
   return (
     <div className="rounded-xl border border-line bg-bg-alt/60 p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">How it can look in search</p>
+      <p className="text-[11px] font-semibold text-ink-faint">How it can look in search</p>
       <p className="mt-1.5 truncate text-base font-medium text-blue-800">{title}</p>
       <p className="truncate text-xs text-green-800">{hrefOf(d)}</p>
       <p className="mt-0.5 line-clamp-2 text-sm text-ink-soft">{description}</p>

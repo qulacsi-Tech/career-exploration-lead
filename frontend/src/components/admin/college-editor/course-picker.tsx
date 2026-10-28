@@ -14,7 +14,7 @@ type CatalogueLists = Pick<CollegePools, "courses" | "specialisations" | "course
 
 /** The small mark on a course or specialisation that can be taught online. */
 function OnlineTag() {
-  return <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">Online</span>;
+  return <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">Online</span>;
 }
 
 const chip = "flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition";

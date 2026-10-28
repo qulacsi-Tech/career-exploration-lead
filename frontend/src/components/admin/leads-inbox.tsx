@@ -113,7 +113,7 @@ function LeadDetail({
   return (
     <div className="grid gap-5 rounded-xl bg-bg-alt p-4 md:grid-cols-2">
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">What they sent</h3>
+        <h3 className="text-xs font-semibold text-ink-faint">What they sent</h3>
         {lead.message && <p className="mt-2 whitespace-pre-line text-sm text-ink">{lead.message}</p>}
         <dl className="mt-3 space-y-1 text-sm">
           {facts
@@ -128,7 +128,7 @@ function LeadDetail({
       </div>
 
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Replies</h3>
+        <h3 className="text-xs font-semibold text-ink-faint">Replies</h3>
         {lead.replies.length === 0 ? (
           <p className="mt-2 text-sm text-ink-soft">No reply sent yet.</p>
         ) : (
@@ -189,7 +189,7 @@ function LeadDetail({
 
       {canShowJourney && (
         <div className="md:col-span-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Before they got in touch</h3>
+          <h3 className="text-xs font-semibold text-ink-faint">Before they got in touch</h3>
           {journey ? (
             <div className="mt-2 space-y-3">
               {journey.visitor && (
@@ -284,7 +284,7 @@ export function LeadsInbox({
           <div className="-mx-5 overflow-x-auto px-5">
             <table className="w-full min-w-[860px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+                <tr className="border-b border-line text-left text-xs text-ink-faint">
                   <th scope="col" className="py-2 pr-3 font-semibold">Name</th>
                   <th scope="col" className="py-2 pr-3 font-semibold">Phone</th>
                   <th scope="col" className="py-2 pr-3 font-semibold">Email</th>

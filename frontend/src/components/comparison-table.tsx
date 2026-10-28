@@ -30,7 +30,7 @@ export function ComparisonTable({ colleges }: { colleges: College[] }) {
         <thead>
           <tr>
             <th scope="col" className="w-40 border-b border-line py-3 pr-4 text-left align-bottom">
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+              <span className="text-xs font-semibold text-ink-faint">
                 Attribute
               </span>
             </th>

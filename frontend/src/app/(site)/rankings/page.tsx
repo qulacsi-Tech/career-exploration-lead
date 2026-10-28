@@ -65,7 +65,7 @@ export default async function RankingsPage() {
                 <div className="mt-4 overflow-x-auto">
                   <table className="w-full border-collapse text-left text-sm">
                     <thead>
-                      <tr className="border-b border-line-soft text-xs uppercase tracking-wide text-ink-faint">
+                      <tr className="border-b border-line-soft text-xs text-ink-faint">
                         <th className="py-2.5 pr-4 font-semibold">Rank</th>
                         <th className="py-2.5 pr-4 font-semibold">College</th>
                         {list.entries.some((e) => e.score) && <th className="py-2.5 pr-4 font-semibold">Score</th>}

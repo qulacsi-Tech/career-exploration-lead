@@ -322,7 +322,7 @@ export default async function CollegesListingPage({
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="mb-3 rounded-2xl bg-gradient-to-br from-brand-soft to-bg-alt px-4 py-3">
-            <p className="font-display text-lg font-extrabold uppercase tracking-wide text-brand-ink">Filters</p>
+            <p className="font-display text-lg font-extrabold text-brand-ink">Filters</p>
             <p className="text-sm text-ink-soft">Narrow it down. We will keep the list tidy.</p>
           </div>
           <ListingFilters groups={groups} sorts={SORTS} sort={sort} replacePreset />

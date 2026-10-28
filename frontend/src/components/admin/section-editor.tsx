@@ -125,7 +125,7 @@ function FeaturingModeField({
 
   return (
     <fieldset>
-      <legend className="text-xs font-bold uppercase tracking-wide text-ink-faint">
+      <legend className="text-xs font-bold text-ink-faint">
         Featuring
       </legend>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -217,7 +217,7 @@ function OrderableList({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">{title}</h3>
+        <h3 className="text-xs font-bold text-ink-faint">{title}</h3>
         <span className="text-[11px] text-ink-faint">{order.length} items</span>
       </div>
       {hint && <p className="mt-1 text-xs text-ink-soft">{hint}</p>}

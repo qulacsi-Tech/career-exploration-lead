@@ -189,7 +189,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
         <div className="-mx-5 overflow-x-auto px-5">
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+              <tr className="border-b border-line text-left text-xs text-ink-faint">
                 <SortHeader label="Name" k="name" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Location" k="location" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Ownership" k="ownership" sort={sort} onSort={toggleSort} />
@@ -383,7 +383,7 @@ function ViewCollegeModal({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+                  <tr className="border-b border-line text-left text-xs text-ink-faint">
                     <th scope="col" className="py-2 pr-3 font-semibold">Course</th>
                     <th scope="col" className="py-2 pr-3 font-semibold">Duration</th>
                     <th scope="col" className="py-2 pr-3 font-semibold">Mode</th>
@@ -470,7 +470,7 @@ function SortHeader({ label, k, sort, onSort }: { label: string; k: SortKey; sor
   const on = sort?.key === k;
   return (
     <th scope="col" aria-sort={on ? (sort.dir === "asc" ? "ascending" : "descending") : "none"} className="py-2 pr-3 font-semibold">
-      <button type="button" onClick={() => onSort(k)} className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-brand ${on ? "text-brand" : ""}`}>
+      <button type="button" onClick={() => onSort(k)} className={`inline-flex items-center gap-1 hover:text-brand ${on ? "text-brand" : ""}`}>
         {label}
         <span aria-hidden className="text-[10px]">{on ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}</span>
       </button>
@@ -510,7 +510,7 @@ type StatusAction = "publish" | "archive" | "restore" | "delete";
 function StatusBadge({ status }: { status?: CollegeStatus }) {
   if (!status || status === "published") return null;
   const style = status === "draft" ? "bg-amber-100 text-amber-900" : "bg-slate-200 text-slate-700";
-  return <span className={`ml-1.5 rounded-full px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide ${style}`}>{status}</span>;
+  return <span className={`ml-1.5 rounded-full px-2 py-0.5 align-middle text-[10px] font-semibold ${style}`}>{status}</span>;
 }
 
 /**

@@ -17,7 +17,7 @@ export function PlacementBreakdownTable({ rows }: { rows: PlacementBreakdown[] |
     <div className="-mx-2 overflow-x-auto px-2">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
-          <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-faint">
+          <tr className="border-b border-line text-xs text-ink-faint">
             <th scope="col" className="py-3 pr-4 font-semibold">Course</th>
             <th scope="col" className="py-3 pr-4 font-semibold">Average</th>
             <th scope="col" className="py-3 pr-4 font-semibold">Highest</th>
@@ -30,7 +30,7 @@ export function PlacementBreakdownTable({ rows }: { rows: PlacementBreakdown[] |
           <tbody key={category || "—"}>
             {category && (
               <tr>
-                <th colSpan={6} scope="colgroup" className="bg-brand-soft/50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-brand-ink">{category}</th>
+                <th colSpan={6} scope="colgroup" className="bg-brand-soft/50 px-3 py-2 text-xs font-bold text-brand-ink">{category}</th>
               </tr>
             )}
             {list.map((r) => (

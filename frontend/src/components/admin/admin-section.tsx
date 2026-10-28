@@ -70,7 +70,7 @@ export function AdminSubsection({
 }) {
   return (
     <div>
-      <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">{title}</h3>
+      <h3 className="text-xs font-bold text-ink-faint">{title}</h3>
       {description && <p className="mt-1 text-xs text-ink-soft">{description}</p>}
       <div className="mt-3">{children}</div>
     </div>

@@ -215,7 +215,7 @@ export function AutoStoryFrame({
                           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/35" />
                           <div className="absolute inset-0 flex flex-col p-3 sm:p-4">
                             <div className="flex items-start justify-between gap-2">
-                              <span className="max-w-[75%] truncate rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink shadow-sm backdrop-blur">
+                              <span className="max-w-[75%] truncate rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-ink shadow-sm backdrop-blur">
                                 {it.eyebrow}
                               </span>
                               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white backdrop-blur-md transition-all duration-300 group-hover:border-transparent group-hover:bg-white group-hover:text-black">
@@ -236,7 +236,7 @@ export function AutoStoryFrame({
                                     .filter((fact) => fact.value.trim() !== "")
                                     .map((fact) => (
                                       <div key={fact.label} className="flex flex-wrap items-baseline justify-center gap-x-2.5">
-                                        {fact.label && <dt className="text-[10px] font-light uppercase tracking-[0.22em] text-white/60">{fact.label}</dt>}
+                                        {fact.label && <dt className="text-[10px] font-light text-white/60">{fact.label}</dt>}
                                         <dd className="text-sm font-light text-white sm:text-[15px]">{fact.value}</dd>
                                       </div>
                                     ))}
@@ -290,7 +290,7 @@ export function AutoStoryFrame({
           >
             <div>
               {label && (
-                <span className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${faint}`}>
+                <span className={`text-[11px] font-semibold ${faint}`}>
                   {label}
                 </span>
               )}
@@ -478,7 +478,7 @@ export function AutoStoryFrame({
                 >
                   {item.facts.map((fact) => (
                     <div key={fact.label}>
-                      <dt className={`text-[11px] uppercase tracking-[0.14em] ${faint}`}>
+                      <dt className={`text-[11px] ${faint}`}>
                         {fact.label}
                       </dt>
                       <dd className={`mt-1 font-semibold ${heading}`}>{fact.value}</dd>

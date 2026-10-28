@@ -263,7 +263,7 @@ export default async function ExamDetailPage({
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[420px] border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
+                    <tr className="border-b border-line bg-bg-alt text-left text-xs text-ink-faint">
                       <th scope="col" className="px-3 py-2.5 font-semibold">Section</th>
                       <th scope="col" className="px-3 py-2.5 font-semibold">Mode</th>
                       <th scope="col" className="px-3 py-2.5 font-semibold">Duration</th>
@@ -304,7 +304,7 @@ export default async function ExamDetailPage({
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[520px] border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
+                    <tr className="border-b border-line bg-bg-alt text-left text-xs text-ink-faint">
                       <th scope="col" className="px-3 py-2.5 font-semibold">College</th>
                       <th scope="col" className="px-3 py-2.5 font-semibold">Category</th>
                       <th scope="col" className="px-3 py-2.5 font-semibold">Cutoff</th>

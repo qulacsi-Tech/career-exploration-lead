@@ -6,7 +6,10 @@ import { ShareLinks } from "@/components/colleges/share-links";
 import { NewsCard } from "@/components/colleges/news-card";
 import { ListingFilters } from "@/components/colleges/listing-filters";
 import { appliedFilters, simple, type FilterGroup } from "@/components/colleges/filter-utils";
-import { getArticles, type Article } from "@/lib/api";
+import { Fragment } from "react";
+import { getArticles, getListingSlots, type Article } from "@/lib/api";
+import { ListingSlotView } from "@/components/colleges/listing-slot";
+import { inlineSlots, sidebarSlots, slotsAfter, slotsAt, withSidebarSlots } from "@/lib/slot-layout";
 
 export const metadata: Metadata = {
   title: "News & Admission Guides",
@@ -52,6 +55,14 @@ export default async function ArticlesIndexPage({
     const v = params[k];
     return (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
   };
+
+  // Banners and ads set in the admin (Articles > News list). The page is fine without them.
+  const slots = (await getListingSlots("articles").catch(() => null))?.slots ?? [];
+  const between = inlineSlots(slots);
+  const column = sidebarSlots(slots);
+  const left = slotsAt(slots, "left");
+  const top = slotsAt(slots, "top");
+  const bottom = slotsAt(slots, "bottom");
 
   let all: Article[] = [];
   try {
@@ -156,13 +167,25 @@ export default async function ArticlesIndexPage({
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)_280px]">
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <ListingFilters groups={groups} sorts={SORTS} sort={sort} />
+        <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+          {withSidebarSlots(
+            [<ListingFilters key="filters" groups={groups} sorts={SORTS} sort={sort} />],
+            left,
+            (slot) => <ListingSlotView key={slot.id} slot={slot} compact />,
+          )}
         </aside>
 
         <div className="min-w-0 space-y-4">
+          {top.map((slot) => (
+            <ListingSlotView key={slot.id} slot={slot} />
+          ))}
           {articles.map((article, i) => (
-            <NewsCard key={article.slug} article={article} lead={i === 0 && sort === "latest" && !category && !author} />
+            <Fragment key={article.slug}>
+              <NewsCard article={article} lead={i === 0 && sort === "latest" && !category && !author} />
+              {slotsAfter(between, i + 1, articles.length).map((slot) => (
+                <ListingSlotView key={slot.id} slot={slot} />
+              ))}
+            </Fragment>
           ))}
           {articles.length === 0 && (
             <div className="rounded-2xl border border-dashed border-line bg-bg-alt px-6 py-14 text-center">
@@ -176,11 +199,17 @@ export default async function ArticlesIndexPage({
               )}
             </div>
           )}
+          {bottom.map((slot) => (
+            <ListingSlotView key={slot.id} slot={slot} />
+          ))}
         </div>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-          {categoryCounts.length > 0 && (
-            <div className="rounded-2xl bg-brand-soft p-5">
+          {/* The column's own blocks, with the banners and ads set in the admin placed among them. */}
+          {withSidebarSlots(
+            [
+          categoryCounts.length > 0 ? (
+            <div key="browse" className="rounded-2xl bg-brand-soft p-5">
               <p className="font-display text-lg font-semibold text-brand-ink">Browse by category</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {categoryCounts.map(([name, n]) => (
@@ -195,11 +224,11 @@ export default async function ArticlesIndexPage({
                 ))}
               </div>
             </div>
-          )}
+          ) : null,
 
-          {latest.length > 0 && (
-            <div className="rounded-2xl bg-brand-soft p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-brand">Just in</p>
+          latest.length > 0 ? (
+            <div key="latest" className="rounded-2xl bg-brand-soft p-5">
+              <p className="text-xs font-semibold text-brand">Just in</p>
               <p className="mt-1 font-display text-lg font-semibold text-brand-ink">Latest Stories</p>
               <ul className="mt-4 space-y-3 text-sm text-brand-ink/80">
                 {latest.map((a) => (
@@ -212,9 +241,9 @@ export default async function ArticlesIndexPage({
                 ))}
               </ul>
             </div>
-          )}
+          ) : null,
 
-          <div className="rounded-2xl bg-brand-soft p-5">
+          <div key="shortlist" className="rounded-2xl bg-brand-soft p-5">
             <p className="font-display text-lg font-semibold text-brand-ink">Need a shortlist?</p>
             <p className="mt-2 text-sm text-brand-ink/80">
               Free guidance on colleges, fees and exams from a counsellor.
@@ -225,7 +254,11 @@ export default async function ArticlesIndexPage({
             >
               Request a Callback
             </Link>
-          </div>
+          </div>,
+            ].filter(Boolean),
+            column,
+            (slot) => <ListingSlotView key={slot.id} slot={slot} compact />,
+          )}
         </aside>
       </div>
     </div>

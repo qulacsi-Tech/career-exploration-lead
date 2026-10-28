@@ -95,7 +95,7 @@ function ItemTable<T>({
     <div className="overflow-x-auto rounded-xl border border-line">
       <table className="w-full min-w-[720px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
+          <tr className="border-b border-line bg-bg-alt text-left text-xs text-ink-faint">
             <th scope="col" className="w-12 px-3 py-2.5 font-semibold">#</th>
             {columns.map((c) => (
               <th key={c.label} scope="col" className="px-3 py-2.5 font-semibold">{c.label}</th>

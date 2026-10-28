@@ -99,7 +99,7 @@ export function CollegeArticlesEditor({ collegeSlug }: { collegeSlug: string }) 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">
+          <h3 className="text-xs font-bold text-ink-faint">
             Articles ({articles.length})
           </h3>
           <p className="mt-1 text-xs text-ink-soft">
@@ -197,7 +197,7 @@ export function CollegeAlertsEditor({ collegeSlug }: { collegeSlug: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-ink-faint">
+          <h3 className="text-xs font-bold text-ink-faint">
             News &amp; alerts ({alerts.length})
           </h3>
           <p className="mt-1 text-xs text-ink-soft">

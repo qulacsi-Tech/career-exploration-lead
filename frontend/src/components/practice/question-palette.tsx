@@ -117,7 +117,7 @@ export function QuestionPalette({
               {/* Dropped on a single-section paper — there is nothing to
                   distinguish, and the label is only noise. */}
               {test.sections.length > 1 && (
-                <p className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                <p className="mb-2 flex items-center gap-2 text-[11px] font-semibold text-ink-faint">
                   {section.label}
                   {locked && <LockGlyph />}
                 </p>

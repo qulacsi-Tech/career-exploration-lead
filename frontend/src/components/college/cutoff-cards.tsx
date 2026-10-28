@@ -80,7 +80,7 @@ function Dial({ percent }: { percent: number }) {
         <span className="font-display text-2xl font-extrabold text-ink">
           <CountUp value={percent} decimals={percent % 1 === 0 ? 0 : 1} />
         </span>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+        <span className="text-[10px] font-semibold text-ink-faint">
           percentile
         </span>
       </div>
@@ -102,7 +102,7 @@ function PlainScore({ score }: { score: string }) {
   return (
     <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full border-8 border-line-soft px-2 text-center">
       <span className="font-display text-2xl font-extrabold text-ink">{figure}</span>
-      <span className="line-clamp-2 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{rest || "score"}</span>
+      <span className="line-clamp-2 text-[10px] font-semibold text-ink-faint">{rest || "score"}</span>
     </div>
   );
 }
@@ -126,7 +126,7 @@ export function CutoffCards({ cutoffs }: { cutoffs: CutoffItem[] }) {
               </span>
 
               <div className="relative">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">
+                <p className="text-[11px] font-bold text-brand">
                   {cutoff.exam}
                 </p>
                 {/* The programme it is for, set apart: this is what tells two cards of the same exam apart. */}

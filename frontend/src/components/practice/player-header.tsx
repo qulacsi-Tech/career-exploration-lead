@@ -51,7 +51,7 @@ export function PlayerHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line bg-bg-alt px-4 py-2 sm:px-6">
-        <span className="font-display text-sm font-bold uppercase tracking-wide text-brand">
+        <span className="font-display text-sm font-bold text-brand">
           {test.examSlug.replace(/-/g, " ")}
         </span>
 
@@ -194,7 +194,7 @@ function SectionTabs({
                   ? "This paper locks each section until its time is up"
                   : undefined
             }
-            className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+            className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
               active
                 ? "bg-brand text-white"
                 : "border border-line bg-surface text-ink-soft hover:border-brand hover:text-brand"

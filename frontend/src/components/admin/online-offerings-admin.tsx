@@ -60,7 +60,7 @@ export function OnlineOfferingsAdmin({ offerings }: { offerings: OnlineOffering[
         <div className="-mx-5 overflow-x-auto px-5">
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+              <tr className="border-b border-line text-left text-xs text-ink-faint">
                 <th scope="col" className="py-2 pr-3 font-semibold">Programme</th>
                 <th scope="col" className="py-2 pr-3 font-semibold">College</th>
                 <th scope="col" className="py-2 pr-3 font-semibold">Online duration</th>

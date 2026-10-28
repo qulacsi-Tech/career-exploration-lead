@@ -185,7 +185,7 @@ export default async function ProgramPage({ params }: { params: Promise<{ slug: 
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                       {modes.map((m) => (
                         <div key={m.title} className="rounded-xl border border-line-soft bg-bg-alt/50 p-4">
-                          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-faint">{m.title}</p>
+                          <p className="mb-3 text-xs font-semibold text-ink-faint">{m.title}</p>
                           <ModeFigures duration={m.duration} fees={m.fees} note={m.note} />
                         </div>
                       ))}

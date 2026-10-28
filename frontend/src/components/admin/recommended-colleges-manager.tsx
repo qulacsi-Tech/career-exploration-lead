@@ -89,7 +89,7 @@ export function RecommendedCollegesManager({ chosen, picker }: { chosen: string[
           <div className="overflow-x-auto rounded-xl border border-line">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-line bg-bg-alt text-left text-xs uppercase tracking-wide text-ink-faint">
+                <tr className="border-b border-line bg-bg-alt text-left text-xs text-ink-faint">
                   <th scope="col" className="w-12 px-3 py-2.5 font-semibold">#</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">College</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Type</th>

@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from "react";
 import { Check, Info, Lightbulb, TriangleAlert } from "lucide-react";
 import { IMAGE_ALIGN_CLASS, IMAGE_SHAPES, IMAGE_SIZES, sectionAnchor, type ArticleBlock, type ArticleSection } from "@/lib/article-sections";
 import { mediaUrl } from "@/lib/media";
@@ -106,7 +107,7 @@ function Block({ block }: { block: ArticleBlock }) {
         <dl className="grid gap-3 sm:grid-cols-2">
           {block.items.map((item, i) => (
             <div key={i} className="rounded-xl bg-brand-soft px-4 py-3">
-              <dt className="text-xs font-medium uppercase tracking-wider text-brand">{item.label}</dt>
+              <dt className="text-xs font-medium text-brand">{item.label}</dt>
               <dd className="mt-1 font-display text-lg font-bold text-ink">{item.value}</dd>
             </div>
           ))}
@@ -150,12 +151,19 @@ function Block({ block }: { block: ArticleBlock }) {
   }
 }
 
-export function ArticleSections({ sections }: { sections: ArticleSection[] }) {
+export function ArticleSections({
+  sections,
+  after,
+}: {
+  sections: ArticleSection[];
+  /** What goes after the n-th section (1-based): the banners and ads set in the admin. */
+  after?: (n: number) => ReactNode;
+}) {
   return (
     <div className="mt-8 max-w-3xl space-y-6">
       {sections.map((section, i) => (
+        <Fragment key={i}>
         <section
-          key={i}
           id={sectionAnchor(section.heading, i)}
           className="scroll-mt-28 rounded-2xl border border-line bg-surface p-5 sm:p-7"
         >
@@ -170,6 +178,8 @@ export function ArticleSections({ sections }: { sections: ArticleSection[] }) {
             ))}
           </div>
         </section>
+        {after?.(i + 1)}
+        </Fragment>
       ))}
     </div>
   );

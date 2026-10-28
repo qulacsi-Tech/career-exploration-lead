@@ -83,7 +83,7 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
               <span className="mt-0.5 bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-5xl font-extrabold leading-none tracking-tight text-transparent transition duration-300 group-hover:scale-110">
                 {rank}
               </span>
-              <span className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-brand">{college.ranking.authority}</span>
+              <span className="mt-1.5 text-[11px] font-bold text-brand">{college.ranking.authority}</span>
             </>
           ) : (
             <>
@@ -165,7 +165,7 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
                 popup={
                   courses.length > 0 && (
                     <>
-                      <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-faint">Courses offered</p>
+                      <p className="mb-1.5 text-xs font-bold text-ink-faint">Courses offered</p>
                       <ul className="max-h-60 space-y-1 overflow-y-auto">
                         {courses.map((course) => (
                           <li key={programmeTitle(course)} className="flex items-baseline justify-between gap-4 text-sm">
@@ -200,7 +200,7 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
                 popup={
                   exams.length > 0 && (
                     <>
-                      <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-ink-faint">Exams accepted</p>
+                      <p className="mb-1.5 text-xs font-bold text-ink-faint">Exams accepted</p>
                       <ul className="flex flex-wrap gap-1.5">
                         {exams.map((exam) => (
                           <li key={exam} className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand-ink">
@@ -309,12 +309,12 @@ function Fact({
       <div className="min-w-0">
         {inline ? (
           <div className="flex items-center gap-2.5">
-            <dt className="text-xs font-bold uppercase tracking-wider text-ink-faint">{label}</dt>
+            <dt className="text-xs font-bold text-ink-faint">{label}</dt>
             <dd>{children}</dd>
           </div>
         ) : (
           <>
-            <dt className="text-xs font-bold uppercase tracking-wider text-ink-faint">{label}</dt>
+            <dt className="text-xs font-bold text-ink-faint">{label}</dt>
             <dd className={`mt-0.5 font-display font-extrabold leading-tight text-ink ${small ? "text-lg" : "text-xl"}`}>{children}</dd>
           </>
         )}

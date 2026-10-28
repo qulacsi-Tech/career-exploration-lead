@@ -240,7 +240,7 @@ export function ResourceAdmin<T>({
         <div className="-mx-5 overflow-x-auto px-5">
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+              <tr className="border-b border-line text-left text-xs text-ink-faint">
                 {onBulkDelete && (
                   <th scope="col" className="w-8 py-2 pr-3">
                     <input

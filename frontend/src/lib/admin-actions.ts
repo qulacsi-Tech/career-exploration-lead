@@ -62,6 +62,7 @@ import {
   adminResetListingHeader,
   adminListingHeaderScopes,
   adminGetListingSlots,
+  adminGetNews,
   adminResetListingSlots,
   adminListingSlotScopes,
   adminPutListingSlots,
@@ -71,6 +72,7 @@ import {
   adminRemoveCollegeRanking,
   type ListingHeader,
   type ListingPage,
+  type SlotPage,
   adminUploadImage,
   adminPutHomeLocations,
   adminCreateLocation,
@@ -1484,6 +1486,8 @@ export async function resetListingHeader(page: ListingPage, scope: string): Prom
 /** What the header dialog offers to edit: every selection in the colleges menu, and which already have their own header. */
 export async function loadHeaderTargets(page: ListingPage) {
   const token = await requireAdminToken();
+  // Only the colleges page has menu selections to write items for.
+  if (page !== "colleges") return { groups: [], custom: [] as string[] };
   try {
     const [groups, custom] = await Promise.all([getMenuSource(EMPTY_NAV, false).then((source) => applyMenuConfig(source, EMPTY_NAV, Infinity)), adminListingHeaderScopes(token, page)]);
     return { groups, custom };
@@ -1494,7 +1498,7 @@ export async function loadHeaderTargets(page: ListingPage) {
 }
 
 /** What the slots dialog can edit: every selection in the colleges menu, and which already have a set of their own. */
-export async function loadSlotTargets(page: ListingPage) {
+export async function loadSlotTargets(page: SlotPage) {
   const token = await requireAdminToken();
   try {
     const [groups, custom] = await Promise.all([getMenuSource(EMPTY_NAV, false).then((source) => applyMenuConfig(source, EMPTY_NAV, Infinity)), adminListingSlotScopes(token, page)]);
@@ -1506,11 +1510,13 @@ export async function loadSlotTargets(page: ListingPage) {
 }
 
 /** The banners, filter strips and ads between the colleges for the page or one selection, for the manager dialog (with the menu's options, for the preview chips). */
-export async function loadListingSlots(page: ListingPage, scope?: string) {
+export async function loadListingSlots(page: SlotPage, scope?: string) {
   const token = await requireAdminToken();
   try {
-    const [{ slots, custom }, groups] = await Promise.all([adminGetListingSlots(token, page, scope), getCollegesMenu(8)]);
-    return { slots, custom, groups };
+    const [{ slots, custom }, groups] = await Promise.all([adminGetListingSlots(token, page, scope), page === "colleges" ? getCollegesMenu(8) : Promise.resolve([])]);
+    // The story page's items are assigned to stories, so the dialog needs the list to choose from.
+    const stories = page === "article" ? (await adminGetNews(token)).articles.map((a) => ({ slug: a.slug, title: a.title })) : [];
+    return { slots, custom, groups, stories };
   } catch (err) {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
     if (err instanceof ApiError) return { error: err.message };
@@ -1518,16 +1524,23 @@ export async function loadListingSlots(page: ListingPage, scope?: string) {
   }
 }
 
-export async function saveListingSlots(page: ListingPage, slots: ListingSlot[], scope?: string): Promise<AdminActionResult> {
+/** The public address a page's banners and ads show on. */
+const slotPath = (page: SlotPage) => (page === "colleges" ? "/colleges" : "/articles");
+
+export async function saveListingSlots(page: SlotPage, slots: ListingSlot[], scope?: string): Promise<AdminActionResult> {
   const result = await attempt(`/admin/${page}`, (token) => adminPutListingSlots(token, page, slots, scope));
-  if ("ok" in result) revalidatePath(`/${page}`, "layout");
+  if ("ok" in result) {
+    revalidatePath(slotPath(page), "layout");
+    // The story pages are built ahead of time, one per story, so they are named too.
+    if (page === "article") revalidatePath("/articles/[slug]", "page");
+  }
   return result;
 }
 
 /** Give a selection back the page's own banners, filters and ads. */
-export async function resetListingSlots(page: ListingPage, scope: string): Promise<AdminActionResult> {
+export async function resetListingSlots(page: SlotPage, scope: string): Promise<AdminActionResult> {
   const result = await attempt(`/admin/${page}`, (token) => adminResetListingSlots(token, page, scope));
-  if ("ok" in result) revalidatePath(`/${page}`, "layout");
+  if ("ok" in result) revalidatePath(slotPath(page), "layout");
   return result;
 }
 

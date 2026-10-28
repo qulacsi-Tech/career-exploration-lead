@@ -33,7 +33,7 @@ export function LegalPage({
         <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
           {title}
         </h1>
-        <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-faint">
+        <p className="mt-2 text-xs font-medium text-ink-faint">
           Last updated {updated}
         </p>
         <p className="mt-4 text-sm leading-relaxed text-ink-soft">{intro}</p>

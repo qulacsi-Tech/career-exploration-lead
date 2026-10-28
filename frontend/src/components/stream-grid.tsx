@@ -115,13 +115,13 @@ export function StreamGrid({
                       {/* The badge and tagline sit in a box that scrolls when the text is longer than the disc can show. */}
                       <span className="coin-scroll flex max-h-[84px] w-full flex-col items-center gap-1 overflow-y-auto overscroll-contain px-0.5 [overflow-wrap:anywhere]">
                         {stream.badge && (
-                          <span className="text-[8px] font-medium uppercase tracking-[0.14em] text-white/75">
+                          <span className="text-[8px] font-medium text-white/75">
                             {stream.badge}
                           </span>
                         )}
                         {stream.tagline && <span className="text-[11px] font-normal leading-snug">{stream.tagline}</span>}
                       </span>
-                      <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider">
+                      <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium">
                         Explore <ArrowUpRight className="h-2.5 w-2.5" />
                       </span>
                     </span>
@@ -130,7 +130,7 @@ export function StreamGrid({
 
                 {stream.avgCtc && (
                   <p className="mt-2.5 flex flex-col items-center text-center leading-tight">
-                    <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-ink-soft">
+                    <span className="text-[9px] font-medium text-ink-soft">
                       Avg CTC
                     </span>
                     <span className="mt-0.5 text-[11px] font-medium text-ink-soft">

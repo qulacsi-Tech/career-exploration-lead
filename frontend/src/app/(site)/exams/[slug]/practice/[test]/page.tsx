@@ -72,7 +72,7 @@ export default async function TestInstructionsPage({
           { label: "Language", value: test.languages.join(", ") },
         ].map((item) => (
           <div key={item.label} className="rounded-xl border border-line bg-surface px-4 py-3">
-            <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+            <dt className="text-[11px] font-semibold text-ink-faint">
               {item.label}
             </dt>
             <dd className="mt-1 font-display text-base font-bold text-ink">{item.value}</dd>

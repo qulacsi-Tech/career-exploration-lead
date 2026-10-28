@@ -80,7 +80,7 @@ export function SectionSpotlight({
               <Icon className="h-10 w-10" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">{label}</p>
+              <p className="text-xs font-semibold text-brand">{label}</p>
               <p className="mt-1 font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
                 Everything about {label.toLowerCase()} at {collegeName}
               </p>
@@ -219,7 +219,7 @@ export function FacultyShowcase({
 
       {members.length > 0 && (
         <div>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-ink-faint">Meet the faculty</p>
+          <p className="mb-4 text-xs font-semibold text-ink-faint">Meet the faculty</p>
           <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.07}>
             {members.map((m) => (
               <RevealItem key={m.name}>
@@ -308,25 +308,25 @@ export function VsDuel({ colleges }: { colleges: DuelCollege[] }) {
 
             <dl className="mt-5 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl bg-white/70 px-2 py-3">
-                <dt className="text-[11px] uppercase tracking-wider text-ink-faint">{c.authority}</dt>
+                <dt className="text-[11px] text-ink-faint">{c.authority}</dt>
                 <dd className="mt-1 font-display text-xl font-extrabold text-ink">
                   {c.rank > 0 ? `#${c.rank}` : "—"}
                 </dd>
               </div>
               <div className="rounded-xl bg-white/70 px-2 py-3">
-                <dt className="text-[11px] uppercase tracking-wider text-ink-faint">Rating</dt>
+                <dt className="text-[11px] text-ink-faint">Rating</dt>
                 <dd className="mt-1 inline-flex items-center gap-1 font-display text-xl font-extrabold text-ink">
                   <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                   {c.rating.toFixed(1)}
                 </dd>
                 {c.rating === bestRating && colleges.length > 1 && (
-                  <span className="mt-1 inline-flex items-center gap-0.5 text-[10px] font-bold uppercase text-emerald-700">
+                  <span className="mt-1 inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700">
                     <Trophy className="h-3 w-3" /> Top
                   </span>
                 )}
               </div>
               <div className="rounded-xl bg-white/70 px-2 py-3">
-                <dt className="text-[11px] uppercase tracking-wider text-ink-faint">Fees</dt>
+                <dt className="text-[11px] text-ink-faint">Fees</dt>
                 <dd className="mt-1 flex items-center justify-center gap-0.5 text-sm font-bold text-ink">
                   <IndianRupee className="h-3 w-3 shrink-0" />
                   <span className="truncate">{c.fees.replace(/^₹\s*/, "") || "—"}</span>
@@ -493,7 +493,7 @@ export function AlertCards({ alerts }: { alerts: AlertItem[] }) {
                 </span>
               )}
               <span
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                   a.urgent ? "bg-brand text-white" : "bg-white text-brand-ink"
                 }`}
               >
@@ -538,7 +538,7 @@ export function NewsTimeline({ articles }: { articles: ArticleItem[] }) {
           <details className="group rounded-2xl border border-line bg-surface p-5 transition duration-200 open:border-brand/40 open:shadow-md hover:border-brand/40">
             <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wider text-brand">
+                <p className="text-xs font-semibold text-brand">
                   {a.date}
                   {a.author && <span className="text-ink-faint"> &middot; {a.author}</span>}
                 </p>
@@ -571,7 +571,7 @@ export function PressGrid({ items }: { items: PressItem[] }) {
       {items.map((p) => {
         const inner = (
           <>
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand">{p.meta || "Press"}</p>
+            <p className="text-xs font-semibold text-brand">{p.meta || "Press"}</p>
             <p className="mt-1.5 font-medium leading-snug text-ink">{p.title}</p>
             {p.link && (
               <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand">

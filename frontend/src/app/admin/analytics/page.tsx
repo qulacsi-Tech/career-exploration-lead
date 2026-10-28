@@ -148,7 +148,7 @@ function Table({ head, rows, empty }: { head: string[]; rows: (string | number)[
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
-        <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
+        <tr className="border-b border-line text-left text-xs text-ink-faint">
           {head.map((h, i) => (
             <th key={h} scope="col" className={`py-2 font-semibold ${i === 0 ? "pr-3" : "w-20 text-right"}`}>
               {h}

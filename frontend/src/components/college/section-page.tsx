@@ -61,7 +61,7 @@ export function CollegeSectionPage({
           className="group mt-10 flex items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-6 shadow-[0_1px_3px_rgba(28,33,40,0.06)] transition hover:border-brand/50 sm:p-8"
         >
           <span>
-            <span className="block text-xs font-semibold uppercase tracking-wider text-ink-faint">
+            <span className="block text-xs font-semibold text-ink-faint">
               Next
             </span>
             <span className="mt-1 block font-display text-xl font-bold text-ink transition-colors group-hover:text-brand">
