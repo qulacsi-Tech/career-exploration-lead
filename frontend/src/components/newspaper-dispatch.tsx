@@ -5,15 +5,36 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
-import { motion, useInView, useReducedMotion } from "framer-motion";
+import { motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowUpRight, Pause, Play } from "lucide-react";
 
 type Article = { slug: string; title: string; excerpt: string; date: string; image?: string };
 
 /** How long a spread stays open before the page turns itself. */
 const DWELL = 7000;
-/** How long the sheet takes to travel from the right board to the left. */
+/** How long the sheet takes to travel from the right board to the left (when the page turns itself, not on scroll). */
 const TURN = 1150;
+/** On a wide screen the book pins to the screen and turns with the scroll: this much scrolling for each page. */
+const SCROLL_PER_TURN_VH = 70;
+/** The site header's height, so the pinned book sits just under it. */
+const HEADER_OFFSET = 96;
+
+/** How far through a turn the sheet is, from how far through the scroll of that page. Rests a little at both ends. */
+const sheetProgress = (fraction: number) => Math.min(1, Math.max(0, (fraction - 0.15) / 0.7));
+
+/** True on a screen wide enough for the open book, when the visitor has not asked for less motion. */
+function usePinnedBook() {
+  const reduceMotion = useReducedMotion();
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 640px)");
+    const update = () => setWide(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return wide && !reduceMotion;
+}
 
 /**
  * Latest news, set as an open book that turns its own pages.
@@ -37,6 +58,15 @@ const TURN = 1150;
  * children of the `preserve-3d` sheet. Anything wrapped in between flattens its
  * own 3D context and both faces show through each other.
  *
+ * ## Turning with the scroll
+ *
+ * On a wide screen the book pins under the header and the page turns as you
+ * scroll: each stretch of scrolling lifts the sheet a little further, so it can
+ * be scrubbed forwards and back. When the last spread has been read the pin
+ * lets go and the page moves on to the next section. Elsewhere (a phone, or
+ * reduced motion) there is no pin and the pages turn on their own timer, or
+ * change plainly.
+ *
  * Below `sm` there is no book: two boards do not fit a phone, so the spread
  * stacks and the turn is replaced by a plain change of content.
  *
@@ -57,6 +87,7 @@ export function NewspaperDispatch({
   // No `once`: the press stops while the section is off screen.
   const inView = useInView(sectionRef, { amount: 0.25 });
   const reduceMotion = useReducedMotion();
+  const pinned = usePinnedBook();
 
   const [edition, setEdition] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -67,6 +98,11 @@ export function NewspaperDispatch({
 
   const turnTo = useCallback(
     (target: number) => {
+      if (pinned && sectionRef.current) {
+        const top = sectionRef.current.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
+        window.scrollTo({ top: top + (target * SCROLL_PER_TURN_VH * window.innerHeight) / 100 + 2, behavior: "smooth" });
+        return;
+      }
       if (turning) return;
       if (reduceMotion || target === edition) {
         setEdition(target);
@@ -77,14 +113,36 @@ export function NewspaperDispatch({
       if (target === (edition + 1) % total) setTurning(true);
       else setEdition(target);
     },
-    [edition, total, turning, reduceMotion]
+    [edition, total, turning, reduceMotion, pinned]
   );
 
+  // Scroll position through the pinned section, 0 at the first spread and 1 at the last.
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: [`start ${HEADER_OFFSET}px`, "end end"] });
+  const turns = Math.max(1, total - 1);
+  const rotate = useTransform(scrollYProgress, (p) => {
+    const t = Math.min(1, Math.max(0, p)) * turns;
+    const whole = Math.min(turns, Math.floor(t + 1e-6));
+    return whole >= turns ? 0 : -180 * sheetProgress(t - whole);
+  });
+  const shade = useTransform(rotate, [0, -90, -180], [0, 0.18, 0]);
+  useMotionValueEvent(scrollYProgress, "change", (p) => {
+    if (!pinned || total < 2) return;
+    const t = Math.min(1, Math.max(0, p)) * turns;
+    const whole = Math.min(turns, Math.floor(t + 1e-6));
+    setEdition(whole);
+    setTurning(whole < turns && t - whole > 0.001);
+  });
+  // Leaving the pinned layout (or arriving in it) starts from the first spread, with nothing half turned.
   useEffect(() => {
-    if (!playing || !inView || reduceMotion || total < 2 || turning) return;
+    setEdition(0);
+    setTurning(false);
+  }, [pinned]);
+
+  useEffect(() => {
+    if (pinned || !playing || !inView || reduceMotion || total < 2 || turning) return;
     const timer = setTimeout(() => setTurning(true), DWELL);
     return () => clearTimeout(timer);
-  }, [edition, playing, inView, reduceMotion, total, turning]);
+  }, [edition, playing, inView, reduceMotion, total, turning, pinned]);
 
   /** The sheet has landed: adopt the spread its back was already showing. */
   const commitTurn = () => {
@@ -105,8 +163,13 @@ export function NewspaperDispatch({
   const upcoming = spread(next);
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden bg-bg py-3 sm:py-4">
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-10">
+    <section
+      ref={sectionRef}
+      className={`relative bg-bg ${pinned ? "" : "overflow-hidden py-3 sm:py-4"}`}
+      // Pinned: tall enough that scrolling through it turns every page, then the next section follows.
+      style={pinned && total > 1 ? { height: `calc(100vh + ${(total - 1) * SCROLL_PER_TURN_VH}vh)` } : undefined}
+    >
+      <div className={`relative z-10 w-full px-4 sm:px-6 lg:px-10 ${pinned ? "sticky py-3" : ""}`} style={pinned ? { top: HEADER_OFFSET } : undefined}>
         {/* Rail above the book */}
         <div className="mx-auto mb-6 flex w-full max-w-[1700px] flex-wrap items-end justify-between gap-4">
           <div>
@@ -135,6 +198,7 @@ export function NewspaperDispatch({
               ))}
             </div>
 
+            {!pinned && (
             <button
               type="button"
               onClick={() => setPlaying((p) => !p)}
@@ -144,6 +208,7 @@ export function NewspaperDispatch({
             >
               {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </button>
+            )}
           </div>
         </div>
 
@@ -174,11 +239,15 @@ export function NewspaperDispatch({
               {turning && !reduceMotion && (
                 <motion.div
                   className="absolute inset-y-0 right-0 hidden w-1/2 [transform-style:preserve-3d] sm:block"
-                  style={{ transformOrigin: "left center", zIndex: 40 }}
-                  initial={{ rotateY: 0 }}
-                  animate={{ rotateY: -180 }}
-                  transition={{ duration: TURN / 1000, ease: [0.42, 0, 0.35, 1] }}
-                  onAnimationComplete={commitTurn}
+                  style={pinned ? { transformOrigin: "left center", zIndex: 40, rotateY: rotate } : { transformOrigin: "left center", zIndex: 40 }}
+                  {...(pinned
+                    ? {}
+                    : {
+                        initial: { rotateY: 0 },
+                        animate: { rotateY: -180 },
+                        transition: { duration: TURN / 1000, ease: [0.42, 0, 0.35, 1] as [number, number, number, number] },
+                        onAnimationComplete: commitTurn,
+                      })}
                 >
                   {/* Front: the right page being lifted */}
                   <div className="absolute inset-0 bg-[color-mix(in_oklab,var(--color-bg-alt)_82%,#f7efe2)] px-10 py-10 [backface-visibility:hidden]">
@@ -196,9 +265,9 @@ export function NewspaperDispatch({
                   <motion.div
                     aria-hidden
                     className="pointer-events-none absolute inset-0 bg-black"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0, 0.18, 0] }}
-                    transition={{ duration: TURN / 1000, times: [0, 0.5, 1] }}
+                    {...(pinned
+                      ? { style: { opacity: shade } }
+                      : { initial: { opacity: 0 }, animate: { opacity: [0, 0.18, 0] }, transition: { duration: TURN / 1000, times: [0, 0.5, 1] } })}
                   />
                 </motion.div>
               )}
@@ -212,7 +281,8 @@ export function NewspaperDispatch({
           </div>
 
           {/* On to the full listing */}
-          <div className="mt-5 flex justify-end">
+          <div className="mt-5 flex items-center justify-between gap-4">
+            <p className="text-xs text-ink-faint">{pinned && total > 1 ? "Keep scrolling to turn the page. The next section follows the last one." : ""}</p>
             <Link
               href="/articles"
               className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
