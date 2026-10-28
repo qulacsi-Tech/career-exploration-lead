@@ -36,6 +36,9 @@ class CourseSchema(BaseModel):
     exams: List[str]
     eligibility: str = ""
     seats: Optional[int] = None
+    onlineOffered: bool = False
+    onlineDuration: str = ""
+    onlineFees: str = ""
 
     model_config = ConfigDict(populate_by_name=True)
 

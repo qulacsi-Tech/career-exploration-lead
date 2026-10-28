@@ -1,7 +1,8 @@
 "use client";
 
 import { createCategory, deleteCategories, saveCategory } from "@/lib/admin-actions";
-import type { AdminField } from "@/lib/api";
+import type { AdminCourse, AdminField } from "@/lib/api";
+import { ChildDelivery, DELIVERY_LABEL, DeliveryField } from "@/components/admin/delivery-fields";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import { TextField, Field } from "@/components/admin/admin-fields";
@@ -28,7 +29,7 @@ function ShowOnHomepage({ defaultChecked }: { defaultChecked: boolean }) {
  *
  * It cannot be renamed here: colleges and courses store the name, so a rename would orphan them.
  */
-export function CategoriesAdmin({ categories }: { categories: AdminField[] }) {
+export function CategoriesAdmin({ categories, courses = [] }: { categories: AdminField[]; courses?: AdminCourse[] }) {
   return (
     <ResourceAdmin<AdminField>
       title="Categories"
@@ -53,6 +54,7 @@ export function CategoriesAdmin({ categories }: { categories: AdminField[] }) {
         },
         { key: "tagline", label: "Description", render: (item) => item.tagline || "—" },
         { key: "colleges", label: "Colleges", render: (item) => item.collegeCount.toLocaleString("en-IN") },
+        { key: "delivery", label: "Availability", render: (item) => DELIVERY_LABEL[item.delivery ?? "offline"] },
         { key: "home", label: "On homepage", render: (item) => (item.show ? "Yes" : "No") },
       ]}
       renderView={(item) => (
@@ -61,6 +63,7 @@ export function CategoriesAdmin({ categories }: { categories: AdminField[] }) {
             <Field label="Page address" value={`/${item.slug}/colleges`} />
             <Field label="Description" value={item.tagline || "—"} />
             <Field label="Colleges" value={item.collegeCount.toLocaleString("en-IN")} />
+            <Field label="Availability" value={DELIVERY_LABEL[item.delivery ?? "offline"]} />
             <Field label="On the homepage grid" value={item.show ? "Yes" : "No"} />
           </dl>
         </AdminSubsection>
@@ -80,6 +83,13 @@ export function CategoriesAdmin({ categories }: { categories: AdminField[] }) {
               />
               <TextField label="Short description" name="tagline" defaultValue={item.tagline} maxLength={50} hint="Shown on the homepage disc. Up to 50 characters." />
               <ShowOnHomepage defaultChecked={item.show} />
+              <DeliveryField defaultValue={item.delivery} className="sm:col-span-2" />
+              <ChildDelivery
+                label={`Courses under ${item.name}`}
+                items={courses.filter((c) => c.streams.includes(item.name)).map((c) => ({ slug: c.slug, name: c.name, delivery: c.delivery ?? "offline" }))}
+                emptyNote="No courses sit under this category yet. Add them in the Courses tab."
+                className="sm:col-span-2"
+              />
             </FieldGrid>
           ),
         },
@@ -92,6 +102,7 @@ export function CategoriesAdmin({ categories }: { categories: AdminField[] }) {
           <TextField label="Name" name="name" placeholder="Engineering" required maxLength={30} />
           <TextField label="Short description" name="tagline" placeholder="Build the future" maxLength={50} hint="Shown on the homepage disc. Up to 50 characters." />
           <ShowOnHomepage defaultChecked />
+          <DeliveryField className="sm:col-span-2" />
         </>
       )}
     />

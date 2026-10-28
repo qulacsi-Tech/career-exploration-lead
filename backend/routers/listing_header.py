@@ -2,7 +2,7 @@
 photo) and the intro text under the heading. Each page has its own, edited from that
 page's admin screen. The public read is open; the write needs ADMIN.
 
-An empty name hides the author row; an empty intro falls back to a short guide the page
+An empty name, or hideAuthor, hides the author row; an empty intro falls back to a short guide the page
 writes from its own data.
 
 A header can also belong to one selection in the colleges menu (a course, a city, a ranking
@@ -34,6 +34,8 @@ class HeaderBody(BaseModel):
     name: str = Field(default="", max_length=80)
     role: str = Field(default="", max_length=80)
     photo: str = Field(default="", max_length=200)
+    # True: the author block and the left column go, and the crumbs sit above the heading.
+    hideAuthor: bool = False
     # Paragraphs separated by a blank line.
     intro: str = Field(default="", max_length=4000)
     # Empty: the page writes the heading from the filters picked.

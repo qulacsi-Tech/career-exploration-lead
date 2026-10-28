@@ -23,5 +23,6 @@ class HomeField(Base):
     tagline = Column(String(120), nullable=False, default="", server_default="")
     badge = Column(String(60), nullable=False, default="", server_default="")
     avg_ctc = Column(String(40), nullable=False, default="", server_default="")
+    delivery = Column(String(10), nullable=False, default="offline", server_default="offline")  # offline | online | both
     show_on_home = Column(Boolean, nullable=False, default=True, server_default="true")
     home_order = Column(Integer, nullable=False, default=0, server_default="0")

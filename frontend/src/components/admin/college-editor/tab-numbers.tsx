@@ -22,7 +22,7 @@ const THIS_YEAR = new Date().getFullYear();
 
 // ── Courses & fees ───────────────────────────────────────────────────────────
 
-const blankCourse = (): RecordCourse => ({ name: "", specialisation: "", duration: "", mode: "Full Time", fees: "", exams: [], eligibility: "", seats: null });
+const blankCourse = (): RecordCourse => ({ name: "", specialisation: "", duration: "", mode: "Full Time", fees: "", exams: [], eligibility: "", seats: null, onlineOffered: false, onlineEnabled: true, onlineDuration: "", onlineFees: "" });
 
 /** A numbered heading, so the tab reads as steps to be done in order. */
 function Step({ n, title, children }: { n: number; title: string; children?: ReactNode }) {
@@ -49,7 +49,11 @@ export function CoursesTab({ record, update, pools }: EditorProps) {
     const added = next.filter((p) => !rows.some((r) => same(r, p))).map((p) => ({ ...blankCourse(), name: p.name, specialisation: p.specialisation }));
     set([...added, ...kept]);
   };
-  const missing = rows.filter((c) => !c.duration.trim() || !c.fees.trim()).length;
+  // A programme can be taught online when its course is, and its specialisation too if it has one.
+  const canOnline = (c: RecordCourse) =>
+    (pools.onlineCourses ?? []).includes(c.name) && (!c.specialisation || (pools.onlineSpecialisations ?? []).includes(c.specialisation));
+  const onlineIncomplete = (c: RecordCourse) => c.onlineOffered && (!c.onlineDuration.trim() || !c.onlineFees.trim());
+  const missing = rows.filter((c) => !c.duration.trim() || !c.fees.trim() || onlineIncomplete(c)).length;
 
   return (
     <Card title="Courses and fees" description="Work down the three steps. The Courses and Fees tabs of the college page are built from this.">
@@ -78,7 +82,8 @@ export function CoursesTab({ record, update, pools }: EditorProps) {
         {rows.length > 0 && (
           <ul className="space-y-3 pl-9">
             {rows.map((c, i) => {
-              const done = !!c.duration.trim() && !!c.fees.trim();
+              const done = !!c.duration.trim() && !!c.fees.trim() && !onlineIncomplete(c);
+              const online = canOnline(c) || c.onlineOffered; // an offering already saved stays editable
               const extras = c.exams.length > 0 || !!c.eligibility.trim() || c.seats !== null;
               return (
                 <li key={`${c.name}|${c.specialisation}|${c.name ? "" : i}`} className={`rounded-xl border bg-bg-alt/50 p-4 ${done ? "border-line" : "border-amber-300"}`}>
@@ -99,6 +104,28 @@ export function CoursesTab({ record, update, pools }: EditorProps) {
                     <SelectInput id={`co-${i}-mode`} label="Mode" value={c.mode} onChange={(v) => patch(i, { mode: v })} options={MODES} />
                     <AmountField id={`co-${i}-fees`} label="Total fees" joined units={["K", "L", "Cr"]} value={c.fees} onChange={(v) => patch(i, { fees: v })} hint="Required. In thousand (K), lakh (L) or crore (Cr)." />
                   </div>
+                  {online && (
+                    <div className={`mt-4 rounded-lg border p-3 ${c.onlineOffered ? "border-sky-300 bg-sky-50" : "border-sky-200 bg-sky-50/40"}`}>
+                      <label className="flex cursor-pointer items-start gap-2 text-sm font-semibold text-sky-900">
+                        <input
+                          type="checkbox"
+                          checked={c.onlineOffered}
+                          onChange={(e) => patch(i, { onlineOffered: e.target.checked, ...(e.target.checked ? {} : { onlineDuration: "", onlineFees: "" }) })}
+                          className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]"
+                        />
+                        <span>
+                          Also offered online
+                          <span className="block text-xs font-normal text-sky-800/80">This course can be taught online. Tick it if this college does, then give the online duration and fees.</span>
+                        </span>
+                      </label>
+                      {c.onlineOffered && (
+                        <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <DurationField id={`co-${i}-online-duration`} label="Online duration" required units={["Days", "Months", "Years"]} value={c.onlineDuration} onChange={(v) => patch(i, { onlineDuration: v })} />
+                          <AmountField id={`co-${i}-online-fees`} label="Online total fees" joined units={["K", "L", "Cr"]} value={c.onlineFees} onChange={(v) => patch(i, { onlineFees: v })} hint="Required. In thousand (K), lakh (L) or crore (Cr)." />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <details className="mt-4 rounded-lg border border-line bg-surface" open={extras}>
                     <summary className="cursor-pointer select-none px-3 py-2 text-xs font-semibold text-ink-soft hover:text-ink">
                       Optional: entrance exams, eligibility, seats

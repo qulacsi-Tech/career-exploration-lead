@@ -382,9 +382,9 @@ export function DataList({
   return (
     <div className="border-t border-line">
       <ul>
-        {shown.map((row) => (
+        {shown.map((row, i) => (
           <li
-            key={row.label}
+            key={`${row.label}-${i}`}
             className="flex items-center justify-between gap-4 border-b border-line py-3.5"
           >
             {row.href ? (

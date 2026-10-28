@@ -38,9 +38,22 @@ function paragraphsOf(doc: RichTextDoc | undefined): string[] {
  * offer what the directory actually holds; the rest are fixed scales (fee
  * bands, rating steps, levels) that do not come from data.
  */
-function filterGroups(f: CollegeFacets, rankingLists: RankingList[]): FilterGroup[] {
+function filterGroups(f: CollegeFacets, rankingLists: RankingList[], picked: { stream?: string; course?: string }): FilterGroup[] {
+  // Category > Course > Specialisation: once a parent is chosen, the next list holds only what sits under it.
+  const courseStreams = f.courseStreams;
+  const specialisationCourses = f.specialisationCourses;
+  const courses = picked.stream && courseStreams ? f.courses.filter((c) => courseStreams[c]?.includes(picked.stream as string)) : f.courses;
+  const specialisations = !specialisationCourses
+    ? f.specialisations
+    : picked.course
+      ? f.specialisations.filter((s) => specialisationCourses[s]?.includes(picked.course as string))
+      : picked.stream
+        ? f.specialisations.filter((s) => specialisationCourses[s]?.some((c) => courses.includes(c)))
+        : f.specialisations;
   return [
-    { id: "category", label: "Category", options: simple("stream", f.streams ?? []) },
+    { id: "category", label: "Category", options: simple("stream", f.streams ?? []), resets: ["course", "specialisation"] },
+    { id: "course", label: "Course", options: simple("course", courses), resets: ["specialisation"] },
+    { id: "specialisation", label: "Specialisation", options: simple("specialisation", specialisations) },
     { id: "location", label: "Location", options: simple("city", f.cities) },
     // One option for every ranking list on the Rankings page: picking one shows the colleges in it, best rank first.
     {
@@ -51,8 +64,6 @@ function filterGroups(f: CollegeFacets, rankingLists: RankingList[]): FilterGrou
         params: { ranking_list: l.slug },
       })),
     },
-    { id: "course", label: "Course", options: simple("course", f.courses) },
-    { id: "specialisation", label: "Specialisation", options: simple("specialisation", f.specialisations) },
     { id: "credential", label: "Credential", options: simple("credential", ["Degree", "Diploma", "Doctorate"]) },
     { id: "level", label: "Course Level", options: simple("level", ["UG", "PG", "Doctorate"]) },
     { id: "mode", label: "Mode of Study", options: simple("mode", f.modes) },
@@ -172,7 +183,7 @@ export default async function CollegesListingPage({
     getListingSlots("colleges", scopeFromParams(str)).catch(() => null),
   ]);
   const slotList = slots?.slots ?? [];
-  const groups = filterGroups(facets, rankingLists);
+  const groups = filterGroups(facets, rankingLists, { stream: query.stream, course: query.course });
   const pickedList = rankingLists.find((l) => l.slug === query.ranking_list);
   const applied = appliedFilters("/colleges", groups, search);
   if (list) {
@@ -314,7 +325,7 @@ export default async function CollegesListingPage({
             <p className="font-display text-lg font-extrabold uppercase tracking-wide text-brand-ink">Filters</p>
             <p className="text-sm text-ink-soft">Narrow it down. We will keep the list tidy.</p>
           </div>
-          <ListingFilters groups={groups} sorts={SORTS} sort={sort} />
+          <ListingFilters groups={groups} sorts={SORTS} sort={sort} replacePreset />
         </aside>
 
         <div className="min-w-0">

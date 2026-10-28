@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
@@ -23,6 +23,11 @@ class Course(Base):
     exams = Column(JSONB, nullable=False, default=list)
     eligibility = Column(String(300), nullable=False, default="", server_default="")
     seats = Column(Integer, nullable=True)
+    # Also taught online, with its own length and fees. Empty when it is not.
+    online_offered = Column(Boolean, nullable=False, default=False, server_default="false")
+    online_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    online_duration = Column(String(100), nullable=False, default="", server_default="")
+    online_fees = Column(String(200), nullable=False, default="", server_default="")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     college = relationship("College", back_populates="courses")

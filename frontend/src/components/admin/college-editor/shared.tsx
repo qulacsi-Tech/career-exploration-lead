@@ -362,16 +362,16 @@ export function IsoDate({ id, label, value, onChange, hint, notFuture = false }:
   return <DateField id={id} label={label} value={isoToText(value)} onChange={(text) => onChange(textToIso(text))} hint={hint} max={notFuture ? today() : undefined} />;
 }
 
-const DURATION_PARTS = /^\s*(\d{1,3}(?:\.\d)?)\s*(years?|months?)\s*$/i;
+const DURATION_PARTS = /^\s*(\d{1,3}(?:\.\d)?)\s*(years?|months?|days?)\s*$/i;
 
 /**
  * A programme's length as a number and Years / Months, stored as the text the site shows ("2 Years",
  * "18 Months"). Something typed in the old free-text way is shown as it is, with a note, until a number is entered.
  */
-export function DurationField({ id, label, value, onChange, required }: { id: string; label: string; value: string; onChange: (next: string) => void; required?: boolean }) {
+export function DurationField({ id, label, value, onChange, required, units = ["Years", "Months"] }: { id: string; label: string; value: string; onChange: (next: string) => void; required?: boolean; /** The lengths on offer. Days only where a course can be that short (online). */ units?: string[] }) {
   const parsed = DURATION_PARTS.exec(value);
   const [amount, setAmount] = useState(parsed?.[1] ?? "");
-  const [unit, setUnit] = useState(parsed ? (/^y/i.test(parsed[2]) ? "Years" : "Months") : "Years");
+  const [unit, setUnit] = useState(parsed ? (/^y/i.test(parsed[2]) ? "Years" : /^d/i.test(parsed[2]) ? "Days" : "Months") : units[0]);
   const [loose, setLoose] = useState(value.trim() !== "" && !parsed);
   const emit = (nextAmount: string, nextUnit: string) => {
     setLoose(false);
@@ -382,8 +382,9 @@ export function DurationField({ id, label, value, onChange, required }: { id: st
       <div className="mt-1.5 flex gap-2">
         <input id={id} type="number" min={0.5} step="any" inputMode="decimal" value={amount} aria-required={required || undefined} onChange={(e) => { setAmount(e.target.value); emit(e.target.value, unit); }} className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none" />
         <select aria-label={`${label}: unit`} value={unit} onChange={(e) => { setUnit(e.target.value); emit(amount, e.target.value); }} className="shrink-0 rounded-lg border border-line bg-bg px-2 py-2 text-sm text-ink focus:border-brand focus:outline-none">
-          <option>Years</option>
-          <option>Months</option>
+          {units.map((u) => (
+            <option key={u}>{u}</option>
+          ))}
         </select>
       </div>
       {loose && <p className="mt-1 text-xs text-amber-800">Currently &ldquo;{value}&rdquo;, which is not a length of time. Enter a number to replace it.</p>}

@@ -2,6 +2,7 @@
 
 import { createSpecialisation, deleteSpecialisations, saveSpecialisation } from "@/lib/admin-actions";
 import type { AdminCourse, AdminSpecialisation } from "@/lib/api";
+import { DELIVERY_LABEL, DeliveryField } from "@/components/admin/delivery-fields";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import { TextField, Field, NamesInput, ParentPicker } from "@/components/admin/admin-fields";
@@ -49,12 +50,14 @@ export function SpecialisationsAdmin({
           render: (item) => <p className="font-medium text-ink">{item.name}</p>,
         },
         { key: "courses", label: "Under courses", render: (item) => names(item.courseSlugs) },
+        { key: "delivery", label: "Availability", render: (item) => DELIVERY_LABEL[item.delivery ?? "offline"] },
         { key: "colleges", label: "Colleges", render: (item) => item.shownCount.toLocaleString("en-IN") },
       ]}
       renderView={(item) => (
         <AdminSubsection title="Details">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
             <Field label="Courses" value={names(item.courseSlugs)} />
+            <Field label="Availability" value={DELIVERY_LABEL[item.delivery ?? "offline"]} />
             <Field label="Colleges offering" value={item.shownCount.toLocaleString("en-IN")} />
           </dl>
         </AdminSubsection>
@@ -67,6 +70,7 @@ export function SpecialisationsAdmin({
             <FieldGrid>
               <TextField label="Name" name="name" defaultValue={item.name} required maxLength={200} />
               {picker(item.courseSlugs)}
+              <DeliveryField defaultValue={item.delivery} className="sm:col-span-2" />
             </FieldGrid>
           ),
         },
@@ -78,6 +82,7 @@ export function SpecialisationsAdmin({
         <>
           <NamesInput label="Names" name="name" placeholder="Computer Science" className="sm:col-span-2" />
           {picker([])}
+          <DeliveryField className="sm:col-span-2" />
         </>
       )}
     />

@@ -1,5 +1,6 @@
 "use client";
 
+import { SeoAvailability } from "@/components/admin/seo-availability";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ExternalLink, LayoutGrid, Megaphone, Plus, Search, Settings2, X } from "lucide-react";
 import { createCollection, deleteCollection, previewCollection, saveCollection } from "@/lib/admin-actions";
@@ -560,6 +561,7 @@ export function CollectionsAdmin({
             return where.length ? where.join(", ") : "—";
           },
         },
+        { key: "seo", label: "SEO available", render: (c) => <SeoAvailability seo={c.seo} /> },
         { key: "status", label: "Status", render: (c) => (c.isPublished ? "Published" : "Draft") },
       ]}
       renderView={(c) => (

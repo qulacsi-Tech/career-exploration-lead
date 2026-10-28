@@ -1,7 +1,8 @@
 "use client";
 
 import { createCourse, deleteCourses, saveCourse } from "@/lib/admin-actions";
-import type { AdminCourse } from "@/lib/api";
+import type { AdminCourse, AdminSpecialisation } from "@/lib/api";
+import { ChildDelivery, DELIVERY_LABEL, DeliveryField } from "@/components/admin/delivery-fields";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import { TextField, Field, NamesInput, ParentPicker } from "@/components/admin/admin-fields";
@@ -12,7 +13,7 @@ import { CourseCollegesEditor } from "@/components/admin/course-colleges-editor"
  * fees, duration and eligibility are entered per college, on the college form or in this course's Colleges tab. A course can sit
  * under several categories, and a college that picks one of them is offered this course.
  */
-export function CoursesAdmin({ courses, streams }: { courses: AdminCourse[]; streams: string[] }) {
+export function CoursesAdmin({ courses, streams, specialisations = [] }: { courses: AdminCourse[]; streams: string[]; specialisations?: AdminSpecialisation[] }) {
   const options = streams.map((name) => ({ value: name, label: name }));
   const picker = (defaults: string[]) => (
     <ParentPicker
@@ -43,12 +44,14 @@ export function CoursesAdmin({ courses, streams }: { courses: AdminCourse[]; str
           render: (course) => <p className="font-medium text-ink">{course.name}</p>,
         },
         { key: "streams", label: "Under categories", render: (course) => course.streams.join(", ") || "—" },
+        { key: "delivery", label: "Availability", render: (course) => DELIVERY_LABEL[course.delivery ?? "offline"] },
         { key: "colleges", label: "Colleges", render: (course) => course.shownCount.toLocaleString("en-IN") },
       ]}
       renderView={(course) => (
         <AdminSubsection title="Details">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
             <Field label="Categories" value={course.streams.join(", ") || "—"} />
+            <Field label="Availability" value={DELIVERY_LABEL[course.delivery ?? "offline"]} />
             <Field label="Colleges offering" value={course.shownCount.toLocaleString("en-IN")} />
           </dl>
         </AdminSubsection>
@@ -61,6 +64,13 @@ export function CoursesAdmin({ courses, streams }: { courses: AdminCourse[]; str
             <FieldGrid>
               <TextField label="Name" name="name" defaultValue={course.name} required maxLength={200} />
               {picker(course.streams)}
+              <DeliveryField defaultValue={course.delivery} className="sm:col-span-2" />
+              <ChildDelivery
+                label={`Specialisations under ${course.name}`}
+                items={specialisations.filter((s) => s.courseSlugs.includes(course.slug)).map((s) => ({ slug: s.slug, name: s.name, delivery: s.delivery ?? "offline" }))}
+                emptyNote="No specialisations sit under this course yet. Add them in the Specialisations tab."
+                className="sm:col-span-2"
+              />
             </FieldGrid>
           ),
         },
@@ -77,6 +87,7 @@ export function CoursesAdmin({ courses, streams }: { courses: AdminCourse[]; str
         <>
           <NamesInput label="Names" name="name" placeholder="B.Tech" className="sm:col-span-2" />
           {picker([])}
+          <DeliveryField className="sm:col-span-2" />
         </>
       )}
     />

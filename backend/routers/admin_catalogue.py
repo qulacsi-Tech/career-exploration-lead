@@ -48,6 +48,7 @@ async def _free_slug(db, model, name: str) -> str:
         slug = f"{base}-{n}"
     return slug
 Level = Literal["UG", "PG", "Diploma", "Doctorate"]
+Delivery = Literal["offline", "online", "both"]
 
 
 class _FormatChecks(BaseModel):
@@ -67,12 +68,14 @@ class _FormatChecks(BaseModel):
 class CourseCreateBody(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     streams: list[str] = Field(min_length=1, max_length=20)
+    delivery: Delivery = "offline"
     model_config = ConfigDict(extra="forbid")
 
 
 class CourseUpdateBody(_FormatChecks):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     streams: Optional[list[str]] = Field(default=None, min_length=1, max_length=20)
+    delivery: Optional[Delivery] = None
     fullName: Optional[str] = Field(default=None, min_length=2, max_length=500)
     level: Optional[Level] = None
     duration: Optional[str] = Field(default=None, min_length=1, max_length=100)
@@ -88,12 +91,14 @@ class CourseUpdateBody(_FormatChecks):
 class SpecialisationCreateBody(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     courseSlugs: list[str] = Field(min_length=1, max_length=50)
+    delivery: Delivery = "offline"
     model_config = ConfigDict(extra="forbid")
 
 
 class SpecialisationUpdateBody(_FormatChecks):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     courseSlugs: Optional[list[str]] = Field(default=None, min_length=1, max_length=50)
+    delivery: Optional[Delivery] = None
     duration: Optional[str] = Field(default=None, max_length=100)
     averageFees: Optional[str] = Field(default=None, max_length=100)
     collegeCount: Optional[int] = Field(default=None, ge=0, le=1_000_000)
@@ -127,6 +132,7 @@ def _course_out(c: CourseCatalogue, counts: CollegeCounts) -> dict:
         "streams": c.streams or ([c.stream] if c.stream else []),
         "duration": c.duration,
         "modes": c.modes or [],
+        "delivery": c.delivery or "offline",
         "eligibility": c.eligibility,
         "averageFees": c.average_fees,
         "examsAccepted": c.exams_accepted or [],
@@ -148,6 +154,7 @@ def _spec_out(s: Specialisation, counts: CollegeCounts) -> dict:
         "courseName": s.course_name,
         "courseSlugs": s.course_slugs or ([s.course_slug] if s.course_slug else []),
         "stream": s.stream,
+        "delivery": s.delivery or "offline",
         "duration": s.duration,
         "averageFees": s.average_fees,
         "collegeCount": s.college_count,
@@ -223,6 +230,7 @@ async def admin_create_course(_admin: AdminPayload, db: DbSession, body: dict):
         level="",
         stream=streams[0],
         streams=streams,
+        delivery=data.delivery,
         duration="",
         modes=[],
         exams_accepted=[],
@@ -263,7 +271,7 @@ async def admin_update_course(slug: str, _admin: AdminPayload, db: DbSession, bo
         changes["streams"], changes["stream"] = streams, streams[0]
 
     mapping = {
-        "name": "name", "streams": "streams", "stream": "stream", "fullName": "full_name", "level": "level",
+        "name": "name", "streams": "streams", "stream": "stream", "delivery": "delivery", "fullName": "full_name", "level": "level",
         "duration": "duration", "modes": "modes", "eligibility": "eligibility",
         "averageFees": "average_fees", "examsAccepted": "exams_accepted", "collegeCount": "college_count",
         "about": "about",
@@ -322,7 +330,7 @@ async def admin_create_specialisation(_admin: AdminPayload, db: DbSession, body:
     courses = await _courses_by_slugs(db, data.courseSlugs)
     await _reject_duplicate_spec(db, data.name)
 
-    spec = Specialisation(id=uuid.uuid4(), slug=await _free_slug(db, Specialisation, data.name), name=data.name.strip(), college_count=0)
+    spec = Specialisation(id=uuid.uuid4(), slug=await _free_slug(db, Specialisation, data.name), name=data.name.strip(), delivery=data.delivery, college_count=0)
     _set_parents(spec, courses)
     db.add(spec)
     await db.commit()
@@ -345,7 +353,7 @@ async def admin_update_specialisation(slug: str, _admin: AdminPayload, db: DbSes
         await _reject_duplicate_spec(db, changes["name"], spec.id)
 
     for key, column in {
-        "name": "name", "duration": "duration", "averageFees": "average_fees",
+        "name": "name", "delivery": "delivery", "duration": "duration", "averageFees": "average_fees",
         "collegeCount": "college_count", "about": "about",
     }.items():
         if key in changes:
@@ -362,6 +370,68 @@ async def admin_delete_specialisations(_admin: AdminPayload, db: DbSession, body
         await db.delete(spec)
     await db.commit()
     return SuccessResponse[dict](data={"message": f"{len(specs)} specialisation(s) deleted.", "deleted": len(specs)})
+
+
+class DeliveryBody(BaseModel):
+    """Delivery for a batch of children at once: the courses under a category, or the specialisations under a course."""
+
+    courses: dict[str, Delivery] = Field(default_factory=dict, max_length=500)
+    specialisations: dict[str, Delivery] = Field(default_factory=dict, max_length=500)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.put("/catalogue/delivery", response_model=SuccessResponse[dict])
+async def admin_set_delivery(_admin: AdminPayload, db: DbSession, body: dict):
+    """Sets offline, online or both on the named courses and specialisations. Unknown slugs are refused."""
+    data = _validate(DeliveryBody, body)
+    for model, wanted in ((CourseCatalogue, data.courses), (Specialisation, data.specialisations)):
+        if not wanted:
+            continue
+        rows = {r.slug: r for r in (await db.execute(select(model).where(model.slug.in_(list(wanted))))).scalars().all()}
+        unknown = [s for s in wanted if s not in rows]
+        if unknown:
+            raise NotFoundError(f"'{unknown[0]}'")
+        for slug, delivery in wanted.items():
+            rows[slug].delivery = delivery
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Saved."})
+
+
+# ── Online offerings: what colleges have entered, switched on or off ────────────────────────────────
+
+@router.get("/online-offerings", response_model=SuccessResponse[list])
+async def admin_online_offerings(_admin: AdminPayload, db: DbSession):
+    """Every programme a college has marked as also offered online, with its online duration and fees."""
+    rows = (await db.execute(
+        select(Course, College.name, College.slug)
+        .join(College, College.id == Course.college_id)
+        .where(Course.online_offered.is_(True))
+        .order_by(College.name, Course.name, Course.specialisation)
+    )).all()
+    return SuccessResponse[list](data=[
+        {
+            "id": str(c.id), "course": c.name, "specialisation": c.specialisation or "", "college": college, "collegeSlug": slug,
+            "duration": c.online_duration or "", "fees": c.online_fees or "", "enabled": bool(c.online_enabled),
+        }
+        for c, college, slug in rows
+    ])
+
+
+class EnabledBody(BaseModel):
+    enabled: bool
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.put("/online-offerings/{offering_id}/enabled", response_model=SuccessResponse[dict])
+async def admin_set_online_enabled(offering_id: uuid.UUID, _admin: AdminPayload, db: DbSession, body: dict):
+    """Shows or hides one online offering on the site. Nothing is deleted: the college's entry stays."""
+    data = _validate(EnabledBody, body)
+    course = (await db.execute(select(Course).where(Course.id == offering_id, Course.online_offered.is_(True)))).scalar_one_or_none()
+    if course is None:
+        raise NotFoundError("Online offering")
+    course.online_enabled = data.enabled
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Shown on the site." if data.enabled else "Hidden from the site."})
 
 
 # ── The info shown on a course's card ──────────────────────────────────────────────────────────────
@@ -525,15 +595,19 @@ async def admin_set_course_colleges(slug: str, _admin: AdminPayload, db: DbSessi
             except ValueError as exc:
                 raise ValidationError(str(exc)) from exc
 
+    # The online offering lives on the college's own record, not here, so it is carried over to the rewritten rows.
+    online = {(c.college_id, (c.specialisation or "").strip().lower()): (c.online_offered, c.online_enabled, c.online_duration, c.online_fees) for c in existing}
     affected = {c.college_id for c in existing} | {chosen[s].id for s in chosen}
     for c in existing:
         await db.delete(c)
     await db.flush()
     for entry in data.colleges:
         for row in entry.rows:
+            offered, enabled, online_duration, online_fees = online.get((chosen[entry.slug].id, row.specialisation.strip().lower()), (False, True, "", ""))
             db.add(Course(
                 id=uuid.uuid4(), college_id=chosen[entry.slug].id, name=course.name.strip(), specialisation=row.specialisation.strip(),
                 duration=row.duration, mode=row.mode, fees=row.fees.strip(), exams=row.exams, eligibility=row.eligibility.strip(), seats=row.seats,
+                online_offered=offered, online_enabled=enabled, online_duration=online_duration, online_fees=online_fees,
             ))
     await db.flush()
     for college_id in affected:

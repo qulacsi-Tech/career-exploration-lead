@@ -259,7 +259,20 @@ class CollegeRepository:
             rows = (await self.db.execute(stmt)).scalars()
             return sorted({str(v).strip() for v in rows if v and str(v).strip()}, key=str.lower)
 
+        # The tree behind the Category > Course > Specialisation filters: which categories each course sits
+        # under, and which courses each specialisation sits under.
+        course_rows = (await self.db.execute(
+            select(CourseCatalogue.name, CourseCatalogue.slug, CourseCatalogue.stream, CourseCatalogue.streams)
+            .where(CourseCatalogue.is_published == True)  # noqa: E712
+        )).all()
+        slug_to_name = {r.slug: r.name for r in course_rows}
+        spec_rows = (await self.db.execute(select(Specialisation.name, Specialisation.course_slug, Specialisation.course_slugs))).all()
+
         return {
+            "courseStreams": {r.name: list(r.streams or [r.stream]) for r in course_rows},
+            "specialisationCourses": {
+                r.name: [slug_to_name[c] for c in (r.course_slugs or [r.course_slug]) if c in slug_to_name] for r in spec_rows
+            },
             "streams": await column(select(func.jsonb_array_elements_text(College.streams)).where(live).distinct()),
             "cities": await column(select(College.city).where(live).distinct()),
             "exams": await column(select(func.jsonb_array_elements_text(College.exams_accepted)).where(live).distinct()),

@@ -22,6 +22,7 @@ class CourseCatalogue(Base):
     stream = Column(String(100), nullable=False, index=True)   # the first of `streams`
     streams = Column(JSONB, nullable=False, default=list)       # every category it sits under
     duration = Column(String(100), nullable=False)
+    delivery = Column(String(10), nullable=False, default="offline", server_default="offline")  # offline | online | both
     modes = Column(JSONB, nullable=False, default=list)         # ["Full Time", "Online"]
     eligibility = Column(Text, nullable=True)
     average_fees = Column(String(100), nullable=True)

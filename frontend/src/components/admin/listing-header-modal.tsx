@@ -208,7 +208,19 @@ function HeaderDialog({ page, onClose }: { page: ListingPage; onClose: () => voi
             <input id="lh-title" value={value.title} maxLength={120} placeholder="Written from the filters, e.g. MBA Colleges in Pune" onChange={(e) => set({ title: e.target.value })} className={INPUT} />
             <p className="mt-1 text-xs text-ink-faint">Leave empty to use the automatic heading.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex items-start gap-3 rounded-lg border border-line bg-bg-alt px-4 py-3">
+            <input
+              type="checkbox"
+              checked={!value.hideAuthor}
+              onChange={(e) => set({ hideAuthor: !e.target.checked })}
+              className="mt-0.5 h-4 w-4 accent-brand"
+            />
+            <span>
+              <span className="block text-xs font-semibold text-ink">Show the author section</span>
+              <span className="block text-xs text-ink-faint">Off: the author and the left column are removed, and the breadcrumb and heading start at the left edge.</span>
+            </span>
+          </label>
+          <div className={`grid gap-4 sm:grid-cols-2 ${value.hideAuthor ? "pointer-events-none opacity-50" : ""}`}>
             <div>
               <label htmlFor="lh-name" className="block text-xs font-semibold text-ink">Author name</label>
               <input id="lh-name" value={value.name} maxLength={80} onChange={(e) => set({ name: e.target.value })} className={INPUT} />

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { isOn, toggleHref, type FilterGroup } from "@/components/colleges/filter-utils";
+import { isOn, toggleHref, withoutFilters, type FilterGroup } from "@/components/colleges/filter-utils";
 
 /**
  * The listing's filter column: one grey accordion per facet, with the sort
@@ -61,11 +61,12 @@ function Radio({ on }: { on: boolean }) {
   );
 }
 
-function OptionLink({ href, on, children }: { href: string; on: boolean; children: React.ReactNode }) {
+function OptionLink({ href, on, onPick, children }: { href: string; on: boolean; onPick?: () => void; children: React.ReactNode }) {
   return (
     <Link
       href={href}
       scroll={false}
+      onClick={onPick}
       className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition ${
         on ? "bg-brand-soft font-semibold text-brand-ink" : "text-ink-soft hover:bg-bg-alt"
       }`}
@@ -80,7 +81,10 @@ export function ListingFilters({
   groups,
   sorts,
   sort,
+  replacePreset = false,
 }: {
+  /** The first pick replaces the filters the page was opened with. */
+  replacePreset?: boolean;
   groups: FilterGroup[];
   /** Omit for a list with no sort choice. */
   sorts?: { key: string; label: string }[];
@@ -88,6 +92,12 @@ export function ListingFilters({
 }) {
   const pathname = usePathname();
   const search = useSearchParams();
+  // A page opened from the header menu arrives with its own filter already on. The first pick the visitor
+  // makes replaces it instead of adding to it (which would often match nothing); picks after that add up.
+  // `picked` is the address that first pick led to, so opening any other address starts over.
+  const [picked, setPicked] = useState<string | null>(null);
+  const here = search.toString() ? `${pathname}?${search.toString()}` : pathname;
+  const hasPicked = picked === here;
   const sortLabel = sorts?.find((s) => s.key === sort)?.label ?? sorts?.[0]?.label;
 
   const sortHref = (key: string) => {
@@ -95,6 +105,12 @@ export function ListingFilters({
     next.delete("page");
     next.set("sort", key);
     return `${pathname}?${next.toString()}`;
+  };
+
+  const hrefFor = (group: FilterGroup, opt: FilterGroup["options"][number]) => {
+    const current = new URLSearchParams(search.toString());
+    const fresh = !replacePreset || hasPicked || isOn(opt, (k) => current.get(k)) ? current : withoutFilters(groups, current);
+    return toggleHref(pathname, fresh, group, opt);
   };
 
   return (
@@ -126,8 +142,9 @@ export function ListingFilters({
               {group.options.map((opt) => (
                 <li key={opt.label}>
                   <OptionLink
-                    href={toggleHref(pathname, new URLSearchParams(search.toString()), group, opt)}
+                    href={hrefFor(group, opt)}
                     on={isOn(opt, (k) => search.get(k))}
+                    onPick={() => setPicked(hrefFor(group, opt))}
                   >
                     {opt.label}
                   </OptionLink>

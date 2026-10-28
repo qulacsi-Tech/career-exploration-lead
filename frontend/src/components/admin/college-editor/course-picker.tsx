@@ -10,7 +10,12 @@ import type { CollegePools } from "@/lib/api";
 
 export type CoursePick = { name: string; specialisation: string };
 
-type CatalogueLists = Pick<CollegePools, "courses" | "specialisations" | "courseStreams" | "specialisationCourses">;
+type CatalogueLists = Pick<CollegePools, "courses" | "specialisations" | "courseStreams" | "specialisationCourses"> & Partial<Pick<CollegePools, "onlineCourses" | "onlineSpecialisations">>;
+
+/** The small mark on a course or specialisation that can be taught online. */
+function OnlineTag() {
+  return <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">Online</span>;
+}
 
 const chip = "flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition";
 const on = "border-brand bg-brand-soft text-brand";
@@ -112,6 +117,7 @@ export function CourseTicks({
               <label className={`${chip} w-fit ${checked ? on : off}`}>
                 <input type="checkbox" checked={checked} onChange={() => toggleCourse(course)} className="h-4 w-4 accent-[var(--color-brand)]" />
                 {course}
+                {pools.onlineCourses?.includes(course) && <OnlineTag />}
               </label>
               {checked && specs.length > 0 && (
                 <div className="ml-6 mt-2 border-l-2 border-line pl-4">
@@ -124,6 +130,7 @@ export function CourseTicks({
                           <label className={`${chip} ${specChecked ? on : off}`}>
                             <input type="checkbox" checked={specChecked} onChange={() => toggleSpec(course, spec)} className="h-4 w-4 accent-[var(--color-brand)]" />
                             {spec}
+                            {pools.onlineSpecialisations?.includes(spec) && <OnlineTag />}
                           </label>
                         </li>
                       );

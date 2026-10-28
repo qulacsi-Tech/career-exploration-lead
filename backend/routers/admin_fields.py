@@ -14,7 +14,7 @@ become hyphens.
 
 import re
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
@@ -43,6 +43,8 @@ class FieldBody(BaseModel):
     avgCtc: str = Field(default="", max_length=40)
     # Omitted: a new field shows, an edited one is unchanged.
     show: bool | None = None
+    # Taught offline, online or both. Omitted: a new field is offline, an edited one is unchanged.
+    delivery: Literal["offline", "online", "both"] | None = None
     model_config = ConfigDict(extra="forbid")
 
 
@@ -84,6 +86,7 @@ def _card(row: HomeField, colleges: int) -> dict[str, Any]:
         "badge": row.badge,
         "avgCtc": row.avg_ctc,
         "show": row.show_on_home,
+        "delivery": row.delivery or "offline",
         # Colleges whose stream matches this field's page. Zero means the link shows "not found".
         "collegeCount": colleges,
     }
@@ -100,6 +103,8 @@ def _apply(row: HomeField, data: FieldBody) -> None:
     row.tagline = data.tagline.strip()
     row.badge = data.badge.strip()
     row.avg_ctc = data.avgCtc.strip()
+    if data.delivery is not None:
+        row.delivery = data.delivery
 
 
 @router.get("", response_model=SuccessResponse[dict])
@@ -140,7 +145,7 @@ async def create_field(_admin: AdminPayload, db: DbSession, body: dict):
     if (await db.execute(select(HomeField.id).where(HomeField.slug == slug))).scalar_one_or_none():
         raise ValidationError(f"name: a field called '{data.name.strip()}' already exists.")
     last = (await db.execute(select(func.max(HomeField.home_order)))).scalar()
-    row = HomeField(id=uuid.uuid4(), slug=slug, show_on_home=data.show is not False, home_order=(last + 1) if last is not None else 0)
+    row = HomeField(id=uuid.uuid4(), slug=slug, delivery="offline", show_on_home=data.show is not False, home_order=(last + 1) if last is not None else 0)
     _apply(row, data)
     db.add(row)
     await db.commit()

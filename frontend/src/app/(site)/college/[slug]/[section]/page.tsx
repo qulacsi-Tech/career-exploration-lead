@@ -217,7 +217,8 @@ function Courses({ college }: { college: College }) {
       />
     );
   }
-  const modes = [...new Set(college.courses.map((course) => course.mode))];
+  const onlineCount = college.courses.filter((course) => course.onlineOffered).length;
+  const modes = [...new Set([...college.courses.map((course) => course.mode), ...(onlineCount > 0 ? ["Online"] : [])])];
 
   return (
     <>
@@ -225,6 +226,7 @@ function Courses({ college }: { college: College }) {
         <div className="grid gap-8 sm:grid-cols-2">
           <IconStat icon="book" value={college.courses.length} label="Programmes listed" />
           <IconStat icon="layers" value={modes.join(", ")} label="Study modes" />
+          {onlineCount > 0 && <IconStat icon="grad" value={onlineCount} label={onlineCount === 1 ? "Programme also online" : "Programmes also online"} />}
           <IconStat
             icon="grad"
             value={college.examsAccepted.join(", ")}
@@ -236,9 +238,9 @@ function Courses({ college }: { college: College }) {
 
       <DetailCard title="All Programmes">
         <ul className="divide-y divide-line border-y border-line">
-          {college.courses.map((course) => (
+          {college.courses.map((course, i) => (
             <li
-              key={programmeTitle(course)}
+              key={`${programmeTitle(course)}-${i}`}
               className="grid gap-4 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div className="min-w-0">
@@ -267,6 +269,23 @@ function Courses({ college }: { college: College }) {
                     </li>
                   ))}
                 </ul>
+                {course.onlineOffered && (
+                  <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+                    <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Also online</span>
+                    {course.onlineDuration && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="h-4 w-4" />
+                        {course.onlineDuration}
+                      </span>
+                    )}
+                    {course.onlineFees && (
+                      <span className="inline-flex items-center gap-1.5 font-semibold">
+                        <IndianRupee className="h-4 w-4" />
+                        {shortFee(course.onlineFees).replace("₹", "")} total fees
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-4 sm:flex-col sm:items-end sm:gap-2">
                 <p className="inline-flex items-center font-display text-2xl font-extrabold text-ink">
@@ -353,8 +372,8 @@ function Fees({ college }: { college: College }) {
               </tr>
             </thead>
             <tbody>
-              {college.courses.map((course) => (
-                <tr key={programmeTitle(course)} className="border-b border-line-soft">
+              {college.courses.flatMap((course, i) => [
+                <tr key={`${programmeTitle(course)}-${i}`} className="border-b border-line-soft">
                   <th scope="row" className="py-4 pr-4 font-semibold text-ink">
                     {programmeTitle(course)}
                   </th>
@@ -363,8 +382,20 @@ function Fees({ college }: { college: College }) {
                   <td className="py-4 text-right font-display font-bold text-ink">
                     {shortFee(course.fees)}
                   </td>
-                </tr>
-              ))}
+                </tr>,
+                ...(course.onlineOffered
+                  ? [
+                      <tr key={`${programmeTitle(course)}-${i}-online`} className="border-b border-line-soft bg-sky-50/50">
+                        <th scope="row" className="py-4 pr-4 font-semibold text-ink">
+                          {programmeTitle(course)} <span className="ml-1 rounded-full bg-sky-600 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-white">Online</span>
+                        </th>
+                        <td className="py-4 pr-4 text-ink-soft">{course.onlineDuration || "—"}</td>
+                        <td className="py-4 pr-4 text-ink-soft">Online</td>
+                        <td className="py-4 text-right font-display font-bold text-ink">{course.onlineFees ? shortFee(course.onlineFees) : "—"}</td>
+                      </tr>,
+                    ]
+                  : []),
+              ])}
             </tbody>
           </table>
         </div>

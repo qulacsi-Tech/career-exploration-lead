@@ -12,6 +12,8 @@ export type FilterGroup = {
   id: string;
   label: string;
   options: FilterOption[];
+  /** Parameters of the groups under this one (course under category): changing this group clears them. */
+  resets?: string[];
 };
 
 /** Single-parameter options: `simple("city", ["Pune"])`. */
@@ -37,7 +39,7 @@ export function toggleHref(
   const next = new URLSearchParams(search.toString());
   const wasOn = isOn(option, (k) => next.get(k));
   next.delete("page");
-  for (const key of groupKeys(group)) next.delete(key);
+  for (const key of [...groupKeys(group), ...(group.resets ?? [])]) next.delete(key);
   if (!wasOn) for (const [k, v] of Object.entries(option.params)) next.set(k, v);
   const qs = next.toString();
   return qs ? `${base}?${qs}` : base;
@@ -55,9 +57,17 @@ export function appliedFilters(
     if (!on) continue;
     const next = new URLSearchParams(search.toString());
     next.delete("page");
-    for (const key of groupKeys(group)) next.delete(key);
+    for (const key of [...groupKeys(group), ...(group.resets ?? [])]) next.delete(key);
     const qs = next.toString();
     out.push({ id: group.id, label: on.label, clear: qs ? `${base}?${qs}` : base });
   }
   return out;
+}
+
+/** The address with every narrowing parameter removed: what is left is the sort and nothing that filters. */
+export function withoutFilters(groups: FilterGroup[], search: URLSearchParams): URLSearchParams {
+  const next = new URLSearchParams(search.toString());
+  const keys = new Set([...groups.flatMap(groupKeys), "q", "ranking_max", "min_rating", "collection", "menu", "page"]);
+  for (const key of keys) next.delete(key);
+  return next;
 }

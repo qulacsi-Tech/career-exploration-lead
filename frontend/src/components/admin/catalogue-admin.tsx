@@ -65,8 +65,8 @@ export function CatalogueAdmin({
         ))}
       </div>
 
-      {active === "categories" && <CategoriesAdmin categories={categories} />}
-      {active === "courses" && <CoursesAdmin courses={courses} streams={categories.map((c) => c.name)} />}
+      {active === "categories" && <CategoriesAdmin categories={categories} courses={courses} />}
+      {active === "courses" && <CoursesAdmin courses={courses} streams={categories.map((c) => c.name)} specialisations={specialisations} />}
       {active === "specialisations" && <SpecialisationsAdmin specialisations={specialisations} courses={courses} />}
     </div>
   );

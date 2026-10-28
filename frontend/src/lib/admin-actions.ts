@@ -117,6 +117,8 @@ import {
   adminUpdateRanking,
   adminCreateSpecialisation,
   adminUpdateCourse,
+  adminPutDelivery,
+  adminSetOnlineOfferingEnabled,
   adminUpdateSpecialisation,
   adminDeleteSpecialisations,
   adminCreateStudyAbroadItem,
@@ -483,12 +485,39 @@ export async function loadLeadJourney(id: string): Promise<{ journey: Awaited<Re
 /** The parents ticked on a catalogue form: one name or slug per checked box. */
 const ticked = (form: FormData, field: string) => form.getAll(field).map((v) => String(v).trim()).filter(Boolean);
 
+const DELIVERIES = ["offline", "online", "both"] as const;
+type DeliveryValue = (typeof DELIVERIES)[number];
+
+/** How a record is taught, from its radio group. Missing or odd: undefined, so the server keeps what it has. */
+function deliveryOf(form: FormData): DeliveryValue | undefined {
+  const value = String(form.get("delivery") ?? "");
+  return (DELIVERIES as readonly string[]).includes(value) ? (value as DeliveryValue) : undefined;
+}
+
+/** The per-child choices on an edit form (`child:<slug>`), as slug to delivery. */
+function childDeliveries(form: FormData): Record<string, DeliveryValue> {
+  const out: Record<string, DeliveryValue> = {};
+  for (const [key, value] of form.entries()) {
+    if (!key.startsWith("child:") || !(DELIVERIES as readonly string[]).includes(String(value))) continue;
+    out[key.slice("child:".length)] = String(value) as DeliveryValue;
+  }
+  return out;
+}
+
+/** Saves the children's delivery after their parent was saved. Nothing to save: nothing is sent. */
+async function saveChildren(children: Record<string, DeliveryValue>, kind: "courses" | "specialisations"): Promise<AdminActionResult> {
+  if (Object.keys(children).length === 0) return { ok: true } as AdminActionResult;
+  return attempt("/admin/catalogue", (token) => adminPutDelivery(token, { [kind]: children }));
+}
+
 export async function saveCourse(slug: string, form: FormData): Promise<AdminActionResult> {
   const result = await attempt("/admin/catalogue", (token) =>
-    adminUpdateCourse(token, slug, { name: String(form.get("name") ?? "").trim(), streams: ticked(form, "streams") })
+    adminUpdateCourse(token, slug, { name: String(form.get("name") ?? "").trim(), streams: ticked(form, "streams"), delivery: deliveryOf(form) })
   );
-  if ("ok" in result) revalidatePath("/courses", "layout");
-  return result;
+  if (!("ok" in result)) return result;
+  const children = await saveChildren(childDeliveries(form), "specialisations");
+  revalidatePath("/courses", "layout");
+  return children;
 }
 
 /** Saves which category comes first in one homepage section. */
@@ -561,7 +590,7 @@ export async function createCourse(
   form: FormData
 ): Promise<AdminActionResult> {
   const streams = ticked(form, "streams");
-  return createEach(typedNames(form), (name) => attempt("/admin/catalogue", (token) => adminCreateCourse(token, { name, streams })), "course");
+  return createEach(typedNames(form), (name) => attempt("/admin/catalogue", (token) => adminCreateCourse(token, { name, streams, delivery: deliveryOf(form) })), "course");
 }
 
 export async function deleteCourses(slugs: string[]): Promise<AdminActionResult> {
@@ -578,7 +607,7 @@ export async function deletePrograms(slugs: string[]): Promise<AdminActionResult
 
 export async function saveSpecialisation(slug: string, form: FormData): Promise<AdminActionResult> {
   const result = await attempt("/admin/catalogue", (token) =>
-    adminUpdateSpecialisation(token, slug, { name: String(form.get("name") ?? "").trim(), courseSlugs: ticked(form, "courseSlugs") })
+    adminUpdateSpecialisation(token, slug, { name: String(form.get("name") ?? "").trim(), courseSlugs: ticked(form, "courseSlugs"), delivery: deliveryOf(form) })
   );
   if ("ok" in result) revalidatePath("/courses", "layout");
   return result;
@@ -607,6 +636,7 @@ export async function createCategory(
       badge: "",
       avgCtc: "",
       show: form.has("show"),
+      delivery: deliveryOf(form),
     })
   );
   if ("ok" in result) revalidatePath("/", "layout");
@@ -626,10 +656,14 @@ export async function saveCategory(
       badge: current.badge,
       avgCtc: current.avgCtc,
       show: form.has("show"),
+      delivery: deliveryOf(form),
     })
   );
-  if ("ok" in result) revalidatePath("/", "layout");
-  return result;
+  if (!("ok" in result)) return result;
+  const children = await saveChildren(childDeliveries(form), "courses");
+  revalidatePath("/", "layout");
+  revalidatePath("/courses", "layout");
+  return children;
 }
 
 export async function deleteCategories(slugs: string[]): Promise<AdminActionResult> {
@@ -648,7 +682,7 @@ export async function createSpecialisation(
   const courseSlugs = ticked(form, "courseSlugs");
   return createEach(
     typedNames(form),
-    (name) => attempt("/admin/catalogue", (token) => adminCreateSpecialisation(token, { name, courseSlugs })),
+    (name) => attempt("/admin/catalogue", (token) => adminCreateSpecialisation(token, { name, courseSlugs, delivery: deliveryOf(form) })),
     "specialisation"
   );
 }
@@ -1580,4 +1614,14 @@ export async function replyToThread(id: string, body: string): Promise<ThreadRes
 
 export async function resolveThreadAction(id: string): Promise<ThreadResult> {
   return threadCall((t) => adminResolveThread(t, id), "Could not mark it handled.");
+}
+
+/** Shows or hides one online programme on the site. The college keeps its entry either way. */
+export async function setOnlineOfferingEnabled(id: string, enabled: boolean): Promise<AdminActionResult> {
+  const result = await attempt("/admin/programs", (token) => adminSetOnlineOfferingEnabled(token, id, enabled));
+  if ("ok" in result) {
+    revalidatePath("/colleges", "layout");
+    revalidatePath("/college", "layout");
+  }
+  return result;
 }

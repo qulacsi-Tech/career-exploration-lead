@@ -32,7 +32,7 @@ export function ListingHero({
   intro: string[];
   author?: ListingHeader | null;
 }) {
-  const hasAuthor = Boolean(author?.name);
+  const hasAuthor = Boolean(author?.name) && !author?.hideAuthor;
   const updated = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
   return (

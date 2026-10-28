@@ -36,6 +36,7 @@ from schemas.common import SuccessResponse
 
 router = APIRouter(prefix="/admin/colleges", tags=["admin"])
 
+_ONLINE_DURATION = re.compile(r"^\d{1,3}(?:\.\d)? (?:Days?|Months?|Years?)$", re.IGNORECASE)
 MODES = ("Full Time", "Part Time", "Weekend", "Online", "Distance")
 CATEGORIES = ("General", "OBC", "SC", "ST", "EWS", "PwD", "Other")
 YEAR = date.today().year
@@ -50,6 +51,12 @@ class CourseRow(BaseModel):
     exams: list[str] = Field(default_factory=list, max_length=20)
     eligibility: str = Field(default="", max_length=300)
     seats: Optional[int] = Field(default=None, ge=1, le=100000)
+    # Also taught online: its own length (days, months or years) and fees. Both are required when offered.
+    onlineOffered: bool = False
+    # Switched on or off from Sections > Online Programmes; kept as it is when the college is saved.
+    onlineEnabled: bool = True
+    onlineDuration: str = Field(default="", max_length=100)
+    onlineFees: str = Field(default="", max_length=200)
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("duration")
@@ -61,6 +68,19 @@ class CourseRow(BaseModel):
     @classmethod
     def _fees(cls, value: str) -> str:
         return rules.check_amount(value, "The fees")
+
+    @model_validator(mode="after")
+    def _online(self):
+        if not self.onlineOffered:
+            self.onlineDuration, self.onlineFees = "", ""
+            return self
+        self.onlineDuration = " ".join(self.onlineDuration.split())
+        if not _ONLINE_DURATION.match(self.onlineDuration):
+            raise ValueError("The online duration must be a number of days, months or years, such as 45 Days, 18 Months or 2 Years.")
+        self.onlineFees = rules.check_amount(self.onlineFees, "The online fees")
+        if not self.onlineFees:
+            raise ValueError("The online fees are required when the course is offered online.")
+        return self
 
 
 class BreakdownRow(BaseModel):
@@ -267,7 +287,8 @@ def _record(c: College) -> dict:
         "approvals": c.approvals or [],
         "image": c.image or "",
         "courses": [
-            {"name": x.name, "specialisation": x.specialisation or "", "duration": x.duration, "mode": x.mode, "fees": x.fees, "exams": x.exams or [], "eligibility": x.eligibility or "", "seats": x.seats}
+            {"name": x.name, "specialisation": x.specialisation or "", "duration": x.duration, "mode": x.mode, "fees": x.fees, "exams": x.exams or [], "eligibility": x.eligibility or "", "seats": x.seats,
+             "onlineOffered": bool(x.online_offered), "onlineEnabled": bool(x.online_enabled), "onlineDuration": x.online_duration or "", "onlineFees": x.online_fees or ""}
             for x in sorted(c.courses or [], key=lambda x: x.created_at or 0)
         ],
         "placements": [
@@ -325,12 +346,12 @@ async def pools(_admin: AdminPayload, db: DbSession):
     fields = (await db.execute(select(HomeField.name).order_by(HomeField.name))).scalars().all()
     streams = sorted({*fields, *(await db.execute(select(College.stream).distinct())).scalars().all()} - {""})
     exams = (await db.execute(select(Exam.name).order_by(Exam.name))).scalars().all()
-    course_rows = (await db.execute(select(CourseCatalogue.name, CourseCatalogue.slug, CourseCatalogue.stream, CourseCatalogue.streams).where(CourseCatalogue.is_published.is_(True)).order_by(CourseCatalogue.name))).all()
+    course_rows = (await db.execute(select(CourseCatalogue.name, CourseCatalogue.slug, CourseCatalogue.stream, CourseCatalogue.streams, CourseCatalogue.delivery).where(CourseCatalogue.is_published.is_(True)).order_by(CourseCatalogue.name))).all()
     courses = [r.name for r in course_rows]
     # Which categories each course sits under, so the form offers only the courses of the chosen category.
     course_streams = {r.name: list(r.streams or [r.stream]) for r in course_rows}
     slug_to_name = {r.slug: r.name for r in course_rows}
-    spec_rows = (await db.execute(select(Specialisation.name, Specialisation.course_slug, Specialisation.course_slugs).order_by(Specialisation.name))).all()
+    spec_rows = (await db.execute(select(Specialisation.name, Specialisation.course_slug, Specialisation.course_slugs, Specialisation.delivery).order_by(Specialisation.name))).all()
     specialisations = [r.name for r in spec_rows]
     specialisation_courses = {r.name: [slug_to_name[c] for c in (r.course_slugs or [r.course_slug]) if c in slug_to_name] for r in spec_rows}
     # Only colleges the site shows can be pinned as similar.
@@ -346,6 +367,9 @@ async def pools(_admin: AdminPayload, db: DbSession):
             "specialisations": sorted(set(specialisations)),
             "courseStreams": course_streams,
             "specialisationCourses": specialisation_courses,
+            # The courses and specialisations that can be taught online, so the college editor can offer them.
+            "onlineCourses": sorted({r.name for r in course_rows if r.delivery in ("online", "both")}),
+            "onlineSpecialisations": sorted({r.name for r in spec_rows if r.delivery in ("online", "both")}),
             "colleges": [{"slug": s, "name": n} for s, n in colleges],
             "approvals": approvals,
             "tags": tags,
@@ -504,7 +528,8 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
     await db.execute(delete(Cutoff).where(Cutoff.college_id == row.id))
     for c in data.courses:
         db.add(Course(id=uuid.uuid4(), college_id=row.id, name=c.name.strip(), specialisation=c.specialisation.strip(), duration=c.duration.strip(), mode=c.mode, fees=c.fees.strip(),
-                      exams=[e.strip() for e in c.exams if e.strip()], eligibility=c.eligibility.strip(), seats=c.seats))
+                      exams=[e.strip() for e in c.exams if e.strip()], eligibility=c.eligibility.strip(), seats=c.seats,
+                      online_offered=c.onlineOffered, online_enabled=c.onlineEnabled, online_duration=c.onlineDuration, online_fees=c.onlineFees))
     for p in data.placements:
         db.add(Placement(id=uuid.uuid4(), college_id=row.id, year=p.year, average_package=p.average.strip() or None, median_package=p.median.strip() or None,
                          highest_package=p.highest.strip() or None, placed_percent=p.placedPercent, top_recruiters=[r.strip() for r in p.topRecruiters if r.strip()],

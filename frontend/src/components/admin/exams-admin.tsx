@@ -1,6 +1,7 @@
 "use client";
 
 import type { Exam } from "@/lib/api";
+import { SeoAvailability } from "@/components/admin/seo-availability";
 import { AdminSubsection } from "@/components/admin/admin-section";
 import { createExam, saveExam } from "@/lib/admin-actions";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
@@ -56,6 +57,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
         },
         { key: "date", label: "Exam date", render: (exam) => exam.examDate },
         { key: "fee", label: "Fee", render: (exam) => exam.applicationFee ?? "—" },
+        { key: "seo", label: "SEO available", render: (exam) => <SeoAvailability seo={(exam as { seo?: unknown }).seo} /> },
       ]}
       renderView={(exam) => (
         <div className="space-y-6">

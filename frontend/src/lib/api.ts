@@ -128,6 +128,10 @@ export type Course = {
   /** "Graduation with 50%": shown under the programme. */
   eligibility?: string;
   seats?: number | null;
+  /** Also taught online, with its own length and fees. */
+  onlineOffered?: boolean;
+  onlineDuration?: string;
+  onlineFees?: string;
 };
 /** One row of a year's placements by category, course and specialisation. A blank package is "not given". */
 export type PlacementBreakdown = {
@@ -538,6 +542,10 @@ export type CollegeFacets = {
   modes: string[];
   courses: string[];
   specialisations: string[];
+  /** The categories each course sits under, by course name. */
+  courseStreams?: Record<string, string[]>;
+  /** The courses each specialisation sits under, by specialisation name. */
+  specialisationCourses?: Record<string, string[]>;
 };
 
 export async function getCollegeFacets(): Promise<CollegeFacets> {
@@ -1164,6 +1172,9 @@ export async function getCollectionPage(slug: string): Promise<CollectionPagePay
 
 // ── Admin catalogue (courses and specialisations) ───────────────────────────
 
+/** How a category, course or specialisation is taught. */
+export type Delivery = "offline" | "online" | "both";
+
 export type AdminSpecialisation = {
   id: string;
   slug: string;
@@ -1174,6 +1185,7 @@ export type AdminSpecialisation = {
   /** Every course it sits under, by slug. */
   courseSlugs: string[];
   stream: string | null;
+  delivery: Delivery;
   duration: string | null;
   averageFees: string | null;
   collegeCount: number;
@@ -1191,6 +1203,7 @@ export type AdminCourse = {
   stream: string;
   /** Every category it sits under. */
   streams: string[];
+  delivery: Delivery;
   duration: string;
   modes: string[];
   eligibility: string | null;
@@ -1228,6 +1241,22 @@ export async function adminCreateSpecialisation(token: string, body: Record<stri
 
 export async function adminUpdateSpecialisation(token: string, slug: string, body: Record<string, unknown>) {
   return adminRequest<{ message: string }>(token, "PATCH", `/admin/specialisations/${slug}`, body);
+}
+
+/** A programme a college also offers online, as the Online Programmes screen lists it. */
+export type OnlineOffering = { id: string; course: string; specialisation: string; college: string; collegeSlug: string; duration: string; fees: string; enabled: boolean };
+
+export async function adminListOnlineOfferings(token: string): Promise<OnlineOffering[]> {
+  return adminRequest<OnlineOffering[]>(token, "GET", "/admin/online-offerings");
+}
+
+export async function adminSetOnlineOfferingEnabled(token: string, id: string, enabled: boolean) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/online-offerings/${id}/enabled`, { enabled });
+}
+
+/** Sets offline, online or both on courses and specialisations, by slug. */
+export async function adminPutDelivery(token: string, body: { courses?: Record<string, Delivery>; specialisations?: Record<string, Delivery> }) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/catalogue/delivery", body);
 }
 
 export async function adminDeleteSpecialisations(token: string, slugs: string[]) {
@@ -1566,7 +1595,7 @@ export async function adminPutHeroOrder(token: string, ids: string[]) {
 }
 
 /** A field in the admin list. `collegeCount` is how many colleges its page would list; 0 means the link shows "not found". */
-export type AdminField = HomeField & { show: boolean; collegeCount: number };
+export type AdminField = HomeField & { show: boolean; collegeCount: number; delivery: Delivery };
 
 /** What the field form sends. The slug is made from the name on create and never changes. */
 export type FieldInput = {
@@ -1576,6 +1605,7 @@ export type FieldInput = {
   badge: string;
   avgCtc: string;
   show: boolean;
+  delivery?: Delivery;
 };
 
 export async function adminGetFields(token: string): Promise<AdminField[]> {
@@ -2345,7 +2375,7 @@ export async function adminDeleteArticle(token: string, slug: string) {
 
 // ── Admin: the whole college record ───────────────────────────────────────
 
-export type RecordCourse = { name: string; specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null };
+export type RecordCourse = { name: string; specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null; onlineOffered: boolean; onlineEnabled?: boolean; onlineDuration: string; onlineFees: string };
 export type RecordPlacement = { year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[]; breakdown: PlacementBreakdown[] };
 export type RecordCutoff = { exam: string; category: string; course: string; specialisation: string; score: string };
 export type RecordReview = {
@@ -2420,6 +2450,9 @@ export type CollegePools = {
   courseStreams: Record<string, string[]>;
   /** The courses each specialisation sits under, by specialisation name. */
   specialisationCourses: Record<string, string[]>;
+  /** Courses and specialisations that can be taught online: the ones the editor offers an online option for. */
+  onlineCourses?: string[];
+  onlineSpecialisations?: string[];
   colleges: { slug: string; name: string }[];
   approvals: string[];
   tags: string[];
@@ -2447,7 +2480,7 @@ export type ListingPage = "colleges" | "courses";
  * Empty name: no author row. Empty intro: the page writes its own from its data. Paragraphs are split
  * by a blank line. Empty title: the heading is written from the filters picked.
  */
-export type ListingHeader = { name: string; role: string; photo: string; intro: string; title: string };
+export type ListingHeader = { name: string; role: string; photo: string; intro: string; title: string; /** Hides the author block; absent on older records. */ hideAuthor?: boolean };
 /** What the API returns: `custom` is true when this selection (or the page, with no selection) has a header of its own. */
 export type ListingHeaderRecord = ListingHeader & { custom: boolean };
 

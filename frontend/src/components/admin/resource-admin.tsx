@@ -405,7 +405,11 @@ export function ResourceAdmin<T>({
                         const updated: Record<string, unknown> = { ...(r as Record<string, unknown>) };
                         for (const [key, val] of data.entries()) {
                           if (typeof val === "string") {
-                            if (key === "entries") {
+                            if (key.startsWith("child:")) continue; // belongs to other rows, not this one
+                            // A checkbox group posts one entry per ticked box, and the row holds a list: keep it a list.
+                            if (Array.isArray(updated[key])) {
+                              updated[key] = data.getAll(key).map(String);
+                            } else if (key === "entries") {
                               try {
                                 updated[key] = JSON.parse(val);
                               } catch {

@@ -23,6 +23,7 @@ class Specialisation(Base):
     # Slugs of every course it sits under. course_id/course_slug above are the first, which is the
     # one the public course page lists it on.
     course_slugs = Column(JSONB, nullable=False, default=list)
+    delivery = Column(String(10), nullable=False, default="offline", server_default="offline")  # offline | online | both
     duration = Column(String(100), nullable=True)
     average_fees = Column(String(100), nullable=True)
     college_count = Column(Integer, nullable=False, default=0)

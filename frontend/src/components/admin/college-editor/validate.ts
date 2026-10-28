@@ -108,6 +108,11 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
     if (!c.fees.trim()) out.courses.push(`${label}: the fees are required.`);
     else add("courses", amountProblem(c.fees, "Fees") && `${label}: Fees must be 0 or more.`);
     if (c.seats !== null && c.seats < 1) out.courses.push(`${label}: seats must be at least 1.`);
+    if (c.onlineOffered) {
+      if (!/^\d{1,3}(\.\d)? (days?|months?|years?)$/i.test(c.onlineDuration.trim().replace(/\s+/g, " "))) out.courses.push(`${label}: the online duration is required, in days, months or years.`);
+      if (!c.onlineFees.trim()) out.courses.push(`${label}: the online fees are required.`);
+      else add("courses", amountProblem(c.onlineFees, "Fees") && `${label}: Online fees must be 0 or more.`);
+    }
     const key = `${c.name.trim().toLowerCase()}|${c.specialisation.trim().toLowerCase()}`;
     if (c.name.trim() && names.has(key)) out.courses.push(`${label} is listed more than once.`);
     names.add(key);

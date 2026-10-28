@@ -279,7 +279,7 @@ export default async function CollegeOverviewPage({
               <ColumnLabel>Programmes offered</ColumnLabel>
               <DataList
                 rows={(college.courses ?? []).map((course) => ({
-                  label: course.name,
+                  label: programmeTitle(course),
                   value: (
                     <>
                       <span className="font-display text-base font-bold text-ink">

@@ -5,18 +5,13 @@ import { createPortal } from "react-dom";
 import type { CollegePools, CollegeRecord } from "@/lib/api";
 import { createCollege, deleteCollegeForever, setCollegeStatus } from "@/lib/admin-actions";
 import type { College, CollegeStatus, IndiaGeo } from "@/lib/api";
-import {
-  programs,
-  rankingListsForProgram,
-  rankedColleges,
-  collegesInProgram,
-} from "@/lib/rankings-data";
 import { mediaUrl } from "@/lib/media";
 import { AdminPageHeader, AdminSection, AdminSubsection } from "@/components/admin/admin-section";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { ListingHeaderButton } from "@/components/admin/listing-header-modal";
 import { ListingSlotsButton } from "@/components/admin/listing-slots-modal";
 import { PriorityButton, type PriorityLink } from "@/components/admin/priority-modal";
+import { SeoAvailability } from "@/components/admin/seo-availability";
 import { StateCityFields } from "@/components/admin/state-city-fields";
 import { CategoryTicks, CourseTicks, type CoursePick } from "@/components/admin/college-editor/course-picker";
 import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
@@ -35,9 +30,9 @@ import { PlacementBreakdownTable } from "@/components/college/placement-breakdow
  */
 export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, priorityLinks = [] }: { colleges: College[]; geo?: IndiaGeo; streams?: string[]; pools?: CollegePools | null; priorityLinks?: PriorityLink[] }) {
   const [query, setQuery] = useState("");
-  const [programSlug, setProgramSlug] = useState("");
-  const [rankingSlug, setRankingSlug] = useState("");
   const [stream, setStream] = useState("");
+  const [course, setCourse] = useState("");
+  const [specialisation, setSpecialisation] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | CollegeStatus>("");
   const [acting, setActing] = useState<{ college: College; action: StatusAction } | null>(null);
   const [viewing, setViewing] = useState<College | null>(null);
@@ -58,48 +53,46 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
       .map((c) => (patches[c.slug] ? { ...c, ...patches[c.slug] } : c));
   }, [colleges, added, removed, patches]);
 
-  // Ranking lists belong to a program, so the second selector only has options
-  // once the first is set — and a stale ranking from a previous program must
-  // not keep filtering. Cleared in the program handler rather than an effect.
-  const rankingOptions = programSlug ? rankingListsForProgram(programSlug) : [];
+  // Category, then course, then specialisation: each list only offers what sits under the one before,
+  // and changing one clears the ones after it so a stale pick cannot keep filtering.
+  const courseOptions = useMemo(() => {
+    if (!stream) return [];
+    const names = pools
+      ? pools.courses.filter((name) => pools.courseStreams[name]?.includes(stream))
+      : rows.filter((c) => c.stream === stream).flatMap((c) => c.courses.map((k) => k.name));
+    return [...new Set(names)].sort((x, y) => x.localeCompare(y));
+  }, [pools, rows, stream]);
 
-  const selectProgram = (slug: string) => {
-    setProgramSlug(slug);
-    setRankingSlug("");
+  const specialisationOptions = useMemo(() => {
+    if (!course) return [];
+    const names = pools
+      ? pools.specialisations.filter((name) => pools.specialisationCourses[name]?.includes(course))
+      : rows.flatMap((c) => c.courses.filter((k) => k.name === course && k.specialisation).map((k) => k.specialisation as string));
+    return [...new Set(names)].sort((x, y) => x.localeCompare(y));
+  }, [pools, rows, course]);
+
+  const selectStream = (value: string) => {
+    setStream(value);
+    setCourse("");
+    setSpecialisation("");
   };
-
-  /**
-   * Program, then ranking list, then free text — narrowing in that order.
-   *
-   * Both selectors read lib/rankings-data rather than filtering on `stream`
-   * here: the program-to-college join lives in one place so this screen, the
-   * homepage bands and the rankings module cannot drift apart.
-   *
-   * A ranking list also sets the ORDER, not just the membership — that is the
-   * point of picking one. Sorting by the list means an editor sees the colleges
-   * in the sequence the site will show them, pins included.
-   */
-  const scoped = useMemo(() => {
-    if (rankingSlug) {
-      const order = new Map(
-        rankedColleges(rankingSlug).map((row, index) => [row.college.slug, index]),
-      );
-      return rows
-        .filter((c) => order.has(c.slug))
-        .sort((a, b) => (order.get(a.slug) ?? 0) - (order.get(b.slug) ?? 0));
-    }
-    if (programSlug) {
-      const inProgram = new Set(collegesInProgram(programSlug).map((c) => c.slug));
-      return rows.filter((c) => inProgram.has(c.slug));
-    }
-    return rows;
-  }, [rows, programSlug, rankingSlug]);
+  const selectCourse = (value: string) => {
+    setCourse(value);
+    setSpecialisation("");
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const byStatus = statusFilter ? scoped.filter((c) => (c.status ?? "published") === statusFilter) : scoped;
-    const inStream = stream ? byStatus.filter((c) => c.stream === stream) : byStatus;
-    const matching = q ? inStream.filter((c) => [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q))) : inStream;
+    const byStatus = statusFilter ? rows.filter((c) => (c.status ?? "published") === statusFilter) : rows;
+    // A college is in a category by its own stream or by offering a course that sits under it.
+    const inStream = stream
+      ? byStatus.filter((c) => c.stream === stream || c.courses.some((k) => pools?.courseStreams[k.name]?.includes(stream)))
+      : byStatus;
+    const inCourse = course ? inStream.filter((c) => c.courses.some((k) => k.name === course)) : inStream;
+    const inSpecialisation = specialisation
+      ? inCourse.filter((c) => c.courses.some((k) => k.name === course && k.specialisation === specialisation))
+      : inCourse;
+    const matching = q ? inSpecialisation.filter((c) => [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q))) : inSpecialisation;
     if (!sort) return matching; // the order the server sent: newest first
     const value = (c: College) =>
       ({ name: c.name, location: `${c.city}, ${c.state}`, ownership: c.ownership, stream: c.stream, courses: c.coursesOffered, rating: nirfRank(c) ?? Number.MAX_SAFE_INTEGER, priority: c.priority ?? Number.MAX_SAFE_INTEGER })[sort.key];
@@ -109,7 +102,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
       const y = value(b);
       return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * sign || a.name.localeCompare(b.name);
     });
-  }, [scoped, query, stream, statusFilter, sort]);
+  }, [rows, pools, query, stream, course, specialisation, statusFilter, sort]);
 
   const toggleSort = (key: SortKey) =>
     setSort((s) => (s?.key !== key ? { key, dir: "asc" } : s.dir === "asc" ? { key, dir: "desc" } : null));
@@ -142,33 +135,38 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
         description={`${filtered.length} of ${rows.length} shown`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={programSlug}
-              onChange={(e) => selectProgram(e.target.value)}
-              aria-label="Filter by program"
-              className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
-            >
-              <option value="">All programs</option>
-              {programs.map((program) => (
-                <option key={program.slug} value={program.slug}>
-                  {program.name}
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name, city, stream"
+              aria-label="Search colleges"
+              className="w-56 rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+            />
+
+            <select value={stream} onChange={(e) => selectStream(e.target.value)} aria-label="Filter by category" className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
+              <option value="">All categories</option>
+              {streams.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>
 
-            <select
-              value={rankingSlug}
-              onChange={(e) => setRankingSlug(e.target.value)}
-              disabled={rankingOptions.length === 0}
-              aria-label="Filter by ranking list"
-              className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">
-                {programSlug ? "Any ranking" : "Select a program first"}
-              </option>
-              {rankingOptions.map((list) => (
-                <option key={list.slug} value={list.slug}>
-                  {list.name}
+            <select value={course} onChange={(e) => selectCourse(e.target.value)} disabled={!stream} aria-label="Filter by course" className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
+              <option value="">{stream ? "All courses" : "Select a category first"}</option>
+              {courseOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+
+            <select value={specialisation} onChange={(e) => setSpecialisation(e.target.value)} disabled={!course} aria-label="Filter by specialisation" className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
+              <option value="">{course ? "All specialisations" : "Select a course first"}</option>
+              {specialisationOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>
@@ -184,29 +182,6 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
               <option value="draft">Draft</option>
               <option value="archived">Archived</option>
             </select>
-
-            <select
-              value={stream}
-              onChange={(e) => setStream(e.target.value)}
-              aria-label="Filter by category"
-              className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
-            >
-              <option value="">All categories</option>
-              {streams.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, city, stream"
-              aria-label="Search colleges"
-              className="w-56 rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
-            />
           </div>
         }
       >
@@ -222,6 +197,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
                 <SortHeader label="Courses" k="courses" sort={sort} onSort={toggleSort} />
                 <SortHeader label="NIRF" k="rating" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Priority" k="priority" sort={sort} onSort={toggleSort} />
+                <th scope="col" className="py-2 pr-3 font-semibold">SEO available</th>
                 <th scope="col" className="sticky right-0 bg-surface py-2 pl-3 text-right font-semibold shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">Actions</th>
               </tr>
             </thead>
@@ -262,6 +238,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
                     )}
                   </td>
                   <td className="py-3 pr-3 tabular-nums text-ink-soft">{college.priority ?? <span className="text-ink-faint">—</span>}</td>
+                  <td className="py-3 pr-3 text-ink-soft"><SeoAvailability seo={(college as { seo?: unknown }).seo} /></td>
                   <td className="sticky right-0 bg-surface py-3 pl-3 shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">
                     <div className="flex justify-end gap-2">
                       {/* View is switched off for now; the dialog behind it is kept.
@@ -288,7 +265,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-sm text-ink-soft">
+                  <td colSpan={9} className="py-10 text-center text-sm text-ink-soft">
                     {query
                       ? `No colleges match “${query}”.`
                       : "No colleges match the selected filters."}
@@ -512,6 +489,7 @@ function patchFrom(r: CollegeRecord): Partial<College> {
     name: r.name, city: r.city, state: r.state, ownership: r.ownership, stream: r.stream, feesRange: r.feesRange,
     established: r.established ?? undefined, about: r.about, examsAccepted: r.examsAccepted, tags: r.tags,
     approvals: r.approvals, image: r.image, coursesOffered: r.courses.length,
+    ...({ seo: r.detail.seo } as object), // the SEO column reads it
   };
 }
 
