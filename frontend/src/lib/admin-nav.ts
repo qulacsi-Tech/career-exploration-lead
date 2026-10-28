@@ -38,6 +38,8 @@ export type AdminNavSection = {
   label: string;
   icon: AdminNavIcon;
   items: AdminNavItem[];
+  /** A section with one item that is shown as a plain link, with no group around it. */
+  single?: boolean;
 };
 
 /*
@@ -47,50 +49,44 @@ export type AdminNavSection = {
   with its page. The "community" and "seo" icons are kept for that.
 */
 export const adminNav: AdminNavSection[] = [
+  // On its own: the first thing an admin opens, so it is not folded into a group.
+  { id: "dashboard", label: "Dashboard", icon: "overview", single: true, items: [{ label: "Dashboard", href: "/admin", phase: 1 }] },
   {
-    id: "overview",
-    label: "Overview",
-    icon: "overview",
+    // What visitors see and browse: the college listings, the groups of colleges, articles, the homepage
+    // and the header menu. The things edited most often come first.
+    id: "listings",
+    label: "Listings & Pages",
+    icon: "sections",
     items: [
-      { label: "Dashboard", href: "/admin", phase: 1 },
-      { label: "Approvals", href: "/admin/approvals", phase: 1 },
-      { label: "Messages", href: "/admin/messages", phase: 1 },
-      { label: "Notifications", href: "/admin/notifications", phase: 1 },
+      { label: "Colleges", href: "/admin/colleges", phase: 1 },
+      /*
+        A collection owns a URL, so it sits with the listings rather than inside the Homepage screen
+        (it was the "College bands" tab there, which only made sense while a band was the only thing a
+        group of colleges could be).
+      */
+      { label: "Collections", href: "/admin/collections", phase: 1 },
+      { label: "Articles", href: "/admin/articles", phase: 1 },
+      { label: "Homepage", href: "/admin/sections/homepage", phase: 1 },
+      // The header's "Top Ranked Colleges" menu: which categories and links show, their names and SEO.
+      { label: "Navigation", href: "/admin/sections/navigation", phase: 1 },
     ],
   },
   {
+    // The reference data the listings are built from: what colleges are described with, the entrance
+    // exams, the ranking lists, and the online offerings colleges have entered.
     id: "content",
     label: "Content",
     icon: "content",
     items: [
-      { label: "Colleges", href: "/admin/colleges", phase: 1 },
       // Categories, Courses and Specialisations: the three lists the college form picks from.
       { label: "Catalogue", href: "/admin/catalogue", phase: 1 },
       { label: "Exams", href: "/admin/exams", phase: 1 },
       { label: "Rankings", href: "/admin/rankings", phase: 1 },
-      { label: "Study Abroad", href: "/admin/study-abroad", phase: 1 },
-      /*
-        Sits under Content rather than Sections because a collection owns a URL.
-        It was the "College bands" tab inside Sections → Homepage, which only
-        made sense while a band was the sole thing a group of colleges could be;
-        a collection that also fills a footer column has no business being
-        edited from a screen named after a page it does not appear on.
-      */
-      { label: "Collections", href: "/admin/collections", phase: 1 },
-      { label: "Articles", href: "/admin/articles", phase: 1 },
-    ],
-  },
-  {
-    id: "sections",
-    label: "Sections",
-    icon: "sections",
-    items: [
-      { label: "Homepage", href: "/admin/sections/homepage", phase: 1 },
-      { label: "Location Page", href: "/admin/sections/location", phase: 1 },
-      // The header's "Top Ranked Colleges" menu: which categories and links show, their names and SEO.
-      { label: "Navigation", href: "/admin/sections/navigation", phase: 1 },
-      // The homepage's online and on-campus programme cards. Not the degree list, which is Content > Catalogue.
+      // The online courses colleges entered on their own records, to switch on or off. Not the degree list (Catalogue).
       { label: "Online Programmes", href: "/admin/programs", phase: 1 },
+      // Switched off for now; the pages are kept.
+      // { label: "Study Abroad", href: "/admin/study-abroad", phase: 1 },
+      // { label: "Location Page", href: "/admin/sections/location", phase: 1 },
     ],
   },
   {
@@ -103,12 +99,23 @@ export const adminNav: AdminNavSection[] = [
     ],
   },
   {
+    id: "overview",
+    label: "Overview",
+    icon: "community",
+    items: [
+      { label: "Approvals", href: "/admin/approvals", phase: 1 },
+      { label: "Messages", href: "/admin/messages", phase: 1 },
+      { label: "Notifications", href: "/admin/notifications", phase: 1 },
+    ],
+  },
+  {
     id: "settings",
     label: "Settings",
     icon: "settings",
     items: [
       { label: "Users & Roles", href: "/admin/users", phase: 1 },
-      { label: "Site Settings", href: "/admin/settings", phase: 1 },
+      // Switched off for now; the page is kept.
+      // { label: "Site Settings", href: "/admin/settings", phase: 1 },
     ],
   },
 ];

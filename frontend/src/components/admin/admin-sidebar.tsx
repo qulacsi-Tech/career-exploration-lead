@@ -31,7 +31,7 @@ export function AdminSidebar({ user, onNavigate }: { user: SidebarUser; onNaviga
   const pathname = usePathname();
   const nav = isCollegeAdmin(user.role) ? collegeAdminNav : adminNav;
   const active = findActiveItem(pathname, nav);
-  const activeSectionId = active?.section.id ?? "overview";
+  const activeSectionId = active?.section.id ?? nav.find((s) => !s.single)?.id;
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
 
   const isOpen = (id: string) => overrides[id] ?? id === activeSectionId;
@@ -44,6 +44,25 @@ export function AdminSidebar({ user, onNavigate }: { user: SidebarUser; onNaviga
       {nav.map((section) => {
         const open = isOpen(section.id);
         const hasActive = active?.section.id === section.id;
+
+        // A section of one is a plain link, not a group to open.
+        if (section.single) {
+          const item = section.items[0];
+          return (
+            <Link
+              key={section.id}
+              href={item.href}
+              onClick={onNavigate}
+              aria-current={hasActive ? "page" : undefined}
+              className={`group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition ${
+                hasActive ? "bg-brand-soft text-brand-ink" : "text-ink-soft hover:bg-bg-alt hover:text-ink"
+              }`}
+            >
+              <SectionIcon name={section.icon} className={`h-[18px] w-[18px] shrink-0 transition ${hasActive ? "text-brand" : "text-ink-faint group-hover:text-ink-soft"}`} />
+              <span className="flex-1 truncate">{section.label}</span>
+            </Link>
+          );
+        }
 
         return (
           <div key={section.id}>
