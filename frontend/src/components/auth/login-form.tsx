@@ -22,19 +22,13 @@ import type { AuthPageCopy } from "@/lib/api";
  */
 const PILL = "mt-1 w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none";
 
-export function LoginForm({ next, idle = false, copy }: { next?: string; idle?: boolean; copy: AuthPageCopy }) {
+export function LoginForm({ next, copy }: { next?: string; copy: AuthPageCopy }) {
   const [state, formAction, pending] = useActionState(signIn, undefined);
 
   return (
     <div>
       <h1 className="text-center font-display text-2xl font-extrabold text-ink sm:text-3xl">{copy.heading}</h1>
       {copy.subheading && <p className="mt-1.5 text-center text-sm text-ink-soft">{copy.subheading}</p>}
-
-      {idle && (
-        <p role="status" className="mt-4 rounded-lg border border-line bg-bg-alt px-3 py-2 text-sm text-ink-soft">
-          You were signed out because you were inactive. Log in again to continue.
-        </p>
-      )}
 
       <form className="mt-5 space-y-3.5" action={formAction}>
         {next && <input type="hidden" name="next" value={next} />}
@@ -65,13 +59,6 @@ export function LoginForm({ next, idle = false, copy }: { next?: string; idle?: 
             className={PILL}
           />
         </div>
-
-        {copy.rememberLabel && (
-          <label className="flex items-center gap-2 text-xs text-ink-soft">
-            <input type="checkbox" name="remember" className="h-4 w-4 rounded border-line text-brand focus:ring-brand" />
-            {copy.rememberLabel}
-          </label>
-        )}
 
         {state?.error && (
           <p role="alert" className="text-sm text-red-700">

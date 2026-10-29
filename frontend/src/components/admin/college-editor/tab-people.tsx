@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { loadGeneratedFaqs } from "@/lib/admin-actions";
 import type { FacultyMember, RecordReview } from "@/lib/api";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { REVIEW_MIN_CHARS } from "@/lib/college-rules";
@@ -133,32 +134,143 @@ export function FacultyTab({ record, update }: EditorProps) {
 
 // ── Q&A ──────────────────────────────────────────────────────────────────────
 
-export function FaqTab({ record, update }: EditorProps) {
-  const rows = record.detail.faqs;
-  const set = (list: typeof rows) => update((r) => ({ ...r, detail: { ...r.detail, faqs: list } }));
-  const patch = (i: number, change: Partial<(typeof rows)[number]>) => set(rows.map((f, n) => (n === i ? { ...f, ...change } : f)));
+/** A switch for "shown on the page". */
+function ShownSwitch({ on, onChange, label }: { on: boolean; onChange: (next: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={() => onChange(!on)}
+      className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition ${on ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-line bg-bg-alt text-ink-soft"}`}
+    >
+      <span aria-hidden className={`h-2 w-2 rounded-full ${on ? "bg-emerald-600" : "bg-ink-faint"}`} />
+      {on ? "Shown" : "Hidden"}
+    </button>
+  );
+}
+
+export function FaqTab({ record, update, slug }: EditorProps) {
+  const entries = record.detail.faqs;
+  const set = (list: typeof entries) => update((r) => ({ ...r, detail: { ...r.detail, faqs: list } }));
+
+  // The questions the site writes from the record: exactly the text the Q&A tab would show.
+  const [generated, setGenerated] = useState<{ key: string; question: string; answer: string }[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadGeneratedFaqs(slug).then((list) => alive && setGenerated(list));
+    return () => {
+      alive = false;
+    };
+  }, [slug]);
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const written = entries.map((f, i) => ({ f, i })).filter(({ f }) => !f.auto);
+  const mineFor = (key: string) => entries.findIndex((f) => f.auto === key);
+
+  const patchAt = (i: number, change: Partial<(typeof entries)[number]>) => set(entries.map((f, n) => (n === i ? { ...f, ...change } : f)));
+
+  /** Change what is said about a generated question: whether it shows, and its wording. An entry with nothing to say is dropped. */
+  const adjust = (key: string, change: { active?: boolean; question?: string; answer?: string }) => {
+    const at = mineFor(key);
+    const current = at >= 0 ? entries[at] : { auto: key, question: "", answer: "", active: true };
+    const next = { ...current, ...change };
+    const plain = next.active !== false && !next.question.trim() && !next.answer.trim();
+    if (plain) return set(entries.filter((_, n) => n !== at));
+    set(at >= 0 ? entries.map((f, n) => (n === at ? next : f)) : [...entries, next]);
+  };
 
   return (
-    <Card
-      title="Questions and answers"
-      description="Written by you, and shown first on the Q&A tab. The site also adds answers it works out from the college's record (courses, placements, cut-offs, ranking), leaving out any question you have already written."
-      actions={<AddButton onClick={() => set([...rows, { question: "", answer: "" }])} disabled={rows.length >= 30}>Add a question</AddButton>}
-    >
-      {rows.length === 0 ? (
-        <EmptyNote>None written. The Q&A tab shows the answers the site works out.</EmptyNote>
-      ) : (
-        <ul className="space-y-3">
-          {rows.map((f, i) => (
-            <Row key={i} title={f.question || `Question ${i + 1}`} index={i} count={rows.length} onMove={(d) => set(move(rows, i, d))} onRemove={() => set(rows.filter((_, n) => n !== i))}>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <TextInput id={`fq-${i}-q`} label="Question" required max={300} value={f.question} onChange={(v) => patch(i, { question: v })} />
-                <TextArea id={`fq-${i}-a`} label="Answer" required rows={3} max={2000} value={f.answer} onChange={(v) => patch(i, { answer: v })} />
-              </div>
-            </Row>
-          ))}
-        </ul>
-      )}
-    </Card>
+    <div className="space-y-5">
+      <Card
+        title="Questions and answers"
+        description="Written by you, and shown first on the Q&A tab. Switch one off to keep it without showing it."
+        actions={<AddButton onClick={() => set([...entries, { question: "", answer: "", active: true }])} disabled={entries.length >= 30}>Add a question</AddButton>}
+      >
+        {written.length === 0 ? (
+          <EmptyNote>None written. The Q&A tab shows the questions the site works out, below.</EmptyNote>
+        ) : (
+          <ul className="space-y-3">
+            {written.map(({ f, i }, n) => (
+              <Row
+                key={i}
+                title={f.question || `Question ${n + 1}`}
+                index={n}
+                count={written.length}
+                onMove={(d) => {
+                  // Move among the written ones only; the adjustments to generated questions keep their own places.
+                  const order = written.map((w) => w.i);
+                  const to = n + d;
+                  if (to < 0 || to >= order.length) return;
+                  const list = [...entries];
+                  [list[order[n]], list[order[to]]] = [list[order[to]], list[order[n]]];
+                  set(list);
+                }}
+                onRemove={() => set(entries.filter((_, x) => x !== i))}
+              >
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <ShownSwitch on={f.active !== false} onChange={(on) => patchAt(i, { active: on })} label={`Show "${f.question || `question ${n + 1}`}" on the page`} />
+                </div>
+                <div className={`grid grid-cols-1 gap-4 lg:grid-cols-2 ${f.active === false ? "opacity-60" : ""}`}>
+                  <TextInput id={`fq-${i}-q`} label="Question" required max={300} value={f.question} onChange={(v) => patchAt(i, { question: v })} />
+                  <TextArea id={`fq-${i}-a`} label="Answer" required rows={3} max={2000} value={f.answer} onChange={(v) => patchAt(i, { answer: v })} />
+                </div>
+              </Row>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card title="Worked out from the college's record" description="The site writes these from the college's courses, exams, placements, cut-offs, approvals and reviews, and adds them after yours. Switch one off, or reword it. A reworded one no longer follows the record.">
+        {generated === null ? (
+          <EmptyNote>Loading…</EmptyNote>
+        ) : generated.length === 0 ? (
+          <EmptyNote>Nothing is worked out yet: the college has no courses, placements or cut-offs to write from.</EmptyNote>
+        ) : (
+          <ul className="space-y-3">
+            {generated.map((g) => {
+              const mine = mineFor(g.key) >= 0 ? entries[mineFor(g.key)] : null;
+              const on = mine?.active !== false;
+              const reworded = !!mine && !!mine.question.trim();
+              const open = editing === g.key;
+              const question = reworded ? mine.question : g.question;
+              const answer = reworded ? mine.answer : g.answer;
+              return (
+                <li key={g.key} className={`rounded-xl border bg-bg-alt/50 p-4 ${on ? "border-line" : "border-line-soft"}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className={`min-w-0 flex-1 ${on ? "" : "opacity-60"}`}>
+                      <p className="text-sm font-semibold text-ink">{question}</p>
+                      {!open && <p className="mt-1 text-sm text-ink-soft">{answer}</p>}
+                      <p className="mt-1.5 text-[11px] font-semibold text-ink-faint">{reworded ? "Reworded by you" : "Written by the site"}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <ShownSwitch on={on} onChange={(next) => adjust(g.key, { active: next })} label={`Show "${question}" on the page`} />
+                      <button type="button" onClick={() => setEditing(open ? null : g.key)} className="rounded-lg border border-line px-3 py-1 text-xs font-medium text-ink-soft hover:border-brand hover:text-brand">
+                        {open ? "Done" : "Edit"}
+                      </button>
+                    </div>
+                  </div>
+                  {open && (
+                    <div className="mt-4 space-y-3 border-t border-line-soft pt-4">
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <TextInput id={`gq-${g.key}-q`} label="Question" max={300} value={reworded ? mine.question : g.question} onChange={(v) => adjust(g.key, { question: v, answer: mine?.answer.trim() ? mine.answer : g.answer })} />
+                        <TextArea id={`gq-${g.key}-a`} label="Answer" rows={4} max={2000} value={reworded ? mine.answer : g.answer} onChange={(v) => adjust(g.key, { answer: v, question: mine?.question.trim() ? mine.question : g.question })} />
+                      </div>
+                      {reworded && (
+                        <button type="button" onClick={() => adjust(g.key, { question: "", answer: "" })} className="text-xs font-medium text-brand hover:underline">
+                          Go back to the text the site writes
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+    </div>
   );
 }
 

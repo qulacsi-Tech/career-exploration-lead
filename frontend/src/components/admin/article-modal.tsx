@@ -68,7 +68,10 @@ export function ArticleModal({
   categories,
   picker,
   onClose,
+  forCollege,
 }: {
+  /** For the college editor's News tab: the college this article is for. A new article starts about it, it cannot be taken off it, and the homepage pin is not offered. */
+  forCollege?: string;
   /** The article to edit, or null to add one. */
   article: AdminArticle | null;
   /** The slugs pinned to the homepage now, in order. */
@@ -87,7 +90,7 @@ export function ArticleModal({
   const [draft, setDraft] = useState<ArticleInput>(() =>
     article
       ? { title: article.title, excerpt: article.excerpt, body: article.body, sections: article.sections?.length ? article.sections : sectionsFromBody(article.body), author: article.author, category: article.category, readMinutes: article.readMinutes, publishedAt: article.publishedAt, isPublished: article.isPublished, relatedCollegeSlugs: article.relatedCollegeSlugs, image: article.image }
-      : { title: "", excerpt: "", body: "", sections: [], author: "Editorial Desk", category: "", readMinutes: 5, publishedAt: today(), isPublished: true, relatedCollegeSlugs: [], image: "" }
+      : { title: "", excerpt: "", body: "", sections: [], author: "Editorial Desk", category: "", readMinutes: 5, publishedAt: today(), isPublished: true, relatedCollegeSlugs: forCollege ? [forCollege] : [], image: "" }
   );
   const [pin, setPin] = useState(wasPinned);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +107,9 @@ export function ArticleModal({
   const save = () => {
     setError(null);
     startTransition(async () => {
-      const saved = await saveArticle(article ? article.slug : null, draft);
+      // A college's own news always stays about that college.
+      const input = forCollege && !draft.relatedCollegeSlugs.includes(forCollege) ? { ...draft, relatedCollegeSlugs: [forCollege, ...draft.relatedCollegeSlugs] } : draft;
+      const saved = await saveArticle(article ? article.slug : null, input);
       if ("error" in saved) {
         setError(saved.error);
         return;
@@ -178,13 +183,13 @@ export function ArticleModal({
                   <span className="mt-0.5 block text-xs text-ink-soft">Unpublished articles are hidden from the site.</span>
                 </span>
               </label>
-              <label className={`flex items-center gap-3 rounded-lg border border-line bg-bg-alt px-4 py-3 ${cannotPin ? "opacity-70" : "cursor-pointer"}`}>
+              {!forCollege && <label className={`flex items-center gap-3 rounded-lg border border-line bg-bg-alt px-4 py-3 ${cannotPin ? "opacity-70" : "cursor-pointer"}`}>
                 <input type="checkbox" checked={pin && !cannotPin} disabled={cannotPin} onChange={(e) => setPin(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand)]" />
                 <span className="text-sm text-ink">
                   Pin to the homepage news
                   {cannotPin && <span className="mt-0.5 block text-xs text-ink-soft">{MAX_PINNED} articles are pinned already. Unpin one in the table first.</span>}
                 </span>
-              </label>
+              </label>}
             </div>
           </div>
         </div>
@@ -193,7 +198,7 @@ export function ArticleModal({
       <fieldset className="mt-5 rounded-xl border border-line bg-surface p-4">
         <legend className="px-2 text-xs font-semibold text-ink">Colleges this article is about</legend>
         <p className="mb-3 text-xs text-ink-faint">Optional. Chosen from the directory.</p>
-        <CollegeMultiPicker idPrefix="art-col" colleges={picker.colleges} streams={picker.streams} selected={draft.relatedCollegeSlugs} onChange={(v) => set("relatedCollegeSlugs", v)} max={20} />
+        <CollegeMultiPicker idPrefix="art-col" colleges={picker.colleges} streams={picker.streams} selected={draft.relatedCollegeSlugs} onChange={(v) => set("relatedCollegeSlugs", forCollege && !v.includes(forCollege) ? [forCollege, ...v] : v)} max={20} />
       </fieldset>
     </AdminModal>
   );

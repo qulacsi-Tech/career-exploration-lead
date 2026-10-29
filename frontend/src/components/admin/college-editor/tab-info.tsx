@@ -14,6 +14,8 @@ export type EditorProps = {
   update: (change: (r: CollegeRecord) => CollegeRecord) => void;
   pools: CollegePools;
   slug: string;
+  /** "full" is the platform admin; a college admin edits through requests and has no access to the articles list. */
+  mode?: "full" | "readonly" | "submit";
 };
 
 const YEAR = new Date().getFullYear();

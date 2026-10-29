@@ -1,5 +1,6 @@
 "use client";
 
+import { batchLabel } from "@/lib/batch";
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import type { CollegePools, CollegeRecord } from "@/lib/api";
@@ -408,7 +409,7 @@ function ViewCollegeModal({
 
           <AdminSubsection
             title="Placements"
-            description={college.placement ? `Batch of ${college.placement.year}` : "No placement data"}
+            description={college.placement ? `Batch of ${batchLabel(college.placement)}` : "No placement data"}
           >
             {college.placement && (
               <>

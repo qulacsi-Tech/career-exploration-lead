@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CountUp, Reveal, RevealGroup, RevealItem } from "@/components/college/reveal";
+import { TAB_ICONS } from "@/lib/tab-icons";
 
 /**
  * The livelier bodies for the Infrastructure, Scholarships, Faculty, Compare,
@@ -36,11 +37,7 @@ import { CountUp, Reveal, RevealGroup, RevealItem } from "@/components/college/r
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-const TAB_ICON: Record<string, LucideIcon> = {
-  building: Building2,
-  award: Award,
-  grad: GraduationCap,
-};
+const TAB_ICON: Record<string, LucideIcon> = Object.fromEntries(Object.entries(TAB_ICONS).map(([key, { Icon }]) => [key, Icon]));
 
 /* ------------------------------------------------------------------ *
    Rich-text tabs: Infrastructure, Scholarships, Admissions
@@ -50,6 +47,7 @@ const TAB_ICON: Record<string, LucideIcon> = {
 export function SectionSpotlight({
   icon,
   label,
+  heading,
   collegeName,
   topics,
   points,
@@ -57,6 +55,8 @@ export function SectionSpotlight({
 }: {
   icon: string;
   label: string;
+  /** The editor's own heading for the banner. Empty or absent: "Everything about {label} at {college}". */
+  heading?: string;
   collegeName: string;
   topics: string[];
   points: string[];
@@ -82,7 +82,7 @@ export function SectionSpotlight({
             <div className="min-w-0">
               <p className="text-xs font-semibold text-brand">{label}</p>
               <p className="mt-1 font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
-                Everything about {label.toLowerCase()} at {collegeName}
+                {heading?.trim() || `Everything about ${label.toLowerCase()} at ${collegeName}`}
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-sm">
                 {topics.length > 0 && (

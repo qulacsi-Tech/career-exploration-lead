@@ -1,6 +1,7 @@
 "use server";
 
 import { applyMenuConfig, EMPTY_NAV, getCollegesMenu, getMenuSource } from "@/components/colleges-menu-data";
+import { generatedFaqs } from "@/lib/college-insights";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -62,12 +63,19 @@ import {
   adminResetListingHeader,
   adminListingHeaderScopes,
   adminGetListingSlots,
+  getCollegeOrNull,
+  adminListRecruiters,
+  adminCreateRecruiter,
+  adminUpdateRecruiter,
+  type AdminRecruiter,
   adminPutSiteChrome,
   type SiteChrome,
   adminPutAuthPage,
   adminResetAuthPage,
   type AuthPageCopy,
   adminGetNews,
+  adminGetFields,
+  adminGetLocationPicker,
   adminResetListingSlots,
   adminListingSlotScopes,
   adminPutListingSlots,
@@ -1141,7 +1149,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "gallery") {
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "recruiter_logo" && kind !== "gallery") {
     return { error: "Unknown image slot." };
   }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
@@ -1664,4 +1672,68 @@ export async function saveSiteChrome(value: SiteChrome): Promise<AdminActionResu
   const result = await attempt("/admin/sections/navigation", (token) => adminPutSiteChrome(token, value));
   if ("ok" in result) revalidatePath("/", "layout");
   return result;
+}
+
+// ── Recruiters (the shared pool of companies) ──
+
+export async function loadRecruiters(): Promise<AdminRecruiter[] | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminListRecruiters(token);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: "Could not load the recruiters. Try again." };
+  }
+}
+
+/** Adds a company to the pool, or returns the one that already has that name. */
+export async function createRecruiter(name: string): Promise<(AdminRecruiter & { existing: boolean }) | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminCreateRecruiter(token, name);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not add the recruiter." };
+  }
+}
+
+/** Sets a company's logo, or whether its name is shown beside the logo. Applies to every college that lists it. */
+export async function updateRecruiter(id: string, patch: { logo?: string; showName?: boolean }): Promise<AdminRecruiter | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    const row = await adminUpdateRecruiter(token, id, patch);
+    revalidatePath("/colleges", "layout");
+    revalidatePath("/college", "layout");
+    return row;
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not save the recruiter." };
+  }
+}
+
+/** The questions the site writes from a college's record, exactly as the Q&A tab would show them, for the editor to switch off or reword. */
+export async function loadGeneratedFaqs(slug: string): Promise<{ key: string; question: string; answer: string }[]> {
+  await requireAdminToken();
+  try {
+    const college = await getCollegeOrNull(slug);
+    return college ? generatedFaqs(college) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The articles written about one college, with what the article dialog needs (the categories and the college list). */
+export async function loadCollegeNews(slug: string) {
+  const token = await requireAdminToken();
+  try {
+    const [news, fields, picker] = await Promise.all([adminGetNews(token), adminGetFields(token), adminGetLocationPicker(token)]);
+    return {
+      articles: news.articles.filter((a) => a.relatedCollegeSlugs.includes(slug)),
+      categories: fields.map((f) => f.name),
+      picker,
+    };
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: "Could not load this college's articles. Try again." };
+  }
 }

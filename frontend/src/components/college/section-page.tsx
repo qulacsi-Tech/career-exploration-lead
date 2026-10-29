@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import type { CollegeDetail as College } from "@/lib/api";
 import { collegeSections, sectionHref } from "@/lib/college-sections";
+import { PageSearch } from "@/components/college/page-search";
 
 /**
  * The frame every college section page shares: breadcrumb, heading, a column
@@ -32,7 +33,9 @@ export function CollegeSectionPage({
   const next = index >= 0 ? available[index + 1] : undefined;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+    <div id="college-page-content" className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      {/* Find anything on the page: matches are highlighted as you type. */}
+      <PageSearch targetId="college-page-content" />
       <Breadcrumbs
         items={[
           { label: "Home", href: "/" },

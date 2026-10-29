@@ -12,6 +12,7 @@
  * from those same fields.
  */
 
+import { batchLabel } from "@/lib/batch";
 import type { CollegeDetail as College } from "@/lib/api";
 
 /**
@@ -124,10 +125,18 @@ export type Faq = { question: string; answer: string };
  * disagree with the cards above it.
  */
 export function faqsFor(college: College): Faq[] {
-  const faqs: Faq[] = [];
+  return generatedFaqs(college).map(({ question, answer }) => ({ question, answer }));
+}
+
+/** A question the site writes from the record, with the key an editor's adjustment names it by. */
+export type GeneratedFaq = Faq & { key: "courses" | "exams" | "placements" | "cutoffs" | "approved" | "reviews" };
+
+export function generatedFaqs(college: College): GeneratedFaq[] {
+  const faqs: GeneratedFaq[] = [];
   const courseNames = college.courses.map(programmeTitle);
 
   faqs.push({
+    key: "courses",
     question: `What courses does ${college.name} offer, and what do they cost?`,
     answer: `${college.name} offers ${college.coursesOffered} programmes${
       courseNames.length ? `, including ${courseNames.join(", ")}` : ""
@@ -136,6 +145,7 @@ export function faqsFor(college: College): Faq[] {
 
   if (college.examsAccepted.length > 0) {
     faqs.push({
+      key: "exams",
       question: `Which entrance exams are accepted for admission?`,
       answer: `Admission is based on ${college.examsAccepted.join(", ")} scores, followed by the institute's own selection process. Each programme lists the exams it accepts on the Courses & Fees page.`,
     });
@@ -143,8 +153,9 @@ export function faqsFor(college: College): Faq[] {
 
   if (college.placement) {
     faqs.push({
+      key: "placements",
       question: `How are placements at ${college.name}?`,
-      answer: `In ${college.placement.year}, the average package was ${college.placement.average} and the highest ${college.placement.highest}. Top recruiters include ${college.placement.topRecruiters
+      answer: `In ${batchLabel(college.placement)}, the average package was ${college.placement.average} and the highest ${college.placement.highest}. Top recruiters include ${college.placement.topRecruiters
         .slice(0, 4)
         .join(", ")}.`,
     });
@@ -153,12 +164,14 @@ export function faqsFor(college: College): Faq[] {
   if (college.cutoffs.length > 0) {
     const first = college.cutoffs[0];
     faqs.push({
+      key: "cutoffs",
       question: `What is the cut-off for ${college.name}?`,
       answer: `The most recent ${first.exam} cut-off${cutoffProgramme(first) ? ` for ${cutoffProgramme(first)}` : ""} for the ${first.category.toLowerCase()} category was ${first.score}. Cut-offs vary by exam, caste category and programme — the Cut-Offs page lists all of them.`,
     });
   }
 
   faqs.push({
+    key: "approved",
     question: `Is ${college.name} approved and ranked?`,
     answer: `Yes. It is a ${college.ownership.toLowerCase()} institution established in ${college.established}, approved by ${college.approvals.join(
       " and ",
@@ -168,6 +181,7 @@ export function faqsFor(college: College): Faq[] {
   const best = [...college.ratingBreakdown].sort((a, b) => b.score - a.score)[0];
   if (best) {
     faqs.push({
+      key: "reviews",
       question: `What do students say about ${college.name}?`,
       answer: `Students rate it ${college.rating.toFixed(1)} out of 5 across ${college.reviewCount.toLocaleString(
         "en-IN",
@@ -195,7 +209,7 @@ type EditorFields = {
   shortName?: string;
   tagline?: string;
   seo?: { h1Tagline?: string };
-  faqs?: Faq[];
+  faqs?: (Faq & { active?: boolean; auto?: string })[];
 };
 
 /** "BIMS Bengaluru" — the editor's short name, else initials and city. */
@@ -214,14 +228,23 @@ export function taglineOf(college: College & EditorFields, intake: number): stri
 }
 
 /**
- * The Q&A shown on the page: the editor's own questions first, then the
- * answers generated from the record. Generated ones whose question an editor
- * has already written are dropped, so the list never asks the same thing twice.
+ * The Q&A shown on the page: the editor's own questions first (those switched on), then the answers generated
+ * from the record. An editor can switch a generated question off, or replace its wording; a generated one whose
+ * question an editor has already written is dropped, so the list never asks the same thing twice.
  */
 export function faqsOf(college: College & EditorFields): Faq[] {
-  const written = (college.faqs ?? []).filter((faq: Faq) => faq.question.trim() && faq.answer.trim());
-  const asked = new Set(written.map((faq: Faq) => faq.question.trim().toLowerCase()));
-  return [...written, ...faqsFor(college).filter((faq) => !asked.has(faq.question.toLowerCase()))];
+  const entries = college.faqs ?? [];
+  const written = entries.filter((faq) => !faq.auto && faq.active !== false && faq.question.trim() && faq.answer.trim());
+  const adjusted = new Map(entries.filter((faq) => faq.auto).map((faq) => [faq.auto as string, faq]));
+  const asked = new Set(written.map((faq) => faq.question.trim().toLowerCase()));
+  const generated = generatedFaqs(college).flatMap((g) => {
+    const mine = adjusted.get(g.key);
+    if (mine && mine.active === false) return [];
+    const question = mine?.question.trim() || g.question;
+    const answer = mine?.answer.trim() || g.answer;
+    return asked.has(question.toLowerCase()) ? [] : [{ question, answer }];
+  });
+  return [...written.map(({ question, answer }) => ({ question, answer })), ...generated];
 }
 
 /** Mean of the category scores — the overall the reviews page leads with. */

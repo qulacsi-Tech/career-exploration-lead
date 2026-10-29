@@ -333,7 +333,7 @@ export default async function CollegesListingPage({
             {colleges.map((college, i) => (
               <Fragment key={college.slug}>
                 <Reveal amount={0.12}>
-                  <ListingCard college={college} badges={badgeOf(college)} />
+                  <ListingCard college={college} badges={badgeOf(college)} position={(page - 1) * meta.limit + i + 1} />
                 </Reveal>
                 {between.get(i + 1)?.map((slot) => (
                   <Reveal key={slot.id} amount={0.2}>

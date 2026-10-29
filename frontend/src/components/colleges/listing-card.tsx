@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Download, Eye, Flame, GraduationCap, IndianRupee, MapPin, Medal, Sparkles, Star, Trophy } from "lucide-react";
+import { ArrowRight, BookOpen, Download, Eye, Flame, GraduationCap, IndianRupee, MapPin, Medal, Sparkles, Star, TrendingUp, Trophy } from "lucide-react";
 import type { College } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
@@ -51,13 +51,27 @@ function Pill({ icon: Icon, tone, children }: { icon: typeof Star; tone: "gold" 
   );
 }
 
-export function ListingCard({ college, badges }: { college: College; badges?: CardBadges }) {
+/** The package figures as the admin typed them ("5.6 LPA", "₹12 LPA"), or null when there are none. */
+function packages(college: College): { average: string; highest: string } | null {
+  const average = (college.placementAverage ?? "").trim();
+  const highest = (college.placementHighest ?? "").trim();
+  return average || highest ? { average, highest } : null;
+}
+
+/**
+ * `position` is the college's place in the list as shown (1 for the first on page one), which follows the
+ * order the admin set: the priority for the link opened, then each college's own priority. It is the big
+ * number on the left. Without it (the course and exam pages) the left block shows the college's own ranking.
+ */
+export function ListingCard({ college, badges, position }: { college: College; badges?: CardBadges; position?: number }) {
   const exams = college.examsAccepted;
   const extra = Math.max(0, exams.length - 2);
   const courses = college.courses ?? [];
   const href = `/college/${college.slug}`;
   const rank = college.ranking?.rank;
   const stars = Math.round(college.rating);
+  const money = packages(college);
+  const nirf = college.nirfRank ?? null;
 
   return (
     <article className="@container group relative overflow-hidden rounded-2xl border border-line bg-surface transition duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_14px_32px_-14px_rgba(177,36,62,0.4)]">
@@ -69,15 +83,23 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
 
       {/* On a narrow screen the rank is a corner tag; the big block below takes over from @lg. */}
       <span className="absolute right-0 top-0 rounded-bl-xl bg-brand-ink px-3 py-1 text-xs font-bold tracking-wide text-white @lg:hidden">
-        {rank ? `#${rank} ${college.ranking.authority}` : "Unranked"}
+        {nirf ? `NIRF #${nirf}` : position ? `#${position}` : rank ? `#${rank} ${college.ranking.authority}` : "Unranked"}
       </span>
 
       <div className="flex gap-4 p-5 pl-6 @2xl:gap-5">
         <div
           className="hidden w-[6.25rem] shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-brand-soft to-bg-alt px-2 py-3 text-center @lg:flex"
-          aria-label={rank ? `Ranked ${rank} by ${college.ranking.authority}` : "Not ranked yet"}
+          aria-label={position ? `Number ${position} in this list` : rank ? `Ranked ${rank} by ${college.ranking.authority}` : "Not ranked yet"}
         >
-          {rank ? (
+          {position ? (
+            <>
+              <Medal className="h-5 w-5 text-gold transition group-hover:-rotate-12" aria-hidden="true" />
+              <span className="mt-0.5 bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-5xl font-extrabold leading-none tracking-tight text-transparent transition duration-300 group-hover:scale-110">
+                {position}
+              </span>
+              <span className="mt-1.5 text-[11px] font-bold text-brand">Rank</span>
+            </>
+          ) : rank ? (
             <>
               <Medal className="h-5 w-5 text-gold transition group-hover:-rotate-12" aria-hidden="true" />
               <span className="mt-0.5 bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-5xl font-extrabold leading-none tracking-tight text-transparent transition duration-300 group-hover:scale-110">
@@ -111,7 +133,7 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
               />
             )}
 
-            <div className="min-w-0 pr-16 @lg:pr-0">
+            <div className="min-w-0 flex-1 pr-16 @lg:pr-0">
               <Link
                 href={href}
                 className="font-display text-lg font-bold leading-snug text-ink transition hover:text-brand @2xl:text-xl"
@@ -152,6 +174,33 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
                   {badges.mostViewed && <Pill icon={Eye} tone="green">Most viewed</Pill>}
                 </div>
               )}
+
+              {/* On a narrow card the package figures sit under the title, where there is no empty corner to fill. */}
+              {money && (
+                <p className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft @2xl:hidden">
+                  {money.average && <span>Avg package <strong className="font-display text-sm font-extrabold text-ink">{money.average}</strong></span>}
+                  {money.highest && <span>Highest <strong className="font-display text-sm font-extrabold text-ink">{money.highest}</strong></span>}
+                </p>
+              )}
+            </div>
+
+            {/* The empty corner of a wide card: where the college stands, and what its students are paid. */}
+            <div className="hidden shrink-0 flex-col items-end gap-2.5 @2xl:flex">
+              <RankingsChip college={college} />
+              {/* A quiet pair of figures: pale sky tint, light type, so it informs without competing with the tiles below. */}
+              <dl className="flex items-stretch divide-x divide-sky-100 overflow-hidden rounded-xl border border-sky-100 bg-sky-50/60 text-right">
+                <div className="px-3.5 py-1.5">
+                  <dt className="flex items-center justify-end gap-1 text-[10px] font-medium text-sky-700/70">
+                    <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                    Avg package
+                  </dt>
+                  <dd className={`font-display text-base font-semibold leading-tight ${money?.average ? "text-slate-700" : "text-slate-400"}`}>{money?.average || "—"}</dd>
+                </div>
+                <div className="px-3.5 py-1.5">
+                  <dt className="text-[10px] font-medium text-sky-700/70">Highest</dt>
+                  <dd className={`font-display text-base font-semibold leading-tight ${money?.highest ? "text-slate-700" : "text-slate-400"}`}>{money?.highest || "—"}</dd>
+                </div>
+              </dl>
             </div>
           </div>
 
@@ -256,6 +305,41 @@ export function ListingCard({ college, badges }: { college: College; badges?: Ca
         </div>
       </div>
     </article>
+  );
+}
+
+/**
+ * The rankings the college holds, kept small: the best one in a pill, with how many more there are, and
+ * every one of them in a bubble while the pill is hovered or focused.
+ */
+function RankingsChip({ college }: { college: College }) {
+  const all = college.allRankings ?? [];
+  if (all.length === 0) return null;
+  const [best, ...rest] = all;
+  return (
+    <div tabIndex={0} aria-label={`${all.length} ${all.length === 1 ? "ranking" : "rankings"}`} className="group/ranks relative outline-none">
+      <span className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-full bg-brand-ink px-3 py-1 text-xs font-bold text-white shadow-sm">
+        <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden="true" />
+        <span className="truncate">
+          {best.name} #{best.rank}
+        </span>
+        {rest.length > 0 && <span className="shrink-0 rounded-full bg-white/20 px-1.5 text-[10px]">+{rest.length}</span>}
+      </span>
+      <div
+        role="tooltip"
+        className="pointer-events-none absolute right-0 top-full z-20 mt-2 w-max max-w-[20rem] translate-y-1 rounded-xl border border-line bg-surface p-3 text-left opacity-0 shadow-lg transition group-hover/ranks:translate-y-0 group-hover/ranks:opacity-100 group-focus/ranks:translate-y-0 group-focus/ranks:opacity-100"
+      >
+        <p className="mb-1.5 text-[11px] font-bold text-ink-faint">Rankings</p>
+        <ul className="space-y-1">
+          {all.map((r) => (
+            <li key={`${r.name}-${r.rank}`} className="flex items-baseline justify-between gap-4 text-xs">
+              <span className="font-medium text-ink">{r.name}</span>
+              <span className="shrink-0 font-display text-sm font-extrabold text-brand">#{r.rank}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 

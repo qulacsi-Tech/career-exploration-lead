@@ -3,13 +3,14 @@
 import math
 from typing import List, Optional, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import inspect as sa_inspect, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
 from models.college import College
 from models.placement import Placement
+from models.recruiter import Recruiter
 from models.ranking import RankingEntry, RankingList
 from models.review import Review
 from repositories.college import CollegeRepository
@@ -21,6 +22,8 @@ from schemas.college import (
     CutoffSchema,
     PlacementBreakdownSchema,
     PlacementSchema,
+    RecruiterBrief,
+    RankingRow,
     RankingSchema,
     RatingBreakdownSchema,
     ReviewSchema,
@@ -29,10 +32,21 @@ from schemas.college_detail import CollegeDetail
 from schemas.common import Meta
 
 
+def _latest_placement(college: College):
+    """The newest placement year, when the college's placements were loaded with it (they are only on the listing)."""
+    if "placements" in sa_inspect(college).unloaded:
+        return None
+    return max(college.placements or [], key=lambda p: p.year, default=None)
+
+
 def _to_list_schema(college: College) -> CollegeListSchema:
     """Map ORM College → CollegeListSchema (camelCase, frontend-compatible)."""
     page_record = college.detail if isinstance(college.detail, dict) else {}
+    placement = _latest_placement(college)
     return CollegeListSchema(
+        nirfRank=(college.ranking_rank or None) if "nirf" in (college.ranking_authority or "").lower() and (college.ranking_rank or 0) > 0 else None,
+        placementAverage=(placement.average_package or "") if placement else "",
+        placementHighest=(placement.highest_package or "") if placement else "",
         status=college.status or "published",
         isFeatured=bool(college.is_featured),
         priority=college.priority,
@@ -115,6 +129,7 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
         latest = sorted(college.placements, key=lambda p: p.year, reverse=True)[0]
         placement = PlacementSchema(
             year=latest.year,
+            yearStart=latest.year_start,
             average=latest.average_package or "N/A",
             median=latest.median_package or "N/A",
             highest=latest.highest_package or "N/A",
@@ -128,6 +143,7 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
     history = [
         PlacementSchema(
             year=p.year,
+            yearStart=p.year_start,
             average=p.average_package or "N/A",
             median=p.median_package or "N/A",
             highest=p.highest_package or "N/A",
@@ -177,6 +193,7 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
         alerts=extra.alerts,
         articles=extra.articles,
         tabs=extra.tabs,
+        tabHeaders={slug: header.model_dump() for slug, header in extra.tabHeaders.items()},
         reviews=[
             ReviewSchema(
                 author=r.author_name,
@@ -213,16 +230,57 @@ class CollegeService:
             for row in rows:
                 hit = by_slug.get(row.slug)
                 row.ranking = RankingSchema(authority=hit.authority, rank=hit.rank) if hit else RankingSchema(authority="", rank=0)
+        if rows:
+            await self._attach_rankings(rows)
         return (
             rows,
             Meta(total=total, page=params.page, limit=params.limit, pages=pages),
         )
 
+    async def _attach_rankings(self, rows: List[CollegeListSchema]) -> None:
+        """Every ranking list each listed college is in, plus its headline rank when no list already says it."""
+        found = (await self.repo.db.execute(
+            select(RankingList.name, RankingList.year, RankingList.slug, RankingList.authority, RankingList.stream, RankingEntry.college_slug, RankingEntry.rank, RankingEntry.score)
+            .join(RankingEntry, RankingEntry.ranking_list_id == RankingList.id)
+            .where(RankingEntry.college_slug.in_([r.slug for r in rows]))
+            .order_by(RankingEntry.rank, RankingList.year.desc())
+        )).all()
+        by_slug: dict[str, list[RankingRow]] = {}
+        for name, year, list_slug, authority, stream, slug, rank, score in found:
+            label = name if str(year) in name else f"{name} {year}"
+            by_slug.setdefault(slug, []).append(
+                RankingRow(name=label, rank=rank, slug=list_slug, authority=authority or "", stream=stream or "", score=score or "")
+            )
+        for row in rows:
+            held = by_slug.get(row.slug, [])
+            if row.nirfRank and not any("nirf" in h.name.lower() and h.rank == row.nirfRank for h in held):
+                held = [RankingRow(name="NIRF", rank=row.nirfRank), *held]
+            row.allRankings = held
+
     async def get_college(self, slug: str) -> CollegeDetailSchema:
         college = await self.repo.get_by_slug(slug)
         if not college:
             raise NotFoundError("College")
-        return _to_detail_schema(college)
+        detail = _to_detail_schema(college)
+        # Every ranking list the college is in, for its Rankings tab.
+        await self._attach_rankings([detail])
+        await self._attach_recruiters(detail)
+        return detail
+
+    async def _attach_recruiters(self, detail: CollegeDetailSchema) -> None:
+        """Each placement's companies with their logos, from the shared pool."""
+        placements = [p for p in [detail.placement, *detail.placements] if p is not None]
+        names = {n for p in placements for n in p.topRecruiters}
+        if not names:
+            return
+        keys = {" ".join(n.split()).lower() for n in names}
+        rows = (await self.repo.db.execute(select(Recruiter).where(Recruiter.name_key.in_(keys)))).scalars().all()
+        by_key = {r.name_key: r for r in rows}
+        for p in placements:
+            p.recruiters = [
+                RecruiterBrief(name=n, logo=(by_key[k].logo if (k := " ".join(n.split()).lower()) in by_key else "") or "", showName=bool(by_key[k].show_name) if k in by_key else True)
+                for n in p.topRecruiters
+            ]
 
     async def get_related(self, slug: str, limit: int = 3) -> List[CollegeListSchema]:
         college = await self.repo.get_by_slug(slug)

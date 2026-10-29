@@ -247,7 +247,9 @@ export function CollegeMasthead({
           <div className="absolute -bottom-8 left-5 z-10 flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-surface p-1.5 shadow-lg sm:left-8 sm:h-20 sm:w-20">
             {logo ? (
               <span className="relative block h-full w-full overflow-hidden rounded-xl">
-                <Image src={logo} alt={`${name} logo`} fill sizes="80px" className="object-contain" />
+                {/* Plain img: an uploaded logo is served by the API's origin (/api/uploads/...), which the image optimiser is not set up to fetch. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mediaUrl(logo)} alt={`${name} logo`} className="absolute inset-0 h-full w-full object-contain" />
               </span>
             ) : (
               <span className="flex h-full w-full items-center justify-center rounded-xl bg-brand-soft font-display text-base font-extrabold tracking-tight text-brand-ink sm:text-lg">

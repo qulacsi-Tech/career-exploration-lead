@@ -8,6 +8,8 @@ import { AmountField } from "@/components/admin/range-field";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { packageProblem } from "@/lib/college-rules";
 import { CategoryTicks, CourseTicks, type CoursePick } from "@/components/admin/college-editor/course-picker";
+import { batchLabel } from "@/lib/batch";
+import { RecruiterPicker } from "@/components/admin/college-editor/recruiter-picker";
 import { AddButton, Card, ChipInput, DurationField, EmptyNote, Labelled, NumberInput, Row, SelectInput, TextInput, inputCls, move } from "@/components/admin/college-editor/shared";
 
 /*
@@ -151,6 +153,7 @@ export function CoursesTab({ record, update, pools }: EditorProps) {
 // ── Placements ───────────────────────────────────────────────────────────────
 
 const blankPlacement = (existing: RecordPlacement[]): RecordPlacement => ({
+  yearStart: null,
   year: Math.max(THIS_YEAR - 1, ...existing.map((p) => p.year + 1).filter((y) => y <= THIS_YEAR + 1)) || THIS_YEAR - 1,
   average: "",
   median: "",
@@ -233,16 +236,24 @@ export function PlacementsTab({ record, update, pools }: EditorProps) {
           {rows.map((p, i) => {
             const odd = packageProblem(p.average, "", p.highest);
             return (
-              <Row key={i} title={`Batch ${p.year}`} index={i} count={rows.length} onRemove={() => set(rows.filter((_, n) => n !== i))}>
+              <Row key={i} title={`Batch ${batchLabel(p)}`} index={i} count={rows.length} onRemove={() => set(rows.filter((_, n) => n !== i))}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <NumberInput id={`pl-${i}-year`} label="Batch year" required min={1990} max={THIS_YEAR + 1} value={p.year} onChange={(v) => patch(i, { year: v ?? THIS_YEAR })} />
+                  <div>
+                    <p className="block text-xs font-semibold text-ink">Batch years<span className="text-brand"> *</span></p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <input id={`pl-${i}-start`} type="number" aria-label="Batch start year" placeholder="Start" min={1990} max={THIS_YEAR + 1} value={p.yearStart ?? ""} onChange={(e) => patch(i, { yearStart: e.target.value === "" ? null : Number(e.target.value) })} className={inputCls} />
+                      <span aria-hidden className="text-ink-faint">–</span>
+                      <input id={`pl-${i}-year`} type="number" aria-label="Batch end year" placeholder="End" required aria-required min={1990} max={THIS_YEAR + 1} value={p.year} onChange={(e) => patch(i, { year: e.target.value === "" ? THIS_YEAR : Number(e.target.value) })} className={inputCls} />
+                    </div>
+                    <p className="mt-1 text-xs text-ink-faint">{p.yearStart && p.yearStart < p.year ? `Shown as ${batchLabel(p)}.` : "Start and end, such as 2022 and 2024. Leave the start empty for a single year."}</p>
+                  </div>
                   <AmountField id={`pl-${i}-avg`} label="Average package" units={["LPA", "Cr"]} value={p.average} onChange={(v) => patch(i, { average: v })} />
                   <AmountField id={`pl-${i}-high`} label="Highest package" units={["LPA", "Cr"]} value={p.highest} onChange={(v) => patch(i, { highest: v })} />
                   <NumberInput id={`pl-${i}-placed`} label="Batch placed (%)" min={0} max={100} value={p.placedPercent} onChange={(v) => patch(i, { placedPercent: v })} hint={p.placedPercent !== null && (p.placedPercent < 0 || p.placedPercent > 100) ? "Batch placed must be between 0 and 100." : undefined} />
                 </div>
                 {odd && <p role="alert" className="mt-2 text-xs text-red-700">{odd}</p>}
                 <div className="mt-4">
-                  <ChipInput id={`pl-${i}-rec`} label="Top recruiters" value={p.topRecruiters} onChange={(v) => patch(i, { topRecruiters: v })} max={30} hint="Company names, shown as a scrolling strip." />
+                  <RecruiterPicker id={`pl-${i}-rec`} label="Top recruiters" value={p.topRecruiters} onChange={(v) => patch(i, { topRecruiters: v })} max={30} />
                 </div>
                 <BreakdownEditor id={`pl-${i}-bd`} rows={p.breakdown} onChange={(next) => patch(i, { breakdown: next })} record={record} pools={pools} />
               </Row>

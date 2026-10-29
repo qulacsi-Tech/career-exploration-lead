@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { batchLabel } from "@/lib/batch";
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -35,6 +36,7 @@ import { sectionHref } from "@/lib/college-sections";
 import { getCollege, getCollegeSlugs, getHomeData, getLocations, getSimilarColleges } from "@/lib/api";
 import type { College, CollegeDetail } from "@/lib/api";
 import { CollegeEnquiryModal } from "@/components/college/college-enquiry-modal";
+import { PageSearch } from "@/components/college/page-search";
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 
 export async function generateStaticParams() {
@@ -129,7 +131,8 @@ export default async function CollegeOverviewPage({
   const overall = college.rating;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
+    <div id="college-page-content" className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
+      <PageSearch targetId="college-page-content" />
       {/* Opens on ?enquire=1 (the Recommended programs cards link here). Reads the address, so it sits in Suspense. */}
       <Suspense fallback={null}>
         <CollegeEnquiryModal
@@ -199,7 +202,7 @@ export default async function CollegeOverviewPage({
               <IconStat
                 icon="trend"
                 value={headline.value}
-                label={`${headline.label}, ${placement.year}`}
+                label={`${headline.label}, ${batchLabel(placement)}`}
               />
             )}
             {college.established && (
@@ -298,7 +301,7 @@ export default async function CollegeOverviewPage({
       {/* Placements */}
       {placement && (
         <DetailCard
-          title={`${short} Placements ${placement.year}`}
+          title={`${short} Placements ${batchLabel(placement)}`}
           footer={
             <div className="flex flex-wrap items-center justify-end gap-4">
               <CardLink href={href("placements")}>Full placement report</CardLink>
@@ -332,7 +335,7 @@ export default async function CollegeOverviewPage({
       {/* Top recruiters: the same moving strip as the Placements tab, so the names are not a single line of small print. */}
       {placement && placement.topRecruiters.length > 0 && (
         <DetailCard title="Top Recruiters">
-          <RecruiterMarquee recruiters={placement.topRecruiters} />
+          <RecruiterMarquee recruiters={placement.recruiters?.length ? placement.recruiters : placement.topRecruiters} />
         </DetailCard>
       )}
 

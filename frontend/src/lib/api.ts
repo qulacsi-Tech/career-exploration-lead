@@ -146,11 +146,16 @@ export type PlacementBreakdown = {
   students: number | null;
 };
 export type Placement = {
+  /** The year the batch began. Empty or absent: a single year. */
+  yearStart?: number | null;
+  /** The year the batch ended. */
   year: number;
   average: string;
   median: string;
   highest: string;
   topRecruiters: string[];
+  /** The same companies with their logos, in the same order (the college page only). */
+  recruiters?: RecruiterBrief[];
   /** Share of the batch placed, 0-100. */
   placedPercent?: number | null;
   /** By category, course and specialisation, as entered in the admin. */
@@ -175,6 +180,13 @@ export type College = {
   name: string;
   /** The default priority set in the admin: 1 is shown first. Absent: after those that have one, by NIRF rank. */
   priority?: number | null;
+  /** Its NIRF rank, apart from `ranking` (which a ranking-list page swaps for the list's own rank). */
+  nirfRank?: number | null;
+  /** The newest placement year's average and highest package, for the listing card. */
+  placementAverage?: string;
+  placementHighest?: string;
+  /** Every ranking list it is in (the list's name with its year, and its place), best first. */
+  allRankings?: { name: string; rank: number; slug?: string; authority?: string; stream?: string; score?: string }[];
   city: string;
   state: string;
   /** Only published colleges reach the public site; the admin list also carries drafts and archived ones. */
@@ -429,6 +441,13 @@ export async function getHomeData(): Promise<HomeData> {
  */
 export type FacultyMember = { name: string; designation: string; department: string; qualification: string };
 export type CollegeFaculty = { count: number | null; studentRatio: string; phdPercent: number | null; members: FacultyMember[] };
+/**
+ * A question and answer on a college's Q&A tab. One the editor wrote has a question and an answer. One with `auto`
+ * set (the key of a question the site writes itself: courses, exams, placements, cutoffs, approved, reviews)
+ * adjusts that question instead: `active` false hides it, and a question and answer replace the generated wording.
+ * `active` is true when absent.
+ */
+export type CollegeFaq = { question: string; answer: string; active?: boolean; auto?: string };
 export type CollegeGalleryItem = { src: string; alt: string; name: string; highlight: boolean };
 export type CollegeVideoItem = { title: string; provider: "youtube" | "vimeo"; videoId: string };
 export type CollegeMediaItem = { title: string; publication: string; date: string; link: string };
@@ -455,7 +474,7 @@ export type CollegeDetail = Omit<College, "ratingBreakdown" | "placement" | "cut
   /** When the record was last saved (ISO date). */
   updatedAt: string;
   faculty: CollegeFaculty;
-  faqs: { question: string; answer: string }[];
+  faqs: CollegeFaq[];
   /** Colleges pinned as similar. Empty: the nearest by stream and rank. */
   similarSlugs: string[];
   seo: { metaTitle: string; metaDescription: string };
@@ -466,7 +485,11 @@ export type CollegeDetail = Omit<College, "ratingBreakdown" | "placement" | "cut
   articles: CollegeArticle[];
   /** Rich-text documents for the written sections (Admissions, Infrastructure, Scholarships), by template slug. */
   tabs: Record<string, import("@/lib/rich-text").RichTextDoc>;
+  /** The banner over each written section (label, heading, icon), by the same slugs. Empty fields mean the default. */
+  tabHeaders?: Record<string, TabHeaderConfig>;
 };
+
+export type TabHeaderConfig = { label: string; heading: string; icon: string };
 
 export type CollegeParams = {
   page?: number;
@@ -587,6 +610,7 @@ function withCollegeDefaults(raw: Partial<CollegeDetail> & Pick<CollegeDetail, "
     alerts: raw.alerts ?? [],
     articles: raw.articles ?? [],
     tabs: raw.tabs ?? {},
+    tabHeaders: raw.tabHeaders ?? {},
   };
 }
 
@@ -681,9 +705,10 @@ export async function getLocation(slug: string): Promise<Location> {
 // ── Articles ──────────────────────────────────────────────────────────────
 
 export async function getArticles(
-  params?: { page?: number; limit?: number }
+  params?: { page?: number; limit?: number; /** Only the articles written about this college. */ college?: string }
 ): Promise<{ data: Article[]; meta: PaginationMeta }> {
   const qs = new URLSearchParams();
+  if (params?.college) qs.set("college", params.college);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.limit) qs.set("limit", String(params.limit));
   const query = qs.toString() ? `?${qs}` : "";
@@ -1658,7 +1683,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "gallery", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);
@@ -2376,7 +2401,7 @@ export async function adminDeleteArticle(token: string, slug: string) {
 // ── Admin: the whole college record ───────────────────────────────────────
 
 export type RecordCourse = { name: string; specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null; onlineOffered: boolean; onlineEnabled?: boolean; onlineDuration: string; onlineFees: string };
-export type RecordPlacement = { year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[]; breakdown: PlacementBreakdown[] };
+export type RecordPlacement = { yearStart: number | null; year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[]; breakdown: PlacementBreakdown[] };
 export type RecordCutoff = { exam: string; category: string; course: string; specialisation: string; score: string };
 export type RecordReview = {
   id?: string;
@@ -2401,7 +2426,7 @@ export type RecordDetail = {
   logo: string;
   brochureUrl: string;
   faculty: CollegeFaculty;
-  faqs: { question: string; answer: string }[];
+  faqs: CollegeFaq[];
   similarSlugs: string[];
   seo: { metaTitle: string; metaDescription: string };
   gallery: CollegeGalleryItem[];
@@ -2410,6 +2435,7 @@ export type RecordDetail = {
   alerts: CollegeAlert[];
   articles: CollegeArticle[];
   tabs: Record<string, import("@/lib/rich-text").RichTextDoc>;
+  tabHeaders: Record<string, TabHeaderConfig>;
 };
 
 /** A college as the editor holds it: everything its page shows. Saved together. */
@@ -2894,4 +2920,24 @@ export async function adminGetSiteChrome(token: string): Promise<SiteChrome> {
 
 export async function adminPutSiteChrome(token: string, value: SiteChrome) {
   return adminRequest<{ message: string }>(token, "PUT", "/admin/site-chrome", value);
+}
+
+// ── Recruiters ──────────────────────────────────────────────────────────────
+
+/** A recruiting company as a page shows it. */
+export type RecruiterBrief = { name: string; logo: string; showName: boolean };
+
+/** A company in the shared pool the college editor searches. */
+export type AdminRecruiter = { id: string; name: string; logo: string; showName: boolean };
+
+export async function adminListRecruiters(token: string): Promise<AdminRecruiter[]> {
+  return adminRequest<AdminRecruiter[]>(token, "GET", "/admin/recruiters");
+}
+
+export async function adminCreateRecruiter(token: string, name: string) {
+  return adminRequest<AdminRecruiter & { existing: boolean }>(token, "POST", "/admin/recruiters", { name });
+}
+
+export async function adminUpdateRecruiter(token: string, id: string, patch: { logo?: string; showName?: boolean }) {
+  return adminRequest<AdminRecruiter>(token, "PATCH", `/admin/recruiters/${encodeURIComponent(id)}`, patch);
 }

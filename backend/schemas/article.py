@@ -114,6 +114,8 @@ class ArticleListSchema(BaseModel):
     readMinutes: Optional[int] = 5
     # The article's picture. Empty: none.
     image: str = ""
+    # The colleges it is about, so a college's News tab can list the articles written for it.
+    relatedCollegeSlugs: List[str] = []
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -122,6 +124,5 @@ class ArticleDetailSchema(ArticleListSchema):
     body: Optional[str] = None
     # The page as sections of blocks. Empty: show `body` as plain paragraphs.
     sections: List[ArticleSection] = []
-    relatedCollegeSlugs: List[str] = []
 
     model_config = ConfigDict(populate_by_name=True)

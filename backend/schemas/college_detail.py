@@ -66,10 +66,35 @@ class Faculty(BaseModel):
     _ratio = field_validator("studentRatio")(check_ratio)
 
 
+# The questions the site writes itself from a college's record, by key (see lib/college-insights on the site).
+AUTO_FAQ_KEYS = ("courses", "exams", "placements", "cutoffs", "approved", "reviews")
+
+
 class Faq(BaseModel):
-    question: str = Field(min_length=3, max_length=300)
-    answer: str = Field(min_length=1, max_length=2000)
+    """A question and answer, or an adjustment to one the site writes itself.
+
+    An entry the editor wrote has a question and an answer. An entry with `auto` set (a key from AUTO_FAQ_KEYS)
+    adjusts the question the site generates under that key: not `active` hides it, and a question and answer
+    replace the generated wording (both empty: the generated text stands).
+    """
+
+    question: str = Field(default="", max_length=300)
+    answer: str = Field(default="", max_length=2000)
+    # False: kept, but not shown.
+    active: bool = True
+    auto: str = Field(default="", max_length=20)
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _shape(self):
+        if self.auto:
+            if self.auto not in AUTO_FAQ_KEYS:
+                raise ValueError("auto: not a generated question")
+            if bool(self.question.strip()) != bool(self.answer.strip()):
+                raise ValueError("a replaced generated question needs both the question and the answer")
+        elif len(self.question.strip()) < 3 or not self.answer.strip():
+            raise ValueError("write the question (at least 3 characters) and the answer")
+        return self
 
 
 class Seo(BaseModel):
@@ -140,6 +165,30 @@ class ArticleItem(BaseModel):
         return check_not_future(value, "The date", NEWS_YEAR_MIN)
 
 
+TAB_ICONS = ("grad", "award", "building", "book", "star", "trophy", "users", "target", "sparkles", "shield")
+
+
+class TabHeader(BaseModel):
+    """The banner at the top of a written section: the small label, the heading, and its icon. Empty means the default."""
+
+    label: str = Field(default="", max_length=40)
+    heading: str = Field(default="", max_length=140)
+    icon: str = Field(default="", max_length=20)
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("label", "heading")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("icon")
+    @classmethod
+    def _icon(cls, value: str) -> str:
+        if value and value not in TAB_ICONS:
+            raise ValueError("choose an icon from the list")
+        return value
+
+
 class CollegeDetail(BaseModel):
     """Everything an editor writes for a college page beyond the college row itself."""
 
@@ -164,9 +213,19 @@ class CollegeDetail(BaseModel):
     articles: list[ArticleItem] = Field(default_factory=list, max_length=20)
     # Rich-text documents for the written sections, by template slug.
     tabs: dict[str, dict] = Field(default_factory=dict)
+    # The banner over each written section, by the same slugs. A section with none shows the default one.
+    tabHeaders: dict[str, TabHeader] = Field(default_factory=dict)
     model_config = ConfigDict(extra="forbid")
 
     _logo = field_validator("logo")(photo_path)
+
+    @field_validator("tabHeaders")
+    @classmethod
+    def _tab_headers(cls, value: dict) -> dict:
+        for slug in value:
+            if slug not in TAB_SLUGS:
+                raise ValueError(f"'{slug}' is not a written section of a college page")
+        return value
 
     @field_validator("tabs")
     @classmethod

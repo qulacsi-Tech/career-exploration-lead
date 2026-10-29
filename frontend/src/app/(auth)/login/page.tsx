@@ -16,13 +16,12 @@ export const metadata: Metadata = {
   team — so it stays a single form rather than a separate admin login.
 */
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const { next, idle } = await searchParams;
+  const { next } = await searchParams;
   const copy = await getAuthCopy("login");
   return (
     <AuthShell copy={copy}>
       <LoginForm
         next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined}
-        idle={idle === "1"}
         copy={copy}
       />
     </AuthShell>

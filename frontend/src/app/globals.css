@@ -953,3 +953,14 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .tcp-menu-panel, .tcp-menu-item { animation: none; }
 }
+
+
+/* Matches from the search on a college page (components/college/page-search.tsx). */
+::highlight(page-search) {
+  background-color: #fde68a;
+  color: inherit;
+}
+::highlight(page-search-current) {
+  background-color: #f59e0b;
+  color: #1c2128;
+}

@@ -162,6 +162,12 @@ export function CompareProvider({ children }: { children: React.ReactNode }) {
  * tray that quietly swaps out a college the visitor picked is worse than one
  * that says it is full.
  */
+/** Room under the footer for the fixed comparison bar, only while the bar is showing, so there is no blank strip otherwise. */
+export function CompareTraySpacer() {
+  const { entries } = useCompare();
+  return entries.length > 0 ? <div aria-hidden="true" className="h-16" /> : null;
+}
+
 export function CompareToggle({
   slug,
   name,

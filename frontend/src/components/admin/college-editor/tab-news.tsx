@@ -3,6 +3,7 @@
 import type { CollegeAlert, CollegeArticle, CollegeMediaItem } from "@/lib/api";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { AddButton, Card, EmptyNote, IsoDate, Row, SelectInput, TextArea, TextInput } from "@/components/admin/college-editor/shared";
+import { CollegeArticles } from "@/components/admin/college-editor/college-articles";
 
 /*
   News: what the college's News tab and the overview's "What's new?" card are built from.
@@ -15,7 +16,7 @@ import { AddButton, Card, EmptyNote, IsoDate, Row, SelectInput, TextArea, TextIn
 
 const KINDS = ["Admission", "Exam", "Result", "Notice"];
 
-export function NewsTab({ record, update }: EditorProps) {
+export function NewsTab({ record, update, slug, mode = "full" }: EditorProps) {
   const { alerts, articles, media } = record.detail;
   const setDetail = (patch: Partial<typeof record.detail>) => update((r) => ({ ...r, detail: { ...r.detail, ...patch } }));
 
@@ -54,9 +55,14 @@ export function NewsTab({ record, update }: EditorProps) {
         )}
       </Card>
 
+      {/* The platform admin writes the college's news as real articles, in the site's article format. */}
+      {mode === "full" && <CollegeArticles slug={slug} />}
+
+      {/* Notes written here before the news used articles stay editable; a college admin, who cannot reach the articles, keeps writing them here. */}
+      {(mode !== "full" || articles.length > 0) && (
       <Card
-        title="Articles"
-        description="The college's own news items, newest first on the News tab."
+        title={mode === "full" ? "Older notes written here" : "Articles"}
+        description={mode === "full" ? "Short notes added to this college before its news used the site's article format. They still show on the News tab. New news is best added as an article above." : "The college's own news items, newest first on the News tab."}
         actions={<AddButton onClick={() => setDetail({ articles: [{ title: "", date: "", author: "", summary: "", body: "" }, ...articles] })} disabled={articles.length >= 20}>Add an article</AddButton>}
       >
         {articles.length === 0 ? (
@@ -79,6 +85,7 @@ export function NewsTab({ record, update }: EditorProps) {
           </ul>
         )}
       </Card>
+      )}
 
       <Card
         title="In the press"

@@ -35,6 +35,7 @@ def _to_list_schema(article: Article) -> ArticleListSchema:
         category=article.category,
         readMinutes=article.read_minutes or 5,
         image=article.image or "",
+        relatedCollegeSlugs=_related_slugs(article),
     )
 
 
@@ -58,8 +59,8 @@ class ArticleService:
     def __init__(self, db: AsyncSession):
         self.repo = ArticleRepository(db)
 
-    async def list_articles(self, page: int = 1, limit: int = 10) -> Tuple[List[ArticleListSchema], Meta]:
-        articles, total = await self.repo.list(page=page, limit=limit)
+    async def list_articles(self, page: int = 1, limit: int = 10, college: Optional[str] = None) -> Tuple[List[ArticleListSchema], Meta]:
+        articles, total = await self.repo.list(page=page, limit=limit, college=college)
         pages = math.ceil(total / limit) if limit else 1
         return [_to_list_schema(a) for a in articles], Meta(total=total, page=page, limit=limit, pages=pages)
 

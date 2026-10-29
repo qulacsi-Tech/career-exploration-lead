@@ -15,7 +15,8 @@ class Placement(Base):
     college_id = Column(
         UUID(as_uuid=True), ForeignKey("colleges.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    year = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)  # the year the batch ended
+    year_start = Column(Integer, nullable=True)  # the year it began; empty: a single year
     average_package = Column(String(50), nullable=True)
     median_package = Column(String(50), nullable=True)
     highest_package = Column(String(50), nullable=True)

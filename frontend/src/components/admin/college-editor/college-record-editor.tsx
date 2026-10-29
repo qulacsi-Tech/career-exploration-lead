@@ -33,6 +33,7 @@ import { NewsTab } from "@/components/admin/college-editor/tab-news";
 import { SeoTab, WrittenTab } from "@/components/admin/college-editor/tab-written";
 import { AdministrativeTab } from "@/components/admin/college-editor/tab-administrative";
 import { cleanRecord, problemsByTab, type TabId } from "@/components/admin/college-editor/validate";
+import { LivePreview, hasLivePreview } from "@/components/admin/college-editor/live-preview";
 
 /*
   The college editor: one dialog, one tab for each part of the public college page, in the
@@ -174,7 +175,7 @@ export function CollegeRecordEditor({
     });
   };
 
-  const props: EditorProps | null = record && pools ? { record, update, pools, slug } : null;
+  const props: EditorProps | null = record && pools ? { record, update, pools, slug, mode } : null;
 
   const body = (): ReactNode => {
     if (!props) return null;
@@ -326,11 +327,19 @@ export function CollegeRecordEditor({
             </ul>
           )}
 
-          <div role="tabpanel" id={`ce-panel-${tab}`} aria-labelledby={`ce-tab-${tab}`}>
-            {/* A disabled fieldset switches off every input, select and button inside it. */}
-            <fieldset disabled={readonly || (forCollege && tab === "reviews")} className="min-w-0 border-0 p-0">
-              {body()}
-            </fieldset>
+          {/* Beside a text editor, on a wide screen, a live sketch of how the text will read on the public page, about 30% wide. */}
+          <div className={hasLivePreview(tab) ? "grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
+            <div role="tabpanel" id={`ce-panel-${tab}`} aria-labelledby={`ce-tab-${tab}`} className="min-w-0">
+              {/* A disabled fieldset switches off every input, select and button inside it. */}
+              <fieldset disabled={readonly || (forCollege && tab === "reviews")} className="min-w-0 border-0 p-0">
+                {body()}
+              </fieldset>
+            </div>
+            {hasLivePreview(tab) && (
+              <div className="hidden lg:block">
+                <LivePreview record={props.record} tab={tab} />
+              </div>
+            )}
           </div>
         </>
       )}

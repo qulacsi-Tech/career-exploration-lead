@@ -1,5 +1,6 @@
 import type { CollegeRecord } from "@/lib/api";
 import { withoutBrokenImages } from "@/lib/rich-text";
+import { batchLabel } from "@/lib/batch";
 import {
   NEWS_YEAR_MIN,
   REVIEW_MIN_CHARS,
@@ -65,12 +66,14 @@ export function cleanRecord(r: CollegeRecord): CollegeRecord {
     detail: {
       ...d,
       faculty: { ...d.faculty, members: d.faculty.members.filter((m) => !empty(m.name, m.designation, m.department, m.qualification)) },
-      faqs: d.faqs.filter((f) => !empty(f.question, f.answer)),
+      // An entry that adjusts a generated question stays even with no text (it may just switch the question off).
+      faqs: d.faqs.filter((f) => f.auto || !empty(f.question, f.answer)),
       alerts: d.alerts.filter((a) => !empty(a.title, a.link)),
       articles: d.articles.filter((a) => !empty(a.title, a.summary, a.body)),
       media: d.media.filter((m) => !empty(m.title, m.publication, m.link)),
       videos: d.videos.filter((v) => !(empty(v.title) && !v.videoId)),
       tabs: Object.fromEntries(Object.entries(d.tabs).map(([slug, doc]) => [slug, withoutBrokenImages(doc)])),
+      tabHeaders: Object.fromEntries(Object.entries(d.tabHeaders ?? {}).filter(([, h]) => h.label.trim() || h.heading.trim() || h.icon)),
     },
   };
 }
@@ -139,7 +142,9 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   // Placements
   const years = new Set<number>();
   r.placements.forEach((p) => {
-    const label = `Batch ${p.year}`;
+    const label = `Batch ${batchLabel(p)}`;
+    if (p.yearStart !== null && (p.yearStart < 1990 || p.yearStart > new Date().getFullYear() + 1)) out.placements.push(`${label}: the start year must be between 1990 and ${new Date().getFullYear() + 1}.`);
+    if (p.yearStart !== null && p.yearStart > p.year) out.placements.push(`${label}: the batch cannot start after it ends.`);
     if (p.year < 1990 || p.year > new Date().getFullYear() + 1) out.placements.push(`${p.year}: the batch year must be between 1990 and ${new Date().getFullYear() + 1}.`);
     if (years.has(p.year)) out.placements.push(`${p.year} is listed more than once.`);
     years.add(p.year);
@@ -198,6 +203,11 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   // Q&A
   const asked = new Set<string>();
   d.faqs.forEach((f, i) => {
+    if (f.auto) {
+      // A generated question that is reworded needs both parts; one left empty uses the generated wording.
+      if (!!f.question.trim() !== !!f.answer.trim()) out.qna.push(`A reworded generated question needs both the question and the answer.`);
+      return;
+    }
     if (f.question.trim().length < 3) out.qna.push(`Question ${i + 1}: write the question.`);
     if (!f.answer.trim()) out.qna.push(`Question ${i + 1}: write the answer.`);
     const key = f.question.trim().toLowerCase().replace(/\s+/g, " ");

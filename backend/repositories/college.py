@@ -206,7 +206,8 @@ class CollegeRepository:
 
     async def list(self, params: CollegeFilterParams) -> Tuple[List[College], int]:
         """Return (colleges_page, total_count)."""
-        base = select(College).options(selectinload(College.courses))
+        # Placements ride along so the listing card can show the newest year's average and highest package.
+        base = select(College).options(selectinload(College.courses), selectinload(College.placements))
         base = _apply_filters(base, params)
 
         # Count

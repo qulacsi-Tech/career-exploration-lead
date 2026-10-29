@@ -10,12 +10,15 @@ class ArticleRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def list(self, page: int = 1, limit: int = 10) -> Tuple[List[Article], int]:
+    async def list(self, page: int = 1, limit: int = 10, college: Optional[str] = None) -> Tuple[List[Article], int]:
         stmt = (
             select(Article)
             .where(Article.is_published == True)  # noqa: E712
             .order_by(Article.published_at.desc())
         )
+        if college:
+            # Related colleges are kept as a comma-separated list; match the whole slug, not a part of another.
+            stmt = stmt.where(func.concat(",", func.replace(Article.related_college_slugs, " ", ""), ",").like(f"%,{college},%"))
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total: int = (await self.db.execute(count_stmt)).scalar_one()
 

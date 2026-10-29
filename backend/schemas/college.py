@@ -20,6 +20,18 @@ class RankingSchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class RankingRow(BaseModel):
+    """One ranking a college holds: the list's name (with its year) and its place in it."""
+
+    name: str
+    rank: int
+    # For the college page's Rankings tab: which list, who publishes it, its category and the score.
+    slug: str = ""
+    authority: str = ""
+    stream: str = ""
+    score: str = ""
+
+
 class RatingBreakdownSchema(BaseModel):
     label: str
     score: float
@@ -55,12 +67,24 @@ class PlacementBreakdownSchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class RecruiterBrief(BaseModel):
+    """A recruiting company as the page shows it: the name, its logo (empty: none) and whether to show the name with the logo."""
+
+    name: str
+    logo: str = ""
+    showName: bool = True
+
+
 class PlacementSchema(BaseModel):
+    # The batch: it began in `yearStart` (None: a single year) and ended in `year`.
+    yearStart: Optional[int] = None
     year: int
     average: str
     median: str
     highest: str
     topRecruiters: List[str]
+    # The same companies with their logos, in the same order. Filled on the college page only.
+    recruiters: List[RecruiterBrief] = []
     placedPercent: Optional[int] = None
     # By category, course and specialisation, as the admin entered them.
     breakdown: List[PlacementBreakdownSchema] = []
@@ -125,6 +149,13 @@ class CollegeListSchema(BaseModel):
     viewCount: int = 0
     # The default priority set in the admin (1 first); None when the college has none.
     priority: Optional[int] = None
+    # Its NIRF rank, kept apart from `ranking` (which a ranking-list page swaps for the list's own rank).
+    nirfRank: Optional[int] = None
+    # The newest placement year's figures, for the listing card. Empty when it has none.
+    placementAverage: str = ""
+    placementHighest: str = ""
+    # Every ranking list it is in, best first, for the listing card's hover. Only filled on the listing.
+    allRankings: List[RankingRow] = []
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -158,6 +189,7 @@ class CollegeDetailSchema(CollegeListSchema):
     alerts: List[AlertItem] = []
     articles: List[ArticleItem] = []
     tabs: dict = {}
+    tabHeaders: dict = {}
 
     model_config = ConfigDict(populate_by_name=True)
 

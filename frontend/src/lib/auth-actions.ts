@@ -20,8 +20,14 @@ function safeNext(value: FormDataEntryValue | string | null | undefined): string
   return next;
 }
 
-/** Stores the session that matches the account's role and returns where to go. */
-async function startSession(result: AuthResult, remember: boolean, next: string | null): Promise<string> {
+/**
+ * Stores the session that matches the account's role and returns where to go.
+ *
+ * The session lasts until the browser is closed: the cookies carry no expiry, so closing the browser without
+ * logging out signs the person out, and there is no sign-out for inactivity while it stays open.
+ */
+async function startSession(result: AuthResult, next: string | null): Promise<string> {
+  const remember = false;
   // The account page greets a first-time visitor differently from a returning one.
   const welcome = result.isNewUser ? "new" : "back";
   // The role is what the backend returned, never anything the form sent.
@@ -48,14 +54,13 @@ function messageOf(err: unknown, fallback: string): string {
 export async function signIn(_prev: SignInState, formData: FormData): Promise<SignInState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const remember = formData.get("remember") === "on";
   const next = safeNext(formData.get("next"));
 
   if (!email || !password) return { error: "Enter your email and password." };
 
   let destination: string;
   try {
-    destination = await startSession(await loginUser({ email, password }), remember, next);
+    destination = await startSession(await loginUser({ email, password }), next);
   } catch (err) {
     return { error: messageOf(err, "Could not sign in. Check your details and try again.") };
   }
@@ -74,7 +79,7 @@ export async function signInWithGoogle(idToken: string, nextPath?: string): Prom
       // Dev terminal only, and never the token itself.
       console.info("[Google sign-in] backend accepted it:", result.user);
     }
-    destination = await startSession(result, true, safeNext(nextPath));
+    destination = await startSession(result, safeNext(nextPath));
   } catch (err) {
     if (process.env.NODE_ENV !== "production") console.warn("[Google sign-in] backend rejected it:", err);
     return { error: messageOf(err, "Google sign-in failed. Please try again.") };
@@ -114,7 +119,7 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
       ...(phone && { phone }),
       marketingConsent: formData.get("marketing") === "on",
     });
-    destination = await startSession(result, true, next);
+    destination = await startSession(result, next);
   } catch (err) {
     if ((err as { code?: string }).code === "EMAIL_ALREADY_EXISTS") {
       return { errors: { email: "An account with this email already exists. Try logging in." } };
@@ -228,13 +233,6 @@ export async function setOwnPassword(_prev: PasswordFormState, formData: FormDat
   }
   revalidatePath("/account");
   return { saved: Date.now() };
-}
-
-/** Ends every session after a period of inactivity, and tells the login page why. */
-export async function signOutIdle() {
-  await clearAdminSession();
-  await clearUserSession();
-  redirect("/login?idle=1");
 }
 
 /** Ends every session and returns to the login screen. */

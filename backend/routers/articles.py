@@ -13,9 +13,11 @@ async def list_articles(
     db: DbSession,
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
+    college: str | None = Query(None, max_length=200),
 ):
+    """Published articles, newest first. With `college`, only those written about that college."""
     svc = ArticleService(db)
-    articles, meta = await svc.list_articles(page=page, limit=limit)
+    articles, meta = await svc.list_articles(page=page, limit=limit, college=college)
     return ListResponse[ArticleListSchema](data=articles, meta=meta)
 
 

@@ -30,6 +30,8 @@ from models.course import Course
 from models.cutoff import Cutoff
 from models.exam import Exam
 from models.placement import Placement
+from models.recruiter import Recruiter
+from routers.admin_recruiters import recruiter_key
 from models.review import Review
 from schemas.college_detail import CollegeDetail, photo_path
 from schemas.common import SuccessResponse
@@ -107,6 +109,8 @@ class BreakdownRow(BaseModel):
 
 
 class PlacementRow(BaseModel):
+    # The batch, as a range: it began in `yearStart` (empty: a single year) and ended in `year`.
+    yearStart: Optional[int] = Field(default=None, ge=1990, le=YEAR + 1)
     year: int = Field(ge=1990, le=YEAR + 1)
     average: str = Field(default="", max_length=50)
     median: str = Field(default="", max_length=50)
@@ -294,6 +298,7 @@ def _record(c: College) -> dict:
         "placements": [
             {
                 "year": p.year,
+                "yearStart": p.year_start,
                 "average": p.average_package or "",
                 "median": p.median_package or "",
                 "highest": p.highest_package or "",
@@ -448,6 +453,9 @@ def _check(data: RecordBody) -> None:
     """Rules that span rows."""
     if not [x for x in [*data.streams, data.stream] if x.strip()]:
         raise ValidationError("streams: choose at least one category.")
+    for p in data.placements:
+        if p.yearStart is not None and p.yearStart > p.year:
+            raise ValidationError(f"placements: a batch cannot start ({p.yearStart}) after it ends ({p.year}).")
     years = [p.year for p in data.placements]
     if len(set(years)) != len(years):
         raise ValidationError("placements: a year appears more than once.")
@@ -530,8 +538,23 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
         db.add(Course(id=uuid.uuid4(), college_id=row.id, name=c.name.strip(), specialisation=c.specialisation.strip(), duration=c.duration.strip(), mode=c.mode, fees=c.fees.strip(),
                       exams=[e.strip() for e in c.exams if e.strip()], eligibility=c.eligibility.strip(), seats=c.seats,
                       online_offered=c.onlineOffered, online_enabled=c.onlineEnabled, online_duration=c.onlineDuration, online_fees=c.onlineFees))
+    # Every recruiter named goes into the shared pool (once, however it is spelled) and is written the pool's way.
+    pool = {r.name_key: r for r in (await db.execute(select(Recruiter))).scalars().all()}
     for p in data.placements:
-        db.add(Placement(id=uuid.uuid4(), college_id=row.id, year=p.year, average_package=p.average.strip() or None, median_package=p.median.strip() or None,
+        names: list[str] = []
+        for raw in p.topRecruiters:
+            name = " ".join(raw.split())
+            if not name:
+                continue
+            key = recruiter_key(name)
+            if key not in pool:
+                pool[key] = Recruiter(name=name, name_key=key)
+                db.add(pool[key])
+            if pool[key].name not in names:
+                names.append(pool[key].name)
+        p.topRecruiters = names
+    for p in data.placements:
+        db.add(Placement(id=uuid.uuid4(), college_id=row.id, year=p.year, year_start=p.yearStart, average_package=p.average.strip() or None, median_package=p.median.strip() or None,
                          highest_package=p.highest.strip() or None, placed_percent=p.placedPercent, top_recruiters=[r.strip() for r in p.topRecruiters if r.strip()],
                          breakdown=[{"category": b.category.strip(), "course": b.course.strip(), "specialisation": b.specialisation.strip(), "average": b.average.strip(), "highest": b.highest.strip(), "placed": b.placed, "students": b.students} for b in p.breakdown]))
     for k in data.cutoffs:

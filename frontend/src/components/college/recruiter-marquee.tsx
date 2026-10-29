@@ -1,3 +1,6 @@
+import { RecruiterChip } from "@/components/college/recruiter-chip";
+import type { RecruiterBrief } from "@/lib/api";
+
 /**
  * The recruiter names as a continuous marquee.
  *
@@ -25,7 +28,9 @@
  * Keyframes, the hover pause and the reduced-motion fallback live under
  * `.recruiter-marquee` in globals.css.
  */
-export function RecruiterMarquee({ recruiters }: { recruiters: string[] }) {
+export function RecruiterMarquee({ recruiters: given }: { recruiters: (string | RecruiterBrief)[] }) {
+  // Names alone, or companies with their logos (the college page passes the second).
+  const recruiters: RecruiterBrief[] = given.map((r) => (typeof r === "string" ? { name: r, logo: "", showName: true } : r));
   /* Pace by content: a longer roster would otherwise sprint to cover twice the
      distance in the same time. ~4.5s per name reads at a glance. */
   /* A handful of names makes a row narrower than the card, and the loop then slides past
@@ -40,13 +45,13 @@ export function RecruiterMarquee({ recruiters }: { recruiters: string[] }) {
       className="recruiter-marquee-row flex shrink-0 items-center gap-3 pr-3"
       aria-hidden={hidden || undefined}
     >
-      {shown.map((name, i) => (
+      {shown.map((company, i) => (
         <li
-          key={`${name}-${i}`}
+          key={`${company.name}-${i}`}
           aria-hidden={i >= recruiters.length || undefined}
           className="whitespace-nowrap rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold text-ink shadow-sm transition-colors hover:border-brand/40 hover:text-brand"
         >
-          {name}
+          <RecruiterChip {...company} />
         </li>
       ))}
     </ul>

@@ -1,8 +1,9 @@
 import Image from "next/image";
+import { batchLabel } from "@/lib/batch";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
-import { Clock, IndianRupee, Layers, MessageSquarePlus } from "lucide-react";
+import { ArrowRight, Clock, IndianRupee, Layers, MessageSquarePlus } from "lucide-react";
 import { ComparisonTable } from "@/components/comparison-table";
 import { CutoffCards } from "@/components/college/cutoff-cards";
 import {
@@ -34,7 +35,13 @@ import {
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 import { PlacementBreakdownTable } from "@/components/college/placement-breakdown";
 import { CollegeSectionPage } from "@/components/college/section-page";
+import { ApplyButton, ApplyRowTrigger, CourseApplyProvider } from "@/components/college/course-apply";
 import { RichText } from "@/components/rich-text";
+import { AdmissionOverview } from "@/components/college/admission-overview";
+import { NewsCard } from "@/components/colleges/news-card";
+import { AdmissionCutoffs } from "@/components/college/admission-cutoffs";
+import { splitByHeadings } from "@/lib/rich-text-sections";
+import { DEFAULT_TAB_ICON } from "@/lib/tab-icons";
 import { Chip } from "@/components/ui/chip";
 import { videoEmbedUrl } from "@/lib/college-content";
 import { faqsOf, isRealPackage, longDate, lakhValue, overallScore, percentOf, rankingTable, shortFee, programmeTitle, cutoffLabel, cutoffProgramme } from "@/lib/college-insights";
@@ -45,12 +52,15 @@ import { collegesBySlugs, similarColleges } from "@/lib/comparison-resolve";
 import {
   getCollegeOrNull,
   getColleges,
+  getArticles,
   getCollegeSlugs,
+  getHomeData,
+  getLocations,
   type College as CollegeBase,
   type CollegeDetail as College,
 } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
-import { emptyDoc, isRichTextEmpty } from "@/lib/rich-text";
+import { emptyDoc, isRichTextEmpty, richTextToHtml } from "@/lib/rich-text";
 
 /**
  * Every college section that is not the overview, on its own URL.
@@ -169,11 +179,41 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
       }
       const label = sectionBySlug(sectionSlug)?.label ?? "";
       const outline = docOutline(doc);
+      // Admissions: a long page of eligibility and dates for several courses is shown a course at a time, when
+      // the text has more than one heading to cut it at.
+      const admission = sectionSlug === "admission-process";
+      const parts = admission ? splitByHeadings(doc) : [];
+      const sections = parts.length >= 2 ? parts.map((part, i) => ({ id: `s${i}`, title: part.title, text: part.text, html: richTextToHtml(part.doc) })) : null;
+      // Admissions with a course at each heading: each course as its own card, with the facts that hold for all
+      // of them in a column beside, instead of one long list of every point.
+      if (admission && sections) {
+        const header = college.tabHeaders?.[tabSlug];
+        const shownLabel = header?.label?.trim() || label;
+        return (
+          <AdmissionOverview
+            icon={header?.icon || DEFAULT_TAB_ICON[tabSlug] || "grad"}
+            label={shownLabel}
+            heading={header?.heading?.trim() || `Everything about ${shownLabel.toLowerCase()} at ${college.name}`}
+            collegeName={college.name}
+            courses={sections.map((section, i) => ({ ...section, points: docOutline(parts[i].doc).points }))}
+            words={outline.words}
+            exams={college.examsAccepted}
+            cutoffs={college.cutoffs ?? []}
+          >
+            {(college.cutoffs ?? []).length > 0 && (
+              <div id="cutoff-snapshot" className="scroll-mt-48">
+                <AdmissionCutoffs cutoffs={college.cutoffs ?? []} href={`/college/${college.slug}/cutoffs`} />
+              </div>
+            )}
+          </AdmissionOverview>
+        );
+      }
       return (
         <>
           <SectionSpotlight
-            icon={RICH_TEXT_ICON[sectionSlug] ?? "grad"}
-            label={label}
+            icon={college.tabHeaders?.[tabSlug]?.icon || DEFAULT_TAB_ICON[tabSlug] || "grad"}
+            label={college.tabHeaders?.[tabSlug]?.label?.trim() || label}
+            heading={college.tabHeaders?.[tabSlug]?.heading}
             collegeName={college.name}
             topics={outline.topics}
             points={outline.points}
@@ -196,6 +236,8 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
           >
             <RichText doc={doc} className="max-w-3xl" />
           </DetailCard>
+          {/* What score it takes, without leaving the page. */}
+          {admission && (college.cutoffs ?? []).length > 0 && <AdmissionCutoffs cutoffs={college.cutoffs ?? []} href={`/college/${college.slug}/cutoffs`} />}
           <CounsellorBand label={label} collegeName={college.name} />
         </>
       );
@@ -207,7 +249,68 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
    Section bodies
  * ------------------------------------------------------------------ */
 
-function Courses({ college }: { college: College }) {
+/** One programme's details: length, mode, eligibility, seats, exams and (when there is one) its online option. */
+function ProgrammeDetails({ course }: { course: College["courses"][number] }) {
+  return (
+    <>
+      <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-soft">
+        <span className="inline-flex items-center gap-1.5">
+          <Clock className="h-4 w-4 text-brand" />
+          {course.duration}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Layers className="h-4 w-4 text-brand" />
+          {course.mode}
+        </span>
+      </p>
+      {(course.eligibility || course.seats) && (
+        <p className="mt-2 text-sm text-ink-soft">
+          {course.eligibility && <span>Eligibility: {course.eligibility}</span>}
+          {course.eligibility && course.seats ? <span aria-hidden> &middot; </span> : null}
+          {course.seats ? <span>{course.seats.toLocaleString("en-IN")} seats</span> : null}
+        </p>
+      )}
+      {course.exams.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {course.exams.map((exam) => (
+            <li key={exam}>
+              <Chip>{exam}</Chip>
+            </li>
+          ))}
+        </ul>
+      )}
+      {course.onlineOffered && (
+        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white">Also online</span>
+          {course.onlineDuration && (
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-4 w-4" />
+              {course.onlineDuration}
+            </span>
+          )}
+          {course.onlineFees && (
+            <span className="inline-flex items-center gap-1.5 font-semibold">
+              <IndianRupee className="h-4 w-4" />
+              {shortFee(course.onlineFees).replace("₹", "")} total fees
+            </span>
+          )}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** The fee at the right of a programme. Applying is done from the card's one Apply button, or by clicking the programme. */
+function ProgrammeFee({ fees }: { fees: string }) {
+  return (
+    <p className="inline-flex items-center font-display text-2xl font-extrabold text-ink sm:justify-end">
+      <IndianRupee className="h-5 w-5" />
+      {shortFee(fees).replace("₹", "")}
+    </p>
+  );
+}
+
+async function Courses({ college }: { college: College }) {
   if (college.courses.length === 0) {
     return (
       <EmptyCard
@@ -217,16 +320,32 @@ function Courses({ college }: { college: College }) {
       />
     );
   }
-  const onlineCount = college.courses.filter((course) => course.onlineOffered).length;
-  const modes = [...new Set([...college.courses.map((course) => course.mode), ...(onlineCount > 0 ? ["Online"] : [])])];
+
+  // The courses, each with the specialisations it is offered in: a college lists "MBA" once, however many
+  // specialisations it has. A course with none is a single entry.
+  const groups: { name: string; rows: College["courses"] }[] = [];
+  for (const course of college.courses) {
+    const group = groups.find((g) => g.name === course.name);
+    if (group) group.rows.push(course);
+    else groups.push({ name: course.name, rows: [course] });
+  }
+  const onlineCourses = groups.filter((g) => g.rows.some((r) => r.onlineOffered)).length;
+  // What the Apply dialog offers, and the options its form needs. It still opens with none if either request fails.
+  const programmes = college.courses.map((c, i) => ({ key: String(i), course: c.name, specialisation: c.specialisation ?? "", duration: c.duration, mode: c.mode, fees: c.fees }));
+  const keyOf = (course: College["courses"][number]) => String(college.courses.indexOf(course));
+  const [enquiryStreams, enquiryCities] = await Promise.all([
+    getHomeData().then((h) => h.streams.map((s) => ({ slug: s.slug, name: s.name }))).catch(() => []),
+    getLocations().then((l) => l.map((x) => ({ slug: x.slug, name: x.name }))).catch(() => []),
+  ]);
+  const modes = [...new Set([...college.courses.map((course) => course.mode), ...(onlineCourses > 0 ? ["Online"] : [])])];
 
   return (
-    <>
+    <CourseApplyProvider collegeSlug={college.slug} collegeName={college.name} stream={college.stream} programmes={programmes} streams={enquiryStreams} cities={enquiryCities}>
       <DetailCard>
         <div className="grid gap-8 sm:grid-cols-2">
-          <IconStat icon="book" value={college.courses.length} label="Programmes listed" />
+          <IconStat icon="book" value={groups.length} label={groups.length === 1 ? "Course offered" : "Courses offered"} />
           <IconStat icon="layers" value={modes.join(", ")} label="Study modes" />
-          {onlineCount > 0 && <IconStat icon="grad" value={onlineCount} label={onlineCount === 1 ? "Programme also online" : "Programmes also online"} />}
+          {onlineCourses > 0 && <IconStat icon="grad" value={onlineCourses} label={onlineCourses === 1 ? "Course also online" : "Courses also online"} />}
           <IconStat
             icon="grad"
             value={college.examsAccepted.join(", ")}
@@ -236,74 +355,63 @@ function Courses({ college }: { college: College }) {
         </div>
       </DetailCard>
 
-      <DetailCard title="All Programmes">
+      <DetailCard title="All Courses" action={<ApplyButton />}>
+        <p className="-mt-4 mb-5 text-sm text-ink-soft">Click a course to apply for it, or use Apply now to choose from everything on offer.</p>
         <ul className="divide-y divide-line border-y border-line">
-          {college.courses.map((course, i) => (
-            <li
-              key={`${programmeTitle(course)}-${i}`}
-              className="grid gap-4 py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-            >
-              <div className="min-w-0">
-                <h3 className="font-display text-lg font-bold text-ink">{programmeTitle(course)}</h3>
-                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-soft">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="h-4 w-4 text-brand" />
-                    {course.duration}
+          {groups.map((group) => {
+            const specialised = group.rows.filter((r) => r.specialisation);
+            // One entry with no specialisation: the course itself, with its figures.
+            if (specialised.length === 0) {
+              const course = group.rows[0];
+              return (
+                <li key={group.name}>
+                  <ApplyRowTrigger programmeKey={keyOf(course)} className="grid gap-4 py-6 transition hover:bg-brand-soft/30 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <h3 className="font-display text-lg font-bold text-ink">{group.name}</h3>
+                      <ProgrammeDetails course={course} />
+                    </div>
+                    <ProgrammeFee fees={course.fees} />
+                  </ApplyRowTrigger>
+                </li>
+              );
+            }
+            // A course with specialisations: the course on top, each specialisation in a tree beneath it.
+            const whole = group.rows.find((r) => !r.specialisation);
+            return (
+              <li key={group.name} className="py-6">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 className="font-display text-lg font-bold text-ink">{group.name}</h3>
+                  <span className="text-sm text-ink-soft">
+                    {specialised.length} {specialised.length === 1 ? "specialisation" : "specialisations"}
                   </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Layers className="h-4 w-4 text-brand" />
-                    {course.mode}
-                  </span>
-                </p>
-                {(course.eligibility || course.seats) && (
-                  <p className="mt-2 text-sm text-ink-soft">
-                    {course.eligibility && <span>Eligibility: {course.eligibility}</span>}
-                    {course.eligibility && course.seats ? <span aria-hidden> &middot; </span> : null}
-                    {course.seats ? <span>{course.seats.toLocaleString("en-IN")} seats</span> : null}
-                  </p>
+                </div>
+                {whole && (
+                  <div className="mt-1">
+                    <ProgrammeDetails course={whole} />
+                  </div>
                 )}
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {course.exams.map((exam) => (
-                    <li key={exam}>
-                      <Chip>{exam}</Chip>
+                <ul className="relative mt-4 ml-2 space-y-4 border-l-2 border-brand/20 pl-0">
+                  {specialised.map((course, i) => (
+                    <li key={`${course.specialisation}-${i}`} className="relative grid gap-4 pl-7">
+                      {/* The branch joining this specialisation to the course's line. */}
+                      <span aria-hidden className="absolute left-0 top-5 h-0.5 w-5 bg-brand/20" />
+                      <span aria-hidden className="absolute left-[18px] top-[14px] h-2.5 w-2.5 rounded-full bg-brand" />
+                      <ApplyRowTrigger programmeKey={keyOf(course)} className="min-w-0 rounded-xl border border-line-soft bg-bg-alt/50 p-4 transition hover:border-brand/40 hover:bg-brand-soft/40 sm:col-span-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
+                        <div className="min-w-0">
+                          <h4 className="font-display text-base font-bold text-ink">{course.specialisation}</h4>
+                          <ProgrammeDetails course={course} />
+                        </div>
+                        <ProgrammeFee fees={course.fees} />
+                      </ApplyRowTrigger>
                     </li>
                   ))}
                 </ul>
-                {course.onlineOffered && (
-                  <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
-                    <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white">Also online</span>
-                    {course.onlineDuration && (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Clock className="h-4 w-4" />
-                        {course.onlineDuration}
-                      </span>
-                    )}
-                    {course.onlineFees && (
-                      <span className="inline-flex items-center gap-1.5 font-semibold">
-                        <IndianRupee className="h-4 w-4" />
-                        {shortFee(course.onlineFees).replace("₹", "")} total fees
-                      </span>
-                    )}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-4 sm:flex-col sm:items-end sm:gap-2">
-                <p className="inline-flex items-center font-display text-2xl font-extrabold text-ink">
-                  <IndianRupee className="h-5 w-5" />
-                  {shortFee(course.fees).replace("₹", "")}
-                </p>
-                <Link
-                  href="/enquiry" data-track="cta_enquiry"
-                  className="rounded-full border-2 border-brand px-4 py-1.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white"
-                >
-                  Apply
-                </Link>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </DetailCard>
-    </>
+    </CourseApplyProvider>
   );
 }
 
@@ -534,7 +642,7 @@ function Placements({ college }: { college: College }) {
 
   return (
     <>
-      <DetailCard title={`Placement Statistics ${placement.year}`}>
+      <DetailCard title={`Placement Statistics ${batchLabel(placement)}`}>
         <div className="grid gap-8 sm:grid-cols-2">
           {packages.map((p) => (
             <BigFigure key={p.label} label={p.label} value={p.value} />
@@ -563,12 +671,12 @@ function Placements({ college }: { college: College }) {
 
       {placement.topRecruiters.length > 0 && (
         <DetailCard title="Top Recruiters">
-          <RecruiterMarquee recruiters={placement.topRecruiters} />
+          <RecruiterMarquee recruiters={placement.recruiters?.length ? placement.recruiters : placement.topRecruiters} />
         </DetailCard>
       )}
 
       {(placement.breakdown?.length ?? 0) > 0 && (
-        <DetailCard title={`By Course and Specialisation ${placement.year}`}>
+        <DetailCard title={`By Course and Specialisation ${batchLabel(placement)}`}>
           <PlacementBreakdownTable rows={placement.breakdown} />
         </DetailCard>
       )}
@@ -588,7 +696,7 @@ function Placements({ college }: { college: College }) {
               <tbody>
                 {college.placements.slice(1).map((row) => (
                   <tr key={row.year} className="border-b border-line-soft">
-                    <th scope="row" className="py-4 pr-4 font-semibold text-ink">{row.year}</th>
+                    <th scope="row" className="py-4 pr-4 font-semibold text-ink">{batchLabel(row)}</th>
                     <td className="py-4 pr-4 text-ink-soft">{row.average}</td>
                     <td className="py-4 pr-4 text-ink-soft">{row.highest}</td>
                     <td className="py-4 text-right text-ink-soft">{row.placedPercent != null ? `${row.placedPercent}%` : "—"}</td>
@@ -599,7 +707,7 @@ function Placements({ college }: { college: College }) {
           </div>
           {college.placements.slice(1).filter((row) => (row.breakdown?.length ?? 0) > 0).map((row) => (
             <details key={row.year} className="mt-4 rounded-lg border border-line">
-              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink">{row.year}: by course and specialisation</summary>
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink">{batchLabel(row)}: by course and specialisation</summary>
               <div className="border-t border-line px-4 pb-2">
                 <PlacementBreakdownTable rows={row.breakdown} />
               </div>
@@ -694,6 +802,25 @@ async function Rankings({ college }: { college: College }) {
           </div>
         </div>
       </DetailCard>
+
+      {/* Every ranking list the college has been placed in, as entered in the admin (Rankings tab of the college). */}
+      {(college.allRankings ?? []).length > 0 && (
+        <DetailCard title={`All Rankings (${college.allRankings?.length})`}>
+          <ul className="divide-y divide-line border-y border-line">
+            {college.allRankings?.map((r) => (
+              <li key={`${r.slug ?? r.name}-${r.rank}`} className="flex items-center gap-4 py-4">
+                <span className="grid h-12 min-w-12 shrink-0 place-items-center rounded-xl bg-brand-soft px-2 font-display text-lg font-extrabold text-brand-ink">#{r.rank}</span>
+                <div className="min-w-0">
+                  <p className="font-display text-base font-bold text-ink">{r.name}</p>
+                  <p className="mt-0.5 text-sm text-ink-soft">
+                    {[r.authority, r.stream, r.score ? `Score ${r.score}` : ""].filter(Boolean).join(" · ") || "Ranking"}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </DetailCard>
+      )}
 
       {rows.length > 0 && (
         <DetailCard title={`${college.ranking.authority} Rank Among ${college.stream} Peers`}>
@@ -862,11 +989,16 @@ function QnA({ college }: { college: College }) {
   return <QaList faqs={faqsOf(college)} collegeName={college.name} />;
 }
 
-function News({ college }: { college: College }) {
+async function News({ college }: { college: College }) {
+  // The articles written about this college (Content > Colleges > News), in the site's article format.
+  const linked = await getArticles({ college: college.slug, limit: 50 })
+    .then((r) => r.data)
+    .catch(() => []);
+  // Short notes written on the college record before its news used articles.
   const articles = [...college.articles].sort((a, b) => b.date.localeCompare(a.date));
   const alerts = [...college.alerts].sort((a, b) => Number(b.isUrgent) - Number(a.isUrgent) || b.date.localeCompare(a.date));
   const press = [...college.media].sort((a, b) => b.date.localeCompare(a.date));
-  if (articles.length === 0 && alerts.length === 0 && press.length === 0) {
+  if (linked.length === 0 && articles.length === 0 && alerts.length === 0 && press.length === 0) {
     return (
       <EmptyCard
         icon="news"
@@ -892,8 +1024,35 @@ function News({ college }: { college: College }) {
         </DetailCard>
       )}
 
-      {articles.length > 0 && (
+      {linked.length > 0 && (
         <DetailCard title="Latest News">
+          {/* The newest in full, then the rest as a compact list. */}
+          <NewsCard article={linked[0]} lead />
+          {linked.length > 1 && (
+            <section aria-label="More news" className="mt-8">
+              <h3 className="font-display text-base font-bold text-ink">More news</h3>
+              <ul className="mt-3 divide-y divide-line-soft rounded-2xl border border-line bg-surface">
+                {linked.slice(1).map((article) => (
+                  <li key={article.slug}>
+                    <Link href={`/articles/${article.slug}`} className="group flex items-center gap-4 px-4 py-3.5 transition hover:bg-brand-soft/30">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-display text-[15px] font-bold text-ink transition group-hover:text-brand">{article.title}</span>
+                        <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                          {[article.date, article.category, article.readMinutes ? `${article.readMinutes} min read` : ""].filter(Boolean).join(" · ")}
+                        </span>
+                      </span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-ink-faint transition group-hover:translate-x-0.5 group-hover:text-brand" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </DetailCard>
+      )}
+
+      {articles.length > 0 && (
+        <DetailCard title={linked.length > 0 ? "More Updates" : "Latest News"}>
           <NewsTimeline
             articles={articles.map((a) => ({
               title: a.title,

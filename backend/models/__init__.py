@@ -5,6 +5,7 @@ from models.user import User, UserRole  # noqa: F401
 from models.college import College, OwnershipType  # noqa: F401
 from models.course import Course  # noqa: F401
 from models.placement import Placement  # noqa: F401
+from models.recruiter import Recruiter  # noqa: F401
 from models.cutoff import Cutoff  # noqa: F401
 from models.review import Review  # noqa: F401
 from models.exam import Exam, ExamLevel  # noqa: F401

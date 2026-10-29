@@ -98,7 +98,6 @@ export function AuthPagesAdmin({ initial, defaults }: { initial: AuthPages; defa
                 <Text label="Email label" value={copy.emailLabel} max={40} onChange={(emailLabel) => set({ emailLabel })} />
                 <Text label="Email placeholder" value={copy.emailPlaceholder} max={60} onChange={(emailPlaceholder) => set({ emailPlaceholder })} />
                 <Text label="Password label" value={copy.passwordLabel} max={40} onChange={(passwordLabel) => set({ passwordLabel })} />
-                <Text label="Tick box text" value={copy.rememberLabel} max={60} onChange={(rememberLabel) => set({ rememberLabel })} hint="Leave empty to hide the tick box." />
               </div>
             )}
             <div className="grid gap-4 sm:grid-cols-2">
@@ -162,7 +161,6 @@ export function AuthPagesAdmin({ initial, defaults }: { initial: AuthPages; defa
                       <p className="text-[11px] font-semibold text-ink">{copy.passwordLabel}</p>
                       <div className="mt-1 rounded-full border border-line bg-bg px-3 py-1.5 text-[11px] text-ink-faint">••••••••</div>
                     </div>
-                    {copy.rememberLabel && <p className="text-[11px] text-ink-soft">☐ {copy.rememberLabel}</p>}
                   </>
                 )}
                 {tab === "signup" && (
