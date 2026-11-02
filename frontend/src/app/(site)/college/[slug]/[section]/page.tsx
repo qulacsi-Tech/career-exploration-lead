@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { batchLabel } from "@/lib/batch";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -38,12 +37,12 @@ import { CollegeSectionPage } from "@/components/college/section-page";
 import { ApplyButton, ApplyRowTrigger, CourseApplyProvider } from "@/components/college/course-apply";
 import { RichText } from "@/components/rich-text";
 import { AdmissionOverview } from "@/components/college/admission-overview";
+import { GalleryViewer } from "@/components/college/gallery-viewer";
 import { NewsCard } from "@/components/colleges/news-card";
 import { AdmissionCutoffs } from "@/components/college/admission-cutoffs";
 import { splitByHeadings } from "@/lib/rich-text-sections";
 import { DEFAULT_TAB_ICON } from "@/lib/tab-icons";
 import { Chip } from "@/components/ui/chip";
-import { videoEmbedUrl } from "@/lib/college-content";
 import { faqsOf, isRealPackage, longDate, lakhValue, overallScore, percentOf, rankingTable, shortFee, programmeTitle, cutoffLabel, cutoffProgramme } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
@@ -59,7 +58,6 @@ import {
   type College as CollegeBase,
   type CollegeDetail as College,
 } from "@/lib/api";
-import { mediaUrl } from "@/lib/media";
 import { emptyDoc, isRichTextEmpty, richTextToHtml } from "@/lib/rich-text";
 
 /**
@@ -856,69 +854,8 @@ function Gallery({ college }: { college: College }) {
     );
   }
 
-  return (
-    <>
-      {photos.length > 0 && (
-        <DetailCard title={`Photos (${photos.length})`}>
-          {/* The first frame runs two columns wide, so the eye has somewhere
-              to land instead of reading equal tiles left to right. */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {photos.map((image, i) => (
-              <figure
-                key={image.src}
-                className={`group relative overflow-hidden rounded-xl bg-bg-alt ${i === 0 ? "sm:col-span-2 sm:row-span-2" : ""
-                  }`}
-              >
-                <div className={`relative ${i === 0 ? "aspect-[16/10] h-full" : "aspect-[4/3]"}`}>
-                  <Image
-                    src={mediaUrl(image.src)}
-                    alt={image.alt}
-                    fill
-                    // An uploaded photo is served by the API on another origin, which the optimizer is not set up for.
-                    unoptimized={mediaUrl(image.src).startsWith("http")}
-                    sizes={i === 0 ? "(max-width: 640px) 100vw, 66vw" : "(max-width: 640px) 100vw, 33vw"}
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                </div>
-                {/* Always-on caption: a hover-only one is unreachable on touch. */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"
-                />
-                <figcaption className="absolute inset-x-0 bottom-0 p-3.5 text-sm font-semibold text-white">
-                  {image.name || image.alt}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </DetailCard>
-      )}
-
-      {videos.length > 0 && (
-        <DetailCard title={`Videos (${videos.length})`}>
-          {/* Lazy iframes: an eager one pulls the provider's player on every
-              page load, for content below the fold. */}
-          <div className="grid gap-6 sm:grid-cols-2">
-            {videos.map((video) => (
-              <figure key={`${video.provider}-${video.videoId}`}>
-                <div className="aspect-video overflow-hidden rounded-xl bg-bg-alt">
-                  <iframe
-                    src={videoEmbedUrl(video)}
-                    title={video.title}
-                    loading="lazy"
-                    allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                    className="h-full w-full"
-                  />
-                </div>
-                <figcaption className="mt-2.5 text-sm font-medium text-ink">{video.title}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </DetailCard>
-      )}
-    </>
-  );
+  // Each photo and video opens full size in a viewer, with Previous and Next through all of them.
+  return <GalleryViewer photos={photos} videos={videos} />;
 }
 
 async function Compare({ college }: { college: College }) {
