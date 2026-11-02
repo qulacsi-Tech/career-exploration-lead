@@ -3,6 +3,7 @@
 import { batchLabel } from "@/lib/batch";
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { BarChart3 } from "lucide-react";
 import type { CollegePools, CollegeRecord } from "@/lib/api";
 import { createCollege, deleteCollegeForever, setCollegeStatus } from "@/lib/admin-actions";
 import type { College, CollegeStatus, IndiaGeo } from "@/lib/api";
@@ -16,6 +17,7 @@ import { SeoAvailability } from "@/components/admin/seo-availability";
 import { StateCityFields } from "@/components/admin/state-city-fields";
 import { CategoryTicks, CourseTicks, type CoursePick } from "@/components/admin/college-editor/course-picker";
 import { CollegeRecordEditor } from "@/components/admin/college-editor/college-record-editor";
+import { CollegeAnalyticsModal } from "@/components/admin/college-analytics-modal";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { TextField, SelectField, Field, NameSlugFields } from "@/components/admin/admin-fields";
 import { feeRangeProblem, nameProblem, yearProblem } from "@/lib/college-rules";
@@ -38,6 +40,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
   const [acting, setActing] = useState<{ college: College; action: StatusAction } | null>(null);
   const [viewing, setViewing] = useState<College | null>(null);
   const [editing, setEditing] = useState<College | null>(null);
+  const [analysing, setAnalysing] = useState<College | null>(null);
   const [adding, setAdding] = useState(false);
   const [flash, showFlash] = useFlash();
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
@@ -253,6 +256,14 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
                       */}
                       <button
                         type="button"
+                        onClick={() => setAnalysing(college)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"
+                      >
+                        <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Analytics
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setEditing(college)}
                         className="rounded-lg border border-brand px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand-soft"
                       >
@@ -298,6 +309,8 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
           }}
         />
       )}
+      {/* Mounted only while open, so every opening reads the numbers fresh. */}
+      {analysing && <CollegeAnalyticsModal key={analysing.slug} slug={analysing.slug} name={analysing.name} onClose={() => setAnalysing(null)} />}
       <StatusConfirm
         acting={acting}
         onClose={() => setActing(null)}

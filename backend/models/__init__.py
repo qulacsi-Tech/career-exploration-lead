@@ -7,12 +7,12 @@ from models.course import Course  # noqa: F401
 from models.placement import Placement  # noqa: F401
 from models.recruiter import Recruiter  # noqa: F401
 from models.cutoff import Cutoff  # noqa: F401
-from models.review import Review  # noqa: F401
+from models.review import Review, ReviewVote  # noqa: F401
 from models.exam import Exam, ExamLevel  # noqa: F401
 from models.location import Location, LocationLabel, LocationLabelLink  # noqa: F401
 from models.article import Article  # noqa: F401
 from models.program import Program  # noqa: F401
-from models.lead import Lead, LeadReply, LeadType, LeadStatus  # noqa: F401
+from models.lead import Lead, LeadReply, LeadShare, LeadType, LeadStatus  # noqa: F401
 from models.newsletter import NewsletterSubscriber  # noqa: F401
 from models.course_catalogue import CourseCatalogue  # noqa: F401
 from models.specialisation import Specialisation  # noqa: F401
@@ -25,4 +25,5 @@ from models.home_field import HomeField  # noqa: F401
 from models.hero_item import HeroItem  # noqa: F401
 from models.tracking import Visitor, VisitSession, Event  # noqa: F401
 from models.notification import Notification  # noqa: F401
+from models.question import Question, QuestionHelpful  # noqa: F401
 from models.collab import ChangeRequest, MessageThread, ThreadMessage  # noqa: F401

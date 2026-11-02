@@ -29,6 +29,7 @@ export type AdminNavIcon =
   | "sections"
   | "leads"
   | "community"
+  | "exams"
   | "seo"
   | "settings";
 
@@ -52,43 +53,46 @@ export const adminNav: AdminNavSection[] = [
   // On its own: the first thing an admin opens, so it is not folded into a group.
   { id: "dashboard", label: "Dashboard", icon: "overview", single: true, items: [{ label: "Dashboard", href: "/admin", phase: 1 }] },
   {
-    // What visitors see and browse: the college listings, the groups of colleges, articles, the homepage
-    // and the header menu. The things edited most often come first.
-    id: "listings",
-    label: "Listings & Pages",
+    // Colleges and the ways they are grouped and ordered. A collection owns a URL, and a ranking list
+    // orders colleges, so both sit with the colleges themselves.
+    id: "colleges",
+    label: "Colleges",
     icon: "sections",
     items: [
-      { label: "Colleges", href: "/admin/colleges", phase: 1 },
-      /*
-        A collection owns a URL, so it sits with the listings rather than inside the Homepage screen
-        (it was the "College bands" tab there, which only made sense while a band was the only thing a
-        group of colleges could be).
-      */
+      { label: "All Colleges", href: "/admin/colleges", phase: 1 },
       { label: "Collections", href: "/admin/collections", phase: 1 },
-      { label: "Articles", href: "/admin/articles", phase: 1 },
-      { label: "Homepage", href: "/admin/sections/homepage", phase: 1 },
-      // The header's "Top Ranked Colleges" menu: which categories and links show, their names and SEO.
-      { label: "Navigation", href: "/admin/sections/navigation", phase: 1 },
-      // The words and the picture on the log in and sign up pages.
-      { label: "Login & Signup", href: "/admin/auth-pages", phase: 1 },
+      { label: "Rankings", href: "/admin/rankings", phase: 1 },
     ],
   },
   {
-    // The reference data the listings are built from: what colleges are described with, the entrance
-    // exams, the ranking lists, and the online offerings colleges have entered.
-    id: "content",
-    label: "Content",
+    // What a college teaches: the degree list its form picks from, and the online offerings colleges entered.
+    id: "courses",
+    label: "Courses",
     icon: "content",
     items: [
       // Categories, Courses and Specialisations: the three lists the college form picks from.
       { label: "Catalogue", href: "/admin/catalogue", phase: 1 },
-      { label: "Exams", href: "/admin/exams", phase: 1 },
-      { label: "Rankings", href: "/admin/rankings", phase: 1 },
       // The online courses colleges entered on their own records, to switch on or off. Not the degree list (Catalogue).
       { label: "Online Programmes", href: "/admin/programs", phase: 1 },
       // Switched off for now; the pages are kept.
       // { label: "Study Abroad", href: "/admin/study-abroad", phase: 1 },
       // { label: "Location Page", href: "/admin/sections/location", phase: 1 },
+    ],
+  },
+  // On its own: entrance exams are not part of a college or a course, so they get no group.
+  { id: "exams", label: "Exams", icon: "exams", single: true, items: [{ label: "Exams", href: "/admin/exams", phase: 1 }] },
+  {
+    // What visitors read and navigate by: the homepage, the header menu, news and the sign in pages.
+    id: "website",
+    label: "Website",
+    icon: "seo",
+    items: [
+      { label: "Homepage", href: "/admin/sections/homepage", phase: 1 },
+      // The header's "Top Ranked Colleges" menu: which categories and links show, their names and SEO.
+      { label: "Navigation", href: "/admin/sections/navigation", phase: 1 },
+      { label: "News", href: "/admin/news", phase: 1 },
+      // The words and the picture on the log in and sign up pages.
+      { label: "Login & Signup", href: "/admin/auth-pages", phase: 1 },
     ],
   },
   {
@@ -101,10 +105,11 @@ export const adminNav: AdminNavSection[] = [
     ],
   },
   {
-    id: "overview",
-    label: "Overview",
+    id: "activity",
+    label: "Activity",
     icon: "community",
     items: [
+      { label: "Questions", href: "/admin/questions", phase: 1 },
       { label: "Approvals", href: "/admin/approvals", phase: 1 },
       { label: "Messages", href: "/admin/messages", phase: 1 },
       { label: "Notifications", href: "/admin/notifications", phase: 1 },
@@ -142,6 +147,7 @@ export const collegeAdminNav: AdminNavSection[] = [
     icon: "content",
     items: [
       { label: "College record", href: "/admin/college", phase: 1 },
+      { label: "Questions", href: "/admin/questions", phase: 1 },
       { label: "My requests", href: "/admin/requests", phase: 1 },
       { label: "Messages", href: "/admin/messages", phase: 1 },
     ],

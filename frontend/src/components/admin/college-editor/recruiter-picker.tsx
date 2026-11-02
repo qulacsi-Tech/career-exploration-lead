@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImageUp, Plus, Search, X } from "lucide-react";
+import { Check, ChevronDown, ImageUp, Plus, Search, X } from "lucide-react";
 import { createRecruiter, loadRecruiters, updateRecruiter } from "@/lib/admin-actions";
-import type { AdminRecruiter } from "@/lib/api";
+import type { AdminRecruiter, RecruiterDisplay } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
@@ -13,8 +13,8 @@ import { RecruiterChip } from "@/components/college/recruiter-chip";
   Top recruiters for one placement year, chosen from one shared pool of companies. Search the pool and click a
   company to add it; if it is not there, add it as a new company (a name already in the pool, whatever its case,
   is the same company and is not added twice). Each company can have a logo, kept once in the pool and shown
-  wherever any college lists it. A company with a logo shows the logo (and its name beside it, if that is ticked);
-  one without shows its name. A preview underneath shows the strip as the college page will draw it.
+  wherever any college lists it. A company with a logo shows the logo alone by default, or its name, or both, as
+  chosen on the logo dialog; one without a logo shows its name. A preview underneath shows the strip as the college page will draw it.
 */
 
 const keyOf = (name: string) => name.split(/\s+/).filter(Boolean).join(" ").toLowerCase();
@@ -86,7 +86,31 @@ export function RecruiterPicker({ id, label, value, onChange, max = 30 }: { id: 
     return () => document.removeEventListener("pointerdown", onDown);
   }, []);
 
-  const shown = value.map((name) => byKey.get(keyOf(name)) ?? { id: "", name, logo: "", showName: true });
+  // The little menu on a company's logo: which company it is open for, and a save in flight.
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [savingDisplay, setSavingDisplay] = useState(false);
+
+  useEffect(() => {
+    if (!menuFor) return;
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as Element).closest?.("[data-display-menu]")) setMenuFor(null);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [menuFor]);
+
+  /** Saves at once to the shared pool, like the logo dialog does, so it applies to every college that lists the company. */
+  const chooseDisplay = async (company: AdminRecruiter, display: RecruiterDisplay) => {
+    setSavingDisplay(true);
+    setError(null);
+    const result = await updateRecruiter(company.id, { display });
+    setSavingDisplay(false);
+    if ("error" in result) return setError(result.error);
+    remember((pool ?? []).map((r) => (r.id === result.id ? result : r)));
+    setMenuFor(null);
+  };
+
+  const shown = value.map((name) => byKey.get(keyOf(name)) ?? { id: "", name, logo: "", display: "logo" as const });
 
   return (
     <div>
@@ -97,12 +121,40 @@ export function RecruiterPicker({ id, label, value, onChange, max = 30 }: { id: 
       {shown.length > 0 && (
         <ul className="mt-1.5 flex flex-wrap gap-2">
           {shown.map((r) => (
-            <li key={r.name} className="flex items-center gap-1.5 rounded-full border border-line bg-bg-alt py-1 pl-3 pr-1.5 text-sm text-ink">
-              {r.logo && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={mediaUrl(r.logo)} alt="" className="h-5 w-auto max-w-[3.5rem] object-contain" />
+            <li key={r.name} data-display-menu className="relative flex items-center gap-1.5 rounded-full border border-line bg-bg-alt py-1 pl-3 pr-1.5 text-sm text-ink">
+              {r.logo && r.id ? (
+                /* Click the logo to choose what the college page shows: the logo, the name or both. */
+                <button type="button" onClick={() => setMenuFor(menuFor === r.id ? null : r.id)} aria-haspopup="menu" aria-expanded={menuFor === r.id} title="Choose what the college page shows" className="flex items-center gap-0.5 rounded-md px-0.5 transition hover:bg-brand-soft">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={mediaUrl(r.logo)} alt={`${r.name} logo`} className="h-5 w-auto max-w-[3.5rem] object-contain" />
+                  <ChevronDown className="h-3 w-3 text-ink-faint" aria-hidden="true" />
+                </button>
+              ) : (
+                r.logo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaUrl(r.logo)} alt="" className="h-5 w-auto max-w-[3.5rem] object-contain" />
+                )
               )}
               <span>{r.name}</span>
+              {menuFor === r.id && (
+                <div role="menu" className="absolute left-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-line bg-surface p-1 shadow-lg">
+                  <p className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold text-ink-faint">Show on the college page</p>
+                  {DISPLAYS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={r.display === option.value}
+                      disabled={savingDisplay}
+                      onClick={() => void chooseDisplay(r, option.value)}
+                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm transition hover:bg-bg-alt disabled:opacity-60 ${r.display === option.value ? "font-semibold text-brand-ink" : "text-ink-soft"}`}
+                    >
+                      {option.label}
+                      {r.display === option.value && <Check className="h-4 w-4 text-brand" aria-hidden="true" />}
+                    </button>
+                  ))}
+                </div>
+              )}
               {r.id && (
                 <button type="button" onClick={() => setEditing(r)} aria-label={`${r.logo ? "Change" : "Add"} the logo of ${r.name}`} title={r.logo ? "Change logo" : "Add a logo"} className={`grid h-6 w-6 place-items-center rounded-full transition hover:bg-brand-soft hover:text-brand ${r.logo ? "text-ink-faint" : "text-brand"}`}>
                   <ImageUp className="h-3.5 w-3.5" aria-hidden="true" />
@@ -168,7 +220,7 @@ export function RecruiterPicker({ id, label, value, onChange, max = 30 }: { id: 
         )}
       </div>
       {error && <p role="alert" className="mt-1.5 text-xs text-red-700">{error}</p>}
-      <p className="mt-1.5 text-xs text-ink-faint">Companies are shared by every college. Use the picture button on a company to add its logo once, for all of them.</p>
+      <p className="mt-1.5 text-xs text-ink-faint">Companies are shared by every college. Use the picture button on a company to add its logo once, for all of them. Click a company&apos;s logo to show the logo, the name or both on the college page.</p>
 
       {/* How the strip will look on the college page. */}
       {shown.length > 0 && (
@@ -176,8 +228,8 @@ export function RecruiterPicker({ id, label, value, onChange, max = 30 }: { id: 
           <p className="mb-2 text-[11px] font-semibold text-ink-faint">Preview: Top Recruiters on the college page</p>
           <ul className="flex flex-wrap gap-2">
             {shown.map((r) => (
-              <li key={r.name} className="whitespace-nowrap rounded-full border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink shadow-sm">
-                <RecruiterChip name={r.name} logo={r.logo} showName={r.showName} />
+              <li key={r.name} className="flex min-h-[3.75rem] items-center whitespace-nowrap rounded-full border border-line bg-surface px-5 py-2 text-sm font-semibold text-ink shadow-sm">
+                <RecruiterChip name={r.name} logo={r.logo} display={r.display} />
               </li>
             ))}
           </ul>
@@ -198,17 +250,23 @@ export function RecruiterPicker({ id, label, value, onChange, max = 30 }: { id: 
   );
 }
 
-/** A company's logo, and whether its name is shown beside it. Saved at once to the shared pool. */
+const DISPLAYS: { value: RecruiterDisplay; label: string }[] = [
+  { value: "logo", label: "Logo only" },
+  { value: "name", label: "Name only" },
+  { value: "both", label: "Logo and name" },
+];
+
+/** A company's logo, and whether the logo, the name or both are shown. Saved at once to the shared pool. */
 function LogoDialog({ company, onClose, onSaved }: { company: AdminRecruiter; onClose: () => void; onSaved: (row: AdminRecruiter) => void }) {
   const [logo, setLogo] = useState(company.logo);
-  const [showName, setShowName] = useState(company.showName);
+  const [display, setDisplay] = useState<RecruiterDisplay>(company.display);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
     setSaving(true);
     setError(null);
-    const result = await updateRecruiter(company.id, { logo, showName });
+    const result = await updateRecruiter(company.id, { logo, display });
     setSaving(false);
     if ("error" in result) return setError(result.error);
     onSaved(result);
@@ -244,18 +302,22 @@ function LogoDialog({ company, onClose, onSaved }: { company: AdminRecruiter; on
           <ImageUploadField kind="recruiter_logo" value={logo} onChange={setLogo} fallbackNote="No logo: the company's name is shown." />
         </div>
         {logo && (
-          <label className="flex items-start gap-2 text-sm text-ink">
-            <input type="checkbox" checked={showName} onChange={(e) => setShowName(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]" />
-            <span>
-              Show the name beside the logo
-              <span className="block text-xs text-ink-faint">Unticked, only the logo is shown.</span>
-            </span>
-          </label>
+          <fieldset>
+            <legend className="text-xs font-semibold text-ink">Show on the college page</legend>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {DISPLAYS.map((option) => (
+                <label key={option.value} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${display === option.value ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-line text-ink-soft hover:border-brand"}`}>
+                  <input type="radio" name="recruiter-display" checked={display === option.value} onChange={() => setDisplay(option.value)} className="h-4 w-4 accent-[var(--color-brand)]" />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         )}
         <div className="rounded-xl border border-line bg-bg-alt p-4">
           <p className="mb-2 text-[11px] font-semibold text-ink-faint">Preview</p>
           <span className="inline-block whitespace-nowrap rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold text-ink shadow-sm">
-            <RecruiterChip name={company.name} logo={logo} showName={showName} />
+            <RecruiterChip name={company.name} logo={logo} display={display} />
           </span>
         </div>
       </div>

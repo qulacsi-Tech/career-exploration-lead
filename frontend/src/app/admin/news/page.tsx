@@ -1,0 +1,33 @@
+import { adminGetFields, adminGetLocationPicker, adminGetNews } from "@/lib/api";
+import { withAdminToken } from "@/lib/admin-session";
+import { AdminPageHeader } from "@/components/admin/admin-section";
+import { NewsManager } from "@/components/admin/news-manager";
+import { ListingSlotsButton } from "@/components/admin/listing-slots-modal";
+
+/*
+  Server component: every article, and which ones the homepage news spread pins.
+
+  The same manager as Sections > Homepage > Articles, so the list, the editor dialog and the
+  pinning behave the same on both screens. This one is for working on the articles themselves;
+  the homepage tab also has the heading words for the news block.
+*/
+export default async function AdminNewsPage() {
+  const [news, fields, picker] = await withAdminToken((token) =>
+    Promise.all([adminGetNews(token), adminGetFields(token), adminGetLocationPicker(token)]),
+  );
+  return (
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="News"
+        description="Every news story on the site: write, publish or unpublish, edit and delete. Pinning decides which ones the homepage news shows."
+        actions={
+          <>
+            <ListingSlotsButton page="articles" label="News list: banners & ads" />
+            <ListingSlotsButton page="article" label="Story page: banners & ads" />
+          </>
+        }
+      />
+      <NewsManager news={news} categories={fields.map((f) => f.name)} picker={picker} />
+    </div>
+  );
+}

@@ -48,6 +48,11 @@ class College(Base):
     about = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="published", server_default="published", index=True)
     is_featured = Column(Boolean, nullable=False, default=False, index=True)
+    # The other two listing badges, ticked in the admin like is_featured.
+    is_top_rated = Column(Boolean, nullable=False, default=False, server_default="false")
+    # Paid to receive leads: the platform team can share leads with it (routers/admin_lead_sharing.py).
+    is_sponsored = Column(Boolean, nullable=False, default=False, server_default="false")
+    is_most_viewed = Column(Boolean, nullable=False, default=False, server_default="false")
     view_count = Column(Integer, nullable=False, default=0)
     # Card and hero photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).
     image = Column(String(200), nullable=False, default="", server_default="")

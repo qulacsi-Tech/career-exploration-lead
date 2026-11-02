@@ -16,12 +16,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict, field_validator
-from sqlalchemy import distinct, func, select, update
+from sqlalchemy import distinct, func, or_, select, update
 from sqlalchemy.orm import selectinload
 
 from core.dependencies import CollegeAdminScope, DbSession
 from core.exceptions import NotFoundError, ValidationError
-from models.lead import Lead, LeadStatus
+from models.lead import Lead, LeadShare, LeadStatus
 from models.tracking import Event
 from repositories.lead import LeadRepository
 from routers import admin_college_record
@@ -34,8 +34,9 @@ WINDOW_DAYS = 14
 
 
 def _mine(scope: dict):
-    """The leads this college admin may see."""
-    return (Lead.college_slug == scope["college_slug"], Lead.consent.is_(True))
+    """The leads this college admin may see: those for their college, and any the platform team shared with it (a sponsored college)."""
+    shared = select(LeadShare.lead_id).where(LeadShare.college_id == scope["college_id"])
+    return (or_(Lead.college_slug == scope["college_slug"], Lead.id.in_(shared)), Lead.consent.is_(True))
 
 
 @router.get("/me", response_model=SuccessResponse[dict])
@@ -130,7 +131,7 @@ async def college_leads(
     pages = max(1, -(-total // limit))
     return ListResponse[dict](
         meta=Meta(total=total, page=page, limit=limit, pages=pages),
-        data=[lead_json(lead, for_college=True) for lead in leads],
+        data=[{**lead_json(lead, for_college=True), "shared": lead.college_slug != scope["college_slug"]} for lead in leads],
     )
 
 

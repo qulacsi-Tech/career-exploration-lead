@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
@@ -22,12 +22,17 @@ import {
   MessageSquareText,
   Newspaper,
   Star,
+  ThumbsDown,
   ThumbsUp,
   TrendingUp,
   Trophy,
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { ActionButton, useCollegeActions } from "@/components/college/college-actions";
+import { loadReviewVotes, voteReview } from "@/lib/college-engage-actions";
+import { SESSION_CHANGED_EVENT } from "@/lib/user-session-cookie";
+import type { ReviewVotes as ReviewVoteState } from "@/lib/api";
 import { scoreTone } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
 
@@ -187,7 +192,20 @@ export function ScoreBadge({
 }
 
 /** Badge beside a label — the left column of the snapshot card. */
-export function ScoreRow({ score, label, note }: { score: number; label: string; note?: string }) {
+export function ScoreRow({ score, label, note }: { score: number | null; label: string; note?: string }) {
+  if (score === null) {
+    return (
+      <div className="flex items-center gap-4">
+        <span className="inline-flex h-11 w-11 shrink-0 animate-pulse items-center justify-center rounded-full bg-line-soft font-display text-xs font-bold text-ink-faint">
+          N/A
+        </span>
+        <div>
+          <p className="text-lg text-ink-soft">{label}</p>
+          <p className="text-xs text-ink-faint">No data available</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex items-center gap-4">
       <ScoreBadge score={score} />
@@ -223,15 +241,18 @@ export function Stars({ score, className = "h-4 w-4" }: { score: number; classNa
  * ------------------------------------------------------------------ */
 
 /** Icon, bold value, quiet label — the right column of the snapshot card. */
-export function IconStat({ icon, value, label }: { icon: IconName; value: ReactNode; label: string }) {
+export function IconStat({ icon, value, label }: { icon: IconName; value: ReactNode | null; label: string }) {
   const Icon = ICONS[icon];
+  const empty = value === null;
   return (
     <div className="flex items-start gap-4">
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+      <span
+        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${empty ? "animate-pulse bg-line-soft text-ink-faint" : "bg-brand-soft text-brand"}`}
+      >
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <div className="min-w-0">
-        <p className="font-display text-lg font-bold leading-tight text-ink">{value}</p>
+        <p className={`font-display text-lg font-bold leading-tight ${empty ? "text-ink-faint" : "text-ink"}`}>{empty ? "No data available" : value}</p>
         <p className="mt-0.5 text-sm text-ink-soft">{label}</p>
       </div>
     </div>
@@ -532,6 +553,8 @@ export function FaqAccordion({ faqs }: { faqs: { question: string; answer: strin
  * ------------------------------------------------------------------ */
 
 export type ReviewSnippetItem = {
+  /** Present on a review stored in the database; without it there is nothing to like. */
+  id?: string;
   author: string;
   course: string;
   batch: string;
@@ -546,6 +569,85 @@ export type ReviewSnippetItem = {
  * a "Read more" that opens it in place — the overview shows the voice, not the
  * whole essay.
  */
+/** What the votes on a college's reviews are, fetched once for all of them and shared by every card. */
+const votesCache = new Map<string, Promise<Record<string, ReviewVoteState>>>();
+
+function votesFor(slug: string, fresh = false) {
+  if (fresh || !votesCache.has(slug)) votesCache.set(slug, loadReviewVotes(slug));
+  return votesCache.get(slug)!;
+}
+
+/**
+ * Like and dislike under a review, with the counts. Anyone can see the counts; to vote, a visitor has to sign in
+ * or register first (the dialog opens, and the vote is counted once they are in). The same button again takes a
+ * vote back, and the other one switches it.
+ */
+function ReviewVotes({ reviewId }: { reviewId?: string }) {
+  const actions = useCollegeActions();
+  const slug = actions?.slug;
+  const [votes, setVotes] = useState<ReviewVoteState>({ likes: 0, dislikes: 0, mine: null });
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  useEffect(() => {
+    if (!slug || !reviewId) return;
+    let alive = true;
+    const load = (fresh: boolean) => votesFor(slug, fresh).then((all) => alive && all[reviewId] && setVotes(all[reviewId]));
+    void load(false);
+    // Someone just signed in from a dialog on this page: their own choices are now known.
+    const onSession = () => void load(true);
+    window.addEventListener(SESSION_CHANGED_EVENT, onSession);
+    return () => {
+      alive = false;
+      window.removeEventListener(SESSION_CHANGED_EVENT, onSession);
+    };
+  }, [slug, reviewId]);
+
+  if (!reviewId || !actions) return null;
+
+  const cast = (vote: "like" | "dislike") =>
+    start(async () => {
+      setError(null);
+      const result = await voteReview(reviewId, vote);
+      if (result.ok) {
+        setVotes({ likes: result.likes, dislikes: result.dislikes, mine: result.mine });
+        votesCache.delete(actions.slug);
+      } else setError(result.message);
+    });
+
+  const choose = (vote: "like" | "dislike") => void actions.ensureSignedIn("Sign in to like or dislike this review. It takes a minute.", () => cast(vote));
+
+  const button = (vote: "like" | "dislike", Icon: typeof ThumbsUp, count: number) => {
+    const on = votes.mine === vote;
+    return (
+      <button
+        type="button"
+        onClick={() => choose(vote)}
+        disabled={pending}
+        aria-pressed={on}
+        aria-label={`${vote === "like" ? "Like" : "Dislike"} this review (${count})`}
+        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-semibold transition disabled:opacity-60 ${
+          on ? "border-brand bg-brand-soft text-brand-ink" : "border-line text-ink-soft hover:border-brand hover:text-brand"
+        }`}
+      >
+        <Icon className={`h-4 w-4 ${on ? "fill-brand text-brand" : ""}`} />
+        {vote === "like" ? "Like" : "Dislike"}
+        {count > 0 ? ` (${count})` : ""}
+      </button>
+    );
+  };
+
+  return (
+    <div className="mt-4 border-t border-line pt-4 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        {button("like", ThumbsUp, votes.likes)}
+        {button("dislike", ThumbsDown, votes.dislikes)}
+        {error && <span role="alert" className="text-red-700">{error}</span>}
+      </div>
+    </div>
+  );
+}
+
 export function ReviewSnippet({ review, clamp = false }: { review: ReviewSnippetItem; clamp?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const clamped = clamp && !expanded;
@@ -598,15 +700,7 @@ export function ReviewSnippet({ review, clamp = false }: { review: ReviewSnippet
         <span>{review.date}</span>
       </p>
 
-      <div className="mt-4 flex items-center justify-between border-t border-line pt-4 text-xs">
-        <span className="inline-flex items-center gap-1.5 font-semibold text-ink-soft">
-          <ThumbsUp className="h-4 w-4" />
-          Helpful
-        </span>
-        <Link href="/enquiry" data-track="cta_enquiry" className="text-ink-faint hover:text-brand">
-          Report
-        </Link>
-      </div>
+      <ReviewVotes reviewId={review.id} />
     </article>
   );
 }
@@ -632,13 +726,13 @@ export function EmptyCard({ icon, title, body }: { icon: IconName; title: string
         </span>
         <h3 className="mt-5 font-display text-xl font-bold text-ink">{title}</h3>
         <p className="mt-2 max-w-md text-base leading-relaxed text-ink-soft">{body}</p>
-        <Link
-          href="/enquiry" data-track="cta_enquiry"
+        <ActionButton
+          kind="counsellor"
           className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark"
         >
           Ask a counsellor
           <ArrowRight className="h-4 w-4" />
-        </Link>
+        </ActionButton>
       </div>
     </DetailCard>
   );

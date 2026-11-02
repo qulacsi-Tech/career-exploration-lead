@@ -6,6 +6,9 @@ from sqlalchemy import select
 from pydantic import BaseModel, ConfigDict
 
 from core.dependencies import CurrentUserId, DbSession
+from models.college import College
+from models.question import Question
+from models.review import Review
 from models.tracking import Event
 from repositories.lead import LeadRepository
 from repositories.user import UserRepository
@@ -41,7 +44,7 @@ class MyLeadSchema(BaseModel):
 
 
 class ActivitySchema(BaseModel):
-    kind: str  # account_created | login | enquiry_sent | reply_received | page_view | click
+    kind: str  # account_created | login | enquiry_sent | reply_received | question_asked | question_answered | review_submitted | page_view | click
     title: str
     detail: Optional[str] = None
     href: Optional[str] = None
@@ -152,6 +155,23 @@ async def my_activity(user_id: CurrentUserId, db: DbSession):
                 href="/account/replies",
                 at=_iso(reply.created_at),
             ))
+
+    # Their questions and the answers to them, and the reviews they wrote.
+    asked = (await db.execute(
+        select(Question, College.name).join(College, College.id == Question.college_id).where(Question.user_id == user_id)
+    )).all()
+    for q, college_name in asked:
+        label = "concern" if q.kind == "concern" else "question"
+        items.append(ActivitySchema(kind="question_asked", title=f"Asked {college_name} a {label}", detail=q.body, href="/account/questions", at=_iso(q.created_at)))
+        if q.answer and q.answered_at:
+            who = "Career Experts" if q.answered_by_role == "experts" else "The college"
+            items.append(ActivitySchema(kind="question_answered", title=f"{who} answered your {label}", detail=q.answer, href="/account/questions", at=_iso(q.answered_at)))
+    written = (await db.execute(
+        select(Review, College.name).join(College, College.id == Review.college_id).where(Review.user_id == user_id)
+    )).all()
+    for r, college_name in written:
+        status = "live on the site" if r.is_approved else "waiting for approval"
+        items.append(ActivitySchema(kind="review_submitted", title=f"Reviewed {college_name}", detail=f"{r.rating:.1f} / 5 · {status}", href="/account/reviews", at=_iso(r.created_at)))
 
     # What they looked at and clicked, once they agreed to analytics. Pages about a college, exam or
     # programme and clicks on tracked buttons only; ordinary navigation would drown the rest.

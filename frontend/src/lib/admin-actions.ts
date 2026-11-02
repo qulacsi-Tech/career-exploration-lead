@@ -66,8 +66,20 @@ import {
   getCollegeOrNull,
   adminListRecruiters,
   adminCreateRecruiter,
+  adminAnswerQuestion,
+  adminCollegeAnalytics,
+  adminLeadSharing,
+  adminShareableLeads,
+  adminShareLeads,
+  adminUnshareLead,
+  type LeadSharing,
+  type ShareableLeads,
+  type ShareLeadsFilters,
+  type CollegeAnalytics,
+  adminPublishQuestion,
   adminUpdateRecruiter,
   type AdminRecruiter,
+  type RecruiterDisplay,
   adminPutSiteChrome,
   type SiteChrome,
   adminPutAuthPage,
@@ -1697,8 +1709,8 @@ export async function createRecruiter(name: string): Promise<(AdminRecruiter & {
   }
 }
 
-/** Sets a company's logo, or whether its name is shown beside the logo. Applies to every college that lists it. */
-export async function updateRecruiter(id: string, patch: { logo?: string; showName?: boolean }): Promise<AdminRecruiter | { error: string }> {
+/** Sets a company's logo, or whether the logo, the name or both are shown. Applies to every college that lists it. */
+export async function updateRecruiter(id: string, patch: { logo?: string; display?: RecruiterDisplay }): Promise<AdminRecruiter | { error: string }> {
   const token = await requireAdminToken();
   try {
     const row = await adminUpdateRecruiter(token, id, patch);
@@ -1735,5 +1747,100 @@ export async function loadCollegeNews(slug: string) {
   } catch (err) {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
     return { error: "Could not load this college's articles. Try again." };
+  }
+}
+
+/** What a person on the team gets back from the question actions: done, or the reason it was not. */
+export type QuestionActionResult = { ok: true } | { error: string };
+
+/**
+ * Saves the answer to a student's question. A platform admin's answer is credited to Career Experts and a college
+ * admin's to the college; whoever answers last replaces the earlier answer.
+ */
+export async function answerQuestion(id: string, answer: string): Promise<QuestionActionResult> {
+  const token = await requireAdminToken();
+  try {
+    await adminAnswerQuestion(token, id, answer);
+    revalidatePath("/admin/questions");
+    revalidatePath("/college", "layout");
+    revalidatePath("/account", "layout");
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not save the answer. Try again." };
+  }
+}
+
+/** Approves a question and its answer for the college's Q&A page, or takes it down. The platform team only. */
+export async function setQuestionPublished(id: string, published: boolean): Promise<QuestionActionResult> {
+  const token = await requireAdminToken();
+  try {
+    await adminPublishQuestion(token, id, published);
+    revalidatePath("/admin/questions");
+    revalidatePath("/college", "layout");
+    revalidatePath("/account", "layout");
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not update the Q&A page. Try again." };
+  }
+}
+
+/** One college's visits, leads, questions and reviews, for the Analytics dialog on the college list. */
+export async function loadCollegeAnalytics(slug: string): Promise<CollegeAnalytics | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminCollegeAnalytics(token, slug);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: "Could not load this college's analytics. Try again." };
+  }
+}
+
+/** What a sponsored college has been given, and whether it is sponsored at all. */
+export async function loadLeadSharing(slug: string): Promise<LeadSharing | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminLeadSharing(token, slug);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not load the shared leads. Try again." };
+  }
+}
+
+/** The leads that could still be shared with the college, with the filters the dialog offers. */
+export async function loadShareableLeads(slug: string, filters: ShareLeadsFilters): Promise<ShareableLeads | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    return await adminShareableLeads(token, slug, filters);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not load the leads. Try again." };
+  }
+}
+
+/** Shares leads with the sponsored college: the ones picked, or the newest N that match the filters. */
+export async function shareLeads(slug: string, body: ShareLeadsFilters & { leadIds?: string[]; count?: number }): Promise<{ shared: number; skipped: number } | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    const result = await adminShareLeads(token, slug, body);
+    revalidatePath("/admin/leads");
+    return result;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not share the leads. Try again." };
+  }
+}
+
+/** Takes a shared lead back from the college. */
+export async function unshareLead(slug: string, leadId: string): Promise<{ ok: true } | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    await adminUnshareLead(token, slug, leadId);
+    revalidatePath("/admin/leads");
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not take the lead back. Try again." };
   }
 }

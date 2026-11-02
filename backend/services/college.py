@@ -49,6 +49,8 @@ def _to_list_schema(college: College) -> CollegeListSchema:
         placementHighest=(placement.highest_package or "") if placement else "",
         status=college.status or "published",
         isFeatured=bool(college.is_featured),
+        isTopRated=bool(college.is_top_rated),
+        isMostViewed=bool(college.is_most_viewed),
         priority=college.priority,
         viewCount=college.view_count or 0,
         logo=page_record.get("logo") or "",
@@ -196,6 +198,7 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
         tabHeaders={slug: header.model_dump() for slug, header in extra.tabHeaders.items()},
         reviews=[
             ReviewSchema(
+                id=str(r.id),
                 author=r.author_name,
                 course=r.course,
                 batch=r.batch,
@@ -240,16 +243,16 @@ class CollegeService:
     async def _attach_rankings(self, rows: List[CollegeListSchema]) -> None:
         """Every ranking list each listed college is in, plus its headline rank when no list already says it."""
         found = (await self.repo.db.execute(
-            select(RankingList.name, RankingList.year, RankingList.slug, RankingList.authority, RankingList.stream, RankingEntry.college_slug, RankingEntry.rank, RankingEntry.score)
+            select(RankingList.name, RankingList.year, RankingList.slug, RankingList.authority, RankingList.stream, RankingList.short_name, RankingEntry.college_slug, RankingEntry.rank, RankingEntry.score)
             .join(RankingEntry, RankingEntry.ranking_list_id == RankingList.id)
             .where(RankingEntry.college_slug.in_([r.slug for r in rows]))
             .order_by(RankingEntry.rank, RankingList.year.desc())
         )).all()
         by_slug: dict[str, list[RankingRow]] = {}
-        for name, year, list_slug, authority, stream, slug, rank, score in found:
+        for name, year, list_slug, authority, stream, short_name, slug, rank, score in found:
             label = name if str(year) in name else f"{name} {year}"
             by_slug.setdefault(slug, []).append(
-                RankingRow(name=label, rank=rank, slug=list_slug, authority=authority or "", stream=stream or "", score=score or "")
+                RankingRow(name=label, rank=rank, slug=list_slug, authority=authority or "", stream=stream or "", score=score or "", shortName=short_name or "")
             )
         for row in rows:
             held = by_slug.get(row.slug, [])
@@ -278,7 +281,7 @@ class CollegeService:
         by_key = {r.name_key: r for r in rows}
         for p in placements:
             p.recruiters = [
-                RecruiterBrief(name=n, logo=(by_key[k].logo if (k := " ".join(n.split()).lower()) in by_key else "") or "", showName=bool(by_key[k].show_name) if k in by_key else True)
+                RecruiterBrief(name=n, logo=(by_key[k].logo if (k := " ".join(n.split()).lower()) in by_key else "") or "", display=(by_key[k].display_mode or "logo") if k in by_key else "logo")
                 for n in p.topRecruiters
             ]
 

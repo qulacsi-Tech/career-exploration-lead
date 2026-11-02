@@ -108,11 +108,11 @@ export function NewsManager({ news, categories, picker }: { news: AdminNews; cat
 
   return (
     <AdminSection
-      title="Manage articles"
-      description={`Every article, and which ${MAX_PINNED} the homepage news shows. With none pinned, it shows the ${MAX_PINNED} most recent published articles.`}
+      title="Manage news"
+      description={`Every news story, and which ${MAX_PINNED} the homepage news shows. With none pinned, it shows the ${MAX_PINNED} most recent published stories.`}
       actions={
         <button type="button" onClick={() => setModal(null)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
-          Add article
+          Add news
         </button>
       }
     >
@@ -121,20 +121,20 @@ export function NewsManager({ news, categories, picker }: { news: AdminNews; cat
           <p className="text-sm font-semibold text-ink">
             {pinned.length === 0 ? "None pinned: the homepage shows the most recent" : `${pinned.length} of ${MAX_PINNED} pinned to the homepage`}
           </p>
-          <label className="sr-only" htmlFor="news-search">Search articles</label>
+          <label className="sr-only" htmlFor="news-search">Search news</label>
           <input id="news-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title or category" className="w-full max-w-xs rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none" />
         </div>
         <StatusMessage flash={flash} />
 
         {articles.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">No articles yet. Click Add article to write the first one.</p>
+          <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">No news yet. Click Add news to write the first story.</p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-line">
             <table className="w-full min-w-[860px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line bg-bg-alt text-left text-xs text-ink-faint">
                   <th scope="col" className="px-3 py-2.5 font-semibold">Pinned</th>
-                  <th scope="col" className="px-3 py-2.5 font-semibold">Article</th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">Story</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Category</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Date</th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">Status</th>
@@ -207,7 +207,7 @@ export function NewsManager({ news, categories, picker }: { news: AdminNews; cat
                 })}
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-ink-soft">No article matches &ldquo;{query}&rdquo;.</td>
+                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-ink-soft">No news matches &ldquo;{query}&rdquo;.</td>
                   </tr>
                 )}
               </tbody>

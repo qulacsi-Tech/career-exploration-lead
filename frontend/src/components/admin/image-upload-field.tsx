@@ -79,11 +79,11 @@ const SLOTS: Record<Slot["kind"], Slot> = {
   logo: {
     kind: "logo",
     label: "Logo",
-    recommended: [400, 400],
+    recommended: [480, 480],
     minimum: [120, 120],
     previewClass: "aspect-square max-w-[160px]",
     notes: [
-      "Shown in a small square tile on the college page, over the banner. A square picture with some space around the mark works best.",
+      "Shown in a square tile on the college page, over the banner: about 112 by 112 px on a computer (80 by 80 on a phone), with the picture itself about 100 px inside it. A square picture with some space around the mark works best.",
       "Without a logo the tile shows the college's initials.",
     ],
   },

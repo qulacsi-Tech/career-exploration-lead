@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { loadGeneratedFaqs } from "@/lib/admin-actions";
 import type { FacultyMember, RecordReview } from "@/lib/api";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
@@ -78,6 +79,12 @@ export function ReviewsTab({ record, update }: EditorProps) {
                   <input type="checkbox" checked={r.approved} onChange={(e) => patch(i, { approved: e.target.checked })} className="h-4 w-4 accent-[var(--color-brand)]" />
                   Approved: show on the site
                 </label>
+                {r.id && (
+                  <span className="ml-auto inline-flex items-center gap-3 text-sm text-ink-soft" title="Students who liked or disliked this review">
+                    <span className="inline-flex items-center gap-1"><ThumbsUp className="h-4 w-4" /> {r.likes ?? 0}</span>
+                    <span className="inline-flex items-center gap-1"><ThumbsDown className="h-4 w-4" /> {r.dislikes ?? 0}</span>
+                  </span>
+                )}
               </div>
             </Row>
           ))}

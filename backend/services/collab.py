@@ -16,8 +16,8 @@ from models.collab import ChangeRequest, MessageThread, ThreadMessage
 from models.user import User, UserRole
 from services.notify import notify, platform_admin_ids, resolve_group
 
-# Parts of a record that are not the college admin's to propose changes to.
-STRIPPED_KEYS = ("slug", "updatedAt")
+# Parts of a record that are not the college admin's to propose changes to. The listing badges are the platform's.
+STRIPPED_KEYS = ("slug", "updatedAt", "isFeatured", "isTopRated", "isMostViewed", "isSponsored")
 
 
 def _iso(value: Optional[datetime]) -> Optional[str]:

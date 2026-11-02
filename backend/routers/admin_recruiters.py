@@ -2,11 +2,12 @@
 
 A company is one row however many colleges list it. A new one is added from the editor when a search finds
 nothing; adding a name that already exists (ignoring case and spacing) returns the existing company instead of a
-second one. Colleges keep the company's name on their placement record; the logo and whether to show the name
-beside it live here, so changing a logo changes it everywhere.
+second one. Colleges keep the company's name on their placement record; the logo and whether to show the logo, the
+name or both live here, so changing a logo changes it everywhere.
 """
 
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -26,7 +27,7 @@ def recruiter_key(name: str) -> str:
 
 
 def _out(r: Recruiter) -> dict:
-    return {"id": str(r.id), "name": r.name, "logo": r.logo or "", "showName": bool(r.show_name)}
+    return {"id": str(r.id), "name": r.name, "logo": r.logo or "", "display": r.display_mode or "logo"}
 
 
 class CreateBody(BaseModel):
@@ -41,7 +42,7 @@ class CreateBody(BaseModel):
 
 class UpdateBody(BaseModel):
     logo: str | None = Field(default=None, max_length=200)
-    showName: bool | None = None
+    display: Literal["logo", "name", "both"] | None = None
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("logo")
@@ -97,7 +98,7 @@ async def update_recruiter(recruiter_id: str, _admin: AdminPayload, db: DbSessio
         raise NotFoundError("Recruiter")
     if data.logo is not None:
         row.logo = data.logo
-    if data.showName is not None:
-        row.show_name = data.showName
+    if data.display is not None:
+        row.display_mode = data.display
     await db.commit()
     return SuccessResponse[dict](data=_out(row))

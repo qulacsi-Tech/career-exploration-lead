@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSessionUser, signOut, type SessionUser } from "@/lib/auth-actions";
-import { USER_HINT_COOKIE } from "@/lib/user-session-cookie";
+import { SESSION_CHANGED_EVENT, USER_HINT_COOKIE } from "@/lib/user-session-cookie";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { canUsePanel } from "@/lib/roles";
 
@@ -42,6 +42,15 @@ export function HeaderAccount() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // A dialog on the page signed someone in: show them in the header straight away, with no reload.
+  useEffect(() => {
+    const refresh = () => {
+      getSessionUser().then(setUser).catch(() => undefined);
+    };
+    window.addEventListener(SESSION_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(SESSION_CHANGED_EVENT, refresh);
   }, []);
 
   useEffect(() => {

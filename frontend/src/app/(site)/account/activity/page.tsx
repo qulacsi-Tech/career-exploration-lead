@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Eye, LogIn, MessageSquare, MousePointerClick, Send, UserPlus, type LucideIcon } from "lucide-react";
+import { CheckCheck, Eye, HelpCircle, LogIn, MessageSquare, MousePointerClick, Send, Star, UserPlus, type LucideIcon } from "lucide-react";
 import { getMyActivity, type MyActivity } from "@/lib/api";
 import { getUserToken } from "@/lib/user-session";
 import { formatFull } from "@/lib/lead-labels";
@@ -15,6 +15,9 @@ const ICON: Record<MyActivity["kind"], LucideIcon> = {
   login: LogIn,
   enquiry_sent: Send,
   reply_received: MessageSquare,
+  question_asked: HelpCircle,
+  question_answered: CheckCheck,
+  review_submitted: Star,
   page_view: Eye,
   click: MousePointerClick,
 };

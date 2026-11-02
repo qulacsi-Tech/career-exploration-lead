@@ -30,7 +30,7 @@ import type { RecruiterBrief } from "@/lib/api";
  */
 export function RecruiterMarquee({ recruiters: given }: { recruiters: (string | RecruiterBrief)[] }) {
   // Names alone, or companies with their logos (the college page passes the second).
-  const recruiters: RecruiterBrief[] = given.map((r) => (typeof r === "string" ? { name: r, logo: "", showName: true } : r));
+  const recruiters: RecruiterBrief[] = given.map((r) => (typeof r === "string" ? { name: r, logo: "", display: "logo" } : r));
   /* Pace by content: a longer roster would otherwise sprint to cover twice the
      distance in the same time. ~4.5s per name reads at a glance. */
   /* A handful of names makes a row narrower than the card, and the loop then slides past
@@ -49,7 +49,7 @@ export function RecruiterMarquee({ recruiters: given }: { recruiters: (string | 
         <li
           key={`${company.name}-${i}`}
           aria-hidden={i >= recruiters.length || undefined}
-          className="whitespace-nowrap rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold text-ink shadow-sm transition-colors hover:border-brand/40 hover:text-brand"
+          className="flex min-h-[3.75rem] items-center whitespace-nowrap rounded-full border border-line bg-surface px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-colors hover:border-brand/40 hover:text-brand"
         >
           <RecruiterChip {...company} />
         </li>

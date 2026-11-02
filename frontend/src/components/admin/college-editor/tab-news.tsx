@@ -61,16 +61,16 @@ export function NewsTab({ record, update, slug, mode = "full" }: EditorProps) {
       {/* Notes written here before the news used articles stay editable; a college admin, who cannot reach the articles, keeps writing them here. */}
       {(mode !== "full" || articles.length > 0) && (
       <Card
-        title={mode === "full" ? "Older notes written here" : "Articles"}
-        description={mode === "full" ? "Short notes added to this college before its news used the site's article format. They still show on the News tab. New news is best added as an article above." : "The college's own news items, newest first on the News tab."}
-        actions={<AddButton onClick={() => setDetail({ articles: [{ title: "", date: "", author: "", summary: "", body: "" }, ...articles] })} disabled={articles.length >= 20}>Add an article</AddButton>}
+        title={mode === "full" ? "Older notes written here" : "News"}
+        description={mode === "full" ? "Short notes added to this college before its news used the site's news format. They still show on the News tab. New news is best added in the News card above." : "The college's own news items, newest first on the News tab."}
+        actions={<AddButton onClick={() => setDetail({ articles: [{ title: "", date: "", author: "", summary: "", body: "" }, ...articles] })} disabled={articles.length >= 20}>Add news</AddButton>}
       >
         {articles.length === 0 ? (
-          <EmptyNote>No articles.</EmptyNote>
+          <EmptyNote>No news.</EmptyNote>
         ) : (
           <ul className="space-y-3">
             {articles.map((a, i) => (
-              <Row key={i} title={a.title || `Article ${i + 1}`} index={i} count={articles.length} onRemove={() => setDetail({ articles: articles.filter((_, n) => n !== i) })}>
+              <Row key={i} title={a.title || `News ${i + 1}`} index={i} count={articles.length} onRemove={() => setDetail({ articles: articles.filter((_, n) => n !== i) })}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_12rem_minmax(0,1fr)]">
                   <TextInput id={`ar-${i}-title`} label="Title" required max={200} value={a.title} onChange={(v) => patchArticle(i, { title: v })} />
                   <IsoDate id={`ar-${i}-date`} label="Date" value={a.date} onChange={(v) => patchArticle(i, { date: v })} notFuture />

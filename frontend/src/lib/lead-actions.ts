@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { submitLead } from "@/lib/api";
 import { getUserToken } from "@/lib/user-session";
+import { emailProblem, nameProblem, phoneProblem, stripPhone } from "@/lib/field-rules";
 import { CONSENT_COOKIE, VISITOR_COOKIE } from "@/lib/analytics-cookies";
 
 export type EnquiryErrors = Partial<Record<"name" | "phone" | "email" | "stream" | "consent", string>>;
@@ -11,8 +12,6 @@ export type EnquiryResult =
   | { ok: true; reference: string }
   | { ok: false; errors?: EnquiryErrors; message?: string };
 
-const PHONE = /^(?:\+?91)?[6-9]\d{9}$|^\+?\d{8,15}$/;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /** In-memory flood control, per IP. It resets on redeploy; a shared limiter belongs in the API. */
 const RATE_LIMIT = { windowMs: 60_000, max: 5 };
@@ -51,13 +50,14 @@ export async function submitEnquiry(input: Record<string, unknown>): Promise<Enq
   if (rateLimited(ip)) return { ok: false, message: "Too many requests. Try again in a minute." };
 
   const errors: EnquiryErrors = {};
-  if (str("name").length < 2) errors.name = "Enter your full name.";
-  const phone = str("phone").replace(/[\s\-()]/g, "");
-  if (!phone) errors.phone = "Enter a mobile number we can call you on.";
-  else if (!PHONE.test(phone)) errors.phone = "That does not look like a valid number.";
+  const nameError = nameProblem(str("name"));
+  if (nameError) errors.name = nameError;
+  const phone = stripPhone(str("phone"));
+  const phoneError = phoneProblem(phone, true);
+  if (phoneError) errors.phone = phoneError;
   const email = str("email");
-  if (!email) errors.email = "Enter an email address.";
-  else if (!EMAIL.test(email)) errors.email = "That does not look like a valid email.";
+  const emailError = emailProblem(email);
+  if (emailError) errors.email = emailError;
   if (!str("stream")) errors.stream = "Pick the stream you are interested in.";
   if (input.consent !== true) errors.consent = "We need your consent before a counsellor can call.";
   if (Object.keys(errors).length > 0) return { ok: false, errors };

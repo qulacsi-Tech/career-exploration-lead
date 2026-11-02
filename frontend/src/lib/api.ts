@@ -164,6 +164,7 @@ export type Placement = {
 /** `category` is the caste category (General, OBC...). `course` and `specialisation` are empty for every programme. */
 export type Cutoff = { exam: string; category: string; course?: string; specialisation?: string; score: string };
 export type Review = {
+  id?: string;
   author: string;
   course: string;
   batch: string;
@@ -186,7 +187,7 @@ export type College = {
   placementAverage?: string;
   placementHighest?: string;
   /** Every ranking list it is in (the list's name with its year, and its place), best first. */
-  allRankings?: { name: string; rank: number; slug?: string; authority?: string; stream?: string; score?: string }[];
+  allRankings?: { name: string; rank: number; slug?: string; authority?: string; stream?: string; score?: string; shortName?: string }[];
   city: string;
   state: string;
   /** Only published colleges reach the public site; the admin list also carries drafts and archived ones. */
@@ -215,8 +216,10 @@ export type College = {
   /** The college's logo and its brochure link. Empty: none uploaded. */
   logo?: string;
   brochureUrl?: string;
-  /** Featured in the admin, and how many times the page has been viewed. */
+  /** The listing badges, ticked in the admin, and how many times the page has been viewed. */
   isFeatured?: boolean;
+  isTopRated?: boolean;
+  isMostViewed?: boolean;
   viewCount?: number;
 };
 
@@ -777,6 +780,222 @@ export async function subscribeNewsletter(
 }
 
 /** Register a new user account. */
+// ── Student questions, answers and reviews ──────────────────────────────────
+
+/** Who answered: the college, or the platform's Career Experts. */
+export type AnswerRole = "college" | "experts";
+
+/** A question approved for a college's Q&A page. */
+export type CollegeQuestion = {
+  id: string;
+  kind: "question" | "concern";
+  question: string;
+  askedBy: string;
+  askedAt: string | null;
+  answer: string;
+  answeredBy: string | null;
+  answeredByRole: AnswerRole | null;
+  answeredAt: string | null;
+  helpful: number;
+  helpfulByMe: boolean;
+};
+
+/** One of the signed-in student's own questions. */
+export type MyQuestion = {
+  id: string;
+  kind: "question" | "concern";
+  question: string;
+  collegeName: string;
+  collegeSlug: string;
+  createdAt: string | null;
+  published: boolean;
+  answer: string | null;
+  answeredBy: string | null;
+  answeredByRole: AnswerRole | null;
+  answeredAt: string | null;
+};
+
+/** One of the signed-in student's own reviews. */
+export type MyReview = {
+  id: string;
+  collegeName: string;
+  collegeSlug: string;
+  course: string;
+  batch: string;
+  rating: number;
+  ratingPlacements: number | null;
+  ratingFaculty: number | null;
+  ratingInfrastructure: number | null;
+  ratingCampusLife: number | null;
+  body: string;
+  approved: boolean;
+  createdAt: string | null;
+};
+
+/** A question as the team sees it, to answer and to approve for display. */
+export type AdminQuestion = MyQuestion & {
+  askedBy: string;
+  askedByEmail: string;
+  answeredByName: string | null;
+  helpful: number;
+};
+
+async function apiJson<T>(res: Response): Promise<T> {
+  const json = await res.json().catch(() => null);
+  if (!json?.success) {
+    const message = json?.error?.message ?? (Array.isArray(json?.detail) ? json.detail[0]?.msg : undefined) ?? "That did not work";
+    throw new ApiError(res.status, message);
+  }
+  return json.data as T;
+}
+
+const bearer = (token?: string | null): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
+
+/** A signed-in student asks a question or raises a concern about a college. */
+export async function postQuestion(slug: string, data: { kind: "question" | "concern"; message: string }, token: string): Promise<{ id: string; message: string }> {
+  const res = await fetch(`${API_BASE}/colleges/${encodeURIComponent(slug)}/questions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...bearer(token) },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+  return apiJson(res);
+}
+
+/** The questions approved for a college's Q&A page. With a token, each says whether that student found it helpful. */
+export async function getCollegeQuestions(slug: string, token?: string | null): Promise<CollegeQuestion[]> {
+  const res = await fetch(`${API_BASE}/colleges/${encodeURIComponent(slug)}/questions`, { headers: bearer(token), cache: "no-store" });
+  return apiJson(res);
+}
+
+export async function postHelpful(id: string, token: string): Promise<{ helpful: number; helpfulByMe: boolean }> {
+  const res = await fetch(`${API_BASE}/questions/${encodeURIComponent(id)}/helpful`, { method: "POST", headers: bearer(token), cache: "no-store" });
+  return apiJson(res);
+}
+
+/** A lead as the lead-sharing dialog lists it. */
+export type SharedLeadItem = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  stream: string;
+  type: string;
+  status: string;
+  message: string;
+  programName: string;
+  collegeSlug: string;
+  createdAt: string | null;
+  sharedAt: string | null;
+};
+export type LeadSharing = { sponsored: boolean; shared: SharedLeadItem[] };
+export type ShareableLeads = { total: number; items: SharedLeadItem[]; options: { streams: string[]; cities: string[]; types: string[] } };
+export type ShareLeadsFilters = { stream?: string; city?: string; type?: string; q?: string };
+
+export async function adminLeadSharing(token: string, slug: string) {
+  return adminRequest<LeadSharing>(token, "GET", `/admin/colleges/${encodeURIComponent(slug)}/lead-sharing`);
+}
+
+export async function adminShareableLeads(token: string, slug: string, filters: ShareLeadsFilters) {
+  const qs = new URLSearchParams(Object.entries(filters).filter(([, v]) => v) as [string, string][]);
+  return adminRequest<ShareableLeads>(token, "GET", `/admin/colleges/${encodeURIComponent(slug)}/shareable-leads${qs.toString() ? `?${qs}` : ""}`);
+}
+
+export async function adminShareLeads(token: string, slug: string, body: ShareLeadsFilters & { leadIds?: string[]; count?: number }) {
+  return adminRequest<{ shared: number; skipped: number }>(token, "POST", `/admin/colleges/${encodeURIComponent(slug)}/share-leads`, body);
+}
+
+export async function adminUnshareLead(token: string, slug: string, leadId: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/colleges/${encodeURIComponent(slug)}/shared-leads/${encodeURIComponent(leadId)}`);
+}
+
+/** One college's activity, for the Analytics dialog on the admin college list. */
+export type CollegeAnalytics = {
+  college: { name: string; slug: string };
+  summary: {
+    views30: number;
+    visitors30: number;
+    leads: number;
+    leadsNew: number;
+    leads30: number;
+    questions: number;
+    questionsWaiting: number;
+    questionsShown: number;
+    reviews: number;
+    reviewsPending: number;
+    rating: number | null;
+  };
+  daily: { date: string; views: number }[];
+  leads: { id: string; name: string; phone: string; email: string; type: string; status: string; message: string; programName: string; city: string; repeats: number; createdAt: string | null }[];
+  questions: { id: string; kind: "question" | "concern"; question: string; askedBy: string; answer: string; answeredBy: string; published: boolean; helpful: number; createdAt: string | null }[];
+  reviews: { id: string; author: string; course: string; batch: string; rating: number; body: string; approved: boolean; likes: number; dislikes: number; createdAt: string | null }[];
+};
+
+export async function adminCollegeAnalytics(token: string, slug: string) {
+  return adminRequest<CollegeAnalytics>(token, "GET", `/admin/colleges/${encodeURIComponent(slug)}/analytics`);
+}
+
+/** Likes and dislikes on a review, and what the signed-in student chose. */
+export type ReviewVotes = { likes: number; dislikes: number; mine: "like" | "dislike" | null };
+
+export async function getReviewVotes(slug: string, token?: string | null): Promise<Record<string, ReviewVotes>> {
+  const res = await fetch(`${API_BASE}/colleges/${encodeURIComponent(slug)}/review-votes`, { headers: bearer(token), cache: "no-store" });
+  return apiJson(res);
+}
+
+export async function postReviewVote(id: string, vote: "like" | "dislike", token: string): Promise<ReviewVotes> {
+  const res = await fetch(`${API_BASE}/reviews/${encodeURIComponent(id)}/vote`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...bearer(token) },
+    body: JSON.stringify({ vote }),
+    cache: "no-store",
+  });
+  return apiJson(res);
+}
+
+export const getMyQuestions = (token: string) => meGet<MyQuestion[]>(token, "/me/questions");
+export const getMyReviews = (token: string) => meGet<MyReview[]>(token, "/me/reviews");
+
+export async function adminListQuestions(token: string) {
+  return adminRequest<{ role: AnswerRole; items: AdminQuestion[] }>(token, "GET", "/admin/questions");
+}
+
+export async function adminAnswerQuestion(token: string, id: string, answer: string) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/questions/${encodeURIComponent(id)}/answer`, { answer });
+}
+
+export async function adminPublishQuestion(token: string, id: string, published: boolean) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/questions/${encodeURIComponent(id)}/publish`, { published });
+}
+
+/** What a student sends when reviewing a college. The overall rating is worked out from the four by the API. */
+export type ReviewInput = {
+  course: string;
+  batch: string;
+  ratingPlacements: number;
+  ratingFaculty: number;
+  ratingInfrastructure: number;
+  ratingCampusLife: number;
+  body: string;
+};
+
+/** Saves a signed-in student's review of a college. It waits for the team to approve it. */
+export async function postReview(slug: string, data: ReviewInput, token: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/colleges/${encodeURIComponent(slug)}/reviews`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+  const json = await res.json().catch(() => null);
+  if (!json?.success) {
+    const message = json?.error?.message ?? (Array.isArray(json?.detail) ? json.detail[0]?.msg : undefined) ?? "Could not save the review";
+    throw new ApiError(res.status, message);
+  }
+  return json.data;
+}
+
 export async function registerUser(data: {
   name: string;
   email: string;
@@ -986,7 +1205,7 @@ export type MyLead = {
 };
 
 export type MyActivity = {
-  kind: "account_created" | "login" | "enquiry_sent" | "reply_received" | "page_view" | "click";
+  kind: "account_created" | "login" | "enquiry_sent" | "reply_received" | "question_asked" | "question_answered" | "review_submitted" | "page_view" | "click";
   title: string;
   detail: string | null;
   href: string | null;
@@ -2009,6 +2228,8 @@ export type AdminLead = {
   sourceUrl: string | null;
   consent: boolean;
   repeatCount: number;
+  /** For a college admin: true when the platform team shared this lead with the college (a sponsored college). */
+  shared?: boolean;
   replies: { id: string; authorName: string; body: string; createdAt: string | null }[];
 };
 
@@ -2418,6 +2639,9 @@ export type RecordReview = {
   ratingInfrastructure: number | null;
   ratingCampusLife: number | null;
   approved: boolean;
+  /** Read-only, from the editor's load: how many students liked or disliked it. */
+  likes?: number;
+  dislikes?: number;
 };
 export type RecordDetail = {
   shortName: string;
@@ -2458,6 +2682,12 @@ export type CollegeRecord = {
   tags: string[];
   approvals: string[];
   image: string;
+  /** Paid to receive leads. Platform admin only. */
+  isSponsored?: boolean;
+  /** The listing badges. Platform admin only: a college admin's proposals never carry them. */
+  isFeatured?: boolean;
+  isTopRated?: boolean;
+  isMostViewed?: boolean;
   courses: RecordCourse[];
   placements: RecordPlacement[];
   cutoffs: RecordCutoff[];
@@ -2925,10 +3155,13 @@ export async function adminPutSiteChrome(token: string, value: SiteChrome) {
 // ── Recruiters ──────────────────────────────────────────────────────────────
 
 /** A recruiting company as a page shows it. */
-export type RecruiterBrief = { name: string; logo: string; showName: boolean };
+export type RecruiterBrief = { name: string; logo: string; display: RecruiterDisplay };
+
+/** What a company with a logo shows: the logo alone (the default), the name alone, or both. With no logo, the name. */
+export type RecruiterDisplay = "logo" | "name" | "both";
 
 /** A company in the shared pool the college editor searches. */
-export type AdminRecruiter = { id: string; name: string; logo: string; showName: boolean };
+export type AdminRecruiter = { id: string; name: string; logo: string; display: RecruiterDisplay };
 
 export async function adminListRecruiters(token: string): Promise<AdminRecruiter[]> {
   return adminRequest<AdminRecruiter[]>(token, "GET", "/admin/recruiters");
@@ -2938,6 +3171,6 @@ export async function adminCreateRecruiter(token: string, name: string) {
   return adminRequest<AdminRecruiter & { existing: boolean }>(token, "POST", "/admin/recruiters", { name });
 }
 
-export async function adminUpdateRecruiter(token: string, id: string, patch: { logo?: string; showName?: boolean }) {
+export async function adminUpdateRecruiter(token: string, id: string, patch: { logo?: string; display?: RecruiterDisplay }) {
   return adminRequest<AdminRecruiter>(token, "PATCH", `/admin/recruiters/${encodeURIComponent(id)}`, patch);
 }

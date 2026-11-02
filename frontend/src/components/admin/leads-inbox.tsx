@@ -306,7 +306,7 @@ export function LeadsInbox({
                         <td className="py-3 pr-3 font-medium text-ink">{lead.name}</td>
                         <td className="py-3 pr-3 tabular-nums text-ink-soft">{lead.phone}</td>
                         <td className="py-3 pr-3 text-ink-soft">{lead.email ?? "—"}</td>
-                        <td className="py-3 pr-3 text-ink-soft">{lead.collegeSlug ?? "—"}</td>
+                        <td className="py-3 pr-3 text-ink-soft">{lead.collegeSlug ?? "—"}{lead.shared && <span className="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">Shared with you</span>}</td>
                         <td className="py-3 pr-3 text-ink-soft">{LEAD_TYPE_LABEL[lead.type] ?? lead.type}</td>
                         <td className="py-3 pr-3 text-ink-faint">{formatReceived(lead.createdAt)}</td>
                         <td className="py-3 pr-3">

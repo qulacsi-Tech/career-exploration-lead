@@ -61,10 +61,11 @@ function Radio({ on }: { on: boolean }) {
   );
 }
 
-function OptionLink({ href, on, onPick, children }: { href: string; on: boolean; onPick?: () => void; children: React.ReactNode }) {
+function OptionLink({ href, on, onPick, title, children }: { href: string; on: boolean; onPick?: () => void; title?: string; children: React.ReactNode }) {
   return (
     <Link
       href={href}
+      title={title}
       scroll={false}
       onClick={onPick}
       className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition ${
@@ -145,6 +146,7 @@ export function ListingFilters({
                     href={hrefFor(group, opt)}
                     on={isOn(opt, (k) => search.get(k))}
                     onPick={() => setPicked(hrefFor(group, opt))}
+                    title={opt.detail}
                   >
                     {opt.label}
                   </OptionLink>

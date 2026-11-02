@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { signInWithGoogle } from "@/lib/auth-actions";
+import { signInWithGoogle, signInWithGoogleInline, type InlineAuthResult } from "@/lib/auth-actions";
 
 type GoogleCredentialResponse = { credential?: string };
 
@@ -85,7 +85,19 @@ function loadGoogleScript(): Promise<void> {
  * Until NEXT_PUBLIC_GOOGLE_CLIENT_ID is set it shows a dev-only note (nothing in
  * production), so there is never a button that does nothing.
  */
-export function GoogleSignInButton({ next, text = "continue_with", dividerText = "or" }: { next?: string; text?: "continue_with" | "signup_with" | "signin_with"; /** The word in the line above the button (an empty string leaves the line out). */ dividerText?: string }) {
+export function GoogleSignInButton({
+  next,
+  text = "continue_with",
+  dividerText = "or",
+  onSignedIn,
+}: {
+  next?: string;
+  text?: "continue_with" | "signup_with" | "signin_with";
+  /** The word in the line above the button (an empty string leaves the line out). */
+  dividerText?: string;
+  /** In a dialog: stay on the page and hand the result here, instead of redirecting after sign-in. */
+  onSignedIn?: (result: Extract<InlineAuthResult, { ok: true }>) => void;
+}) {
   const holder = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -103,6 +115,12 @@ export function GoogleSignInButton({ next, text = "continue_with", dividerText =
             setError(null);
             logGoogleClaims(credential);
             startTransition(async () => {
+              if (onSignedIn) {
+                const inline = await signInWithGoogleInline(credential ?? "");
+                if (inline.ok) onSignedIn(inline);
+                else setError(inline.error ?? "Google sign-in failed. Please try again.");
+                return;
+              }
               const result = await signInWithGoogle(credential ?? "", next);
               // On success the action redirects, so a result here is always a failure.
               if (result?.error) {
@@ -118,7 +136,7 @@ export function GoogleSignInButton({ next, text = "continue_with", dividerText =
           text,
           shape: "rectangular",
           logo_alignment: "center",
-          width: Math.min(holder.current.offsetWidth || 320, 400),
+          width: Math.min(holder.current.parentElement?.clientWidth || holder.current.offsetWidth || 320, 400),
         });
       })
       .catch(() => !cancelled && setError("Google sign-in is unavailable right now. Use your email and password instead."));
@@ -126,7 +144,7 @@ export function GoogleSignInButton({ next, text = "continue_with", dividerText =
     return () => {
       cancelled = true;
     };
-  }, [next, text]);
+  }, [next, text, onSignedIn]);
 
   if (!CLIENT_ID) {
     // Production hides the button rather than show one that does nothing. In
@@ -150,7 +168,7 @@ export function GoogleSignInButton({ next, text = "continue_with", dividerText =
         </div>
       )}
 
-      <div className={`${dividerText ? "mt-3" : ""} flex min-h-[44px] justify-center ${pending ? "pointer-events-none opacity-60" : ""}`}>
+      <div className={`${dividerText ? "mt-3" : ""} flex min-h-[44px] justify-center overflow-hidden ${pending ? "pointer-events-none opacity-60" : ""}`}>
         <div ref={holder} className="w-full" />
       </div>
 

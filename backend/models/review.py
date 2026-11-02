@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, SmallInteger, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -36,3 +36,14 @@ class Review(Base):
 
     college = relationship("College", back_populates="reviews")
     user = relationship("User", back_populates="reviews")
+
+
+class ReviewVote(Base):
+    """One signed-in student's like (1) or dislike (-1) of a review. One vote per student per review."""
+
+    __tablename__ = "review_votes"
+
+    review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    vote = Column(SmallInteger, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

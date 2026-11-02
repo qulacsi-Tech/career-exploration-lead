@@ -7,3 +7,6 @@
  * imports next/headers, which only server code can.
  */
 export const USER_HINT_COOKIE = "tcp_signed_in";
+
+/** Dispatched on `window` when someone signs in or registers without a page load, so the header can show who they are at once. */
+export const SESSION_CHANGED_EVENT = "tcp:session-changed";

@@ -22,6 +22,8 @@ class Recruiter(Base):
     name_key = Column(String(120), nullable=False, unique=True, index=True)
     # /api/uploads/... Empty: no logo, the name is shown.
     logo = Column(String(200), nullable=False, default="", server_default="")
-    # With a logo: show the name beside it (true) or the logo alone (false).
+    # Superseded by display_mode, kept so the migration history still holds.
     show_name = Column(Boolean, nullable=False, default=True, server_default="true")
+    # With a logo: "logo" (alone, the default), "name" (the name only) or "both". Without one the name is shown.
+    display_mode = Column(String(10), nullable=False, default="logo", server_default="logo")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

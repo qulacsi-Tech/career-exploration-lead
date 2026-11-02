@@ -22,6 +22,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { ActionButton } from "@/components/college/college-actions";
 import { CountUp, Reveal, RevealGroup, RevealItem } from "@/components/college/reveal";
 import { TAB_ICONS } from "@/lib/tab-icons";
 
@@ -458,13 +459,13 @@ export function QaList({ faqs, collegeName }: { faqs: { question: string; answer
             <p className="font-display text-lg font-bold">Have a question that is not answered here?</p>
             <p className="mt-1 text-sm text-white/80">Ask us and a counsellor will get back to you.</p>
           </div>
-          <Link
-            href="/enquiry" data-track="cta_enquiry"
+          <ActionButton
+            kind="query"
             className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-brand transition hover:-translate-y-0.5 hover:shadow-lg"
           >
             <MessageSquarePlus className="h-4 w-4" />
             Ask a question
-          </Link>
+          </ActionButton>
         </div>
       </Reveal>
     </div>

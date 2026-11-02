@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Download, Eye, Flame, GraduationCap, IndianRupee, MapPin, Medal, Sparkles, Star, TrendingUp, Trophy } from "lucide-react";
+import { ArrowRight, Award, BookOpen, Download, Eye, Flame, GraduationCap, IndianRupee, MapPin, Medal, Sparkles, Star, Trophy } from "lucide-react";
 import type { College } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
@@ -63,7 +63,19 @@ function packages(college: College): { average: string; highest: string } | null
  * order the admin set: the priority for the link opened, then each college's own priority. It is the big
  * number on the left. Without it (the course and exam pages) the left block shows the college's own ranking.
  */
-export function ListingCard({ college, badges, position }: { college: College; badges?: CardBadges; position?: number }) {
+export function ListingCard({
+  college,
+  badges,
+  position,
+  selectedRanking,
+}: {
+  college: College;
+  badges?: CardBadges;
+  position?: number;
+  /** Slug of the ranking list the page is filtered by. That ranking takes the left block; the college's other rankings go top right. */
+  selectedRanking?: string;
+}) {
+  const picked = selectedRanking ? college.allRankings?.find((r) => r.slug === selectedRanking) : undefined;
   const exams = college.examsAccepted;
   const extra = Math.max(0, exams.length - 2);
   const courses = college.courses ?? [];
@@ -83,15 +95,23 @@ export function ListingCard({ college, badges, position }: { college: College; b
 
       {/* On a narrow screen the rank is a corner tag; the big block below takes over from @lg. */}
       <span className="absolute right-0 top-0 rounded-bl-xl bg-brand-ink px-3 py-1 text-xs font-bold tracking-wide text-white @lg:hidden">
-        {nirf ? `NIRF #${nirf}` : position ? `#${position}` : rank ? `#${rank} ${college.ranking.authority}` : "Unranked"}
+        {picked ? `#${picked.rank} ${picked.shortName || picked.name}` : nirf ? `NIRF #${nirf}` : position ? `#${position}` : rank ? `#${rank} ${college.ranking.authority}` : "Unranked"}
       </span>
 
       <div className="flex gap-4 p-5 pl-6 @2xl:gap-5">
         <div
           className="hidden w-[6.25rem] shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-brand-soft to-bg-alt px-2 py-3 text-center @lg:flex"
-          aria-label={position ? `Number ${position} in this list` : rank ? `Ranked ${rank} by ${college.ranking.authority}` : "Not ranked yet"}
+          aria-label={picked ? `Ranked ${picked.rank} in ${picked.name}` : position ? `Number ${position} in this list` : rank ? `Ranked ${rank} by ${college.ranking.authority}` : "Not ranked yet"}
         >
-          {position ? (
+          {picked ? (
+            <>
+              <Medal className="h-5 w-5 text-gold transition group-hover:-rotate-12" aria-hidden="true" />
+              <span className="mt-0.5 bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-5xl font-extrabold leading-none tracking-tight text-transparent transition duration-300 group-hover:scale-110">
+                {picked.rank}
+              </span>
+              <span title={picked.name} className="mt-1.5 line-clamp-3 text-[11px] font-bold leading-tight text-brand">{picked.shortName || picked.name}</span>
+            </>
+          ) : position ? (
             <>
               <Medal className="h-5 w-5 text-gold transition group-hover:-rotate-12" aria-hidden="true" />
               <span className="mt-0.5 bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-5xl font-extrabold leading-none tracking-tight text-transparent transition duration-300 group-hover:scale-110">
@@ -175,37 +195,16 @@ export function ListingCard({ college, badges, position }: { college: College; b
                 </div>
               )}
 
-              {/* On a narrow card the package figures sit under the title, where there is no empty corner to fill. */}
-              {money && (
-                <p className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft @2xl:hidden">
-                  {money.average && <span>Avg package <strong className="font-display text-sm font-extrabold text-ink">{money.average}</strong></span>}
-                  {money.highest && <span>Highest <strong className="font-display text-sm font-extrabold text-ink">{money.highest}</strong></span>}
-                </p>
-              )}
             </div>
 
-            {/* The empty corner of a wide card: where the college stands, and what its students are paid. */}
+            {/* The empty corner of a wide card: the rankings other than the one the page is showing. */}
             <div className="hidden shrink-0 flex-col items-end gap-2.5 @2xl:flex">
-              <RankingsChip college={college} />
-              {/* A quiet pair of figures: pale sky tint, light type, so it informs without competing with the tiles below. */}
-              <dl className="flex items-stretch divide-x divide-sky-100 overflow-hidden rounded-xl border border-sky-100 bg-sky-50/60 text-right">
-                <div className="px-3.5 py-1.5">
-                  <dt className="flex items-center justify-end gap-1 text-[10px] font-medium text-sky-700/70">
-                    <TrendingUp className="h-3 w-3" aria-hidden="true" />
-                    Avg package
-                  </dt>
-                  <dd className={`font-display text-base font-semibold leading-tight ${money?.average ? "text-slate-700" : "text-slate-400"}`}>{money?.average || "—"}</dd>
-                </div>
-                <div className="px-3.5 py-1.5">
-                  <dt className="text-[10px] font-medium text-sky-700/70">Highest</dt>
-                  <dd className={`font-display text-base font-semibold leading-tight ${money?.highest ? "text-slate-700" : "text-slate-400"}`}>{money?.highest || "—"}</dd>
-                </div>
-              </dl>
+              <RankingsChip college={college} exclude={picked?.slug} />
             </div>
           </div>
 
           <div className="mt-5 flex flex-col gap-4 @2xl:flex-row @2xl:items-stretch @2xl:justify-between">
-            <dl className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 @md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)_minmax(0,1fr)]">
+            <dl className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 @md:grid-cols-2 @3xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)]">
               <Fact
                 icon={BookOpen}
                 label="Courses"
@@ -270,6 +269,9 @@ export function ListingCard({ college, badges, position }: { college: College; b
                   "Not listed yet"
                 )}
               </Fact>
+              <Fact icon={Award} label="Highest package" small>
+                <span className="whitespace-nowrap">{money?.highest || "—"}</span>
+              </Fact>
             </dl>
 
             <div className="flex shrink-0 gap-2 @2xl:w-40 @2xl:flex-col">
@@ -312,16 +314,20 @@ export function ListingCard({ college, badges, position }: { college: College; b
  * The rankings the college holds, kept small: the best one in a pill, with how many more there are, and
  * every one of them in a bubble while the pill is hovered or focused.
  */
-function RankingsChip({ college }: { college: College }) {
-  const all = college.allRankings ?? [];
+function RankingsChip({ college, exclude }: { college: College; exclude?: string }) {
+  const all = (college.allRankings ?? []).filter((r) => !exclude || r.slug !== exclude);
   if (all.length === 0) return null;
   const [best, ...rest] = all;
   return (
     <div tabIndex={0} aria-label={`${all.length} ${all.length === 1 ? "ranking" : "rankings"}`} className="group/ranks relative outline-none">
-      <span className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-full bg-brand-ink px-3 py-1 text-xs font-bold text-white shadow-sm">
+      <span className="inline-flex max-w-[20rem] items-center gap-2 rounded-full bg-brand-ink py-1 pl-3 pr-1.5 text-xs font-bold text-white shadow-sm">
         <Trophy className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden="true" />
-        <span className="truncate">
-          {best.name} #{best.rank}
+        <span className="truncate" title={best.name}>
+          {best.shortName || best.name}
+        </span>
+        {/* The rank sits in a gold square that is taller than the pill, so it stands out of it like a raised tile (negative margins keep the pill's own height). */}
+        <span className="relative z-10 -my-2.5 grid h-9 min-w-9 shrink-0 -translate-y-0.5 place-items-center rounded-lg bg-gradient-to-b from-amber-300 to-gold px-2 font-display text-lg font-extrabold leading-none text-brand-ink shadow-[0_6px_10px_-2px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-3px_0_rgba(0,0,0,0.18)] ring-1 ring-white/40 transition duration-300 group-hover/ranks:-translate-y-1 group-hover/ranks:scale-105">
+          #{best.rank}
         </span>
         {rest.length > 0 && <span className="shrink-0 rounded-full bg-white/20 px-1.5 text-[10px]">+{rest.length}</span>}
       </span>
@@ -377,7 +383,7 @@ function Fact({
   return (
     <div
       tabIndex={popup ? 0 : undefined}
-      className="group/fact relative flex min-w-0 items-center gap-3 rounded-xl bg-bg-alt px-3.5 py-3 outline-none transition group-hover:bg-brand-soft/50"
+      className="group/fact relative flex min-w-0 items-center gap-2.5 rounded-xl bg-bg-alt px-3 py-2.5 outline-none transition group-hover:bg-brand-soft/50"
     >
       {popup && (
         <div
@@ -387,8 +393,8 @@ function Fact({
           {popup}
         </div>
       )}
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-surface text-brand shadow-sm transition duration-300 group-hover:scale-105">
-        <Icon className="h-5 w-5" aria-hidden="true" />
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface text-brand shadow-sm transition duration-300 group-hover:scale-105">
+        <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
         {inline ? (
@@ -399,7 +405,7 @@ function Fact({
         ) : (
           <>
             <dt className="text-xs font-bold text-ink-faint">{label}</dt>
-            <dd className={`mt-0.5 font-display font-extrabold leading-tight text-ink ${small ? "text-lg" : "text-xl"}`}>{children}</dd>
+            <dd className={`mt-0.5 font-display font-extrabold leading-tight text-ink ${small ? "text-base" : "text-xl"}`}>{children}</dd>
           </>
         )}
         {hint && <p className="mt-0.5 text-xs italic text-brand-ink/70">{hint}</p>}

@@ -7,6 +7,7 @@ import { RangeField } from "@/components/admin/range-field";
 import { CategoryTicks } from "@/components/admin/college-editor/course-picker";
 import { Card, ChipInput, Labelled, NumberInput, SelectInput, TextArea, TextInput, inputCls } from "@/components/admin/college-editor/shared";
 import { TAG_MAX_CHARS, YEAR_MIN } from "@/lib/college-rules";
+import { ShareLeadsModal } from "@/components/admin/share-leads-modal";
 
 export type EditorProps = {
   record: CollegeRecord;
@@ -20,9 +21,16 @@ export type EditorProps = {
 
 const YEAR = new Date().getFullYear();
 
+const BADGES = [
+  { key: "isFeatured", label: "Featured", hint: "Hand-picked by the team." },
+  { key: "isTopRated", label: "Top rated", hint: "Students rate it among the best." },
+  { key: "isMostViewed", label: "Most viewed", hint: "A page many visitors open." },
+] as const;
+
 /** College Info: who the college is, what the masthead shows, and its photos. */
-export function InfoTab({ record, update, pools, slug }: EditorProps) {
+export function InfoTab({ record, update, pools, slug, mode = "full" }: EditorProps) {
   const set = <K extends keyof CollegeRecord>(key: K, value: CollegeRecord[K]) => update((r) => ({ ...r, [key]: value }));
+  const [sharing, setSharing] = useState(false);
   const detail = (patch: Partial<CollegeRecord["detail"]>) => update((r) => ({ ...r, detail: { ...r.detail, ...patch } }));
 
   return (
@@ -55,6 +63,48 @@ export function InfoTab({ record, update, pools, slug }: EditorProps) {
             <ChipInput id="ci-approvals" label="Approvals" value={record.approvals} onChange={(v) => set("approvals", v)} suggestions={pools.approvals} max={20} maxChars={TAG_MAX_CHARS} hint={`Shown as chips: AICTE, NAAC A++, UGC. Up to ${TAG_MAX_CHARS} characters each.`} />
             <ChipInput id="ci-tags" label="Tags" value={record.tags} onChange={(v) => set("tags", v)} suggestions={pools.tags} max={12} maxChars={TAG_MAX_CHARS} hint={`Badges on the college's cards in lists. Up to ${TAG_MAX_CHARS} characters each.`} />
           </Card>
+
+          {mode === "full" && (
+            <Card title="Listing badges" description="The badges on this college's card in the college list, and the counts above the list. Tick the ones it should carry.">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {BADGES.map(({ key, label, hint }) => (
+                  <label key={key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-bg-alt px-4 py-3 transition hover:border-brand">
+                    <input
+                      type="checkbox"
+                      checked={!!record[key]}
+                      onChange={(e) => set(key, e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-ink">{label}</span>
+                      <span className="block text-xs text-ink-faint">{hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {mode === "full" && (
+            <Card title="Sponsorship" description="A sponsored college receives leads from the platform team, which you choose and share with it in bulk. Its admin sees them in their Leads inbox.">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-bg-alt px-4 py-3 transition hover:border-brand">
+                <input type="checkbox" checked={!!record.isSponsored} onChange={(e) => set("isSponsored", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]" />
+                <span>
+                  <span className="block text-sm font-semibold text-ink">Sponsored college</span>
+                  <span className="block text-xs text-ink-faint">Tick it and save the college, then share leads below.</span>
+                </span>
+              </label>
+              {record.isSponsored && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={() => setSharing(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
+                    Share leads with this college
+                  </button>
+                  <span className="text-xs text-ink-faint">Pick leads one by one or share the newest few, filtered by stream, city or type.</span>
+                </div>
+              )}
+              {sharing && <ShareLeadsModal slug={slug} name={record.name} onClose={() => setSharing(false)} />}
+            </Card>
+          )}
 
           <Card title="About and admissions" description="The overview text, the entrance exams accepted and the overall fee range.">
             <TextArea id="ci-about" label="About" rows={6} max={20000} value={record.about} onChange={(v) => set("about", v)} hint="Shown on the overview and used for the search snippet." />

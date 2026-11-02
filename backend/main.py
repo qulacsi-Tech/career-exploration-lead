@@ -16,7 +16,7 @@ from core.database import engine
 from core.exceptions import AppException
 from core.migrate import run_migrations
 from services.realtime import listen_forever
-from routers import health
+from routers import health, reviews, questions, admin_college_analytics, admin_lead_sharing
 from routers import colleges, exams, locations, articles, programs, leads, search, home, auth, me, geo, track, notifications
 from routers import courses, rankings, admin as admin_router, sitemap as sitemap_router, study_abroad, admin_study_abroad, collections, admin_dashboard, admin_analytics, admin_users, admin_college_admins, college_portal, college_requests, admin_requests, admin_catalogue, admin_rankings, admin_collections, admin_homepage, admin_content, admin_home_copy, listing_header, listing_slots, admin_programs, practice, admin_uploads, admin_locations, admin_fields, admin_band_colleges, admin_hero, admin_practice, admin_college_record, nav_menu, admin_priority, home_priority, auth_page, site_chrome, admin_recruiters
 
@@ -128,6 +128,10 @@ app.include_router(locations.router, prefix=V1)
 app.include_router(articles.router, prefix=V1)
 app.include_router(programs.router, prefix=V1)
 app.include_router(leads.router, prefix=V1)
+app.include_router(reviews.router, prefix=V1)
+app.include_router(questions.router, prefix=V1)
+app.include_router(admin_college_analytics.router, prefix=V1)
+app.include_router(admin_lead_sharing.router, prefix=V1)
 app.include_router(me.router, prefix=V1)
 app.include_router(geo.router, prefix=V1)
 app.include_router(track.router, prefix=V1)

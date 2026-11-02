@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowUpRight, CheckCircle2, Loader2 } from "lucide-react";
 import { submitEnquiry } from "@/lib/lead-actions";
+import { emailProblem, nameProblem, phoneProblem } from "@/lib/field-rules";
 import { getSessionUser } from "@/lib/auth-actions";
 import { USER_HINT_COOKIE } from "@/lib/user-session-cookie";
 import { EVENTS, track } from "@/lib/analytics";
@@ -103,17 +104,14 @@ export function EnquiryForm({
     const next: FieldErrors = {};
     const str = (key: string) => String(data[key] ?? "").trim();
 
-    if (str("name").length < 2) next.name = "Enter your full name.";
+    const name = nameProblem(str("name"));
+    if (name) next.name = name;
 
-    const phone = str("phone").replace(/[\s-()]/g, "");
-    if (!phone) next.phone = "Enter a mobile number we can call you on.";
-    else if (!/^(?:\+?91)?[6-9]\d{9}$|^\+?\d{8,15}$/.test(phone))
-      next.phone = "That does not look like a valid number.";
+    const phone = phoneProblem(str("phone"), true);
+    if (phone) next.phone = phone;
 
-    const email = str("email");
-    if (!email) next.email = "Enter an email address.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))
-      next.email = "That does not look like a valid email.";
+    const email = emailProblem(str("email"));
+    if (email) next.email = email;
 
     if (!str("stream")) next.stream = "Pick the stream you are interested in.";
     if (data.consent == null) next.consent = "We need your consent before a counsellor can call.";

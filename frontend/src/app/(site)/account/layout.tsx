@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { AccountTabs } from "@/components/account/account-tabs";
-import { getMyLeads } from "@/lib/api";
+import { getMyLeads, getMyQuestions, getMyReviews } from "@/lib/api";
 import { getCurrentUser, getUserToken } from "@/lib/user-session";
 
 /**
  * The signed-in student's area: a header with who they are, and tabs for their
- * details, enquiries, replies and activity.
+ * details, enquiries, questions, reviews, replies and activity.
  *
  * Reads the session cookie, so everything under /account renders per request.
  * Without a session the visitor is sent to log in and brought back.
@@ -17,7 +17,9 @@ export default async function AccountLayout({ children }: LayoutProps<"/account"
 
   // Counts for the tab badges. A failure here only hides the badges.
   const token = await getUserToken();
-  const leads = token ? await getMyLeads(token).catch(() => []) : [];
+  const [leads, questions, reviews] = token
+    ? await Promise.all([getMyLeads(token).catch(() => []), getMyQuestions(token).catch(() => []), getMyReviews(token).catch(() => [])])
+    : [[], [], []];
   const unreadReplies = leads.reduce((n, lead) => n + lead.replies.filter((r) => !r.read).length, 0);
 
   const memberId = `TCP-U-${user.id.slice(0, 8).toUpperCase()}`;
@@ -47,7 +49,7 @@ export default async function AccountLayout({ children }: LayoutProps<"/account"
         </div>
       </header>
 
-      <AccountTabs enquiries={leads.length} unreadReplies={unreadReplies} />
+      <AccountTabs enquiries={leads.length} unreadReplies={unreadReplies} questions={questions.length} reviews={reviews.length} />
 
       <div className="mt-6">{children}</div>
     </div>

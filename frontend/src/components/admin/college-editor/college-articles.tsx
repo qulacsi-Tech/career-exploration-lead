@@ -61,9 +61,9 @@ export function CollegeArticles({ slug }: { slug: string }) {
 
   return (
     <Card
-      title="Articles"
-      description="News about this college, written in the same format as the site's articles: text, points, tables and steps, a picture, a category and an author. They show on this college's News tab, and in the site's news."
-      actions={<AddButton onClick={() => setModal(null)}>Add an article</AddButton>}
+      title="News"
+      description="News about this college, written in the same format as the site's news: text, points, tables and steps, a picture, a category and an author. They show on this college's News tab, and in the site's news."
+      actions={<AddButton onClick={() => setModal(null)}>Add news</AddButton>}
     >
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
       {note && !error && <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800">{note}</p>}
@@ -71,7 +71,7 @@ export function CollegeArticles({ slug }: { slug: string }) {
       {!data && !error ? (
         <EmptyNote>Loading…</EmptyNote>
       ) : data && data.articles.length === 0 ? (
-        <EmptyNote>No articles about this college yet. Add one and it shows on the News tab.</EmptyNote>
+        <EmptyNote>No news about this college yet. Add one and it shows on the News tab.</EmptyNote>
       ) : (
         data && (
           <ul className="divide-y divide-line-soft rounded-xl border border-line">

@@ -233,6 +233,13 @@ function SectionIcon({ name, className }: { name: AdminNavIcon; className?: stri
         <path d="M17 11.5a1.5 1.5 0 0 1-1.5 1.5H7l-3.5 3V5A1.5 1.5 0 0 1 5 3.5h10.5A1.5 1.5 0 0 1 17 5v6.5Z" strokeLinejoin="round" />
       </>
     ),
+    exams: (
+      <>
+        <rect x="3.5" y="2.5" width="13" height="15" rx="1.8" />
+        <path d="M6.8 7h6.4M6.8 10h6.4" strokeLinecap="round" />
+        <path d="m7 13.6 1.4 1.4 2.8-2.8" strokeLinecap="round" strokeLinejoin="round" />
+      </>
+    ),
     seo: (
       <>
         <circle cx="9" cy="9" r="5.5" />

@@ -6,7 +6,12 @@
  * a group is single-select: picking an option clears the group's other
  * parameters first.
  */
-export type FilterOption = { label: string; params: Record<string, string> };
+export type FilterOption = {
+  label: string;
+  params: Record<string, string>;
+  /** Shown on hover, such as the full name behind a short one. */
+  detail?: string;
+};
 
 export type FilterGroup = {
   id: string;

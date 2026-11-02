@@ -42,7 +42,7 @@ export default async function AdminDashboard() {
 
   const shortcuts = [
     { label: "Add a college", hint: "New listing", href: "/admin/colleges", Icon: FilePlus2 },
-    { label: "Write an article", hint: "News & guides", href: "/admin/articles", Icon: Newspaper },
+    { label: "Write news", hint: "News & guides", href: "/admin/news", Icon: Newspaper },
     { label: "Edit the homepage", hint: "Hero, bands, copy", href: "/admin/sections/homepage", Icon: Sparkles },
     { label: "Catalogue", hint: "Courses & categories", href: "/admin/catalogue", Icon: Layers },
   ];

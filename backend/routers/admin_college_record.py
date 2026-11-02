@@ -163,6 +163,9 @@ class ReviewRow(BaseModel):
     ratingCampusLife: Optional[float] = Field(default=None, ge=1, le=5)
     # A new review waits for a moderator unless the editor approves it on purpose.
     approved: bool = False
+    # Read-only: the likes and dislikes shown in the editor. Sent back on save and ignored.
+    likes: int = 0
+    dislikes: int = 0
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("batch")
@@ -201,6 +204,11 @@ class RecordBody(BaseModel):
     tags: list[str] = Field(default_factory=list, max_length=12)
     approvals: list[str] = Field(default_factory=list, max_length=20)
     image: str = Field(default="", max_length=200)
+    # The listing badges. Left out (None), a save does not touch them: a college admin's proposal never carries them.
+    isFeatured: Optional[bool] = None
+    isTopRated: Optional[bool] = None
+    isSponsored: Optional[bool] = None
+    isMostViewed: Optional[bool] = None
     courses: list[CourseRow] = Field(default_factory=list, max_length=60)
     placements: list[PlacementRow] = Field(default_factory=list, max_length=15)
     cutoffs: list[CutoffRow] = Field(default_factory=list, max_length=200)
@@ -290,6 +298,10 @@ def _record(c: College) -> dict:
         "tags": c.tags or [],
         "approvals": c.approvals or [],
         "image": c.image or "",
+        "isFeatured": bool(c.is_featured),
+        "isTopRated": bool(c.is_top_rated),
+        "isSponsored": bool(c.is_sponsored),
+        "isMostViewed": bool(c.is_most_viewed),
         "courses": [
             {"name": x.name, "specialisation": x.specialisation or "", "duration": x.duration, "mode": x.mode, "fees": x.fees, "exams": x.exams or [], "eligibility": x.eligibility or "", "seats": x.seats,
              "onlineOffered": bool(x.online_offered), "onlineEnabled": bool(x.online_enabled), "onlineDuration": x.online_duration or "", "onlineFees": x.online_fees or ""}
@@ -386,7 +398,16 @@ async def pools(_admin: AdminPayload, db: DbSession):
 
 @router.get("/{slug}/record", response_model=SuccessResponse[dict])
 async def get_record(slug: str, _admin: AdminPayload, db: DbSession):
-    return SuccessResponse[dict](data=_record(await _load(db, slug)))
+    record = _record(await _load(db, slug))
+    # How many students liked or disliked each review, for the Reviews tab.
+    from routers.reviews import _counts
+
+    ids = [uuid.UUID(r["id"]) for r in record["reviews"] if r.get("id")]
+    counts = await _counts(db, ids)
+    for r in record["reviews"]:
+        likes, dislikes = counts.get(uuid.UUID(r["id"]), (0, 0)) if r.get("id") else (0, 0)
+        r["likes"], r["dislikes"] = likes, dislikes
+    return SuccessResponse[dict](data=record)
 
 
 _FIELD_LABELS = {
@@ -527,6 +548,14 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
     row.tags = [t.strip() for t in data.tags if t.strip()]
     row.approvals = [a.strip() for a in data.approvals if a.strip()]
     row.image = data.image
+    if data.isFeatured is not None:
+        row.is_featured = data.isFeatured
+    if data.isTopRated is not None:
+        row.is_top_rated = data.isTopRated
+    if data.isSponsored is not None:
+        row.is_sponsored = data.isSponsored
+    if data.isMostViewed is not None:
+        row.is_most_viewed = data.isMostViewed
     row.detail = data.detail.model_dump()
     row.updated_at = func.now()
 

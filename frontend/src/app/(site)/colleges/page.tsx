@@ -38,7 +38,7 @@ function paragraphsOf(doc: RichTextDoc | undefined): string[] {
  * offer what the directory actually holds; the rest are fixed scales (fee
  * bands, rating steps, levels) that do not come from data.
  */
-function filterGroups(f: CollegeFacets, rankingLists: RankingList[], picked: { stream?: string; course?: string }): FilterGroup[] {
+function filterGroups(f: CollegeFacets, rankingLists: RankingList[], picked: { stream?: string; course?: string; ranking_list?: string }): FilterGroup[] {
   // Category > Course > Specialisation: once a parent is chosen, the next list holds only what sits under it.
   const courseStreams = f.courseStreams;
   const specialisationCourses = f.specialisationCourses;
@@ -55,14 +55,15 @@ function filterGroups(f: CollegeFacets, rankingLists: RankingList[], picked: { s
     { id: "course", label: "Course", options: simple("course", courses), resets: ["specialisation"] },
     { id: "specialisation", label: "Specialisation", options: simple("specialisation", specialisations) },
     { id: "location", label: "Location", options: simple("city", f.cities) },
-    // One option for every ranking list on the Rankings page: picking one shows the colleges in it, best rank first.
+    // One option for every ranking list that has colleges in it: picking one shows them, best rank first. Empty lists are left out.
     {
       id: "ranking",
       label: "Ranking",
-      options: rankingLists.map((l) => ({
-        label: l.name.includes(String(l.year)) ? l.name : `${l.name} ${l.year}`,
-        params: { ranking_list: l.slug },
-      })),
+      options: rankingLists.filter((l) => l.entries.length > 0 || l.slug === picked.ranking_list).map((l) => {
+        const full = l.name.includes(String(l.year)) ? l.name : `${l.name} ${l.year}`;
+        const short = l.shortName?.trim();
+        return { label: short || full, detail: short ? full : undefined, params: { ranking_list: l.slug } };
+      }),
     },
     { id: "credential", label: "Credential", options: simple("credential", ["Degree", "Diploma", "Doctorate"]) },
     { id: "level", label: "Course Level", options: simple("level", ["UG", "PG", "Doctorate"]) },
@@ -183,7 +184,7 @@ export default async function CollegesListingPage({
     getListingSlots("colleges", scopeFromParams(str)).catch(() => null),
   ]);
   const slotList = slots?.slots ?? [];
-  const groups = filterGroups(facets, rankingLists, { stream: query.stream, course: query.course });
+  const groups = filterGroups(facets, rankingLists, { stream: query.stream, course: query.course, ranking_list: query.ranking_list });
   const pickedList = rankingLists.find((l) => l.slug === query.ranking_list);
   const applied = appliedFilters("/colleges", groups, search);
   if (list) {
@@ -201,7 +202,7 @@ export default async function CollegesListingPage({
   const written = header?.title && (scopeFromParams(str) ? header.custom && applied.length === 1 : !filtered) ? header.title : "";
   // A collection names its own page; its heading stands while visitors narrow it further.
   const title = collection ? collection.heading || collection.title : written || autoTitle;
-  const badgeOf = badgesFor(colleges);
+  const badgeOf = badgesFor();
   const badgeCounts = colleges.reduce(
     (n, c) => {
       const b = badgeOf(c);
@@ -333,7 +334,7 @@ export default async function CollegesListingPage({
             {colleges.map((college, i) => (
               <Fragment key={college.slug}>
                 <Reveal amount={0.12}>
-                  <ListingCard college={college} badges={badgeOf(college)} position={(page - 1) * meta.limit + i + 1} />
+                  <ListingCard college={college} badges={badgeOf(college)} position={(page - 1) * meta.limit + i + 1} selectedRanking={query.ranking_list} />
                 </Reveal>
                 {between.get(i + 1)?.map((slot) => (
                   <Reveal key={slot.id} amount={0.2}>

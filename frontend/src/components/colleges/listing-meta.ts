@@ -56,19 +56,12 @@ export function listingTitle(f: ListingFilters): { title: string; filtered: bool
   return { title: [base.startsWith(" ") ? base.trim() : base, ...tail].join(" "), filtered: true };
 }
 
-/** Whether a college earns each listing badge. */
-export function badgesFor(colleges: College[]) {
-  const mostViewed = new Set(
-    [...colleges]
-      .filter((c) => (c.viewCount ?? 0) > 0)
-      .sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
-      .slice(0, 3)
-      .map((c) => c.slug),
-  );
+/** Which listing badges a college carries: the ones ticked for it in the admin (College Info → Listing badges). */
+export function badgesFor() {
   return (c: College) => ({
     featured: !!c.isFeatured,
-    topRated: c.rating >= 4.5 && c.reviewCount > 0,
-    mostViewed: mostViewed.has(c.slug),
+    topRated: !!c.isTopRated,
+    mostViewed: !!c.isMostViewed,
   });
 }
 

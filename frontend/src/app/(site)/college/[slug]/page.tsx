@@ -29,7 +29,6 @@ import {
   shortFee,
   shortNameOf,
   cutoffLabel,
-  programmeTitle,
 } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
 import { sectionHref } from "@/lib/college-sections";
@@ -90,8 +89,19 @@ export default async function CollegeOverviewPage({
   );
 
   // Fees as bars against the dearest programme, dearest first
-  const feeRows = (college.courses ?? [])
-    .map((course) => ({ course, lakh: lakhValue(course.fees) }))
+  // One entry per course (PGDM, MBA): its specialisations are rows of the same course, so they are not counted or listed.
+  const byCourse = new Map<string, NonNullable<typeof college.courses>>();
+  for (const course of college.courses ?? []) byCourse.set(course.name, [...(byCourse.get(course.name) ?? []), course]);
+  const courseGroups = [...byCourse.values()];
+  const feeRows = courseGroups
+    .map((rows) => {
+      const priced = rows.map((course) => ({ course, lakh: lakhValue(course.fees) })).sort((a, b) => (a.lakh ?? 0) - (b.lakh ?? 0));
+      const low = priced[0];
+      const high = priced[priced.length - 1];
+      // A course whose specialisations differ in fee shows the span.
+      const display = shortFee(low.course.fees) === shortFee(high.course.fees) ? shortFee(high.course.fees) : `${shortFee(low.course.fees)} – ${shortFee(high.course.fees)}`;
+      return { course: high.course, lakh: high.lakh, display };
+    })
     .sort((a, b) => (b.lakh ?? 0) - (a.lakh ?? 0));
   const maxFee = Math.max(...feeRows.map((row) => row.lakh ?? 0), 1);
 
@@ -185,33 +195,28 @@ export default async function CollegeOverviewPage({
       <DetailCard>
         <div className="grid gap-10 md:grid-cols-2">
           <div className="space-y-6">
-            {(college.ratingBreakdown ?? []).map((row) => (
-              <ScoreRow key={row.label} score={row.score} label={row.label} />
-            ))}
+            {(college.ratingBreakdown ?? []).length > 0
+              ? (college.ratingBreakdown ?? []).map((row) => <ScoreRow key={row.label} score={row.score} label={row.label} />)
+              : ["Placements", "Faculty", "Infrastructure", "Campus Life"].map((label) => <ScoreRow key={label} score={null} label={label} />)}
           </div>
           <div className="space-y-6">
-            {college.ranking.rank > 0 && (
-              <IconStat
-                icon="trophy"
-                value={`#${college.ranking.rank}`}
-                label={`${college.ranking.authority} ${college.stream} ranking`}
-              />
-            )}
-            <IconStat icon="rupee" value={college.feesRange} label="Total fees, all programmes" />
-            {placement && headline && (
-              <IconStat
-                icon="trend"
-                value={headline.value}
-                label={`${headline.label}, ${batchLabel(placement)}`}
-              />
-            )}
-            {college.established && (
-              <IconStat
-                icon="calendar"
-                value={`${college.established}`}
-                label={`Established · ${college.ownership}`}
-              />
-            )}
+            {/* Each figure keeps its place when missing, so the card never collapses into a blank white box. */}
+            <IconStat
+              icon="trophy"
+              value={college.ranking.rank > 0 ? `#${college.ranking.rank}` : null}
+              label={college.ranking.rank > 0 ? `${college.ranking.authority} ${college.stream} ranking` : "Ranking"}
+            />
+            <IconStat icon="rupee" value={college.feesRange || null} label="Total fees, all programmes" />
+            <IconStat
+              icon="trend"
+              value={placement && headline ? headline.value : null}
+              label={placement && headline ? `${headline.label}, ${batchLabel(placement)}` : "Average package"}
+            />
+            <IconStat
+              icon="calendar"
+              value={college.established ? `${college.established}` : null}
+              label={college.established ? `Established · ${college.ownership}` : "Established"}
+            />
           </div>
         </div>
       </DetailCard>
@@ -233,7 +238,7 @@ export default async function CollegeOverviewPage({
         >
           <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">{college.about}</p>
           <div className="mt-9 grid gap-8 sm:grid-cols-3">
-            <BigFigure label="Programmes" value={`${college.coursesOffered}`} note="Degrees on offer" />
+            <BigFigure label="Programmes" value={`${courseGroups.length || college.coursesOffered}`} note="Degrees on offer" />
             <BigFigure
               label="Student rating"
               value={college.rating.toFixed(1)}
@@ -271,9 +276,9 @@ export default async function CollegeOverviewPage({
             <div>
               <ColumnLabel>Total fees by programme</ColumnLabel>
               <MeterList
-                rows={feeRows.map(({ course, lakh }) => ({
-                  label: programmeTitle(course),
-                  display: shortFee(course.fees),
+                rows={feeRows.map(({ course, lakh, display }) => ({
+                  label: course.name,
+                  display,
                   fraction: lakh === null ? null : lakh / maxFee,
                 }))}
               />
@@ -281,8 +286,8 @@ export default async function CollegeOverviewPage({
             <div>
               <ColumnLabel>Programmes offered</ColumnLabel>
               <DataList
-                rows={(college.courses ?? []).map((course) => ({
-                  label: programmeTitle(course),
+                rows={courseGroups.map(([course]) => ({
+                  label: course.name,
                   value: (
                     <>
                       <span className="font-display text-base font-bold text-ink">

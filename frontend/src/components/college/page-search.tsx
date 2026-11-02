@@ -17,6 +17,12 @@ import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 type HighlightCtor = new (...ranges: Range[]) => unknown;
 type HighlightRegistry = { set: (name: string, value: unknown) => void; delete: (name: string) => void };
 
+const STYLE_ID = "page-search-highlight-css";
+const HIGHLIGHT_CSS = `
+::highlight(page-search) { background-color: #fde68a; color: inherit; }
+::highlight(page-search-current) { background-color: #f59e0b; color: #1c2128; }
+`;
+
 const supported = () => typeof CSS !== "undefined" && "highlights" in CSS && typeof (window as unknown as { Highlight?: HighlightCtor }).Highlight === "function";
 const registry = () => (CSS as unknown as { highlights: HighlightRegistry }).highlights;
 
@@ -54,6 +60,17 @@ export function PageSearch({ targetId }: { targetId: string }) {
   const ranges = useRef<Range[]>([]);
 
   useEffect(() => setOk(supported()), []);
+
+  useEffect(() => {
+    // The highlight colours are added here, not in globals.css: the build's CSS parser does not know
+    // ::highlight() yet and warns about it, though every browser that has the API reads it fine.
+    if (supported() && !document.getElementById(STYLE_ID)) {
+      const style = document.createElement("style");
+      style.id = STYLE_ID;
+      style.textContent = HIGHLIGHT_CSS;
+      document.head.appendChild(style);
+    }
+  }, []);
 
   const clear = useCallback(() => {
     if (!supported()) return;

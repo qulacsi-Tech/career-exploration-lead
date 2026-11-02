@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { changeMyPassword, loginUser, loginWithGoogle, markRepliesRead, registerUser, setMyPassword, updateMe, type AuthResult, type ProfileUpdate } from "@/lib/api";
 import { clearAdminSession, setAdminSession } from "@/lib/admin-session";
 import { canUsePanel } from "@/lib/roles";
+import { PHONE_RE, emailProblem, nameProblem, passwordProblem, phoneProblem, stripPhone } from "@/lib/field-rules";
 import { clearUserSession, getCurrentUser, getUserToken, setUserSession } from "@/lib/user-session";
 
 export type SignInState = { error?: string } | undefined;
@@ -87,25 +88,18 @@ export async function signInWithGoogle(idToken: string, nextPath?: string): Prom
   redirect(destination);
 }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const PHONE = /^(?:\+?91)?[6-9]\d{9}$|^\+?\d{8,15}$/;
+const PHONE = PHONE_RE;
 
 /** Creates a student account and signs it in. The role is never read from the form. */
 export async function signUp(_prev: SignUpState, formData: FormData): Promise<SignUpState> {
   const str = (key: string) => String(formData.get(key) ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const phone = str("phone").replace(/[\s\-()]/g, "");
+  const phone = stripPhone(str("phone"));
   const next = safeNext(formData.get("next"));
 
   const errors: Record<string, string> = {};
-  if (str("name").length < 2) errors.name = "Enter your full name.";
-  if (!str("email")) errors.email = "Enter an email address.";
-  else if (!EMAIL.test(str("email"))) errors.email = "That does not look like a valid email.";
-  if (phone && !PHONE.test(phone)) errors.phone = "That does not look like a valid number.";
-  if (!password) errors.password = "Choose a password.";
-  else if (password.length < 8) errors.password = "Use at least 8 characters.";
-  else if (!/[a-zA-Z]/.test(password) || !/\d/.test(password))
-    errors.password = "Include at least one letter and one number.";
+  const problems = { name: nameProblem(str("name")), email: emailProblem(str("email")), phone: phoneProblem(phone), password: passwordProblem(password) };
+  for (const [field, problem] of Object.entries(problems)) if (problem) errors[field] = problem;
   if (String(formData.get("confirm") ?? "") !== password) errors.confirm = "Both passwords must match.";
   if (formData.get("terms") !== "on") errors.terms = "Accept the terms to create an account.";
   if (Object.keys(errors).length > 0) return { errors };
@@ -127,6 +121,71 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
     return { error: messageOf(err, "We could not create that account just now. Please try again.") };
   }
   redirect(destination);
+}
+
+export type InlineAuthResult = { ok: true; name: string; created: boolean } | { ok: false; error?: string; errors?: Record<string, string> };
+
+/**
+ * Opens the student session (and the panel one, for an admin) without choosing a page to go to. The inline
+ * sign-in and sign-up in the college pages' dialogs use it, so the visitor stays exactly where they were.
+ */
+async function openSession(result: AuthResult) {
+  await setUserSession(result.accessToken, false);
+  if (canUsePanel(result.user.role)) await setAdminSession(result.accessToken, false);
+}
+
+/** Signs in from a dialog. A temporary password has to be replaced on the login page first, so that one is not handled here. */
+export async function signInInline(email: string, password: string): Promise<InlineAuthResult> {
+  if (!email.trim() || !password) return { ok: false, error: "Enter your email and password." };
+  if (emailProblem(email)) return { ok: false, error: "Enter the email address you signed up with." };
+  try {
+    const result = await loginUser({ email: email.trim(), password });
+    if (result.mustChangePassword) return { ok: false, error: "Sign in on the login page first to choose your new password." };
+    await openSession(result);
+    return { ok: true, name: result.user.name, created: false };
+  } catch (err) {
+    return { ok: false, error: messageOf(err, "Could not sign in. Check your details and try again.") };
+  }
+}
+
+/** Signs in with Google from a dialog: the same as the login page's button, but without leaving the page. */
+export async function signInWithGoogleInline(idToken: string): Promise<InlineAuthResult> {
+  if (!idToken) return { ok: false, error: "Google sign-in did not complete. Please try again." };
+  try {
+    const result = await loginWithGoogle(idToken);
+    if (result.mustChangePassword) return { ok: false, error: "Sign in on the login page first to choose your new password." };
+    await openSession(result);
+    return { ok: true, name: result.user.name, created: !!result.isNewUser };
+  } catch (err) {
+    return { ok: false, error: messageOf(err, "Google sign-in failed. Please try again.") };
+  }
+}
+
+export type InlineSignUp = { name: string; email: string; phone: string; password: string; confirm: string; terms: boolean; marketing: boolean };
+
+/** Creates an account from a dialog with the same fields as the register page (the rest is filled in on the profile), and signs it in. */
+export async function signUpInline(input: InlineSignUp): Promise<InlineAuthResult> {
+  const name = input.name.trim().replace(/\s+/g, " ");
+  const email = input.email.trim().toLowerCase();
+  const phone = stripPhone(input.phone);
+
+  const errors: Record<string, string> = {};
+  const problems = { name: nameProblem(name), email: emailProblem(email), phone: phoneProblem(phone), password: passwordProblem(input.password) };
+  for (const [field, problem] of Object.entries(problems)) if (problem) errors[field] = problem;
+  if (input.confirm !== input.password) errors.confirm = "Both passwords must match.";
+  if (!input.terms) errors.terms = "Accept the terms to create an account.";
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  try {
+    const result = await registerUser({ name, email, password: input.password, ...(phone && { phone }), marketingConsent: input.marketing });
+    await openSession(result);
+    return { ok: true, name: result.user.name, created: true };
+  } catch (err) {
+    if ((err as { code?: string }).code === "EMAIL_ALREADY_EXISTS") {
+      return { ok: false, errors: { email: "An account with this email already exists. Try logging in." } };
+    }
+    return { ok: false, error: messageOf(err, "We could not create that account just now. Please try again.") };
+  }
 }
 
 /** Saves the profile form on /account. */
@@ -166,6 +225,9 @@ export type SessionUser = {
   avatarUrl: string | null;
   phone: string | null;
   preferredStream: string | null;
+  state: string | null;
+  city: string | null;
+  targetExam: string | null;
 };
 
 /** Who is signed in, for the site header and to prefill forms. Null when nobody is, or the session has lapsed. */
@@ -179,6 +241,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
         avatarUrl: user.avatarUrl,
         phone: user.phone,
         preferredStream: user.preferredStream,
+        state: user.state,
+        city: user.city,
+        targetExam: user.targetExam,
       }
     : null;
 }

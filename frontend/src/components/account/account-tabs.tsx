@@ -6,13 +6,15 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/account", label: "Profile" },
   { href: "/account/enquiries", label: "Enquiries" },
+  { href: "/account/questions", label: "Questions" },
+  { href: "/account/reviews", label: "Reviews" },
   { href: "/account/replies", label: "Replies" },
   { href: "/account/notifications", label: "Notifications" },
   { href: "/account/activity", label: "Activity" },
 ] as const;
 
 /** The tab row under the account header. The Profile tab matches only its own path. */
-export function AccountTabs({ enquiries, unreadReplies }: { enquiries: number; unreadReplies: number }) {
+export function AccountTabs({ enquiries, unreadReplies, questions = 0, reviews = 0 }: { enquiries: number; unreadReplies: number; questions?: number; reviews?: number }) {
   const pathname = usePathname();
 
   return (
@@ -20,7 +22,7 @@ export function AccountTabs({ enquiries, unreadReplies }: { enquiries: number; u
       {TABS.map((tab) => {
         const active = tab.href === "/account" ? pathname === "/account" : pathname.startsWith(tab.href);
         const badge =
-          tab.label === "Enquiries" ? enquiries : tab.label === "Replies" ? unreadReplies : 0;
+          tab.label === "Enquiries" ? enquiries : tab.label === "Replies" ? unreadReplies : tab.label === "Questions" ? questions : tab.label === "Reviews" ? reviews : 0;
         return (
           <Link
             key={tab.href}

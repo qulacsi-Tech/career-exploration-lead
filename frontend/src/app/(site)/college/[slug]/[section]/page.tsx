@@ -31,6 +31,8 @@ import {
   Stars,
   type IconName,
 } from "@/components/college/detail-ui";
+import { ActionButton } from "@/components/college/college-actions";
+import { StudentQA } from "@/components/college/student-qa";
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 import { PlacementBreakdownTable } from "@/components/college/placement-breakdown";
 import { CollegeSectionPage } from "@/components/college/section-page";
@@ -605,13 +607,13 @@ function Reviews({ college }: { college: College }) {
       <DetailCard
         title={`Reviews from ${college.name} Students`}
         action={
-          <Link
-            href="/enquiry" data-track="cta_enquiry"
+          <ActionButton
+            kind="review"
             className="inline-flex items-center gap-2 rounded-full border-2 border-brand px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white"
           >
             <MessageSquarePlus className="h-4 w-4" />
             Write a review
-          </Link>
+          </ActionButton>
         }
       >
         <div className="space-y-5">
@@ -923,7 +925,12 @@ async function Compare({ college }: { college: College }) {
 }
 
 function QnA({ college }: { college: College }) {
-  return <QaList faqs={faqsOf(college)} collegeName={college.name} />;
+  return (
+    <div className="space-y-8">
+      <QaList faqs={faqsOf(college)} collegeName={college.name} />
+      <StudentQA slug={college.slug} />
+    </div>
+  );
 }
 
 async function News({ college }: { college: College }) {

@@ -6,6 +6,7 @@ import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { signUp } from "@/lib/auth-actions";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import type { AuthPageCopy } from "@/lib/api";
+import { emailProblem, nameProblem, passwordProblem, phoneProblem } from "@/lib/field-rules";
 
 type FieldErrors = Partial<
   Record<"name" | "email" | "phone" | "password" | "confirm" | "terms", string>
@@ -71,22 +72,16 @@ export function RegisterForm({ next, copy }: { next?: string; copy: AuthPageCopy
     const next: FieldErrors = {};
     const str = (key: string) => String(data[key] ?? "").trim();
 
-    if (str("name").length < 2) next.name = "Enter your full name.";
-
-    const email = str("email");
-    if (!email) next.email = "Enter an email address.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))
-      next.email = "That does not look like a valid email.";
-
-    const phone = str("phone").replace(/[\s-()]/g, "");
-    if (phone && !/^(?:\+?91)?[6-9]\d{9}$|^\+?\d{8,15}$/.test(phone))
-      next.phone = "That does not look like a valid number.";
+    const name = nameProblem(str("name"));
+    if (name) next.name = name;
+    const email = emailProblem(str("email"));
+    if (email) next.email = email;
+    const phone = phoneProblem(str("phone"));
+    if (phone) next.phone = phone;
 
     const pass = String(data.password ?? "");
-    if (!pass) next.password = "Choose a password.";
-    else if (pass.length < 8) next.password = "Use at least 8 characters.";
-    else if (!/[a-zA-Z]/.test(pass) || !/\d/.test(pass))
-      next.password = "Include at least one letter and one number.";
+    const password = passwordProblem(pass);
+    if (password) next.password = password;
 
     if (String(data.confirm ?? "") !== pass) next.confirm = "Both passwords must match.";
     if (data.terms == null) next.terms = "Accept the terms to create an account.";

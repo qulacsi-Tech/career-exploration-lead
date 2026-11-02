@@ -66,3 +66,14 @@ class LeadReply(Base):
     read_at = Column(DateTime(timezone=True), nullable=True)
 
     lead = relationship("Lead", back_populates="replies")
+
+
+class LeadShare(Base):
+    """A lead the platform team shared with a sponsored college. A lead is shared with a college once."""
+
+    __tablename__ = "lead_shares"
+
+    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id", ondelete="CASCADE"), primary_key=True)
+    college_id = Column(UUID(as_uuid=True), ForeignKey("colleges.id", ondelete="CASCADE"), primary_key=True, index=True)
+    shared_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    shared_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

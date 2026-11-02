@@ -4,7 +4,7 @@ All response field names are camelCase to match the TypeScript frontend types
 defined in src/lib/mock-data.ts.
 """
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -30,6 +30,7 @@ class RankingRow(BaseModel):
     authority: str = ""
     stream: str = ""
     score: str = ""
+    shortName: str = ""  # the list's short name where the admin set one, for tight spots such as the listing card
 
 
 class RatingBreakdownSchema(BaseModel):
@@ -68,11 +69,11 @@ class PlacementBreakdownSchema(BaseModel):
 
 
 class RecruiterBrief(BaseModel):
-    """A recruiting company as the page shows it: the name, its logo (empty: none) and whether to show the name with the logo."""
+    """A recruiting company as the page shows it: the name, its logo (empty: none) and what to show: the logo, the name or both."""
 
     name: str
     logo: str = ""
-    showName: bool = True
+    display: Literal["logo", "name", "both"] = "logo"
 
 
 class PlacementSchema(BaseModel):
@@ -105,6 +106,7 @@ class CutoffSchema(BaseModel):
 
 
 class ReviewSchema(BaseModel):
+    id: str = ""
     author: str
     course: str
     batch: str
@@ -144,8 +146,10 @@ class CollegeListSchema(BaseModel):
     # The college's logo and brochure, from its page record. Empty: none uploaded.
     logo: str = ""
     brochureUrl: str = ""
-    # Listing badges: set in the admin (featured) and counted from page visits (views).
+    # Listing badges: all three are ticked in the admin. `viewCount` is the page visits counted so far.
     isFeatured: bool = False
+    isTopRated: bool = False
+    isMostViewed: bool = False
     viewCount: int = 0
     # The default priority set in the admin (1 first); None when the college has none.
     priority: Optional[int] = None

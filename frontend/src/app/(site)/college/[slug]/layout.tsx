@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { CollegeActions } from "@/components/college/college-actions";
 import { CollegeMasthead } from "@/components/college/college-masthead";
 import { collegePhoto } from "@/lib/college-images";
 import { faqsOf, monogram, packageHeadline, shortNameOf, taglineOf } from "@/lib/college-insights";
@@ -48,7 +49,11 @@ export default async function CollegeLayout({
   const saved = college.updatedAt ? new Date(college.updatedAt) : null;
   const updatedOn = shortDate(saved && !Number.isNaN(saved.getTime()) ? saved : now);
 
+  // The courses the college runs, for the review form to suggest (one entry per course, not per specialisation).
+  const courseNames = [...new Set((college.courses ?? []).map((c) => c.name))];
+
   return (
+    <CollegeActions slug={college.slug} name={college.name} courses={courseNames}>
     <div className="bg-bg-alt pb-4">
       <CollegeMasthead
         slug={college.slug}
@@ -79,6 +84,7 @@ export default async function CollegeLayout({
 
       {children}
     </div>
+    </CollegeActions>
   );
 }
 
