@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
+import { AdminPageHeader } from "@/components/admin/admin-section";
 import { MyCollege } from "@/components/admin/my-college";
 import { collegeListRequests, getMe } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
@@ -25,7 +25,15 @@ export default async function MyCollegePage() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Your college"
-        description="Edit what your college page shows. Changes go to the TopCollegePath team for approval and appear on the site once approved."
+        description="Edit what your college page shows, tab by tab. Changes go to the TopCollegePath team for approval and appear on the site once approved. Reviews are written by students and cannot be changed."
+        actions={
+          <Link
+            href={`/college/${me.collegeSlug}`}
+            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand"
+          >
+            View public page
+          </Link>
+        }
       />
 
       {pending && (
@@ -38,20 +46,7 @@ export default async function MyCollegePage() {
         </p>
       )}
 
-      <AdminSection
-        title="College record"
-        description="Info, courses and fees, admissions, placements, cut-offs, gallery, faculty and more, in the tabs the public page uses. Reviews are written by students and cannot be changed."
-        actions={
-          <Link
-            href={`/college/${me.collegeSlug}`}
-            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand"
-          >
-            View public page
-          </Link>
-        }
-      >
-        <MyCollege slug={me.collegeSlug} hasPending={!!pending} />
-      </AdminSection>
+      <MyCollege slug={me.collegeSlug} hasPending={!!pending} />
     </div>
   );
 }

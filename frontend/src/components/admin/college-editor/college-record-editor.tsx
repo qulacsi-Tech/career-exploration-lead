@@ -90,11 +90,14 @@ export function CollegeRecordEditor({
   onClose,
   onSaved,
   mode = "full",
+  inline = false,
 }: {
   slug: string;
   onClose: () => void;
   onSaved?: (name: string, record: CollegeRecord) => void;
   mode?: "full" | "readonly" | "submit";
+  /** Draw it as the page itself instead of a dialog over it (a college admin's own record opens this way). */
+  inline?: boolean;
 }) {
   const readonly = mode === "readonly";
   // A college admin, whether looking or editing, reads through the college endpoints and has no Administrative tab.
@@ -214,9 +217,11 @@ export function CollegeRecordEditor({
   const readonlyFooter = (
     <div className="flex w-full flex-wrap items-center gap-3">
       <p className="text-xs text-ink-soft">View only while a request of yours is waiting for review.</p>
-      <button type="button" onClick={onClose} className="ml-auto rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-brand">
-        Close
-      </button>
+      {!inline && (
+        <button type="button" onClick={onClose} className="ml-auto rounded-lg border border-line px-4 py-2 text-sm text-ink-soft hover:border-brand">
+          Close
+        </button>
+      )}
     </div>
   );
 
@@ -280,21 +285,17 @@ export function CollegeRecordEditor({
     </div>
   );
 
-  return (
-    <AdminModal
-      open
-      onClose={requestClose}
-      size="full"
-      title={record ? `${readonly ? "Your college" : "Edit"} — ${record.name || slug}` : "Edit college"}
-      description={record ? `${record.city}, ${record.state} · /college/${slug}` : "Loading…"}
-      footer={footer}
-    >
+  const title = record ? (inline ? record.name || slug : `${readonly ? "Your college" : "Edit"} — ${record.name || slug}`) : "Edit college";
+  const description = record ? `${record.city}, ${record.state} · /college/${slug}` : "Loading…";
+
+  const content = (
+    <>
       {loadError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">Could not load this college: {loadError}</p>}
       {!props && !loadError && <p className="text-sm text-ink-soft">Loading the college…</p>}
 
       {props && problems && (
         <>
-          <div role="tablist" aria-label="College sections" className="-mt-1 mb-6 flex flex-wrap gap-x-1 border-b border-line">
+          <div role="tablist" aria-label="College sections" className={`mb-6 flex flex-wrap gap-x-1 border-b border-line ${inline ? "sticky top-[4.5rem] z-20 -mx-5 bg-surface px-5 pt-1" : "-mt-1"}`}>
             {tabs.map((t) => {
               const active = tab === t.id;
               const count = readonly ? 0 : problems[t.id].length;
@@ -343,6 +344,25 @@ export function CollegeRecordEditor({
           </div>
         </>
       )}
+    </>
+  );
+
+  if (inline) {
+    return (
+      <section aria-label="College record" className="rounded-2xl border border-line bg-surface shadow-sm">
+        <header className="border-b border-line px-5 py-4">
+          <h2 className="font-display text-base font-bold text-ink">{title}</h2>
+          <p className="mt-0.5 text-xs text-ink-soft">{description}</p>
+        </header>
+        <div className="px-5 py-5">{content}</div>
+        <footer className="sticky bottom-0 z-20 flex items-center justify-end gap-2 rounded-b-2xl border-t border-line bg-surface/95 px-5 py-3 backdrop-blur">{footer}</footer>
+      </section>
+    );
+  }
+
+  return (
+    <AdminModal open onClose={requestClose} size="full" title={title} description={description} footer={footer}>
+      {content}
     </AdminModal>
   );
 }

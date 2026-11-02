@@ -6,13 +6,15 @@ import { CollegeRecordEditor } from "@/components/admin/college-editor/college-r
 import { collegeRequestRemoval } from "@/lib/college-actions";
 
 /**
- * What a college admin can do with their college: edit it (sent for approval), view it, or ask for it
- * to be removed. While one request is waiting for review, a second cannot be sent, so editing is
- * replaced by viewing until it is decided or withdrawn.
+ * A college admin's own college, opened straight away: the record is the page, in its tabs, ready to edit.
+ * Changes are sent for approval rather than saved. While one request is waiting for review, a second cannot be
+ * sent, so the record is shown for reading until it is decided or withdrawn. Asking for the college to be
+ * removed is a quiet link underneath.
  */
 export function MyCollege({ slug, hasPending }: { slug: string; hasPending: boolean }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"submit" | "readonly" | null>(null);
+  // Cancel, and a sent request, start the form again from what is saved.
+  const [version, setVersion] = useState(0);
   const [removing, setRemoving] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,37 +23,29 @@ export function MyCollege({ slug, hasPending }: { slug: string; hasPending: bool
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-3">
-        {!hasPending && (
-          <button
-            type="button"
-            onClick={() => setMode("submit")}
-            className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
-          >
-            Edit your college
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => setMode("readonly")}
-          className="rounded-lg border border-line px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-brand hover:text-brand"
-        >
-          View the record
-        </button>
-        {!hasPending && !removing && (
-          <button
-            type="button"
-            onClick={() => setRemoving(true)}
-            className="rounded-lg border border-line px-5 py-2.5 text-sm font-medium text-ink-soft transition hover:border-red-300 hover:text-red-700"
-          >
-            Ask to remove the college
-          </button>
-        )}
-      </div>
-
       {sent && (
         <p role="status" className="rounded-lg border border-brand/30 bg-brand-soft px-4 py-2.5 text-sm text-brand-ink">
           {sent}
+        </p>
+      )}
+
+      <CollegeRecordEditor
+        key={`${version}-${hasPending}`}
+        slug={slug}
+        mode={hasPending ? "readonly" : "submit"}
+        inline
+        onClose={() => setVersion((v) => v + 1)}
+        onSaved={() => {
+          setSent("Your changes are sent for approval. The live college stays as it is until the team approves them.");
+          router.refresh();
+        }}
+      />
+
+      {!hasPending && !removing && (
+        <p className="text-right">
+          <button type="button" onClick={() => setRemoving(true)} className="text-sm text-ink-faint underline-offset-2 transition hover:text-red-700 hover:underline">
+            Ask to remove the college
+          </button>
         </p>
       )}
 
@@ -103,18 +97,6 @@ export function MyCollege({ slug, hasPending }: { slug: string; hasPending: bool
             </button>
           </div>
         </form>
-      )}
-
-      {mode && (
-        <CollegeRecordEditor
-          slug={slug}
-          mode={mode}
-          onClose={() => setMode(null)}
-          onSaved={() => {
-            setSent("Your changes are sent for approval. The live college stays as it is until the team approves them.");
-            router.refresh();
-          }}
-        />
       )}
     </div>
   );
