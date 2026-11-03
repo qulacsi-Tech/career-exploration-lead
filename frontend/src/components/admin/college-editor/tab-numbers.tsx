@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { scoreProblem } from "@/lib/college-rules";
 import type { CollegeRankings, PlacementBreakdown, RankingListHead, RecordCourse, RecordCutoff, RecordPlacement } from "@/lib/api";
 import { checkRankHolder, loadCollegeRankings, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
@@ -241,12 +242,30 @@ export function PlacementsTab({ record, update, pools }: EditorProps) {
   const rows = record.placements;
   const set = (list: RecordPlacement[]) => update((r) => ({ ...r, placements: list }));
   const patch = (i: number, change: Partial<RecordPlacement>) => set(rows.map((p, n) => (n === i ? { ...p, ...change } : p)));
+  // Which records are open. The ones already saved start folded up to a summary line; a year being added goes
+  // to the top, open, so its form is the first thing in view.
+  const [open, setOpen] = useState<Set<number>>(new Set());
+  const toggle = (i: number) =>
+    setOpen((current) => {
+      const next = new Set(current);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  const add = () => {
+    set([blankPlacement(rows), ...rows]);
+    setOpen((current) => new Set([0, ...[...current].map((n) => n + 1)]));
+  };
+  const remove = (i: number) => {
+    set(rows.filter((_, n) => n !== i));
+    setOpen((current) => new Set([...current].filter((n) => n !== i).map((n) => (n > i ? n - 1 : n))));
+  };
 
   return (
     <Card
       title="Placement records"
-      description="One record for each batch year. The newest is the one the Placements tab leads with and the masthead's average package comes from; earlier years are listed under it."
-      actions={<AddButton onClick={() => set([...rows, blankPlacement(rows)])} disabled={rows.length >= 15}>Add a year</AddButton>}
+      description="One record for each batch year. The newest is the one the Placements tab leads with and the masthead's average package comes from; earlier years are listed under it. Saved records are folded up: open one to edit it."
+      actions={<AddButton onClick={add} disabled={rows.length >= 15}>Add a year</AddButton>}
     >
       {rows.length === 0 ? (
         <EmptyNote>No placement data. The Placements tab shows an empty message.</EmptyNote>
@@ -254,8 +273,32 @@ export function PlacementsTab({ record, update, pools }: EditorProps) {
         <ul className="space-y-4">
           {rows.map((p, i) => {
             const odd = packageProblem(p.average, "", p.highest);
+            if (!open.has(i)) {
+              // Folded: one line with the figures, to open it.
+              const summary = [
+                p.average && `Average ${p.average}`,
+                p.highest && `Highest ${p.highest}`,
+                p.placedPercent !== null && `${p.placedPercent}% placed`,
+                p.topRecruiters.length > 0 && `${p.topRecruiters.length} recruiter${p.topRecruiters.length === 1 ? "" : "s"}`,
+                p.breakdown.length > 0 && `${p.breakdown.length} breakdown row${p.breakdown.length === 1 ? "" : "s"}`,
+              ].filter(Boolean);
+              return (
+                <li key={i} className={`rounded-xl border bg-bg-alt/50 ${odd ? "border-red-300" : "border-line"}`}>
+                  <button type="button" onClick={() => toggle(i)} aria-expanded={false} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ink">Batch {batchLabel(p)}</span>
+                      <span className="block truncate text-xs text-ink-soft">{summary.length > 0 ? summary.join(" · ") : "No figures yet. Open it to fill them in."}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2 text-xs font-semibold text-brand">
+                      {odd && <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">Needs attention</span>}
+                      Open <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </button>
+                </li>
+              );
+            }
             return (
-              <Row key={i} title={`Batch ${batchLabel(p)}`} index={i} count={rows.length} onRemove={() => set(rows.filter((_, n) => n !== i))}>
+              <Row key={i} title={`Batch ${batchLabel(p)}`} index={i} count={rows.length} onCollapse={() => toggle(i)} onRemove={() => remove(i)}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="block text-xs font-semibold text-ink">Batch years<span className="text-brand"> *</span></p>

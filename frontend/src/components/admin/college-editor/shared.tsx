@@ -285,6 +285,7 @@ export function Row({
   count,
   onMove,
   onRemove,
+  onCollapse,
   children,
   error,
 }: {
@@ -293,6 +294,8 @@ export function Row({
   count: number;
   onMove?: (direction: -1 | 1) => void;
   onRemove: () => void;
+  /** Folds the row up to its one-line summary. */
+  onCollapse?: () => void;
   children: ReactNode;
   error?: string;
 }) {
@@ -302,6 +305,9 @@ export function Row({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold text-ink">{title}</p>
         <div className="flex items-center gap-2">
+          {onCollapse && (
+            <button type="button" onClick={onCollapse} aria-label={`Collapse ${title}`} className="rounded-lg border border-line px-2.5 py-1 text-xs text-ink-soft hover:border-brand hover:text-brand">Collapse</button>
+          )}
           {onMove && (
             <>
               <button type="button" aria-label={`Move ${title} up`} disabled={index === 0} onClick={() => onMove(-1)} className="rounded-lg border border-line px-2 py-1 text-xs text-ink-soft hover:border-brand disabled:opacity-40">Up</button>

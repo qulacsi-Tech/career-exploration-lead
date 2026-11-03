@@ -10,7 +10,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
-from core.dependencies import DbSession
+from core.dependencies import CurrentUserId, DbSession
 from core.exceptions import ValidationError
 from schemas.common import SuccessResponse
 from services.practice import load_content, published_tests, require_published, score
@@ -51,7 +51,8 @@ async def get_test(slug: str, db: DbSession):
 
 
 @router.post("/tests/{slug}/submit", response_model=SuccessResponse[dict])
-async def submit_test(slug: str, db: DbSession, body: dict):
+async def submit_test(slug: str, db: DbSession, body: dict, _user: CurrentUserId):
+    """Scores a finished paper. From a signed-in account only."""
     try:
         data = SubmitBody.model_validate(body)
     except PydanticValidationError as exc:

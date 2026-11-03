@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { changeMyPassword, loginUser, loginWithGoogle, markRepliesRead, registerUser, setMyPassword, updateMe, type AuthResult, type ProfileUpdate } from "@/lib/api";
+import { changeMyPassword, forgotPassword, loginUser, loginWithGoogle, resetPassword, markRepliesRead, registerUser, setMyPassword, updateMe, type AuthResult, type ProfileUpdate } from "@/lib/api";
 import { clearAdminSession, setAdminSession } from "@/lib/admin-session";
 import { canUsePanel } from "@/lib/roles";
-import { PHONE_RE, emailProblem, nameProblem, passwordProblem, phoneProblem, stripPhone } from "@/lib/field-rules";
+import { PHONE_RE, emailProblem, identifierProblem, nameProblem, passwordProblem, phoneProblem, stripPhone } from "@/lib/field-rules";
 import { clearUserSession, getCurrentUser, getUserToken, setUserSession } from "@/lib/user-session";
 
-export type SignInState = { error?: string } | undefined;
+/** `notFound` is set when no account has that email or mobile number: the form then offers to create one. */
+export type SignInState = { error?: string; notFound?: boolean; identifier?: string } | undefined;
 export type SignUpState = { error?: string; errors?: Record<string, string> } | undefined;
 
 /**
@@ -57,12 +58,15 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
   const password = String(formData.get("password") ?? "");
   const next = safeNext(formData.get("next"));
 
-  if (!email || !password) return { error: "Enter your email and password." };
+  if (!email || !password) return { error: "Enter your email or mobile number, and your password." };
+  const problem = identifierProblem(email);
+  if (problem) return { error: problem };
 
   let destination: string;
   try {
     destination = await startSession(await loginUser({ email, password }), next);
   } catch (err) {
+    if ((err as { code?: string }).code === "ACCOUNT_NOT_FOUND") return { error: messageOf(err, "We could not find an account with that email or mobile number."), notFound: true, identifier: email };
     return { error: messageOf(err, "Could not sign in. Check your details and try again.") };
   }
   // redirect() throws to end the action, so it sits outside the try block above.
@@ -123,7 +127,7 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
   redirect(destination);
 }
 
-export type InlineAuthResult = { ok: true; name: string; created: boolean } | { ok: false; error?: string; errors?: Record<string, string> };
+export type InlineAuthResult = { ok: true; name: string; created: boolean } | { ok: false; error?: string; errors?: Record<string, string>; notFound?: boolean };
 
 /**
  * Opens the student session (and the panel one, for an admin) without choosing a page to go to. The inline
@@ -136,14 +140,16 @@ async function openSession(result: AuthResult) {
 
 /** Signs in from a dialog. A temporary password has to be replaced on the login page first, so that one is not handled here. */
 export async function signInInline(email: string, password: string): Promise<InlineAuthResult> {
-  if (!email.trim() || !password) return { ok: false, error: "Enter your email and password." };
-  if (emailProblem(email)) return { ok: false, error: "Enter the email address you signed up with." };
+  if (!email.trim() || !password) return { ok: false, error: "Enter your email or mobile number, and your password." };
+  const problem = identifierProblem(email);
+  if (problem) return { ok: false, error: problem };
   try {
     const result = await loginUser({ email: email.trim(), password });
     if (result.mustChangePassword) return { ok: false, error: "Sign in on the login page first to choose your new password." };
     await openSession(result);
     return { ok: true, name: result.user.name, created: false };
   } catch (err) {
+    if ((err as { code?: string }).code === "ACCOUNT_NOT_FOUND") return { ok: false, notFound: true, error: "We could not find an account with that email or mobile number." };
     return { ok: false, error: messageOf(err, "Could not sign in. Check your details and try again.") };
   }
 }
@@ -305,4 +311,28 @@ export async function signOut() {
   await clearAdminSession();
   await clearUserSession();
   redirect("/login");
+}
+
+/** Emails a six-digit code to the account for a forgotten password. The answer is the same whether or not there is one. */
+export async function requestPasswordReset(identifier: string): Promise<{ ok: true; message: string; devCode?: string } | { ok: false; error: string }> {
+  const problem = identifierProblem(identifier);
+  if (problem) return { ok: false, error: problem };
+  try {
+    return { ok: true, ...(await forgotPassword(identifier.trim())) };
+  } catch (err) {
+    return { ok: false, error: messageOf(err, "We could not send the code just now. Please try again.") };
+  }
+}
+
+/** Sets the new password when the code is right. It does not sign anyone in. */
+export async function resetPasswordWithCode(identifier: string, code: string, newPassword: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const problem = identifierProblem(identifier) ?? passwordProblem(newPassword);
+  if (problem) return { ok: false, error: problem };
+  if (!/^\d{6}$/.test(code)) return { ok: false, error: "Enter the six-digit code from the email." };
+  try {
+    await resetPassword(identifier.trim(), code, newPassword);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: messageOf(err, "We could not change the password just now. Please try again.") };
+  }
 }

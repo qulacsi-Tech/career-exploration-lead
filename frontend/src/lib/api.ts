@@ -729,8 +729,14 @@ export async function getArticle(slug: string): Promise<Article> {
 
 /** All article slugs — used by generateStaticParams. */
 export async function getArticleSlugs(): Promise<string[]> {
-  const res = await getArticles({ limit: 100 });
-  return res.data.map((a) => a.slug);
+  const slugs: string[] = [];
+  // The API gives at most 50 a page, so read the pages in turn.
+  for (let page = 1; page <= 40; page++) {
+    const res = await getArticles({ page, limit: 50 });
+    slugs.push(...res.data.map((a) => a.slug));
+    if (page >= res.meta.pages) break;
+  }
+  return slugs;
 }
 
 // ── Mutations (POST — used from Client Components / Route Handlers) ────────
@@ -772,15 +778,16 @@ export async function submitLead(
 
 /** Subscribe to the newsletter. */
 export async function subscribeNewsletter(
-  email: string
+  email: string,
+  token: string
 ): Promise<{ message: string }> {
   const res = await fetch(`${API_BASE}/newsletter/subscribe`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ email }),
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error?.message ?? "Subscription failed");
+  const json = await res.json().catch(() => null);
+  if (!json?.success) throw new Error(json?.error?.message ?? (Array.isArray(json?.detail) ? json.detail[0]?.msg : undefined) ?? "Subscription failed");
   return json.data;
 }
 
@@ -950,7 +957,7 @@ export type CollegeAnalytics = {
   daily: { date: string; views: number }[];
   leads: { id: string; name: string; phone: string; email: string; type: string; status: string; message: string; programName: string; city: string; repeats: number; createdAt: string | null }[];
   questions: { id: string; kind: "question" | "concern"; question: string; askedBy: string; answer: string; answeredBy: string; published: boolean; helpful: number; createdAt: string | null }[];
-  reviews: { id: string; author: string; course: string; batch: string; rating: number; body: string; approved: boolean; likes: number; dislikes: number; createdAt: string | null }[];
+  reviews: { id: string; author: string; course: string; batch: string; rating: number; body: string; approved: boolean; likes: number; dislikes: number; likedBy: { name: string; email: string }[]; dislikedBy: { name: string; email: string }[]; createdAt: string | null }[];
 };
 
 export async function adminCollegeAnalytics(token: string, slug: string) {
@@ -1045,10 +1052,20 @@ export type SearchResults = {
   colleges: { slug: string; name: string; city: string; stream: string }[];
   exams: { slug: string; name: string }[];
   locations: { slug: string; name: string }[];
+  /** Absent from an API older than course search. */
+  courses?: { slug: string; name: string; fullName?: string; stream?: string }[];
 };
 
 export async function search(q: string): Promise<SearchResults> {
   return apiFetch<SearchResults>(`/search?q=${encodeURIComponent(q)}`);
+}
+
+/** The same search, read fresh as the visitor types (not cached), optionally within one stream. */
+export async function searchLive(q: string, stream?: string, limit = 5): Promise<SearchResults> {
+  const qs = new URLSearchParams({ q, limit: String(limit) });
+  if (stream) qs.set("stream", stream);
+  const res = await fetch(`${API_BASE}/search?${qs}`, { cache: "no-store" });
+  return apiJson(res);
 }
 
 // ── Course Catalogue types ────────────────────────────────────────────────
@@ -1160,9 +1177,36 @@ export async function loginUser(data: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error?.message ?? "Login failed");
+  const json = await res.json().catch(() => null);
+  if (!json?.success) {
+    // The caller tells "no such account" apart from a wrong password by this code.
+    const error = new Error(json?.error?.message ?? (Array.isArray(json?.detail) ? json.detail[0]?.msg : undefined) ?? "Login failed") as Error & { code?: string };
+    error.code = json?.error?.code;
+    throw error;
+  }
   return json.data;
+}
+
+/** Asks for a six-digit code to be emailed to the account (an email address or mobile number). */
+export async function forgotPassword(identifier: string): Promise<{ message: string; devCode?: string }> {
+  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier }),
+    cache: "no-store",
+  });
+  return apiJson(res);
+}
+
+/** Sets a new password when the emailed code is right. */
+export async function resetPassword(identifier: string, code: string, newPassword: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, code, newPassword }),
+    cache: "no-store",
+  });
+  return apiJson(res);
 }
 
 /** Exchange a Google ID token for our own access token. Creates the account on first use. */
@@ -2063,13 +2107,14 @@ export async function getPracticeTest(slug: string): Promise<MockTest | null> {
  */
 export async function submitPractice(
   slug: string,
-  responses: Record<string, { status: string; saved?: unknown; secondsSpent: number }>
+  responses: Record<string, { status: string; saved?: unknown; secondsSpent: number }>,
+  token?: string | null
 ): Promise<AttemptResult> {
   const url = `${API_BASE}/practice/tests/${encodeURIComponent(slug)}/submit`;
   const res = await fetch(url, {
     method: "POST",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ responses }),
   });
   const json = (await res.json().catch(() => null)) as

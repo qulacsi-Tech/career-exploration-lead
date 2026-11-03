@@ -5,6 +5,7 @@ import { HeroIntro } from "@/components/colleges/hero-intro";
 import { ShareLinks } from "@/components/colleges/share-links";
 import { mediaUrl } from "@/lib/media";
 import type { ListingHeader } from "@/lib/api";
+import { ActionButton } from "@/components/college/college-actions";
 
 /** The intro the admin wrote (paragraphs split by a blank line), or the page's own guide when there is none. */
 export function introOf(header: ListingHeader | null | undefined, fallback: string[]): string[] {
@@ -81,12 +82,11 @@ export function ListingHero({
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/70 bg-surface/60 px-5 py-2">
         <ShareLinks title={title} />
-        <Link
-          href="/enquiry" data-track="cta_enquiry"
+        <ActionButton kind="callback"
           className="tcp-wiggle rounded-full bg-brand px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
         >
           Get Free Counselling
-        </Link>
+        </ActionButton>
       </div>
     </section>
   );

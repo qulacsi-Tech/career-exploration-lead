@@ -13,6 +13,7 @@ async def search_all(
     db: DbSession,
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50),
+    stream: str | None = Query(None, max_length=100, description="Only this category's colleges and courses"),
 ):
-    results = await search(db, q=q, limit=limit)
+    results = await search(db, q=q, limit=limit, stream=stream)
     return SuccessResponse[SearchResultsSchema](data=results)

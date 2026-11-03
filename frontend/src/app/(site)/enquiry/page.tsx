@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { EnquiryForm } from "@/components/enquiry-form";
+import { EnquiryGate } from "@/components/enquiry-gate";
 import { getHomeData, getLocations } from "@/lib/api";
 
 export const metadata: Metadata = {
@@ -40,7 +41,9 @@ export default async function EnquiryPage() {
         your score, budget and preferred city.
       </p>
 
-      <EnquiryForm streams={streams} cities={cities} />
+      <EnquiryGate>
+        <EnquiryForm streams={streams} cities={cities} />
+      </EnquiryGate>
     </div>
   );
 }

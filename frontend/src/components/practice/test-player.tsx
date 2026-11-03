@@ -7,7 +7,7 @@ import {
   type MockTest,
   stimulusById,
 } from "@/lib/practice-data";
-import { submitPractice } from "@/lib/api";
+import { submitPracticeAttempt } from "@/lib/practice-actions";
 import {
   type Attempt,
   type Working,
@@ -186,8 +186,9 @@ export function TestPlayer({
     submittingRef.current = true;
     setSubmitState("sending");
     try {
-      const result = await submitPractice(test.slug, attempt.responses);
-      storeResult(test.slug, result);
+      const sent = await submitPracticeAttempt(test.slug, attempt.responses);
+      if (!sent.ok) throw new Error(sent.message);
+      storeResult(test.slug, sent.result);
       router.push(`/practice/result/${test.slug}`);
     } catch {
       submittingRef.current = false;

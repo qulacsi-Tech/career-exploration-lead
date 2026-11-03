@@ -1,6 +1,7 @@
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CompareProvider, CompareTraySpacer } from "@/components/compare-tray";
+import { SiteActions } from "@/components/college/college-actions";
 
 /**
  * Chrome for the public marketing site. /admin and /login sit outside it.
@@ -12,6 +13,7 @@ import { CompareProvider, CompareTraySpacer } from "@/components/compare-tray";
 export default function SiteLayout({ children }: LayoutProps<"/">) {
   return (
     <CompareProvider>
+      <SiteActions>
       <div className="flex min-h-screen flex-col">
         <SiteHeader />
         <main className="flex-1">{children}</main>
@@ -19,6 +21,7 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
         {/* Clears the fixed tray so it never sits over the footer's last row, but only while the tray is showing. */}
         <CompareTraySpacer />
       </div>
+      </SiteActions>
     </CompareProvider>
   );
 }

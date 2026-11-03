@@ -156,13 +156,13 @@ export function CounsellorBand({ label, collegeName }: { label: string; collegeN
             A counsellor can get current details from {collegeName}, free.
           </p>
         </div>
-        <Link
-          href="/enquiry" data-track="cta_enquiry"
+        <ActionButton
+          kind="callback"
           className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-brand transition hover:-translate-y-0.5 hover:shadow-lg"
         >
           <Phone className="h-4 w-4" />
           Request a Callback
-        </Link>
+        </ActionButton>
       </div>
     </Reveal>
   );

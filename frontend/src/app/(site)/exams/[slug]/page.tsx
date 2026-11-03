@@ -8,6 +8,7 @@ import { ExamStatusBadge } from "@/components/exam-status-badge";
 import { mediaUrl } from "@/lib/media";
 import { TestCard } from "@/components/practice/test-card";
 import { getExam, getExamSlugs, getColleges, getPracticeTests } from "@/lib/api";
+import { ActionButton } from "@/components/college/college-actions";
 
 /** Plain text from the admin: a blank line starts a new paragraph. */
 function Paragraphs({ text }: { text: string }) {
@@ -157,13 +158,12 @@ export default async function ExamDetailPage({
                   Practice Tests
                 </Link>
               )}
-              <Link
-                href="/enquiry" data-track="cta_enquiry"
+              <ActionButton kind="callback"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
               >
                 Get Exam Alerts
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </ActionButton>
             </div>
           </div>
         </div>
@@ -417,12 +417,11 @@ export default async function ExamDetailPage({
             <p className="mt-2 text-sm text-brand-ink/80">
               Tell us your expected {shortName} score and we will shortlist colleges you can target.
             </p>
-            <Link
-              href="/enquiry" data-track="cta_enquiry"
+            <ActionButton kind="callback"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Get a Shortlist
-            </Link>
+            </ActionButton>
           </div>
         </aside>
       </div>

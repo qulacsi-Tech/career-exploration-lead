@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { articleImage } from "@/lib/article-images";
 import { collegePhotoSet, photoSetLedBy } from "@/lib/college-images";
 import { NewspaperDispatch } from "@/components/newspaper-dispatch";
+import { HeroSearch } from "@/components/hero-search";
 import { STATIC_LOCATIONS } from "@/lib/sample-locations";
 import { getHighlightsByLocation } from "@/lib/location-colleges";
 import { getCategoryPriority, getCollectionBands, getHomeData, NO_CATEGORY_PRIORITY, type HomeLocation } from "@/lib/api";
@@ -41,14 +42,6 @@ function universityPhotos(slug: string, image?: string): string[] {
   if (image) return [mediaUrl(image), ...collegePhotoSet(slug, 2).filter((s) => s !== image)].slice(0, 2);
   const own = `/images/universities/${slug}.jpg`;
   return existsSync(join(process.cwd(), "public", own)) ? photoSetLedBy(own, slug, 2) : collegePhotoSet(slug, 2);
-}
-
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 export default async function Home() {
@@ -91,38 +84,7 @@ export default async function Home() {
     <>
       {/* Hero: one slide shows plain, several rotate. The search box stays under them. */}
       <HeroCarousel items={heroItems}>
-          <form
-            action="/search"
-            className="mx-auto mt-8 flex max-w-2xl flex-col gap-2 rounded-3xl border border-white/20 bg-surface p-2 shadow-lg sm:flex-row sm:items-center sm:gap-0 sm:rounded-full"
-          >
-            <label htmlFor="hero-stream" className="sr-only">Filter by stream</label>
-            <div className="relative shrink-0 sm:border-r sm:border-line">
-              <select
-                id="hero-stream"
-                name="stream"
-                defaultValue=""
-                className="w-full cursor-pointer appearance-none rounded-full bg-transparent py-2.5 pl-4 pr-9 text-sm font-medium text-ink focus:outline-none sm:w-auto"
-              >
-                <option value="">All streams</option>
-                {fields.map((field) => (
-                  <option key={field.slug} value={field.slug}>{field.name}</option>
-                ))}
-              </select>
-              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
-            </div>
-            <input
-              type="search"
-              name="q"
-              placeholder={copy.hero.searchPlaceholder}
-              className="w-full bg-transparent px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="shrink-0 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
-            >
-              {copy.hero.searchButton}
-            </button>
-          </form>
+          <HeroSearch fields={fields.map((f) => ({ slug: f.slug, name: f.name }))} placeholder={copy.hero.searchPlaceholder} buttonLabel={copy.hero.searchButton} />
       </HeroCarousel>
 
       {/* Browse by location */}

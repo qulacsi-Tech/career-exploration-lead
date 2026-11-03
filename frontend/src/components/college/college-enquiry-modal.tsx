@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { EnquiryForm } from "@/components/enquiry-form";
+import { useCollegeActions } from "@/components/college/college-actions";
 
 /**
  * The enquiry dialog on a college page.
@@ -33,6 +34,7 @@ export function CollegeEnquiryModal({
   const router = useRouter();
   const open = params.get("enquire") === "1";
   const program = (params.get("program") ?? "").slice(0, 200);
+  const actions = useCollegeActions();
 
   const close = useCallback(() => {
     const next = new URLSearchParams(params.toString());
@@ -42,8 +44,16 @@ export function CollegeEnquiryModal({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [params, pathname, router]);
 
+  // On a college page the link goes through the same sign-in and apply form as the other buttons.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !actions) return;
+    void actions.start("apply", { programme: program || undefined });
+    close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || actions) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     document.addEventListener("keydown", onKey);
     const previous = document.body.style.overflow;
@@ -52,9 +62,9 @@ export function CollegeEnquiryModal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = previous;
     };
-  }, [open, close]);
+  }, [open, close, actions]);
 
-  if (!open) return null;
+  if (!open || actions) return null;
 
   const match = streams.find((s) => s.name.toLowerCase() === stream.toLowerCase() || s.slug === stream.toLowerCase());
   const message = program

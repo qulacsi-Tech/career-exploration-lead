@@ -7,9 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from models.college import College
+from models.course_catalogue import CourseCatalogue
 from models.exam import Exam
 from models.location import Location
-from schemas.search import SearchCollegeResult, SearchExamResult, SearchLocationResult, SearchResultsSchema
+from schemas.search import SearchCollegeResult, SearchCourseResult, SearchExamResult, SearchLocationResult, SearchResultsSchema
 
 
 async def _pg_search(db: AsyncSession, q: str, limit: int) -> SearchResultsSchema:
@@ -43,7 +44,33 @@ async def _pg_search(db: AsyncSession, q: str, limit: int) -> SearchResultsSchem
     )
 
 
-async def search(db: AsyncSession, q: str, limit: int = 10) -> SearchResultsSchema:
+async def _courses(db: AsyncSession, q: str, limit: int, stream: Optional[str]) -> list[SearchCourseResult]:
+    """Courses from the catalogue whose name (or full name) matches."""
+    term = f"%{q}%"
+    stmt = (
+        select(CourseCatalogue.slug, CourseCatalogue.name, CourseCatalogue.full_name, CourseCatalogue.stream)
+        .where(CourseCatalogue.is_published.is_(True), or_(CourseCatalogue.name.ilike(term), CourseCatalogue.full_name.ilike(term)))
+        .order_by(CourseCatalogue.name)
+        .limit(limit)
+    )
+    if stream:
+        stmt = stmt.where(CourseCatalogue.stream.ilike(stream))
+    rows = (await db.execute(stmt)).fetchall()
+    return [SearchCourseResult(slug=r.slug, name=r.name, fullName=r.full_name or "", stream=r.stream or "") for r in rows]
+
+
+async def search(db: AsyncSession, q: str, limit: int = 10, stream: Optional[str] = None) -> SearchResultsSchema:
+    """Colleges, exams, cities and courses that match. With `stream`, only that category's colleges and courses."""
+    # A little more is read when a stream narrows the colleges afterwards, so the narrowed list is still full.
+    results = await _search_colleges_exams_locations(db, q, limit * 3 if stream else limit)
+    if stream:
+        wanted = stream.strip().lower()
+        results.colleges = [c for c in results.colleges if (c.stream or "").lower() == wanted][:limit]
+    results.courses = await _courses(db, q, limit, stream)
+    return results
+
+
+async def _search_colleges_exams_locations(db: AsyncSession, q: str, limit: int = 10) -> SearchResultsSchema:
     """Try Meilisearch first; fall back to Postgres on any error."""
     try:
         import meilisearch  # type: ignore

@@ -27,7 +27,7 @@ export function AdminModal({
   title: string;
   description?: string;
   footer?: ReactNode;
-  size?: "md" | "lg" | "wide" | "seventy" | "eighty" | "full";
+  size?: "md" | "lg" | "wide" | "seventy" | "eighty" | "ninety" | "full";
   children: ReactNode;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -69,6 +69,8 @@ export function AdminModal({
               ? "max-h-[90vh] sm:max-w-[70vw]"
             : size === "eighty"
               ? "h-[92vh] sm:h-[88vh] sm:max-w-[80vw]"
+            : size === "ninety"
+              ? "h-[92vh] sm:h-[90vh] sm:max-w-[90vw]"
             : size === "lg"
               ? "max-h-[90vh] sm:max-w-3xl"
               : "max-h-[90vh] sm:max-w-lg"

@@ -6,8 +6,9 @@ from pydantic import BaseModel, ConfigDict
 from core.dependencies import DbSession
 from core.exceptions import UnauthorizedError
 from core.security import create_access_token, decode_access_token
-from schemas.auth import AuthResponseSchema, GoogleLoginSchema, LoginSchema, RegisterSchema, UserSchema
+from schemas.auth import AuthResponseSchema, ForgotPasswordSchema, GoogleLoginSchema, LoginSchema, RegisterSchema, ResetPasswordSchema, UserSchema
 from schemas.common import SuccessResponse
+from services import password_reset
 from services.auth import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -84,3 +85,20 @@ async def logout():
     token-blocklist logic slots in here without changing the route.
     """
     return SuccessResponse[dict](data={"message": "Logged out successfully."})
+
+
+@router.post("/forgot-password", response_model=SuccessResponse[dict])
+async def forgot_password(data: ForgotPasswordSchema, db: DbSession):
+    """Emails a six-digit code to the account, if there is one. The answer is the same either way."""
+    code = await password_reset.request_code(db, data.identifier)
+    body: dict = {"message": "If there is an account for that, we have emailed a six-digit code. It works for 10 minutes."}
+    if code:
+        body["devCode"] = code  # only while RESET_CODE_IN_RESPONSE is on, for local testing
+    return SuccessResponse[dict](data=body)
+
+
+@router.post("/reset-password", response_model=SuccessResponse[dict])
+async def reset_password(data: ResetPasswordSchema, db: DbSession):
+    """Sets a new password when the code is right. It does not sign anyone in: they log in with the new password."""
+    await password_reset.reset_password(db, data.identifier, data.code, data.newPassword)
+    return SuccessResponse[dict](data={"message": "Your password has been changed. Log in with the new one."})

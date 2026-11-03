@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user import User, UserRole
@@ -16,6 +16,16 @@ class UserRepository:
     async def find_by_email(self, email: str) -> Optional[User]:
         result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
+
+    async def find_by_identifier(self, identifier: str) -> tuple[Optional[User], bool]:
+        """The account for an email address or a 10-digit mobile number, and whether the number belongs to more than one."""
+        if "@" in identifier:
+            return await self.find_by_email(identifier.lower()), False
+        last10 = identifier[-10:]
+        rows = (await self.db.execute(select(User).where(User.phone.is_not(None), func.right(User.phone, 10) == last10).limit(2))).scalars().all()
+        if len(rows) == 1:
+            return rows[0], False
+        return None, len(rows) > 1
 
     async def find_by_id(self, user_id: UUID) -> Optional[User]:
         result = await self.db.execute(select(User).where(User.id == user_id))

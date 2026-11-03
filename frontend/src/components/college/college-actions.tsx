@@ -20,10 +20,18 @@ import { canUsePanel } from "@/lib/roles";
 export type ActionKind = "review" | "query" | "counsellor" | "callback" | "apply" | "brochure";
 
 /** Extra context for an action: the programme an application or brochure request is about. */
-export type ActionOptions = { programme?: string };
+export type ActionOptions = {
+  programme?: string;
+  /** What the request is about on a page that is not a college's (the page's own title is used when absent). */
+  topic?: string;
+  /** For a request about a college from outside its own pages (a listing card's Brochure). */
+  collegeSlug?: string;
+  collegeName?: string;
+  brochureUrl?: string;
+};
 
 type Stage =
-  | { step: "auth"; then?: ActionKind; options?: ActionOptions; /** For a one-off action such as "helpful": what to say, and what to do once signed in. */ reason?: string; resume?: () => void }
+  | { step: "auth"; then?: ActionKind; options?: ActionOptions; /** For a one-off action such as "helpful": what to say, and what to do once signed in. */ reason?: string; resume?: () => void; allowAdmin?: boolean }
   | { step: "profile"; then: ActionKind; options?: ActionOptions; user: SessionUser }
   | { step: "form"; kind: ActionKind; options?: ActionOptions; user: SessionUser }
   /** Signed in as an admin: reviews, questions, applications and the rest are for student accounts. */
@@ -35,7 +43,7 @@ type CollegeActionsApi = {
   start: (kind: ActionKind, options?: ActionOptions) => void;
   busy: boolean;
   /** Runs `resume` at once for a signed-in student; otherwise asks them to sign in or register first, then runs it. */
-  ensureSignedIn: (reason: string, resume: () => void) => Promise<void>;
+  ensureSignedIn: (reason: string, resume: () => void, options?: { allowAdmin?: boolean }) => Promise<void>;
 };
 
 const Ctx = createContext<CollegeActionsApi | null>(null);
@@ -72,10 +80,10 @@ export function CollegeActions({ slug, name, courses, programmes = [], brochureU
     [],
   );
 
-  const ensureSignedIn = useCallback(async (reason: string, resume: () => void) => {
+  const ensureSignedIn = useCallback(async (reason: string, resume: () => void, options?: { allowAdmin?: boolean }) => {
     const user = await getSessionUser();
-    if (!user) setStage({ step: "auth", reason, resume });
-    else if (canUsePanel(user.role)) setStage({ step: "admin" });
+    if (!user) setStage({ step: "auth", reason, resume, allowAdmin: options?.allowAdmin });
+    else if (canUsePanel(user.role) && !options?.allowAdmin) setStage({ step: "admin" });
     else resume();
   }, []);
 
@@ -90,7 +98,7 @@ export function CollegeActions({ slug, name, courses, programmes = [], brochureU
     if (stage?.step !== "auth") return;
     const user = await getSessionUser();
     // An admin who signs in here is told these actions are for student accounts.
-    if (user && canUsePanel(user.role)) return setStage({ step: "admin" });
+    if (user && canUsePanel(user.role) && !stage.allowAdmin) return setStage({ step: "admin" });
     // A one-off action (such as marking an answer helpful) just carries on; it needs no profile details.
     if (stage.resume) {
       const resume = stage.resume;
@@ -125,9 +133,32 @@ export function CollegeActions({ slug, name, courses, programmes = [], brochureU
       {stage?.step === "form" && stage.kind === "review" && <ReviewModal slug={slug} collegeName={name} courses={courses} user={stage.user} onClose={close} />}
       {stage?.step === "form" && (stage.kind === "query" || stage.kind === "counsellor") && <QueryModal kind={stage.kind} slug={slug} collegeName={name} user={stage.user} onClose={close} />}
       {stage?.step === "form" && (stage.kind === "callback" || stage.kind === "apply" || stage.kind === "brochure") && (
-        <LeadModal kind={stage.kind} slug={slug} collegeName={name} programmes={programmes} brochureUrl={brochureUrl} programme={stage.options?.programme} user={stage.user} onClose={close} />
+        <LeadModal
+          kind={stage.kind}
+          slug={stage.options?.collegeSlug ?? slug}
+          collegeName={stage.options?.collegeName ?? name}
+          programmes={stage.options?.collegeSlug ? [] : programmes}
+          brochureUrl={stage.options?.brochureUrl ?? brochureUrl}
+          programme={stage.options?.programme}
+          topic={stage.options?.topic}
+          user={stage.user}
+          onClose={close}
+        />
       )}
     </Ctx.Provider>
+  );
+}
+
+/**
+ * The same sign-in and form flow for every page that is not a college's: the course, exam, news, programme and
+ * listing pages and the rest. It wraps the whole site, so a button anywhere asks the visitor to sign in first,
+ * and a college's own pages (which have their own provider inside this one) still use theirs.
+ */
+export function SiteActions({ children }: { children: ReactNode }) {
+  return (
+    <CollegeActions slug="" name="" courses={[]}>
+      {children}
+    </CollegeActions>
   );
 }
 
@@ -148,5 +179,29 @@ export function ActionButton({ kind, options, fallbackHref = "/enquiry", classNa
     <button type="button" onClick={() => void ctx.start(kind, options)} disabled={ctx.busy} aria-busy={ctx.busy || undefined} className={`${className ?? ""} disabled:opacity-70`}>
       {children}
     </button>
+  );
+}
+
+/**
+ * A link that asks a visitor who is not signed in to log in or register first (in a window, on the page), and goes
+ * on to `href` once they have. Used where the destination is itself behind an account, such as a practice test.
+ * `allowAdmin` lets an admin through, for things an admin may try for themselves.
+ */
+export function SignInLink({ href, reason, allowAdmin = false, className, children }: { href: string; reason: string; allowAdmin?: boolean; className?: string; children: ReactNode }) {
+  const ctx = useContext(Ctx);
+  const router = useRouter();
+  return (
+    <Link
+      href={href}
+      className={className}
+      onClick={(e) => {
+        // A new tab or window goes straight to the page, which asks for the account itself.
+        if (!ctx || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        void ctx.ensureSignedIn(reason, () => router.push(href), { allowAdmin });
+      }}
+    >
+      {children}
+    </Link>
   );
 }

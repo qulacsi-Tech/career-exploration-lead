@@ -202,6 +202,8 @@ export type CollegeLeadInput = {
   /** A free callback, an application for a programme, or a brochure download. */
   kind: "callback" | "apply" | "brochure";
   programme?: string;
+  /** What it is about, for a request made off a college's pages. */
+  topic?: string;
   bestTime?: string;
   message?: string;
   /** Asked for only when the account has no number yet. */
@@ -240,14 +242,14 @@ export async function submitCollegeLead(slug: string, input: CollegeLeadInput): 
   const jar = await cookies();
   const visitorId = jar.get(CONSENT_COOKIE)?.value === "granted" ? jar.get(VISITOR_COOKIE)?.value : undefined;
   const lead = { callback: "Callback request", apply: "Application", brochure: "Brochure request" }[input.kind];
-  const parts = [input.programme && `For ${input.programme}`, input.bestTime && `Best time to call: ${input.bestTime}`, input.message?.trim()].filter(Boolean);
+  const parts = [input.topic && `About ${input.topic}`, input.programme && `For ${input.programme}`, input.bestTime && `Best time to call: ${input.bestTime}`, input.message?.trim()].filter(Boolean);
   try {
     await submitLead(
       {
         name: profile.name,
         phone,
         email: profile.email,
-        collegeSlug: slug,
+        collegeSlug: slug || undefined,
         type: LEAD_TYPE[input.kind],
         stream: profile.preferredStream ?? undefined,
         city: profile.city ?? undefined,

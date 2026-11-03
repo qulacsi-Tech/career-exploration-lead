@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignInLink } from "@/components/college/college-actions";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -130,12 +131,14 @@ export default async function TestInstructionsPage({
       </section>
 
       <div className="mt-9 flex flex-wrap items-center gap-3 border-t border-line pt-6">
-        <Link
+        <SignInLink
           href={`/practice/attempt/${test.slug}`}
+          reason="Sign in to take this practice test. It takes a minute."
+          allowAdmin
           className="rounded-full bg-brand px-7 py-3 text-sm font-bold text-white transition hover:bg-brand-dark"
         >
           {test.totalMinutes > 0 ? "Start test" : "Begin"}
-        </Link>
+        </SignInLink>
         <Link
           href={`/exams/${slug}/practice`}
           className="text-sm font-semibold text-ink-soft transition hover:text-brand"

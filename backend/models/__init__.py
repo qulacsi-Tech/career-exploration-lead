@@ -27,3 +27,4 @@ from models.tracking import Visitor, VisitSession, Event  # noqa: F401
 from models.notification import Notification  # noqa: F401
 from models.question import Question, QuestionHelpful  # noqa: F401
 from models.collab import ChangeRequest, MessageThread, ThreadMessage  # noqa: F401
+from models.password_reset import PasswordReset  # noqa: F401

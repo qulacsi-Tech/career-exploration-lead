@@ -51,7 +51,15 @@ async def college_me(scope: CollegeAdminScope):
 async def college_record(scope: CollegeAdminScope, db: DbSession):
     """Their college exactly as the admin editor shows it. Read only until the approval flow lands."""
     row = await admin_college_record._load(db, scope["college_slug"])
-    return SuccessResponse[dict](data=admin_college_record._record(row))
+    record = admin_college_record._record(row)
+    # How many students liked or disliked each review, shown beside it (the same as the platform editor shows).
+    from routers.reviews import _counts
+
+    counts = await _counts(db, [uuid.UUID(r["id"]) for r in record["reviews"] if r.get("id")])
+    for r in record["reviews"]:
+        likes, dislikes = counts.get(uuid.UUID(r["id"]), (0, 0)) if r.get("id") else (0, 0)
+        r["likes"], r["dislikes"] = likes, dislikes
+    return SuccessResponse[dict](data=record)
 
 
 @router.get("/pools", response_model=SuccessResponse[dict])

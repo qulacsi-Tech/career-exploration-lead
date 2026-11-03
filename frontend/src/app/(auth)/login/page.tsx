@@ -17,12 +17,13 @@ export const metadata: Metadata = {
 */
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next } = await searchParams;
-  const copy = await getAuthCopy("login");
+  const [copy, signupCopy] = await Promise.all([getAuthCopy("login"), getAuthCopy("signup")]);
   return (
     <AuthShell copy={copy}>
       <LoginForm
         next={typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : undefined}
         copy={copy}
+        signupCopy={signupCopy}
       />
     </AuthShell>
   );

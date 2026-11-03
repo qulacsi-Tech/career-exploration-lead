@@ -43,11 +43,75 @@ class RegisterSchema(BaseModel):
         return _clean_phone(v)
 
 
+# Loose on purpose: an account made with any address that was once accepted must still be able to sign in.
+_EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
+
+
+def _identifier(value: str) -> str:
+    """An email address (lower-cased) or a 10-digit mobile number, whichever it looks like."""
+    value = (value or "").strip()
+    if "@" in value:
+        if len(value) > 254 or not _EMAIL.match(value):
+            raise ValueError("Enter a valid email address.")
+        return value.lower()
+    digits = re.sub(r"\D", "", value)
+    if len(digits) >= 12 and digits.startswith("91"):
+        digits = digits[2:]
+    elif len(digits) == 11 and digits.startswith("0"):
+        digits = digits[1:]
+    if not re.fullmatch(r"[6-9]\d{9}", digits):
+        raise ValueError("Enter your email address or 10-digit mobile number.")
+    return digits
+
+
 class LoginSchema(BaseModel):
-    email: EmailStr
+    # An email address or a mobile number (the field keeps its old name so existing callers still work).
+    email: str
     password: str
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("email")
+    @classmethod
+    def _who(cls, v: str) -> str:
+        return _identifier(v)
+
+
+class ForgotPasswordSchema(BaseModel):
+    identifier: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("identifier")
+    @classmethod
+    def _who(cls, v: str) -> str:
+        return _identifier(v)
+
+
+class ResetPasswordSchema(BaseModel):
+    identifier: str
+    code: str
+    newPassword: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("identifier")
+    @classmethod
+    def _who(cls, v: str) -> str:
+        return _identifier(v)
+
+    @field_validator("code")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        v = re.sub(r"\s", "", v or "")
+        if not re.fullmatch(r"\d{6}", v):
+            raise ValueError("The code is six digits.")
+        return v
+
+    @field_validator("newPassword")
+    @classmethod
+    def _password(cls, v: str) -> str:
+        if len(v) < 8 or len(v) > 64 or not re.search(r"[A-Za-z]", v) or not re.search(r"\d", v):
+            raise ValueError("The new password needs 8 to 64 characters, with a letter and a number.")
+        return v
 
 
 class GoogleLoginSchema(BaseModel):

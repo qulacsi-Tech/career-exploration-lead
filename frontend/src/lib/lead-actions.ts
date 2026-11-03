@@ -45,6 +45,10 @@ export async function submitEnquiry(input: Record<string, unknown>): Promise<Enq
   // Honeypot: a person never fills the hidden field. Bots get a quiet success.
   if (str("company")) return { ok: true, reference: "TCP-RECEIVED" };
 
+  // An enquiry is sent from an account: the form only shows after sign-in, and this is the check that cannot be skipped.
+  const token = await getUserToken();
+  if (!token) return { ok: false, message: "Please sign in to send your enquiry." };
+
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
   if (rateLimited(ip)) return { ok: false, message: "Too many requests. Try again in a minute." };
@@ -83,7 +87,7 @@ export async function submitEnquiry(input: Record<string, unknown>): Promise<Enq
         consent: true,
         visitorId,
       },
-      await getUserToken(),
+      token,
     );
     return { ok: true, reference: `TCP-${lead.id.slice(0, 8).toUpperCase()}` };
   } catch (error) {

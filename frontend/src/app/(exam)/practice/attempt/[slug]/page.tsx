@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/user-session";
 import type { Metadata } from "next";
 import { getPracticeTest } from "@/lib/api";
 import { TestPlayerMount } from "@/components/practice/test-player-mount";
@@ -34,12 +35,10 @@ export default async function AttemptPage({
   const test = await getPracticeTest(slug);
   if (!test || !test.isPublished) notFound();
 
-  /*
-    Hard-coded until workstream H lands a session. The gate (workstream S) is
-    what decides whether an anonymous visitor reaches this route at all; this is
-    only the name on the header.
-  */
-  const candidateName = "Guest Candidate";
+  // Taking a paper needs an account: someone who is not signed in logs in first and comes straight back here.
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=${encodeURIComponent(`/practice/attempt/${slug}`)}`);
+  const candidateName = user.name;
 
   return <TestPlayerMount test={test} candidateName={candidateName} />;
 }

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { College } from "@/lib/api";
 import { CollegeCard } from "@/components/college-card";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { ActionButton } from "@/components/college/college-actions";
 
 /**
  * The shell shared by the filtered college listings — a city page, a stream
@@ -50,12 +51,11 @@ export function CollegeListing({
           <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">{title}</h1>
           <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>
         </div>
-        <Link
-          href="/enquiry" data-track="cta_enquiry"
+        <ActionButton kind="callback"
           className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
           Get Free Counselling
-        </Link>
+        </ActionButton>
       </div>
 
       {intro && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink-soft">{intro}</p>}
@@ -102,12 +102,11 @@ export function CounsellingCard({ context }: { context: string }) {
       <p className="mt-1 text-xs text-brand-ink/80">
         Free guidance on {context} — fees, cutoffs and which colleges to target.
       </p>
-      <Link
-        href="/enquiry" data-track="cta_enquiry"
+      <ActionButton kind="callback"
         className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
       >
         Request a Callback
-      </Link>
+      </ActionButton>
     </div>
   );
 }

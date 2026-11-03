@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SignInLink } from "@/components/college/college-actions";
 import { ArrowUpRight, Clock, FileText, Lock, Unlock } from "lucide-react";
 import type { TestSummary } from "@/lib/practice-data";
 
@@ -30,7 +30,7 @@ export function TestCard({ test }: { test: TestSummary }) {
         </span>
         {test.isFree && (
           <span className="rounded-full bg-gold-soft px-2.5 py-0.5 text-[11px] font-semibold text-ink">
-            No account needed
+            Free
           </span>
         )}
       </div>
@@ -71,13 +71,15 @@ export function TestCard({ test }: { test: TestSummary }) {
       {/* mt-auto on the wrapper, so the button lands on the same baseline in
           every card of a row however much summary text sits above it. */}
       <div className="mt-auto pt-5">
-        <Link
+        <SignInLink
           href={`/exams/${test.examSlug}/practice/${test.slug}`}
+          reason="Sign in to take this practice test. It takes a minute."
+          allowAdmin
           className="inline-flex items-center gap-1.5 rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
         >
           Start test
           <ArrowUpRight className="h-4 w-4" />
-        </Link>
+        </SignInLink>
       </div>
     </article>
   );

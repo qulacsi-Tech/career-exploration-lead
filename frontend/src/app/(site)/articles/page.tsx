@@ -7,9 +7,11 @@ import { NewsCard } from "@/components/colleges/news-card";
 import { ListingFilters } from "@/components/colleges/listing-filters";
 import { appliedFilters, simple, type FilterGroup } from "@/components/colleges/filter-utils";
 import { Fragment } from "react";
-import { getArticles, getListingSlots, type Article } from "@/lib/api";
+import { getArticles, getHomeData, getListingSlots, type Article } from "@/lib/api";
+import { FeaturedStories } from "@/components/colleges/featured-stories";
 import { ListingSlotView } from "@/components/colleges/listing-slot";
 import { inlineSlots, sidebarSlots, slotsAfter, slotsAt, withSidebarSlots } from "@/lib/slot-layout";
+import { ActionButton } from "@/components/college/college-actions";
 
 export const metadata: Metadata = {
   title: "News & Admission Guides",
@@ -96,6 +98,8 @@ export default async function ArticlesIndexPage({
     (name) => [name, all.filter((a) => a.category === name).length] as const,
   );
   const latest = sortArticles(all, "latest").slice(0, 5);
+  // The stories the team has highlighted (pinned for the homepage news), shown as a banner above "Latest stories".
+  const featured = (await getHomeData().catch(() => null))?.articles.slice(0, 3) ?? [];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -123,12 +127,11 @@ export default async function ArticlesIndexPage({
             and course guides
           </p>
         </div>
-        <Link
-          href="/enquiry" data-track="cta_enquiry"
+        <ActionButton kind="callback"
           className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
           Get Free Counselling
-        </Link>
+        </ActionButton>
       </div>
 
       <div className="mt-6 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -226,6 +229,8 @@ export default async function ArticlesIndexPage({
             </div>
           ) : null,
 
+          featured.length > 0 ? <FeaturedStories key="featured" stories={featured} /> : null,
+
           latest.length > 0 ? (
             <div key="latest" className="rounded-2xl bg-brand-soft p-5">
               <p className="text-xs font-semibold text-brand">Just in</p>
@@ -248,12 +253,11 @@ export default async function ArticlesIndexPage({
             <p className="mt-2 text-sm text-brand-ink/80">
               Free guidance on colleges, fees and exams from a counsellor.
             </p>
-            <Link
-              href="/enquiry" data-track="cta_enquiry"
+            <ActionButton kind="callback"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Request a Callback
-            </Link>
+            </ActionButton>
           </div>,
             ].filter(Boolean),
             column,

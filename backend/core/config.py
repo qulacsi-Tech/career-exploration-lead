@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     # volume (a bind mount on an on-prem server, a Docker volume on EC2). Files
     # are served from /api/uploads, and only that relative path is stored.
     UPLOAD_DIR: str = "uploads"
+    # Outgoing email (password reset codes). Nothing is sent while SMTP_HOST is empty: the message goes to the log.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "TopCollegePath <no-reply@topcollegepath.com>"
+    SMTP_STARTTLS: bool = True
+    # For local testing only: return the reset code in the API's answer so it can be tried without email. Keep it off.
+    RESET_CODE_IN_RESPONSE: bool = False
 
     @property
     def cors_origin_list(self) -> List[str]:

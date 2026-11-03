@@ -4,6 +4,7 @@ import type { College } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { CompareButton } from "@/components/colleges/compare-button";
+import { ActionButton } from "@/components/college/college-actions";
 import { plural } from "@/lib/college-rules";
 import { programmeTitle } from "@/lib/college-insights";
 
@@ -278,14 +279,15 @@ export function ListingCard({
               <div className="flex-1">
                 <CompareButton slug={college.slug} name={college.name} block />
               </div>
-              <Link
-                href={college.brochureUrl || "/enquiry"}
-                data-track="cta_brochure"
+              <ActionButton
+                kind="brochure"
+                options={{ collegeSlug: college.slug, collegeName: college.name, brochureUrl: college.brochureUrl || "" }}
+                fallbackHref={college.brochureUrl || "/enquiry"}
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
               >
                 <Download className="h-4 w-4" aria-hidden="true" />
                 Brochure
-              </Link>
+              </ActionButton>
             </div>
           </div>
 

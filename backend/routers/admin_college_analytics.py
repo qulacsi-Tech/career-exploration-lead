@@ -16,7 +16,7 @@ from core.exceptions import NotFoundError
 from models.college import College
 from models.lead import Lead, LeadStatus
 from models.question import Question, QuestionHelpful
-from models.review import Review
+from models.review import Review, ReviewVote
 from models.tracking import Event
 from models.user import User
 from routers.reviews import _counts
@@ -96,6 +96,19 @@ async def college_analytics(slug: str, _admin: AdminPayload, db: DbSession):
     r_pending = (await db.execute(select(func.count()).select_from(Review).where(Review.college_id == college.id, Review.is_approved.is_(False)))).scalar_one()
     r_avg = (await db.execute(select(func.avg(Review.rating)).where(Review.college_id == college.id, Review.is_approved.is_(True)))).scalar_one()
     votes = await _counts(db, [r.id for r in reviews])
+    # Who reacted, so the team can see the names behind each count.
+    reactions: dict = {}
+    if reviews:
+        voters = (
+            await db.execute(
+                select(ReviewVote.review_id, ReviewVote.vote, User.name, User.email)
+                .join(User, User.id == ReviewVote.user_id)
+                .where(ReviewVote.review_id.in_([r.id for r in reviews]))
+                .order_by(ReviewVote.created_at.desc())
+            )
+        ).all()
+        for review_id, vote, voter_name, voter_email in voters:
+            reactions.setdefault(review_id, {"like": [], "dislike": []})["like" if vote == 1 else "dislike"].append({"name": voter_name, "email": voter_email})
 
     return SuccessResponse[dict](
         data={
@@ -155,6 +168,8 @@ async def college_analytics(slug: str, _admin: AdminPayload, db: DbSession):
                     "approved": bool(r.is_approved),
                     "likes": votes.get(r.id, (0, 0))[0],
                     "dislikes": votes.get(r.id, (0, 0))[1],
+                    "likedBy": reactions.get(r.id, {}).get("like", []),
+                    "dislikedBy": reactions.get(r.id, {}).get("dislike", []),
                     "createdAt": _iso(r.created_at),
                 }
                 for r in reviews

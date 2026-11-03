@@ -7,7 +7,8 @@ import { signInInline, signUpInline, type SessionUser } from "@/lib/auth-actions
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SiteLogo } from "@/components/site-logo";
-import { emailProblem, mobileDigits, nameProblem, passwordProblem, phoneProblem } from "@/lib/field-rules";
+import { emailProblem, identifierProblem, mobileDigits, nameProblem, passwordProblem, phoneProblem } from "@/lib/field-rules";
+import { PasswordResetFlow } from "@/components/auth/password-reset-flow";
 import { getProfileChoices, saveProfileDetails, submitCollegeLead, submitCollegeQuery, submitReview, type ProfileChoices } from "@/lib/college-engage-actions";
 import { StateCityFields } from "@/components/admin/state-city-fields";
 
@@ -100,7 +101,7 @@ function BrandedShell({ title, subtitle, wide = false, onClose, children }: { ti
 
 function Field({ id, label, error, hint, children }: { id: string; label: string; error?: string; hint?: string; children: ReactNode }) {
   return (
-    <div>
+    <div className="relative">
       <label htmlFor={id} className="block text-xs font-semibold text-ink">{label}</label>
       {children}
       {hint && !error && <p className="mt-1 text-[11px] text-ink-faint">{hint}</p>}
@@ -139,7 +140,10 @@ const SubmitButton = ({ busy, label, busyLabel }: { busy: boolean; label: string
  * done the dialog says so, and then `onDone` returns the visitor to what they were doing.
  */
 export function AuthModal({ reason, onAuthed, onDone, onClose }: { reason: string; /** Called the moment sign-in works, before the welcome message, so the page can show who is signed in. */ onAuthed: () => void; onDone: () => void; onClose: () => void }) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
+  // When a log in finds no account, the form turns into sign up with what was typed already in place.
+  const [prefill, setPrefill] = useState<{ email: string; phone: string }>({ email: "", phone: "" });
+  const [notice, setNotice] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [welcome, setWelcome] = useState<{ name: string; created: boolean } | null>(null);
@@ -152,10 +156,11 @@ export function AuthModal({ reason, onAuthed, onDone, onClose }: { reason: strin
     return () => clearTimeout(t);
   }, [welcome, onDone]);
 
-  const switchTo = (next: "login" | "register") => {
+  const switchTo = (next: "login" | "register" | "forgot") => {
     setMode(next);
     setErrors({});
     setFormError(null);
+    setNotice(null);
   };
 
   // Stable, so Google's button is not set up again on every keystroke.
@@ -171,7 +176,7 @@ export function AuthModal({ reason, onAuthed, onDone, onClose }: { reason: strin
   const problemWith = (key: string, value: string, all: Record<string, string>): string | null => {
     switch (key) {
       case "name": return nameProblem(value);
-      case "email": return emailProblem(value);
+      case "email": return mode === "login" ? identifierProblem(value) : emailProblem(value);
       case "phone": return phoneProblem(value);
       case "password": return mode === "login" ? (value ? null : "Enter your password.") : passwordProblem(value);
       case "confirm": return !value ? "Re-enter your password." : value !== all.password ? "Both passwords must match." : null;
@@ -231,8 +236,17 @@ export function AuthModal({ reason, onAuthed, onDone, onClose }: { reason: strin
     }
     start(async () => {
       if (mode === "login") {
-        const result = await signInInline(str("email"), str("password"));
+        const typed = str("email").trim();
+        const result = await signInInline(typed, str("password"));
         if (result.ok) return signedIn({ name: result.name, created: false });
+        if (result.notFound) {
+          // No account with that email or number: carry on as sign up, with what they typed already filled in.
+          setPrefill(typed.includes("@") ? { email: typed, phone: "" } : { email: "", phone: mobileDigits(typed) });
+          setMode("register");
+          setErrors({});
+          setFormError(null);
+          return setNotice(`We could not find an account for ${typed}. Create one below. It takes a minute.`);
+        }
         return setFormError(result.error ?? "Could not sign in.");
       }
       const result = await signUpInline({
@@ -260,9 +274,22 @@ export function AuthModal({ reason, onAuthed, onDone, onClose }: { reason: strin
     );
   }
 
+  if (mode === "forgot") {
+    return (
+      <BrandedShell title="Reset your password" subtitle="We will email you a code to choose a new one." onClose={onClose}>
+        <PasswordResetFlow onDone={() => switchTo("login")} />
+        <p className="mt-3.5 text-center text-xs text-ink-soft">
+          Remembered it?{" "}
+          <button type="button" onClick={() => switchTo("login")} className="font-semibold text-ink underline underline-offset-4 hover:text-brand">Log in</button>
+        </p>
+      </BrandedShell>
+    );
+  }
+
   const register = mode === "register";
   return (
     <BrandedShell title={register ? "Create your account" : "Welcome back"} subtitle={reason} wide={register} onClose={onClose}>
+      {notice && <p role="status" className="mb-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">{notice}</p>}
       {formError && <p role="alert" className="mb-2.5 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800">{formError}</p>}
 
       <form onSubmit={submit} noValidate className="space-y-2.5">
@@ -272,15 +299,18 @@ export function AuthModal({ reason, onAuthed, onDone, onClose }: { reason: strin
               <input id="ga-name" name="name" autoComplete="name" maxLength={80} placeholder="Priya Sharma" aria-invalid={!!errors.name} className={compactField(errors.name)} onBlur={fieldEvents.onBlur} onInput={only(/[^\p{L}\p{M} .'’-]/gu)} />
             </Field>
             <Field id="ga-phone" label="Mobile number (optional)" error={errors.phone}>
-              <input id="ga-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={18} placeholder="10-digit mobile number" aria-invalid={!!errors.phone} className={compactField(errors.phone)} onBlur={fieldEvents.onBlur} onInput={mobileInput} />
+              <input id="ga-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={18} defaultValue={prefill.phone} placeholder="10-digit mobile number" aria-invalid={!!errors.phone} className={compactField(errors.phone)} onBlur={fieldEvents.onBlur} onInput={mobileInput} />
             </Field>
           </div>
         )}
-        <Field id="ga-email" label="Email" error={errors.email}>
-          <input id="ga-email" name="email" type="email" autoComplete="email" maxLength={254} placeholder="you@example.com" aria-invalid={!!errors.email} className={compactField(errors.email)} onBlur={fieldEvents.onBlur} onInput={only(/\s/g)} />
+        <Field id="ga-email" label={register ? "Email" : "Email or mobile number"} error={errors.email}>
+          <input key={`email-${mode}`} id="ga-email" name="email" type={register ? "email" : "text"} autoComplete={register ? "email" : "username"} maxLength={254} defaultValue={register ? prefill.email : undefined} placeholder={register ? "you@example.com" : "you@example.com or 9876543210"} aria-invalid={!!errors.email} className={compactField(errors.email)} onBlur={fieldEvents.onBlur} onInput={only(/\s/g)} />
         </Field>
         <div className={register ? "grid gap-2.5 sm:grid-cols-2" : "space-y-2.5"}>
           <Field id="ga-password" label="Password" error={errors.password} hint={register ? "At least 8 characters, with a letter and a number." : undefined}>
+            {!register && (
+              <button type="button" onClick={() => switchTo("forgot")} className="absolute right-0 top-0 text-xs font-semibold text-brand hover:underline">Forgot password?</button>
+            )}
             <PasswordInput id="ga-password" name="password" maxLength={64} placeholder={register ? "Create a password" : "Enter your password"} autoComplete={register ? "new-password" : "current-password"} aria-invalid={!!errors.password} className={compactField(errors.password)} onBlur={fieldEvents.onBlur} onInput={fieldEvents.onInput} />
           </Field>
           {register && (
@@ -610,15 +640,18 @@ export function LeadModal({
   programmes,
   brochureUrl,
   programme: initialProgramme,
+  topic,
   user,
   onClose,
 }: {
   kind: "callback" | "apply" | "brochure";
+  /** The college it is about; empty on a page that is not a college's. */
   slug: string;
   collegeName: string;
   programmes: string[];
   brochureUrl: string;
   programme?: string;
+  topic?: string;
   user: SessionUser;
   onClose: () => void;
 }) {
@@ -644,6 +677,8 @@ export function LeadModal({
       const result = await submitCollegeLead(slug, {
         kind,
         programme: programme || undefined,
+        // Off a college's pages the page's own title says what it was about.
+        topic: slug ? undefined : topic ?? (typeof document !== "undefined" ? document.title.replace(/\s*[—|-]\s*TopCollegePath.*$/i, "") : undefined),
         bestTime: kind === "callback" ? bestTime : undefined,
         message,
         phone: user.phone ? undefined : phone,
@@ -657,7 +692,7 @@ export function LeadModal({
   };
 
   return (
-    <Shell title={kind === "apply" ? `Apply to ${collegeName}` : copy.title} subtitle={kind === "apply" ? "Choose the programme you are interested in." : collegeName} onClose={onClose}>
+    <Shell title={kind === "apply" ? (collegeName ? `Apply to ${collegeName}` : "Apply") : copy.title} subtitle={kind === "apply" ? "Choose the programme you are interested in." : collegeName || undefined} onClose={onClose}>
       {done ? (
         <Done
           message={done}

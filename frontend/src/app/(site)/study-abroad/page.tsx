@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { getStudyAbroad } from "@/lib/api";
 import { ArrowUpRight, Building2, Calendar, Clock, Wallet } from "lucide-react";
+import { ActionButton } from "@/components/college/college-actions";
 
 export const metadata: Metadata = {
   title: "Study Abroad: Destinations, Costs & Application Timeline",
@@ -188,13 +189,12 @@ export default async function StudyAbroadPage() {
           </p>
         </div>
 
-        <Link
-          href="/enquiry" data-track="cta_enquiry"
+        <ActionButton kind="callback"
           className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand-soft"
         >
           Request a call back
           <ArrowUpRight className="h-4 w-4" />
-        </Link>
+        </ActionButton>
       </section>
     </div>
   );

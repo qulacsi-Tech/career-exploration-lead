@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
 import { BookOpenCheck, Check, ChevronDown, ClipboardList, Clock, Phone, Search, Target } from "lucide-react";
 import { TAB_ICONS } from "@/lib/tab-icons";
+import { ActionButton } from "@/components/college/college-actions";
 import type { Cutoff } from "@/lib/api";
 
 /**
@@ -237,10 +237,10 @@ export function AdmissionOverview({
         <section className="rounded-2xl bg-brand p-5 text-white shadow-lg shadow-brand/20">
           <p className="font-display text-base font-bold">Not sure where to start?</p>
           <p className="mt-1 text-sm text-white/85">A counsellor can match a course to your score and budget. Free, and no spam.</p>
-          <Link href="/enquiry" data-track="cta_enquiry" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-bold text-brand-ink transition hover:-translate-y-0.5">
+          <ActionButton kind="callback" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-bold text-brand-ink transition hover:-translate-y-0.5">
             <Phone className="h-4 w-4" aria-hidden="true" />
             Request a callback
-          </Link>
+          </ActionButton>
         </section>
       </aside>
     </div>

@@ -93,7 +93,12 @@ class AuthService:
         return _auth_response(user, is_new=True)
 
     async def login(self, data: LoginSchema) -> AuthResponseSchema:
-        user = await self.repo.find_by_email(str(data.email).lower())
+        user, ambiguous = await self.repo.find_by_identifier(data.email)
+        if ambiguous:
+            raise UnauthorizedError("More than one account uses this mobile number. Sign in with your email address.")
+        if user is None:
+            # Said plainly, on purpose: the sign-in form then offers to create the account.
+            raise AppException(401, "ACCOUNT_NOT_FOUND", "We could not find an account with that email or mobile number.")
         now = datetime.now(timezone.utc)
         # Checked before the password, so a paused account cannot be guessed at while it waits.
         if user and user.locked_until and user.locked_until > now:

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getMyLeads } from "@/lib/api";
 import { getUserToken } from "@/lib/user-session";
 import { LEAD_STATUS_LABEL, LEAD_STATUS_STYLE, LEAD_TYPE_LABEL, formatFull, prettySlug } from "@/lib/lead-labels";
+import { ActionButton } from "@/components/college/college-actions";
 
 export const metadata: Metadata = {
   title: "My enquiries — TopCollegePath",
@@ -25,9 +26,9 @@ export default async function EnquiriesPage() {
         <p className="mt-2 text-sm text-ink-soft">
           When you ask a college or a counsellor a question while signed in, it shows up here with its status and any reply.
         </p>
-        <Link href="/enquiry" data-track="cta_enquiry" className="mt-5 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark">
+        <ActionButton kind="callback" className="mt-5 inline-block rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark">
           Request a callback
-        </Link>
+        </ActionButton>
       </div>
     );
   }

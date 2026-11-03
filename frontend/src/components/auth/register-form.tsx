@@ -56,7 +56,7 @@ function strength(password: string) {
  * trust the client. Values survive a failed submit; focus moves to the first
  * problem, and to the confirmation once it succeeds.
  */
-export function RegisterForm({ next, copy }: { next?: string; copy: AuthPageCopy }) {
+export function RegisterForm({ next, copy, prefill, notice }: { next?: string; copy: AuthPageCopy; /** What was typed on the log in form, carried over when it found no account. */ prefill?: { email?: string; phone?: string }; notice?: string }) {
   const [state, formAction, busy] = useActionState(signUp, undefined);
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
   const [password, setPassword] = useState("");
@@ -106,6 +106,12 @@ export function RegisterForm({ next, copy }: { next?: string; copy: AuthPageCopy
       <h1 className="text-center font-display text-2xl font-extrabold text-ink sm:text-3xl">{copy.heading}</h1>
       {copy.subheading && <p className="mt-1.5 text-center text-sm text-ink-soft">{copy.subheading}</p>}
 
+      {notice && (
+        <p role="status" className="mt-5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          {notice}
+        </p>
+      )}
+
       {formError && (
         <div
           role="alert"
@@ -146,6 +152,7 @@ export function RegisterForm({ next, copy }: { next?: string; copy: AuthPageCopy
           <input
             id="reg-phone"
             name="phone"
+            defaultValue={prefill?.phone}
             type="tel"
             inputMode="tel"
             autoComplete="tel"
@@ -169,6 +176,7 @@ export function RegisterForm({ next, copy }: { next?: string; copy: AuthPageCopy
           <input
             id="reg-email"
             name="email"
+            defaultValue={prefill?.email}
             type="email"
             autoComplete="email"
             placeholder="you@example.com"

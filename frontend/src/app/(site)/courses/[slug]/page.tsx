@@ -5,6 +5,7 @@ import { ArrowRight, Clock, GraduationCap, IndianRupee, Landmark, Users } from "
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ListingCard } from "@/components/colleges/listing-card";
 import { ApiError, getColleges, getCourse, getCourseSlugs, getCourses, getExams } from "@/lib/api";
+import { ActionButton } from "@/components/college/college-actions";
 
 export async function generateStaticParams() {
   const slugs = await getCourseSlugs();
@@ -141,13 +142,12 @@ export default async function CourseDetailPage({
               >
                 View Colleges
               </Link>
-              <Link
-                href="/enquiry" data-track="cta_enquiry"
+              <ActionButton kind="callback"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
               >
                 Get Free Counselling
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </ActionButton>
             </div>
           </div>
         </div>
@@ -307,12 +307,11 @@ export default async function CourseDetailPage({
             <p className="mt-2 text-sm text-brand-ink/80">
               Compare {course.name} against other {course.stream.toLowerCase()} programmes with a counsellor.
             </p>
-            <Link
-              href="/enquiry" data-track="cta_enquiry"
+            <ActionButton kind="callback"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Request a Callback
-            </Link>
+            </ActionButton>
           </div>
         </aside>
       </div>

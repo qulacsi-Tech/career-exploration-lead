@@ -53,3 +53,11 @@ export function mobileDigits(value: string): string {
   else if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
   return digits.slice(0, 10);
 }
+
+/** An email address or a 10-digit mobile number (as the sign-in and forgot-password forms take them). */
+export function identifierProblem(value: string): string | null {
+  const v = value.trim();
+  if (!v) return "Enter your email address or mobile number.";
+  if (v.includes("@")) return emailProblem(v);
+  return phoneProblem(v) ?? (stripPhone(v) ? null : "Enter your email address or mobile number.");
+}

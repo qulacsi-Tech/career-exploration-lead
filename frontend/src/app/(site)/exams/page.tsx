@@ -6,6 +6,7 @@ import { ExamCard } from "@/components/colleges/exam-card";
 import { ListingFilters } from "@/components/colleges/listing-filters";
 import { appliedFilters, simple, type FilterGroup } from "@/components/colleges/filter-utils";
 import { getExams, type Exam } from "@/lib/api";
+import { ActionButton } from "@/components/college/college-actions";
 
 export const metadata: Metadata = {
   title: "Entrance Exams: Dates, Registration & Cutoffs",
@@ -129,12 +130,11 @@ export default async function ExamsIndexPage({
             current cycle
           </p>
         </div>
-        <Link
-          href="/enquiry" data-track="cta_enquiry"
+        <ActionButton kind="callback"
           className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark"
         >
           Get Exam Alerts
-        </Link>
+        </ActionButton>
       </div>
 
       <div className="mt-6 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -232,12 +232,11 @@ export default async function ExamsIndexPage({
             <p className="mt-2 text-sm text-brand-ink/80">
               Get registration and result alerts for the exams you are targeting.
             </p>
-            <Link
-              href="/enquiry" data-track="cta_enquiry"
+            <ActionButton kind="callback"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Get Exam Alerts
-            </Link>
+            </ActionButton>
           </div>
         </aside>
       </div>

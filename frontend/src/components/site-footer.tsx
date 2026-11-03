@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NewsletterForm } from "@/components/newsletter-form";
 import { BrandLogo } from "@/components/brand-logo";
 import { arrangeFooter, getFooterSource } from "@/lib/footer-data";
 import { loadSiteChrome } from "@/lib/site-chrome";
@@ -17,20 +18,7 @@ export async function SiteFooter() {
               Exam dates, cutoffs and application windows — in your inbox, weekly.
             </p>
           </div>
-          <form className="flex w-full max-w-sm gap-2">
-            <input
-              type="email"
-              required
-              placeholder="Enter your email"
-              className="w-full rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-brand focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="shrink-0 rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
-            >
-              Subscribe
-            </button>
-          </form>
+          <NewsletterForm />
         </div>
 
         {/*

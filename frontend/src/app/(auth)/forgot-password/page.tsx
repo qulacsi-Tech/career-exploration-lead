@@ -1,10 +1,19 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { ForgotPasswordView } from "@/components/auth/forgot-password-view";
+import { getAuthCopy } from "@/lib/auth-page";
 
-/**
- * Passwords are not reset by email yet. An old bookmark or link to this page goes to the login
- * screen. Until email is set up, a person who cannot sign in asks the team, who set a new
- * temporary password for them from the admin panel.
- */
-export default function ForgotPasswordPage() {
-  redirect("/login");
+export const metadata: Metadata = {
+  title: "Forgot password — TopCollegePath",
+  robots: { index: false, follow: false },
+};
+
+/** Forgot password: a six-digit code is emailed to the account, then the person chooses a new password. */
+export default async function ForgotPasswordPage() {
+  const copy = await getAuthCopy("login");
+  return (
+    <AuthShell copy={copy}>
+      <ForgotPasswordView />
+    </AuthShell>
+  );
 }

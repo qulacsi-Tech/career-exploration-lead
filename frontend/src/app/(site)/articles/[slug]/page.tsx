@@ -8,12 +8,14 @@ import { CollegeCard } from "@/components/college-card";
 import { ArticleSections } from "@/components/article-sections";
 import { sectionAnchor } from "@/lib/article-sections";
 import { Fragment } from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { FeaturedStories } from "@/components/colleges/featured-stories";
 import { getArticle, getArticleSlugs, getArticles, getCollege, getHomeData, getListingSlots } from "@/lib/api";
 import { ListingSlotView } from "@/components/colleges/listing-slot";
 import { sidebarSlots, slotsAt, slotsForStory, withSidebarSlots } from "@/lib/slot-layout";
 import { articleImage } from "@/lib/article-images";
 import { mediaUrl } from "@/lib/media";
+import { ActionButton } from "@/components/college/college-actions";
 
 export async function generateStaticParams() {
   try {
@@ -76,7 +78,8 @@ export default async function ArticlePage({
   let more: Awaited<ReturnType<typeof getArticles>>["data"] = [];
   let next: (typeof more)[number] | null = null;
   try {
-    const res = await getArticles({ limit: 100 });
+    // The API gives at most 50 at a time; a bigger ask fails, which used to hide Next and More articles.
+    const res = await getArticles({ limit: 50 });
     more = res.data.filter((a) => a.slug !== slug).slice(0, 3);
     const at = res.data.findIndex((a) => a.slug === slug);
     const candidate = res.data[at + 1] ?? res.data[0];
@@ -223,52 +226,14 @@ export default async function ArticlePage({
             <p className="mt-2 text-sm text-brand-ink/80">
               Talk to an admission counsellor about the colleges in this article.
             </p>
-            <Link
-              href="/enquiry" data-track="cta_enquiry"
+            <ActionButton kind="callback"
               className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
             >
               Get Free Counselling
-            </Link>
+            </ActionButton>
           </div>,
 
-          featured.length > 0 ? (
-            <div key="featured" className="overflow-hidden rounded-2xl bg-gradient-to-br from-brand-ink via-brand-dark to-brand text-white shadow-md">
-              <p className="flex items-center gap-1.5 px-5 pt-4 text-xs font-bold uppercase tracking-wide text-white/80">
-                <Sparkles className="h-3.5 w-3.5 text-gold" aria-hidden="true" /> Featured stories
-              </p>
-              {(() => {
-                const [lead, ...rest] = featured;
-                const leadPicture = articleImage(lead.slug, lead.image);
-                return (
-                  <>
-                    <Link href={`/articles/${lead.slug}`} className="group mt-3 block">
-                      {leadPicture && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={mediaUrl(leadPicture)} alt="" className="aspect-[16/9] w-full object-cover opacity-90 transition group-hover:opacity-100" />
-                      )}
-                      <span className="block px-5 pt-3 font-display text-lg font-bold leading-snug group-hover:underline">{lead.title}</span>
-                      <span className="mt-1 line-clamp-2 block px-5 text-sm text-white/80">{lead.excerpt}</span>
-                      <span className="mt-2 inline-flex items-center gap-1 px-5 text-sm font-semibold text-gold">
-                        Read now <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                      </span>
-                    </Link>
-                    {rest.length > 0 && (
-                      <ul className="mt-4 divide-y divide-white/15 border-t border-white/15">
-                        {rest.map((other) => (
-                          <li key={other.slug}>
-                            <Link href={`/articles/${other.slug}`} className="block px-5 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10">
-                              {other.title}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <div className="h-4" />
-                  </>
-                );
-              })()}
-            </div>
-          ) : null,
+          featured.length > 0 ? <FeaturedStories key="featured" stories={featured} /> : null,
 
           more.length > 0 ? (
             <div key="more" className="rounded-2xl bg-brand-soft p-5">

@@ -42,7 +42,7 @@ export function CollegeAnalyticsModal({ slug, name, onClose }: { slug: string; n
   ];
 
   return (
-    <AdminModal open onClose={onClose} size="lg" title={`${name}: analytics`} description="Visits, leads, questions and reviews for this college.">
+    <AdminModal open onClose={onClose} size="ninety" title={`${name}: analytics`} description="Visits, leads, questions and reviews for this college.">
       <div className="space-y-5">
         <div className="flex flex-wrap gap-1.5 border-b border-line pb-3" role="tablist" aria-label="Analytics sections">
           {tabs.map((t) => (
@@ -228,12 +228,50 @@ function Questions({ data }: { data: CollegeAnalytics }) {
   );
 }
 
+/**
+ * The like or dislike count on a review. Pointing at it (or focusing it, or tapping it) opens the list of who
+ * reacted that way, with their email, so the team can see the names behind the number.
+ */
+function Reaction({ kind, count, people }: { kind: "like" | "dislike"; count: number; people: { name: string; email: string }[] }) {
+  const [pinned, setPinned] = useState(false);
+  const [hover, setHover] = useState(false);
+  const open = (pinned || hover) && count > 0;
+  const Icon = kind === "like" ? ThumbsUp : ThumbsDown;
+  return (
+    <span className="relative" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <button
+        type="button"
+        onClick={() => setPinned((p) => !p)}
+        onBlur={() => setPinned(false)}
+        aria-expanded={open}
+        aria-label={`${count} ${kind === "like" ? "likes" : "dislikes"}${count > 0 ? ", show who" : ""}`}
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold transition ${count > 0 ? "cursor-pointer bg-bg-alt text-ink-soft hover:bg-brand-soft hover:text-brand-ink" : "cursor-default bg-bg-alt text-ink-soft"}`}
+      >
+        <Icon className="h-3 w-3" /> {count}
+      </button>
+      {open && (
+        <div role="tooltip" className="absolute right-0 top-full z-30 mt-1.5 w-64 max-w-[80vw] rounded-xl border border-line bg-surface p-3 text-left shadow-lg">
+          <p className="mb-1.5 text-[11px] font-bold text-ink-faint">{kind === "like" ? "Liked by" : "Disliked by"} ({count})</p>
+          <ul className="max-h-56 space-y-1.5 overflow-y-auto">
+            {people.map((p, i) => (
+              <li key={`${p.email}-${i}`} className="text-xs">
+                <span className="block font-semibold text-ink">{p.name}</span>
+                <span className="block truncate text-ink-faint">{p.email}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </span>
+  );
+}
+
 function Reviews({ data }: { data: CollegeAnalytics }) {
   if (data.reviews.length === 0) return <Empty>No reviews for this college yet.</Empty>;
   return (
     <ul className="space-y-2.5">
       {data.reviews.map((r) => (
-        <li key={r.id} className="rounded-xl border border-line p-4">
+        <li key={r.id} className="relative rounded-xl border border-line p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="font-semibold text-ink">{r.author}</p>
@@ -241,8 +279,8 @@ function Reviews({ data }: { data: CollegeAnalytics }) {
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <Chip><Star className="h-3 w-3 fill-gold text-gold" /> {r.rating.toFixed(1)}</Chip>
-              <Chip><ThumbsUp className="h-3 w-3" /> {r.likes}</Chip>
-              <Chip><ThumbsDown className="h-3 w-3" /> {r.dislikes}</Chip>
+              <Reaction kind="like" count={r.likes} people={r.likedBy} />
+              <Reaction kind="dislike" count={r.dislikes} people={r.dislikedBy} />
               {r.approved ? <Chip tone="good">Live</Chip> : <Chip tone="wait">Waiting for approval</Chip>}
             </div>
           </div>

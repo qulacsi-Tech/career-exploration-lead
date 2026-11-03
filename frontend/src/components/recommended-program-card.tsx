@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { RecommendedProgram } from "@/lib/mock-data";
 import { formatDuration, formatFees } from "@/lib/program-format";
+import { ActionButton } from "@/components/college/college-actions";
 
 /**
  * Compact on phones, roomier from `sm` up. On a narrow screen the card is the
@@ -80,12 +81,11 @@ export function RecommendedProgramCard({ program }: { program: RecommendedProgra
       </dl>
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
-        <Link
-          href="/enquiry" data-track="cta_enquiry"
+        <ActionButton kind="callback"
           className="rounded-md border border-brand px-2 py-2 text-center text-xs font-medium text-brand transition hover:bg-brand-soft sm:px-3"
         >
           Get Counselling
-        </Link>
+        </ActionButton>
         <Link
           href={`/programs/${program.slug}`}
           className="rounded-md bg-brand px-2 py-2 text-center text-xs font-semibold text-white transition hover:bg-brand-dark sm:px-3"

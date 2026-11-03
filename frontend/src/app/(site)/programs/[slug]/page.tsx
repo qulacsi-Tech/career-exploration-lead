@@ -5,6 +5,7 @@ import { Clock, GraduationCap, IndianRupee, MapPin, Star, Trophy } from "lucide-
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { getProgram, type ProgramInstitution } from "@/lib/api";
 import { formatDuration, formatFees } from "@/lib/program-format";
+import { ActionButton } from "@/components/college/college-actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -95,21 +96,22 @@ function Actions({ i, programName }: { i: ProgramInstitution; programName: strin
     <div className="mt-4 flex flex-wrap gap-2">
       {i.inDirectory ? (
         <>
-          <Link
-            href={`/college/${i.universitySlug}?enquire=1&program=${encodeURIComponent(programName)}#courses`}
-            data-track="cta_enquiry"
+          <ActionButton
+            kind="apply"
+            options={{ collegeSlug: i.universitySlug, collegeName: i.university, programme: programName }}
+            fallbackHref={`/college/${i.universitySlug}?enquire=1&program=${encodeURIComponent(programName)}#courses`}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
           >
             Enquire now
-          </Link>
+          </ActionButton>
           <Link href={`/college/${i.universitySlug}`} className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand">
             View college
           </Link>
         </>
       ) : (
-        <Link href="/enquiry" data-track="cta_enquiry" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
+        <ActionButton kind="callback" className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
           Get free counselling
-        </Link>
+        </ActionButton>
       )}
     </div>
   );
@@ -156,9 +158,9 @@ export default async function ProgramPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
         <div className="mt-5">
-          <Link href="/enquiry" data-track="cta_enquiry" className="inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
+          <ActionButton kind="callback" className="inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
             Get free counselling
-          </Link>
+          </ActionButton>
         </div>
       </header>
 
