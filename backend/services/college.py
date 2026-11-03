@@ -86,6 +86,8 @@ def _to_list_schema(college: College) -> CollegeListSchema:
                 onlineOffered=bool(c.online_offered and c.online_enabled),
                 onlineDuration=c.online_duration or "",
                 onlineFees=c.online_fees or "",
+                certificateOffered=bool(c.certificate_offered),
+                certificateName=c.certificate_name or "",
             )
             for c in (college.courses or [])
         ],

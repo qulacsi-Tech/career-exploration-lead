@@ -132,6 +132,9 @@ export type Course = {
   onlineOffered?: boolean;
   onlineDuration?: string;
   onlineFees?: string;
+  /** Holds an R&D or certificate programme, with its name. Highlighted on the Courses tab. */
+  certificateOffered?: boolean;
+  certificateName?: string;
 };
 /** One row of a year's placements by category, course and specialisation. A blank package is "not given". */
 export type PlacementBreakdown = {
@@ -908,6 +911,22 @@ export async function adminShareLeads(token: string, slug: string, body: ShareLe
 
 export async function adminUnshareLead(token: string, slug: string, leadId: string) {
   return adminRequest<{ message: string }>(token, "DELETE", `/admin/colleges/${encodeURIComponent(slug)}/shared-leads/${encodeURIComponent(leadId)}`);
+}
+
+/** A course with its first specialisations, as the Courses tab pages them in. */
+export type ProgrammeGroup = { name: string; whole: Course | null; specialisations: Course[]; specialisationTotal: number };
+export type ProgrammePage = { total: number; items: ProgrammeGroup[] };
+
+/** A page of a college's courses (each with its first few specialisations) from the server. */
+export async function getProgrammesPage(slug: string, offset: number, limit: number, specLimit = 2): Promise<ProgrammePage> {
+  const res = await fetch(`${API_BASE}/colleges/${encodeURIComponent(slug)}/programmes?offset=${offset}&limit=${limit}&spec_limit=${specLimit}`, { cache: "no-store" });
+  return apiJson(res);
+}
+
+/** A page of one course's specialisations. */
+export async function getSpecialisationsPage(slug: string, course: string, offset: number, limit: number): Promise<{ total: number; items: Course[] }> {
+  const res = await fetch(`${API_BASE}/colleges/${encodeURIComponent(slug)}/programmes/specialisations?course=${encodeURIComponent(course)}&offset=${offset}&limit=${limit}`, { cache: "no-store" });
+  return apiJson(res);
 }
 
 /** One college's activity, for the Analytics dialog on the admin college list. */
@@ -2621,7 +2640,7 @@ export async function adminDeleteArticle(token: string, slug: string) {
 
 // ── Admin: the whole college record ───────────────────────────────────────
 
-export type RecordCourse = { name: string; specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null; onlineOffered: boolean; onlineEnabled?: boolean; onlineDuration: string; onlineFees: string };
+export type RecordCourse = { name: string; specialisation: string; duration: string; mode: string; fees: string; exams: string[]; eligibility: string; seats: number | null; onlineOffered: boolean; onlineEnabled?: boolean; onlineDuration: string; onlineFees: string; certificateOffered?: boolean; certificateName?: string };
 export type RecordPlacement = { yearStart: number | null; year: number; average: string; median: string; highest: string; placedPercent: number | null; topRecruiters: string[]; breakdown: PlacementBreakdown[] };
 export type RecordCutoff = { exam: string; category: string; course: string; specialisation: string; score: string };
 export type RecordReview = {

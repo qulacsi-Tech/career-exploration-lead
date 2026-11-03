@@ -2,7 +2,7 @@ import { batchLabel } from "@/lib/batch";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowRight, Clock, IndianRupee, Layers, MessageSquarePlus } from "lucide-react";
+import { ArrowRight, MessageSquarePlus } from "lucide-react";
 import { ComparisonTable } from "@/components/comparison-table";
 import { CutoffCards } from "@/components/college/cutoff-cards";
 import {
@@ -36,7 +36,8 @@ import { StudentQA } from "@/components/college/student-qa";
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 import { PlacementBreakdownTable } from "@/components/college/placement-breakdown";
 import { CollegeSectionPage } from "@/components/college/section-page";
-import { ApplyButton, ApplyRowTrigger, CourseApplyProvider } from "@/components/college/course-apply";
+import { ApplyButton, CourseApplyProvider } from "@/components/college/course-apply";
+import { CourseList } from "@/components/college/course-list";
 import { RichText } from "@/components/rich-text";
 import { AdmissionOverview } from "@/components/college/admission-overview";
 import { GalleryViewer } from "@/components/college/gallery-viewer";
@@ -57,6 +58,8 @@ import {
   getCollegeSlugs,
   getHomeData,
   getLocations,
+  getProgrammesPage,
+  type ProgrammePage,
   type College as CollegeBase,
   type CollegeDetail as College,
 } from "@/lib/api";
@@ -249,67 +252,6 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
    Section bodies
  * ------------------------------------------------------------------ */
 
-/** One programme's details: length, mode, eligibility, seats, exams and (when there is one) its online option. */
-function ProgrammeDetails({ course }: { course: College["courses"][number] }) {
-  return (
-    <>
-      <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-soft">
-        <span className="inline-flex items-center gap-1.5">
-          <Clock className="h-4 w-4 text-brand" />
-          {course.duration}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <Layers className="h-4 w-4 text-brand" />
-          {course.mode}
-        </span>
-      </p>
-      {(course.eligibility || course.seats) && (
-        <p className="mt-2 text-sm text-ink-soft">
-          {course.eligibility && <span>Eligibility: {course.eligibility}</span>}
-          {course.eligibility && course.seats ? <span aria-hidden> &middot; </span> : null}
-          {course.seats ? <span>{course.seats.toLocaleString("en-IN")} seats</span> : null}
-        </p>
-      )}
-      {course.exams.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {course.exams.map((exam) => (
-            <li key={exam}>
-              <Chip>{exam}</Chip>
-            </li>
-          ))}
-        </ul>
-      )}
-      {course.onlineOffered && (
-        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
-          <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white">Also online</span>
-          {course.onlineDuration && (
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-4 w-4" />
-              {course.onlineDuration}
-            </span>
-          )}
-          {course.onlineFees && (
-            <span className="inline-flex items-center gap-1.5 font-semibold">
-              <IndianRupee className="h-4 w-4" />
-              {shortFee(course.onlineFees).replace("₹", "")} total fees
-            </span>
-          )}
-        </p>
-      )}
-    </>
-  );
-}
-
-/** The fee at the right of a programme. Applying is done from the card's one Apply button, or by clicking the programme. */
-function ProgrammeFee({ fees }: { fees: string }) {
-  return (
-    <p className="inline-flex items-center font-display text-2xl font-extrabold text-ink sm:justify-end">
-      <IndianRupee className="h-5 w-5" />
-      {shortFee(fees).replace("₹", "")}
-    </p>
-  );
-}
-
 async function Courses({ college }: { college: College }) {
   if (college.courses.length === 0) {
     return (
@@ -332,7 +274,14 @@ async function Courses({ college }: { college: College }) {
   const onlineCourses = groups.filter((g) => g.rows.some((r) => r.onlineOffered)).length;
   // What the Apply dialog offers, and the options its form needs. It still opens with none if either request fails.
   const programmes = college.courses.map((c, i) => ({ key: String(i), course: c.name, specialisation: c.specialisation ?? "", duration: c.duration, mode: c.mode, fees: c.fees }));
-  const keyOf = (course: College["courses"][number]) => String(college.courses.indexOf(course));
+  // Three courses to begin with, two specialisations each. The rest are fetched as the visitor asks and scrolls.
+  const initial: ProgrammePage = await getProgrammesPage(college.slug, 0, 3, 2).catch(() => ({
+    total: groups.length,
+    items: groups.slice(0, 3).map((g) => {
+      const specialised = g.rows.filter((r) => r.specialisation);
+      return { name: g.name, whole: g.rows.find((r) => !r.specialisation) ?? null, specialisations: specialised.slice(0, 2), specialisationTotal: specialised.length };
+    }),
+  }));
   const [enquiryStreams, enquiryCities] = await Promise.all([
     getHomeData().then((h) => h.streams.map((s) => ({ slug: s.slug, name: s.name }))).catch(() => []),
     getLocations().then((l) => l.map((x) => ({ slug: x.slug, name: x.name }))).catch(() => []),
@@ -357,59 +306,7 @@ async function Courses({ college }: { college: College }) {
 
       <DetailCard title="All Courses" action={<ApplyButton />}>
         <p className="-mt-4 mb-5 text-sm text-ink-soft">Click a course to apply for it, or use Apply now to choose from everything on offer.</p>
-        <ul className="divide-y divide-line border-y border-line">
-          {groups.map((group) => {
-            const specialised = group.rows.filter((r) => r.specialisation);
-            // One entry with no specialisation: the course itself, with its figures.
-            if (specialised.length === 0) {
-              const course = group.rows[0];
-              return (
-                <li key={group.name}>
-                  <ApplyRowTrigger programmeKey={keyOf(course)} className="grid gap-4 py-6 transition hover:bg-brand-soft/30 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                    <div className="min-w-0">
-                      <h3 className="font-display text-lg font-bold text-ink">{group.name}</h3>
-                      <ProgrammeDetails course={course} />
-                    </div>
-                    <ProgrammeFee fees={course.fees} />
-                  </ApplyRowTrigger>
-                </li>
-              );
-            }
-            // A course with specialisations: the course on top, each specialisation in a tree beneath it.
-            const whole = group.rows.find((r) => !r.specialisation);
-            return (
-              <li key={group.name} className="py-6">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h3 className="font-display text-lg font-bold text-ink">{group.name}</h3>
-                  <span className="text-sm text-ink-soft">
-                    {specialised.length} {specialised.length === 1 ? "specialisation" : "specialisations"}
-                  </span>
-                </div>
-                {whole && (
-                  <div className="mt-1">
-                    <ProgrammeDetails course={whole} />
-                  </div>
-                )}
-                <ul className="relative mt-4 ml-2 space-y-4 border-l-2 border-brand/20 pl-0">
-                  {specialised.map((course, i) => (
-                    <li key={`${course.specialisation}-${i}`} className="relative grid gap-4 pl-7">
-                      {/* The branch joining this specialisation to the course's line. */}
-                      <span aria-hidden className="absolute left-0 top-5 h-0.5 w-5 bg-brand/20" />
-                      <span aria-hidden className="absolute left-[18px] top-[14px] h-2.5 w-2.5 rounded-full bg-brand" />
-                      <ApplyRowTrigger programmeKey={keyOf(course)} className="min-w-0 rounded-xl border border-line-soft bg-bg-alt/50 p-4 transition hover:border-brand/40 hover:bg-brand-soft/40 sm:col-span-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
-                        <div className="min-w-0">
-                          <h4 className="font-display text-base font-bold text-ink">{course.specialisation}</h4>
-                          <ProgrammeDetails course={course} />
-                        </div>
-                        <ProgrammeFee fees={course.fees} />
-                      </ApplyRowTrigger>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            );
-          })}
-        </ul>
+        <CourseList slug={college.slug} initial={initial} />
       </DetailCard>
     </CourseApplyProvider>
   );

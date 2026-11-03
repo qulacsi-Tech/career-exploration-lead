@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { batchLabel } from "@/lib/batch";
 import { Suspense } from "react";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { BellRing, Headset, MessagesSquare, PhoneCall, Sparkles } from "lucide-react";
 import {
@@ -36,6 +35,7 @@ import { getCollege, getCollegeSlugs, getHomeData, getLocations, getSimilarColle
 import type { College, CollegeDetail } from "@/lib/api";
 import { CollegeEnquiryModal } from "@/components/college/college-enquiry-modal";
 import { PageSearch } from "@/components/college/page-search";
+import { ActionButton } from "@/components/college/college-actions";
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 
 export async function generateStaticParams() {
@@ -354,13 +354,13 @@ export default async function CollegeOverviewPage({
             <p className="mt-2 text-base text-ink-soft">
               Talk to an admission counsellor about fees, cut-offs and your chances — free.
             </p>
-            <Link
-              href="/enquiry" data-track="cta_enquiry"
+            <ActionButton
+              kind="callback"
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-dark"
             >
               <PhoneCall className="h-4 w-4" />
               Get a free callback
-            </Link>
+            </ActionButton>
           </div>
           <div aria-hidden className="relative mx-auto h-32 w-40 shrink-0 sm:mx-0">
             <span className="absolute inset-4 rotate-6 rounded-3xl bg-brand-soft" />

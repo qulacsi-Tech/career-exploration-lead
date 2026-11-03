@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { ApiError, getCollegeQuestions, getExams, getHomeData, getIndiaGeo, getMe, getReviewVotes, postHelpful, postReviewVote, postQuestion, postReview, submitLead, updateMe, type CollegeQuestion, type IndiaGeo, type ReviewInput, type ReviewVotes } from "@/lib/api";
+import { ApiError, getCollegeQuestions, getProgrammesPage, getSpecialisationsPage, getExams, getHomeData, getIndiaGeo, getMe, getReviewVotes, postHelpful, postReviewVote, postQuestion, postReview, submitLead, updateMe, type CollegeQuestion, type Course, type IndiaGeo, type ProgrammePage, type ReviewInput, type ReviewVotes } from "@/lib/api";
 import { CONSENT_COOKIE, VISITOR_COOKIE } from "@/lib/analytics-cookies";
 import { getUserToken } from "@/lib/user-session";
+import { canUsePanel } from "@/lib/roles";
 import { phoneProblem, stripPhone } from "@/lib/field-rules";
 
 /**
@@ -16,6 +17,7 @@ import { phoneProblem, stripPhone } from "@/lib/field-rules";
 export type EngageResult = { ok: true; message: string } | { ok: false; message: string; needsSignIn?: boolean };
 
 const SIGN_IN: EngageResult = { ok: false, needsSignIn: true, message: "Please sign in to continue." };
+const ADMIN_ACCOUNT: EngageResult = { ok: false, message: "Admin accounts cannot do this. Use a student account." };
 
 /** Saves a review. It waits for the platform team to approve it before it shows. */
 export async function submitReview(slug: string, input: ReviewInput): Promise<EngageResult> {
@@ -69,6 +71,7 @@ export async function submitCollegeQuery(slug: string, input: QueryInput): Promi
   } catch {
     return SIGN_IN;
   }
+  if (canUsePanel(profile.role)) return ADMIN_ACCOUNT;
   const phone = stripPhone(profile.phone || input.phone || "");
   const phoneError = phoneProblem(phone, true);
   if (phoneError) return { ok: false, message: phoneError };
@@ -174,5 +177,92 @@ export async function voteReview(id: string, vote: "like" | "dislike"): Promise<
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) return { ok: false, needsSignIn: true, message: "Please sign in to continue." };
     return { ok: false, message: err instanceof ApiError ? err.message : "Could not save that. Please try again." };
+  }
+}
+
+/** The next courses of a college, for the Courses tab as the visitor asks for more or scrolls. */
+export async function loadMoreProgrammes(slug: string, offset: number, limit: number): Promise<ProgrammePage | { error: string }> {
+  try {
+    return await getProgrammesPage(slug, offset, limit);
+  } catch {
+    return { error: "Could not load more courses. Please try again." };
+  }
+}
+
+/** The next specialisations of one course. */
+export async function loadMoreSpecialisations(slug: string, course: string, offset: number, limit: number): Promise<{ total: number; items: Course[] } | { error: string }> {
+  try {
+    return await getSpecialisationsPage(slug, course, offset, limit);
+  } catch {
+    return { error: "Could not load more specialisations. Please try again." };
+  }
+}
+
+export type CollegeLeadInput = {
+  /** A free callback, an application for a programme, or a brochure download. */
+  kind: "callback" | "apply" | "brochure";
+  programme?: string;
+  bestTime?: string;
+  message?: string;
+  /** Asked for only when the account has no number yet. */
+  phone?: string;
+  sourceUrl?: string;
+};
+
+const LEAD_TYPE = { callback: "callback", apply: "enquiry", brochure: "brochure" } as const;
+const LEAD_SOURCE = { callback: "college-callback", apply: "college-apply", brochure: "college-brochure" } as const;
+const LEAD_THANKS = {
+  callback: "Thank you! A counsellor will call you back within 24 hours.",
+  apply: "Thank you! Your application has been sent. A counsellor will be in touch about the next steps.",
+  brochure: "Thank you! The brochure is on its way.",
+} as const;
+
+/**
+ * Sends a callback request, an application or a brochure request for a college as a lead tied to the student's
+ * account: the team sees it in the leads inbox, and the student sees it under Enquiries on their account. Their
+ * name, email and number come from the account.
+ */
+export async function submitCollegeLead(slug: string, input: CollegeLeadInput): Promise<EngageResult> {
+  const token = await getUserToken();
+  if (!token) return SIGN_IN;
+
+  let profile;
+  try {
+    profile = await getMe(token);
+  } catch {
+    return SIGN_IN;
+  }
+  if (canUsePanel(profile.role)) return ADMIN_ACCOUNT;
+  const phone = stripPhone(profile.phone || input.phone || "");
+  const phoneError = phoneProblem(phone, true);
+  if (phoneError) return { ok: false, message: phoneError };
+
+  const jar = await cookies();
+  const visitorId = jar.get(CONSENT_COOKIE)?.value === "granted" ? jar.get(VISITOR_COOKIE)?.value : undefined;
+  const lead = { callback: "Callback request", apply: "Application", brochure: "Brochure request" }[input.kind];
+  const parts = [input.programme && `For ${input.programme}`, input.bestTime && `Best time to call: ${input.bestTime}`, input.message?.trim()].filter(Boolean);
+  try {
+    await submitLead(
+      {
+        name: profile.name,
+        phone,
+        email: profile.email,
+        collegeSlug: slug,
+        type: LEAD_TYPE[input.kind],
+        stream: profile.preferredStream ?? undefined,
+        city: profile.city ?? undefined,
+        message: `${lead}${parts.length ? `: ${parts.join(". ")}` : ""}`.slice(0, 1000),
+        programName: input.programme?.slice(0, 200) || undefined,
+        source: LEAD_SOURCE[input.kind],
+        sourceUrl: input.sourceUrl,
+        consent: true,
+        visitorId,
+      },
+      token,
+    );
+    revalidatePath("/account", "layout");
+    return { ok: true, message: LEAD_THANKS[input.kind] };
+  } catch {
+    return { ok: false, message: "We could not send that just now. Please try again." };
   }
 }

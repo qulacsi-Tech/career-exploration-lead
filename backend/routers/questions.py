@@ -23,7 +23,7 @@ from core.exceptions import ConflictError, ForbiddenError, NotFoundError, Unauth
 from core.security import decode_access_token
 from models.college import College
 from models.question import Question, QuestionHelpful
-from models.user import ADMIN_ROLES, User, UserRole
+from models.user import ADMIN_ROLES, PANEL_ROLES, User, UserRole
 from schemas.common import SuccessResponse
 
 router = APIRouter(tags=["questions"])
@@ -73,6 +73,8 @@ async def ask_question(slug: str, data: AskBody, user_id: CurrentUserId, db: DbS
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise NotFoundError("Account")
+    if user.role in PANEL_ROLES:
+        raise ForbiddenError("Admin accounts cannot ask questions here. Use a student account.")
 
     question = Question(college_id=college.id, user_id=user_id, kind=data.kind, body=data.message)
     db.add(question)
@@ -144,6 +146,9 @@ async def toggle_helpful(question_id: str, user_id: CurrentUserId, db: DbSession
     question = await db.get(Question, wanted)
     if question is None or not question.is_published:
         raise NotFoundError("Question")
+    voter = await db.get(User, user_id)
+    if voter is not None and voter.role in PANEL_ROLES:
+        raise ForbiddenError("Admin accounts cannot do this. Use a student account.")
     if question.user_id == user_id:
         raise ValidationError("You asked this one, so it is for others to say if it helped.")
 

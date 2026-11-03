@@ -595,19 +595,20 @@ async def admin_set_course_colleges(slug: str, _admin: AdminPayload, db: DbSessi
             except ValueError as exc:
                 raise ValidationError(str(exc)) from exc
 
-    # The online offering lives on the college's own record, not here, so it is carried over to the rewritten rows.
-    online = {(c.college_id, (c.specialisation or "").strip().lower()): (c.online_offered, c.online_enabled, c.online_duration, c.online_fees) for c in existing}
+    # The online offering and the certificate live on the college's own record, not here, so they are carried over to the rewritten rows.
+    online = {(c.college_id, (c.specialisation or "").strip().lower()): (c.online_offered, c.online_enabled, c.online_duration, c.online_fees, c.certificate_offered, c.certificate_name) for c in existing}
     affected = {c.college_id for c in existing} | {chosen[s].id for s in chosen}
     for c in existing:
         await db.delete(c)
     await db.flush()
     for entry in data.colleges:
         for row in entry.rows:
-            offered, enabled, online_duration, online_fees = online.get((chosen[entry.slug].id, row.specialisation.strip().lower()), (False, True, "", ""))
+            offered, enabled, online_duration, online_fees, certificate_offered, certificate_name = online.get((chosen[entry.slug].id, row.specialisation.strip().lower()), (False, True, "", "", False, ""))
             db.add(Course(
                 id=uuid.uuid4(), college_id=chosen[entry.slug].id, name=course.name.strip(), specialisation=row.specialisation.strip(),
                 duration=row.duration, mode=row.mode, fees=row.fees.strip(), exams=row.exams, eligibility=row.eligibility.strip(), seats=row.seats,
                 online_offered=offered, online_enabled=enabled, online_duration=online_duration, online_fees=online_fees,
+                certificate_offered=certificate_offered, certificate_name=certificate_name,
             ))
     await db.flush()
     for college_id in affected:

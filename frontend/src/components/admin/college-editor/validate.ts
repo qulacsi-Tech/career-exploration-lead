@@ -116,6 +116,7 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
       if (!c.onlineFees.trim()) out.courses.push(`${label}: the online fees are required.`);
       else add("courses", amountProblem(c.onlineFees, "Fees") && `${label}: Online fees must be 0 or more.`);
     }
+    if (c.certificateOffered && (c.certificateName ?? "").trim().length < 2) out.courses.push(`${label}: give the name of the certificate or R&D programme.`);
     const key = `${c.name.trim().toLowerCase()}|${c.specialisation.trim().toLowerCase()}`;
     if (c.name.trim() && names.has(key)) out.courses.push(`${label} is listed more than once.`);
     names.add(key);

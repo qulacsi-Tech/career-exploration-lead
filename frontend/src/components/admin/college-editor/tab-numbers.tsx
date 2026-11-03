@@ -24,7 +24,7 @@ const THIS_YEAR = new Date().getFullYear();
 
 // ── Courses & fees ───────────────────────────────────────────────────────────
 
-const blankCourse = (): RecordCourse => ({ name: "", specialisation: "", duration: "", mode: "Full Time", fees: "", exams: [], eligibility: "", seats: null, onlineOffered: false, onlineEnabled: true, onlineDuration: "", onlineFees: "" });
+const blankCourse = (): RecordCourse => ({ name: "", specialisation: "", duration: "", mode: "Full Time", fees: "", exams: [], eligibility: "", seats: null, onlineOffered: false, onlineEnabled: true, onlineDuration: "", onlineFees: "", certificateOffered: false, certificateName: "" });
 
 /** A numbered heading, so the tab reads as steps to be done in order. */
 function Step({ n, title, children }: { n: number; title: string; children?: ReactNode }) {
@@ -54,7 +54,7 @@ export function CoursesTab({ record, update, pools }: EditorProps) {
   // A programme can be taught online when its course is, and its specialisation too if it has one.
   const canOnline = (c: RecordCourse) =>
     (pools.onlineCourses ?? []).includes(c.name) && (!c.specialisation || (pools.onlineSpecialisations ?? []).includes(c.specialisation));
-  const onlineIncomplete = (c: RecordCourse) => c.onlineOffered && (!c.onlineDuration.trim() || !c.onlineFees.trim());
+  const onlineIncomplete = (c: RecordCourse) => (c.onlineOffered && (!c.onlineDuration.trim() || !c.onlineFees.trim())) || (!!c.certificateOffered && (c.certificateName ?? "").trim().length < 2);
   const missing = rows.filter((c) => !c.duration.trim() || !c.fees.trim() || onlineIncomplete(c)).length;
 
   return (
@@ -128,6 +128,25 @@ export function CoursesTab({ record, update, pools }: EditorProps) {
                       )}
                     </div>
                   )}
+                  <div className={`mt-4 rounded-lg border p-3 ${c.certificateOffered ? "border-amber-300 bg-amber-50" : "border-amber-200 bg-amber-50/40"}`}>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm font-semibold text-amber-900">
+                      <input
+                        type="checkbox"
+                        checked={!!c.certificateOffered}
+                        onChange={(e) => patch(i, { certificateOffered: e.target.checked, ...(e.target.checked ? {} : { certificateName: "" }) })}
+                        className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]"
+                      />
+                      <span>
+                        R&amp;D or certificate programme
+                        <span className="block text-xs font-normal text-amber-900/80">Tick it if this course holds an R&amp;D or certificate programme, and name it. The Courses tab highlights it as “Certificate available”.</span>
+                      </span>
+                    </label>
+                    {c.certificateOffered && (
+                      <div className="mt-3 max-w-xl">
+                        <TextInput id={`co-${i}-certificate`} label="Name of the certificate / R&D programme" required max={200} value={c.certificateName ?? ""} onChange={(v) => patch(i, { certificateName: v })} placeholder="e.g. Certificate in Data Analytics" />
+                      </div>
+                    )}
+                  </div>
                   <details className="mt-4 rounded-lg border border-line bg-surface" open={extras}>
                     <summary className="cursor-pointer select-none px-3 py-2 text-xs font-semibold text-ink-soft hover:text-ink">
                       Optional: entrance exams, eligibility, seats

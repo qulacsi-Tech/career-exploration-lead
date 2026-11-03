@@ -28,6 +28,9 @@ class Course(Base):
     online_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
     online_duration = Column(String(100), nullable=False, default="", server_default="")
     online_fees = Column(String(200), nullable=False, default="", server_default="")
+    # An R&D or certificate programme this course (or specialisation) holds, and its name. Highlighted on the Courses tab.
+    certificate_offered = Column(Boolean, nullable=False, default=False, server_default="false")
+    certificate_name = Column(String(200), nullable=False, default="", server_default="")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     college = relationship("College", back_populates="courses")

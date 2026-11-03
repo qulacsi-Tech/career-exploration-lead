@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useState, type KeyboardEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { EnquiryForm } from "@/components/enquiry-form";
+import { useCollegeActions } from "@/components/college/college-actions";
 
 /**
  * Applying from a college's Courses tab: one Apply button at the top of the card, and the courses themselves
@@ -25,7 +26,10 @@ export type ApplyProgramme = {
   fees: string;
 };
 
-const ApplyContext = createContext<(key?: string) => void>(() => {});
+/** What a click asks for: a programme by its key in the list, or by its label ("MBA · Finance"). */
+type ApplyTarget = { key?: string; label?: string };
+
+const ApplyContext = createContext<(target?: ApplyTarget) => void>(() => {});
 
 export function CourseApplyProvider({
   collegeSlug,
@@ -49,12 +53,21 @@ export function CourseApplyProvider({
   const [selected, setSelected] = useState(programmes[0]?.key ?? "");
   const titleId = useId();
 
+  const actions = useCollegeActions();
+  const labelOf = useCallback((p: ApplyProgramme) => (p.specialisation ? `${p.course} · ${p.specialisation}` : p.course), []);
   const show = useCallback(
-    (key?: string) => {
+    (target?: ApplyTarget) => {
+      // On a college page the application goes through the same sign-in and form as the other buttons.
+      if (actions) {
+        const chosen = target?.label ?? (target?.key ? programmes.find((p) => p.key === target.key) : undefined);
+        void actions.start("apply", { programme: typeof chosen === "string" ? chosen : chosen ? labelOf(chosen) : undefined });
+        return;
+      }
+      const key = target?.key;
       setSelected(key && programmes.some((p) => p.key === key) ? key : (programmes[0]?.key ?? ""));
       setOpen(true);
     },
-    [programmes],
+    [actions, programmes, labelOf],
   );
   const close = useCallback(() => setOpen(false), []);
 
@@ -184,16 +197,17 @@ export function ApplyButton({ children = "Apply now" }: { children?: ReactNode }
 }
 
 /** Wraps a course (or a specialisation) so that clicking it opens the dialog on that one. */
-export function ApplyRowTrigger({ programmeKey, className = "", children }: { programmeKey: string; className?: string; children: ReactNode }) {
+export function ApplyRowTrigger({ programmeKey, label, className = "", children }: { programmeKey?: string; label?: string; className?: string; children: ReactNode }) {
   const show = useContext(ApplyContext);
+  const open = () => show({ key: programmeKey, label });
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
-      show(programmeKey);
+      open();
     }
   };
   return (
-    <div role="button" tabIndex={0} onClick={() => show(programmeKey)} onKeyDown={onKeyDown} title="Apply for this course" className={`cursor-pointer ${className}`}>
+    <div role="button" tabIndex={0} onClick={open} onKeyDown={onKeyDown} title="Apply for this course" className={`cursor-pointer ${className}`}>
       {children}
     </div>
   );

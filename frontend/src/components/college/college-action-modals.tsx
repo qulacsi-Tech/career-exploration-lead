@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
-import { CheckCircle2, Loader2, Star, X } from "lucide-react";
+import { CheckCircle2, Download, Loader2, Star, X } from "lucide-react";
 import { signInInline, signUpInline, type SessionUser } from "@/lib/auth-actions";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SiteLogo } from "@/components/site-logo";
 import { emailProblem, mobileDigits, nameProblem, passwordProblem, phoneProblem } from "@/lib/field-rules";
-import { getProfileChoices, saveProfileDetails, submitCollegeQuery, submitReview, type ProfileChoices } from "@/lib/college-engage-actions";
+import { getProfileChoices, saveProfileDetails, submitCollegeLead, submitCollegeQuery, submitReview, type ProfileChoices } from "@/lib/college-engage-actions";
 import { StateCityFields } from "@/components/admin/state-city-fields";
 
 /**
@@ -109,13 +109,14 @@ function Field({ id, label, error, hint, children }: { id: string; label: string
   );
 }
 
-function Done({ message, onClose, note }: { message: string; onClose: () => void; note?: string }) {
+function Done({ message, onClose, note, action }: { message: string; onClose: () => void; note?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center py-6 text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600"><CheckCircle2 className="h-8 w-8" /></span>
       <p className="mt-4 font-display text-lg font-bold text-ink">{message}</p>
       {note && <p className="mt-1.5 max-w-sm text-sm text-ink-soft">{note}</p>}
-      <button type="button" onClick={onClose} className="mt-6 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark">Done</button>
+      {action && <div className="mt-5">{action}</div>}
+      <button type="button" onClick={onClose} className={`mt-4 rounded-full px-6 py-2.5 text-sm font-bold transition ${action ? "border border-line text-ink-soft hover:border-brand hover:text-brand" : "bg-brand text-white hover:bg-brand-dark"}`}>Done</button>
     </div>
   );
 }
@@ -581,5 +582,162 @@ export function ProfileModal({ user, onDone, onClose }: { user: SessionUser; onD
         </form>
       )}
     </BrandedShell>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+   Callback, application and brochure
+ * ------------------------------------------------------------------ */
+
+const BEST_TIMES = ["Any time", "Morning (9 am to 12 pm)", "Afternoon (12 to 4 pm)", "Evening (4 to 8 pm)"];
+
+const LEAD_COPY = {
+  callback: { title: "Get a free callback", send: "Request a callback", busy: "Sending…" },
+  apply: { title: "Apply", send: "Send my application", busy: "Sending…" },
+  brochure: { title: "Download the brochure", send: "Send and download", busy: "Sending…" },
+} as const;
+
+/**
+ * The form behind the callback, Apply and Brochure buttons. Only a signed-in student reaches it; their name,
+ * email and number come from the account, so they pick the programme (for an application), say anything useful,
+ * and send. The team gets it as a lead and the student finds it under Enquiries on their account. For the
+ * brochure, the download starts as soon as it is sent.
+ */
+export function LeadModal({
+  kind,
+  slug,
+  collegeName,
+  programmes,
+  brochureUrl,
+  programme: initialProgramme,
+  user,
+  onClose,
+}: {
+  kind: "callback" | "apply" | "brochure";
+  slug: string;
+  collegeName: string;
+  programmes: string[];
+  brochureUrl: string;
+  programme?: string;
+  user: SessionUser;
+  onClose: () => void;
+}) {
+  const [programme, setProgramme] = useState(initialProgramme ?? (kind === "apply" ? (programmes[0] ?? "") : ""));
+  const [bestTime, setBestTime] = useState(BEST_TIMES[0]);
+  const [message, setMessage] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const copy = LEAD_COPY[kind];
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!user.phone) {
+      const problem = phoneProblem(phone, true);
+      setPhoneError(problem ?? undefined);
+      if (problem) return;
+    }
+    start(async () => {
+      const result = await submitCollegeLead(slug, {
+        kind,
+        programme: programme || undefined,
+        bestTime: kind === "callback" ? bestTime : undefined,
+        message,
+        phone: user.phone ? undefined : phone,
+        sourceUrl: typeof window !== "undefined" ? window.location.pathname : undefined,
+      });
+      if (!result.ok) return setError(result.message);
+      setDone(result.message);
+      // The brochure opens as soon as it is requested. A browser may block it; the button below is the fallback.
+      if (kind === "brochure" && brochureUrl) window.open(brochureUrl, "_blank", "noopener");
+    });
+  };
+
+  return (
+    <Shell title={kind === "apply" ? `Apply to ${collegeName}` : copy.title} subtitle={kind === "apply" ? "Choose the programme you are interested in." : collegeName} onClose={onClose}>
+      {done ? (
+        <Done
+          message={done}
+          note={kind === "brochure" && !brochureUrl ? "This college has not uploaded its brochure yet, so a counsellor will send it to you." : undefined}
+          onClose={onClose}
+          action={
+            kind === "brochure" && brochureUrl ? (
+              <a href={brochureUrl} target="_blank" rel="noopener" className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark">
+                <Download className="h-4 w-4" /> Download the brochure
+              </a>
+            ) : undefined
+          }
+        />
+      ) : (
+        <form onSubmit={submit} className="space-y-4">
+          <p className="rounded-lg bg-bg-alt px-3 py-2 text-xs text-ink-soft">Sending as <strong className="text-ink">{user.name}</strong> · {user.email}</p>
+
+          {(kind === "apply" || programmes.length > 0) && (
+            <Field id="ld-programme" label={kind === "apply" ? "Programme" : "Interested in (optional)"}>
+              <select id="ld-programme" value={programme} onChange={(e) => setProgramme(e.target.value)} className={fieldClass()}>
+                {kind !== "apply" && <option value="">Not sure yet</option>}
+                {programmes.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </Field>
+          )}
+
+          {kind === "callback" && (
+            <Field id="ld-time" label="Best time to call">
+              <select id="ld-time" value={bestTime} onChange={(e) => setBestTime(e.target.value)} className={fieldClass()}>
+                {BEST_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Field>
+          )}
+
+          {kind !== "brochure" && (
+            <Field id="ld-message" label="Anything you would like us to know (optional)">
+              <textarea id="ld-message" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={600} className={fieldClass()} />
+            </Field>
+          )}
+
+          {!user.phone && (
+            <Field id="ld-phone" label="Mobile number" error={phoneError} hint="Your account has no number yet. A counsellor needs one to reach you.">
+              <input
+                id="ld-phone"
+                type="tel"
+                inputMode="tel"
+                maxLength={18}
+                value={phone}
+                onChange={(e) => { setPhone(mobileDigits(e.target.value)); setPhoneError(undefined); }}
+                onBlur={() => setPhoneError(phoneProblem(phone, true) ?? undefined)}
+                placeholder="10-digit mobile number"
+                aria-invalid={!!phoneError}
+                className={fieldClass(phoneError)}
+              />
+            </Field>
+          )}
+
+          {error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-800">{error}</p>}
+          <SubmitButton busy={pending} label={copy.send} busyLabel={copy.busy} />
+        </form>
+      )}
+    </Shell>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+   Admin accounts
+ * ------------------------------------------------------------------ */
+
+/** Shown when someone signed in as an admin tries a student action. Those are for student accounts. */
+export function AdminNoticeModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Shell title="This is for student accounts" onClose={onClose}>
+      <p className="text-sm leading-relaxed text-ink-soft">
+        You are signed in as an admin. Writing reviews, asking questions, applying, requesting a callback or a brochure, and liking answers are for student accounts. Use a student account to try them, or carry on in the admin panel.
+      </p>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link href="/admin" className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark">Open the admin panel</Link>
+        <button type="button" onClick={onClose} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-ink-soft transition hover:border-brand hover:text-brand">Close</button>
+      </div>
+    </Shell>
   );
 }

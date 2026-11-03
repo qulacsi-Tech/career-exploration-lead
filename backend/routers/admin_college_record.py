@@ -59,6 +59,9 @@ class CourseRow(BaseModel):
     onlineEnabled: bool = True
     onlineDuration: str = Field(default="", max_length=100)
     onlineFees: str = Field(default="", max_length=200)
+    # Holds an R&D or certificate programme, and its name (required when ticked).
+    certificateOffered: bool = False
+    certificateName: str = Field(default="", max_length=200)
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("duration")
@@ -70,6 +73,15 @@ class CourseRow(BaseModel):
     @classmethod
     def _fees(cls, value: str) -> str:
         return rules.check_amount(value, "The fees")
+
+    @model_validator(mode="after")
+    def _certificate(self):
+        self.certificateName = " ".join(self.certificateName.split())
+        if not self.certificateOffered:
+            self.certificateName = ""
+        elif len(self.certificateName) < 2:
+            raise ValueError("Give the name of the certificate or R&D programme.")
+        return self
 
     @model_validator(mode="after")
     def _online(self):
@@ -304,7 +316,8 @@ def _record(c: College) -> dict:
         "isMostViewed": bool(c.is_most_viewed),
         "courses": [
             {"name": x.name, "specialisation": x.specialisation or "", "duration": x.duration, "mode": x.mode, "fees": x.fees, "exams": x.exams or [], "eligibility": x.eligibility or "", "seats": x.seats,
-             "onlineOffered": bool(x.online_offered), "onlineEnabled": bool(x.online_enabled), "onlineDuration": x.online_duration or "", "onlineFees": x.online_fees or ""}
+             "onlineOffered": bool(x.online_offered), "onlineEnabled": bool(x.online_enabled), "onlineDuration": x.online_duration or "", "onlineFees": x.online_fees or "",
+             "certificateOffered": bool(x.certificate_offered), "certificateName": x.certificate_name or ""}
             for x in sorted(c.courses or [], key=lambda x: x.created_at or 0)
         ],
         "placements": [
@@ -566,7 +579,8 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
     for c in data.courses:
         db.add(Course(id=uuid.uuid4(), college_id=row.id, name=c.name.strip(), specialisation=c.specialisation.strip(), duration=c.duration.strip(), mode=c.mode, fees=c.fees.strip(),
                       exams=[e.strip() for e in c.exams if e.strip()], eligibility=c.eligibility.strip(), seats=c.seats,
-                      online_offered=c.onlineOffered, online_enabled=c.onlineEnabled, online_duration=c.onlineDuration, online_fees=c.onlineFees))
+                      online_offered=c.onlineOffered, online_enabled=c.onlineEnabled, online_duration=c.onlineDuration, online_fees=c.onlineFees,
+                      certificate_offered=c.certificateOffered, certificate_name=c.certificateName))
     # Every recruiter named goes into the shared pool (once, however it is spelled) and is written the pool's way.
     pool = {r.name_key: r for r in (await db.execute(select(Recruiter))).scalars().all()}
     for p in data.placements:

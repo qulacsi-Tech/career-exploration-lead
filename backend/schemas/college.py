@@ -52,6 +52,8 @@ class CourseSchema(BaseModel):
     onlineOffered: bool = False
     onlineDuration: str = ""
     onlineFees: str = ""
+    certificateOffered: bool = False
+    certificateName: str = ""
 
     model_config = ConfigDict(populate_by_name=True)
 

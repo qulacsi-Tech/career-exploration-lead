@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
+import { ActionButton } from "@/components/college/college-actions";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
@@ -357,14 +358,14 @@ export function CollegeMasthead({
               <GitCompareArrows className="h-4 w-4" />
               {comparing ? "Added" : "Compare"}
             </button>
-            <Link
-              href={brochureHref}
-              data-track="cta_brochure"
+            <ActionButton
+              kind="brochure"
+              fallbackHref={brochureHref}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark"
             >
               <Download className="h-4 w-4" />
               Brochure
-            </Link>
+            </ActionButton>
           </motion.div>
         </div>
       </div>
@@ -406,21 +407,21 @@ export function CollegeMasthead({
                     <span>{reviewCount.toLocaleString("en-IN")}</span>
                   </p>
                 </div>
-                <Link
-                  href={brochureHref}
-              data-track="cta_brochure"
+                <ActionButton
+                  kind="brochure"
+                  fallbackHref={brochureHref}
                   className="hidden shrink-0 items-center gap-2 rounded-full border border-ink/70 px-4 py-2 text-sm font-semibold text-ink transition hover:border-brand hover:text-brand sm:inline-flex"
                 >
                   <Download className="h-4 w-4" />
                   Brochure
-                </Link>
-                <Link
-                  href="/enquiry" data-track="cta_enquiry"
+                </ActionButton>
+                <ActionButton
+                  kind="apply"
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark"
                 >
                   Apply Now
                   <ArrowUpRight className="h-4 w-4" />
-                </Link>
+                </ActionButton>
               </div>
             </motion.div>
           )}

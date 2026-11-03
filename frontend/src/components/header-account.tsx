@@ -113,9 +113,12 @@ export function HeaderAccount() {
           role="menu"
           className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-line bg-surface py-1 text-sm shadow-lg"
         >
-          <Link role="menuitem" href="/account" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-ink hover:bg-bg-alt">
-            My account
-          </Link>
+          {/* An admin works in the admin panel: student areas (account, enquiries, reviews) are for student accounts. */}
+          {!canUsePanel(user.role) && (
+            <Link role="menuitem" href="/account" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-ink hover:bg-bg-alt">
+              My account
+            </Link>
+          )}
           {canUsePanel(user.role) && (
             <Link role="menuitem" href="/admin" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-ink hover:bg-bg-alt">
               Admin panel

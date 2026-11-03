@@ -15,10 +15,10 @@ from sqlalchemy import case, delete, func, select
 
 from core import college_rules as rules
 from core.dependencies import CurrentUserId, DbSession, OptionalUserId
-from core.exceptions import ConflictError, NotFoundError, ValidationError
+from core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from models.college import College
 from models.review import Review, ReviewVote
-from models.user import User
+from models.user import PANEL_ROLES, User
 from schemas.common import SuccessResponse
 
 router = APIRouter(tags=["reviews"])
@@ -61,6 +61,7 @@ async def submit_review(slug: str, data: ReviewBody, user_id: CurrentUserId, db:
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise NotFoundError("Account")
+    _students_only(user)
 
     already = (
         await db.execute(select(Review.id).where(Review.college_id == college.id, Review.user_id == user_id).limit(1))
@@ -90,6 +91,12 @@ async def submit_review(slug: str, data: ReviewBody, user_id: CurrentUserId, db:
     await db.commit()
     await _tell_platform(db, college, user)
     return SuccessResponse[dict](data={"message": "Thank you! Your review is with our team and will appear once it is approved."})
+
+
+def _students_only(user: Optional[User]) -> None:
+    """Reviews and their votes belong to students. The platform team and college admins use the admin panel."""
+    if user is not None and user.role in PANEL_ROLES:
+        raise ForbiddenError("Admin accounts cannot do this. Use a student account.")
 
 
 async def _counts(db, review_ids: list) -> dict:
@@ -144,6 +151,7 @@ async def vote_review(review_id: str, data: VoteBody, user_id: CurrentUserId, db
     review = await db.get(Review, wanted)
     if review is None or not review.is_approved:
         raise NotFoundError("Review")
+    _students_only(await db.get(User, user_id))
     if review.user_id == user_id:
         raise ValidationError("This is your own review, so it is for others to like or dislike.")
 

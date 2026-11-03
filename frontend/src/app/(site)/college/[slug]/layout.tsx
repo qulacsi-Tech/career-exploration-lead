@@ -51,9 +51,11 @@ export default async function CollegeLayout({
 
   // The courses the college runs, for the review form to suggest (one entry per course, not per specialisation).
   const courseNames = [...new Set((college.courses ?? []).map((c) => c.name))];
+  // Every course and specialisation as "MBA · Finance", for the apply and brochure forms.
+  const programmeLabels = [...new Set((college.courses ?? []).map((c) => (c.specialisation ? `${c.name} · ${c.specialisation}` : c.name)))];
 
   return (
-    <CollegeActions slug={college.slug} name={college.name} courses={courseNames}>
+    <CollegeActions slug={college.slug} name={college.name} courses={courseNames} programmes={programmeLabels} brochureUrl={college.brochureUrl || ""}>
     <div className="bg-bg-alt pb-4">
       <CollegeMasthead
         slug={college.slug}
