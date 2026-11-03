@@ -190,6 +190,8 @@ class HomeDataSchema(BaseModel):
     locations: List[LocationSchema]
     homeLocations: List[HomeLocationSchema] = []
     articles: List[ArticleListSchema]
+    # The newest stories, so the homepage news can be narrowed to a category.
+    latestArticles: List[ArticleListSchema] = []
     recommendedPrograms: List[ProgramSchema]
     careerPanels: List[CareerPanelSchema]
     recommendedUniversities: List[RecommendedUniversitySchema]

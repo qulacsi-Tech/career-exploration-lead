@@ -306,7 +306,7 @@ export default async function Home() {
       )}
 
       {/* Articles — live from API */}
-      {articles.length > 0 && <NewspaperDispatch articles={articles} copy={copy.articles} />}
+      {articles.length > 0 && <NewspaperDispatch articles={articles} pool={home?.latestArticles ?? articles} copy={copy.articles} />}
     </>
   );
 }

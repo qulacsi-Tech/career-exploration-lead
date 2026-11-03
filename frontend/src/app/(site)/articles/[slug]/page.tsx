@@ -8,7 +8,8 @@ import { CollegeCard } from "@/components/college-card";
 import { ArticleSections } from "@/components/article-sections";
 import { sectionAnchor } from "@/lib/article-sections";
 import { Fragment } from "react";
-import { getArticle, getArticleSlugs, getArticles, getCollege, getListingSlots } from "@/lib/api";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { getArticle, getArticleSlugs, getArticles, getCollege, getHomeData, getListingSlots } from "@/lib/api";
 import { ListingSlotView } from "@/components/colleges/listing-slot";
 import { sidebarSlots, slotsAt, slotsForStory, withSidebarSlots } from "@/lib/slot-layout";
 import { articleImage } from "@/lib/article-images";
@@ -71,14 +72,20 @@ export default async function ArticlePage({
     )
     .map((r) => r.value);
 
-  // Other articles for the sidebar
+  // Other articles for the sidebar, and the one that comes next in the list (the older one; the first again from the last).
   let more: Awaited<ReturnType<typeof getArticles>>["data"] = [];
+  let next: (typeof more)[number] | null = null;
   try {
-    const res = await getArticles({ limit: 5 });
+    const res = await getArticles({ limit: 100 });
     more = res.data.filter((a) => a.slug !== slug).slice(0, 3);
+    const at = res.data.findIndex((a) => a.slug === slug);
+    const candidate = res.data[at + 1] ?? res.data[0];
+    next = candidate && candidate.slug !== slug ? candidate : null;
   } catch {
     more = [];
   }
+  // The stories the team has highlighted (the ones pinned for the homepage news), shown as a banner above "More articles".
+  const featured = (await getHomeData().catch(() => null))?.articles.filter((a) => a.slug !== slug).slice(0, 3) ?? [];
 
   // Render plain-text body: split on double newlines into paragraphs
   const bodyParagraphs = article.body
@@ -171,6 +178,24 @@ export default async function ArticlePage({
               </div>
             </section>
           )}
+
+          {next && (
+            <Link
+              href={`/articles/${next.slug}`}
+              className="group mt-12 flex max-w-3xl items-center justify-between gap-4 rounded-2xl border border-line bg-gradient-to-r from-brand-soft via-bg-alt to-surface p-5 transition hover:border-brand/50 hover:shadow-md sm:p-6"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand">Next article</p>
+                <p className="mt-1 line-clamp-2 font-display text-lg font-bold text-ink group-hover:text-brand sm:text-xl">{next.title}</p>
+                <p className="mt-1 text-xs text-ink-faint">
+                  {[next.category, next.date].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand text-white transition group-hover:translate-x-1">
+                <ArrowRight className="h-5 w-5" aria-hidden="true" />
+              </span>
+            </Link>
+          )}
         </article>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
@@ -205,6 +230,45 @@ export default async function ArticlePage({
               Get Free Counselling
             </Link>
           </div>,
+
+          featured.length > 0 ? (
+            <div key="featured" className="overflow-hidden rounded-2xl bg-gradient-to-br from-brand-ink via-brand-dark to-brand text-white shadow-md">
+              <p className="flex items-center gap-1.5 px-5 pt-4 text-xs font-bold uppercase tracking-wide text-white/80">
+                <Sparkles className="h-3.5 w-3.5 text-gold" aria-hidden="true" /> Featured stories
+              </p>
+              {(() => {
+                const [lead, ...rest] = featured;
+                const leadPicture = articleImage(lead.slug, lead.image);
+                return (
+                  <>
+                    <Link href={`/articles/${lead.slug}`} className="group mt-3 block">
+                      {leadPicture && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={mediaUrl(leadPicture)} alt="" className="aspect-[16/9] w-full object-cover opacity-90 transition group-hover:opacity-100" />
+                      )}
+                      <span className="block px-5 pt-3 font-display text-lg font-bold leading-snug group-hover:underline">{lead.title}</span>
+                      <span className="mt-1 line-clamp-2 block px-5 text-sm text-white/80">{lead.excerpt}</span>
+                      <span className="mt-2 inline-flex items-center gap-1 px-5 text-sm font-semibold text-gold">
+                        Read now <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                    </Link>
+                    {rest.length > 0 && (
+                      <ul className="mt-4 divide-y divide-white/15 border-t border-white/15">
+                        {rest.map((other) => (
+                          <li key={other.slug}>
+                            <Link href={`/articles/${other.slug}`} className="block px-5 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10">
+                              {other.title}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="h-4" />
+                  </>
+                );
+              })()}
+            </div>
+          ) : null,
 
           more.length > 0 ? (
             <div key="more" className="rounded-2xl bg-brand-soft p-5">

@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import { Check, Info, Lightbulb, TriangleAlert } from "lucide-react";
-import { IMAGE_ALIGN_CLASS, IMAGE_SHAPES, IMAGE_SIZES, sectionAnchor, type ArticleBlock, type ArticleSection } from "@/lib/article-sections";
+import { IMAGE_ALIGN_CLASS, IMAGE_SHAPES, IMAGE_SIZES, boldPieces, sectionAnchor, type ArticleBlock, type ArticleSection } from "@/lib/article-sections";
 import { mediaUrl } from "@/lib/media";
 
 /**
@@ -15,6 +15,67 @@ const NOTE: Record<"info" | "tip" | "warning", { box: string; icon: typeof Info;
   warning: { box: "border-amber-200 bg-amber-50", icon: TriangleAlert, iconClass: "text-amber-600" },
 };
 
+/** Text with its **bold** parts drawn bold. */
+function Rich({ text }: { text: string }) {
+  return (
+    <>
+      {boldPieces(text).map((piece, i) =>
+        piece.bold ? (
+          <strong key={i} className="font-semibold text-ink">
+            {piece.text}
+          </strong>
+        ) : (
+          <Fragment key={i}>{piece.text}</Fragment>
+        ),
+      )}
+    </>
+  );
+}
+
+type ImageBlock = Extract<ArticleBlock, { type: "image" }>;
+
+/** One picture with its caption, in the shape chosen. `fill` makes it as wide as the space it is given (the half-width layouts). */
+function ImageFigure({ block, fill = false }: { block: ImageBlock; fill?: boolean }) {
+  const size = IMAGE_SIZES.find((x) => x.value === block.size) ?? IMAGE_SIZES[2];
+  const shape = IMAGE_SHAPES.find((x) => x.value === block.shape) ?? IMAGE_SHAPES[1];
+  return (
+    <figure className={fill ? "w-full" : `w-full ${size.box} ${IMAGE_ALIGN_CLASS[block.align]}`}>
+      {/* Plain img: an uploaded picture comes from the API's origin, and its height is not known. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={mediaUrl(block.src)} alt={block.alt} loading="lazy" className={`w-full border border-line object-cover ${shape.frame}`} />
+      {block.caption && <figcaption className="mt-2 text-center text-sm text-ink-faint">{block.caption}</figcaption>}
+    </figure>
+  );
+}
+
+const isHalf = (b: ArticleBlock | undefined): b is ImageBlock => b?.type === "image" && b.size === "half";
+
+type Row =
+  | { kind: "block"; block: ArticleBlock }
+  /** A half-width picture with the block after it beside it. The picture is on the right when its position is Right. */
+  | { kind: "beside"; image: ImageBlock; next: ArticleBlock }
+  /** Two half-width pictures side by side. Whatever follows them sits below both. */
+  | { kind: "pair"; a: ImageBlock; b: ImageBlock };
+
+/** Groups a section's blocks into rows: half-width pictures pair up, or take the next block alongside. */
+function rowsOf(blocks: ArticleBlock[]): Row[] {
+  const rows: Row[] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    const next = blocks[i + 1];
+    if (isHalf(block) && isHalf(next)) {
+      rows.push({ kind: "pair", a: block, b: next });
+      i += 1;
+    } else if (isHalf(block) && next) {
+      rows.push({ kind: "beside", image: block, next });
+      i += 1;
+    } else {
+      rows.push({ kind: "block", block });
+    }
+  }
+  return rows;
+}
+
 function Block({ block }: { block: ArticleBlock }) {
   switch (block.type) {
     case "paragraph":
@@ -22,7 +83,7 @@ function Block({ block }: { block: ArticleBlock }) {
         <div className="space-y-3 text-[15px] leading-relaxed text-ink-soft">
           {block.text.split(/\n\s*\n/).map((p, i) => (
             <p key={i} className="whitespace-pre-line">
-              {p}
+              <Rich text={p} />
             </p>
           ))}
         </div>
@@ -36,7 +97,7 @@ function Block({ block }: { block: ArticleBlock }) {
               <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-bold text-brand">
                 {i + 1}
               </span>
-              <span>{item}</span>
+              <span><Rich text={item} /></span>
             </li>
           ))}
         </ol>
@@ -51,7 +112,7 @@ function Block({ block }: { block: ArticleBlock }) {
               ) : (
                 <span aria-hidden className="mt-2 h-2 w-2 shrink-0 rounded-full bg-brand" />
               )}
-              <span>{item}</span>
+              <span><Rich text={item} /></span>
             </li>
           ))}
         </ul>
@@ -95,7 +156,7 @@ function Block({ block }: { block: ArticleBlock }) {
               </span>
               <div className="min-w-0 pt-1">
                 <p className="font-display font-semibold text-ink">{item.title}</p>
-                {item.text && <p className="mt-1 text-[15px] leading-relaxed text-ink-soft">{item.text}</p>}
+                {item.text && <p className="mt-1 text-[15px] leading-relaxed text-ink-soft"><Rich text={item.text} /></p>}
               </div>
             </li>
           ))}
@@ -122,29 +183,19 @@ function Block({ block }: { block: ArticleBlock }) {
           <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${tone.iconClass}`} />
           <div className="min-w-0 text-[15px] leading-relaxed text-ink-soft">
             {block.title && <p className="font-semibold text-ink">{block.title}</p>}
-            <p className="whitespace-pre-line">{block.text}</p>
+            <p className="whitespace-pre-line"><Rich text={block.text} /></p>
           </div>
         </div>
       );
     }
 
-    case "image": {
-      const size = IMAGE_SIZES.find((x) => x.value === block.size) ?? IMAGE_SIZES[2];
-      const shape = IMAGE_SHAPES.find((x) => x.value === block.shape) ?? IMAGE_SHAPES[1];
-      return (
-        <figure className={`w-full ${size.box} ${IMAGE_ALIGN_CLASS[block.align]}`}>
-          {/* Plain img: an uploaded picture comes from the API's origin, and its height is not known. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mediaUrl(block.src)} alt={block.alt} loading="lazy" className={`w-full border border-line object-cover ${shape.frame}`} />
-          {block.caption && <figcaption className="mt-2 text-center text-sm text-ink-faint">{block.caption}</figcaption>}
-        </figure>
-      );
-    }
+    case "image":
+      return <ImageFigure block={block} />;
 
     case "quote":
       return (
         <blockquote className="border-l-4 border-brand bg-bg-alt px-5 py-4">
-          <p className="font-display text-lg italic leading-relaxed text-ink">&ldquo;{block.text}&rdquo;</p>
+          <p className="font-display text-lg italic leading-relaxed text-ink">&ldquo;<Rich text={block.text} />&rdquo;</p>
           {block.by && <footer className="mt-2 text-sm font-medium text-brand">&mdash; {block.by}</footer>}
         </blockquote>
       );
@@ -173,9 +224,25 @@ export function ArticleSections({
             </h2>
           )}
           <div className={`space-y-5 ${section.heading ? "mt-5" : ""}`}>
-            {section.blocks.map((block, j) => (
-              <Block key={j} block={block} />
-            ))}
+            {rowsOf(section.blocks).map((row, j) =>
+              row.kind === "block" ? (
+                <Block key={j} block={row.block} />
+              ) : row.kind === "pair" ? (
+                <div key={j} className="grid gap-4 sm:grid-cols-2">
+                  <ImageFigure block={row.a} fill />
+                  <ImageFigure block={row.b} fill />
+                </div>
+              ) : (
+                <div key={j} className="grid items-start gap-5 sm:grid-cols-2">
+                  <div className={row.image.align === "right" ? "sm:order-2" : ""}>
+                    <ImageFigure block={row.image} fill />
+                  </div>
+                  <div className="min-w-0">
+                    <Block block={row.next} />
+                  </div>
+                </div>
+              ),
+            )}
           </div>
         </section>
         {after?.(i + 1)}

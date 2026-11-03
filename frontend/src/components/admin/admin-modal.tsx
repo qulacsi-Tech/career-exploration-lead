@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * Dialog used across the admin panel — add forms, record detail, confirmations.
@@ -46,9 +47,11 @@ export function AdminModal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Drawn on the page itself, not inside whatever card opened it: a card with a blur or a transform becomes the
+  // frame a "fixed" dialog is placed in, which pushed the dialog down and clipped it.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
 
@@ -100,6 +103,7 @@ export function AdminModal({
           </footer>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

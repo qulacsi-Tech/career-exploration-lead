@@ -71,7 +71,8 @@ class ArticleService:
         return _to_detail_schema(article)
 
     async def get_for_home(self, limit: int = 3) -> List[ArticleListSchema]:
-        """The articles pinned to the homepage, in the admin's order, or the most recent when none is pinned.
+        """The articles for the homepage news: the ones pinned in the admin come first, in the admin's order, and the
+        newest published stories fill whatever places are left, so it is always up to date without anyone touching it.
         A pinned article that is unpublished or deleted is skipped."""
         from sqlalchemy import select
         from models.article import Article
@@ -85,7 +86,12 @@ class ArticleService:
             by_slug = {a.slug: a for a in rows}
             pinned = [_to_list_schema(by_slug[s]) for s in slugs if s in by_slug]
             if pinned:
-                return pinned
+                if len(pinned) >= limit:
+                    return pinned[:limit]
+                # The newest ones that are not pinned top it up.
+                taken = {a.slug for a in pinned}
+                recent = await self.get_recent(limit=limit + len(taken))
+                return pinned + [a for a in recent if a.slug not in taken][: limit - len(pinned)]
         return await self.get_recent(limit=limit)
 
     async def get_recent(self, limit: int = 3) -> List[ArticleListSchema]:

@@ -24,7 +24,7 @@ export type ArticleBlock =
       align: ImageAlign;
     };
 
-export type ImageSize = "small" | "medium" | "large" | "full";
+export type ImageSize = "small" | "medium" | "large" | "half" | "full";
 export type ImageShape = "original" | "landscape" | "wide" | "square" | "portrait" | "circle";
 export type ImageAlign = "left" | "center" | "right";
 
@@ -32,6 +32,8 @@ export const IMAGE_SIZES: { value: ImageSize; label: string; box: string }[] = [
   { value: "small", label: "Small", box: "max-w-[14rem]" },
   { value: "medium", label: "Medium", box: "max-w-sm" },
   { value: "large", label: "Large", box: "max-w-xl" },
+  // Half the column. The block after it sits beside it; two in a row sit side by side (see article-sections.tsx).
+  { value: "half", label: "Half width", box: "max-w-full sm:max-w-[50%]" },
   { value: "full", label: "Full width", box: "max-w-full" },
 ];
 
@@ -177,4 +179,12 @@ export function sectionAnchor(heading: string, index: number): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return slug ? `${slug}-${index + 1}` : `section-${index + 1}`;
+}
+
+/** The text after a block with `**bold**` marks: its pieces, each bold or plain. Used by the editor's Bold button and the page. */
+export function boldPieces(text: string): { text: string; bold: boolean }[] {
+  return text
+    .split(/(\*\*[^*\n]+\*\*)/g)
+    .filter((piece) => piece !== "")
+    .map((piece) => (piece.startsWith("**") && piece.endsWith("**") && piece.length > 4 ? { text: piece.slice(2, -2), bold: true } : { text: piece, bold: false }));
 }

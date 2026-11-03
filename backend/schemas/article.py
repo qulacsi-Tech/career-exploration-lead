@@ -37,7 +37,7 @@ class ImageBlock(BaseModel):
     src: Annotated[str, Field(max_length=200, pattern=r"^(/api/uploads/|/images/)[^\s]*$")]
     alt: Short = ""
     caption: Short = ""
-    size: Literal["small", "medium", "large", "full"] = "large"
+    size: Literal["small", "medium", "large", "half", "full"] = "large"
     shape: Literal["original", "landscape", "wide", "square", "portrait", "circle"] = "landscape"
     align: Literal["left", "center", "right"] = "center"
     model_config = ConfigDict(extra="forbid")

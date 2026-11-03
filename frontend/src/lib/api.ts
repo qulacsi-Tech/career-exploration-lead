@@ -421,6 +421,8 @@ export type HomeData = {
   /** The cards the carousel shows, in order. Absent from an API older than the card editor. */
   homeLocations?: HomeLocation[];
   articles: Article[];
+  /** The newest stories, for the category filter on the homepage news. Absent from an older API. */
+  latestArticles?: Article[];
   recommendedPrograms: RecommendedProgram[];
   careerPanels: CareerPanel[];
   recommendedUniversities: RecommendedUniversity[];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -9,6 +9,7 @@ import {
   Info,
   List,
   ListOrdered,
+  Bold,
   Plus,
   Quote,
   Table2,
@@ -109,18 +110,76 @@ function AddButton({ onClick, children }: { onClick: () => void; children: React
    One block's form
  * ------------------------------------------------------------------ */
 
+/**
+ * A text box with a Bold button (and Ctrl/Cmd+B). Bold text is written between ** marks, which the article page
+ * draws bold: select some words and press the button to wrap them, or press it again on bold words to undo it.
+ */
+function BoldTextarea({ value, onChange, rows, maxLength, placeholder }: { value: string; onChange: (v: string) => void; rows: number; maxLength: number; placeholder: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const toggleBold = () => {
+    const el = ref.current;
+    if (!el) return;
+    const { selectionStart: start, selectionEnd: end } = el;
+    const selected = value.slice(start, end);
+    let next: string;
+    let from: number;
+    let to: number;
+    if (selected.startsWith("**") && selected.endsWith("**") && selected.length >= 4) {
+      next = value.slice(0, start) + selected.slice(2, -2) + value.slice(end);
+      from = start;
+      to = end - 4;
+    } else if (value.slice(start - 2, start) === "**" && value.slice(end, end + 2) === "**") {
+      next = value.slice(0, start - 2) + selected + value.slice(end + 2);
+      from = start - 2;
+      to = end - 2;
+    } else {
+      next = value.slice(0, start) + "**" + selected + "**" + value.slice(end);
+      from = start + 2;
+      to = end + 2;
+    }
+    if (next.length > maxLength) return;
+    onChange(next);
+    // Put the selection back on the same words once the new text is in the box.
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(from, to);
+    });
+  };
+
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center gap-2">
+        <button type="button" onClick={toggleBold} title="Bold (Ctrl+B)" aria-label="Bold" className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 text-xs font-bold text-ink-soft transition hover:border-brand hover:text-brand">
+          <Bold className="h-3.5 w-3.5" aria-hidden="true" />
+          Bold
+        </button>
+        <span className="text-[11px] text-ink-faint">Select words, then press Bold. They are written between ** marks.</span>
+      </div>
+      <textarea
+        ref={ref}
+        rows={rows}
+        value={value}
+        maxLength={maxLength}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+            e.preventDefault();
+            toggleBold();
+          }
+        }}
+        placeholder={placeholder}
+        className={input}
+      />
+    </div>
+  );
+}
+
 function BlockForm({ block, onChange }: { block: ArticleBlock; onChange: (b: ArticleBlock) => void }) {
   switch (block.type) {
     case "paragraph":
       return (
-        <textarea
-          rows={4}
-          value={block.text}
-          maxLength={5000}
-          onChange={(e) => onChange({ ...block, text: e.target.value })}
-          placeholder="Write the paragraph"
-          className={input}
-        />
+        <BoldTextarea rows={4} value={block.text} maxLength={5000} onChange={(text) => onChange({ ...block, text })} placeholder="Write the paragraph" />
       );
 
     case "list":
@@ -269,14 +328,7 @@ function BlockForm({ block, onChange }: { block: ArticleBlock; onChange: (b: Art
                     placeholder="Step title"
                     className={`${input} font-semibold`}
                   />
-                  <textarea
-                    rows={2}
-                    value={item.text}
-                    maxLength={1000}
-                    onChange={(e) => onChange({ ...block, items: replaceAt(block.items, i, { ...item, text: e.target.value }) })}
-                    placeholder="What happens in this step (optional)"
-                    className={input}
-                  />
+                  <BoldTextarea rows={2} value={item.text} maxLength={1000} onChange={(text) => onChange({ ...block, items: replaceAt(block.items, i, { ...item, text }) })} placeholder="What happens in this step (optional)" />
                 </div>
                 <IconButton label="Remove step" onClick={() => onChange({ ...block, items: removeAt(block.items, i) })} disabled={block.items.length === 1} danger>
                   <X className="h-3.5 w-3.5" />
@@ -343,7 +395,7 @@ function BlockForm({ block, onChange }: { block: ArticleBlock; onChange: (b: Art
             ))}
           </div>
           <input value={block.title} maxLength={300} onChange={(e) => onChange({ ...block, title: e.target.value })} placeholder="Title (optional)" className={`${input} font-semibold`} />
-          <textarea rows={3} value={block.text} maxLength={2000} onChange={(e) => onChange({ ...block, text: e.target.value })} placeholder="The note" className={input} />
+          <BoldTextarea rows={3} value={block.text} maxLength={2000} onChange={(text) => onChange({ ...block, text })} placeholder="The note" />
         </div>
       );
 
@@ -379,6 +431,11 @@ function BlockForm({ block, onChange }: { block: ArticleBlock; onChange: (b: Art
             fallbackNote="No picture yet. Choose one to add it to the section."
           />
           {choice("Size", IMAGE_SIZES, block.size, (v) => onChange({ ...block, size: v }))}
+          {block.size === "half" && (
+            <p className="rounded-lg bg-brand-soft/60 px-3 py-2 text-xs text-brand-ink">
+              Half width: the block right after this picture (text, points and so on) sits beside it, on the right. Put two half-width pictures one after the other and they sit side by side, with the text below both. Set Position to Right to put the picture on the right instead.
+            </p>
+          )}
           {choice("Shape", IMAGE_SHAPES, block.shape, (v) => onChange({ ...block, shape: v }))}
           {choice(
             "Position",
@@ -409,7 +466,7 @@ function BlockForm({ block, onChange }: { block: ArticleBlock; onChange: (b: Art
     case "quote":
       return (
         <div className="space-y-3">
-          <textarea rows={3} value={block.text} maxLength={1000} onChange={(e) => onChange({ ...block, text: e.target.value })} placeholder="The quote" className={input} />
+          <BoldTextarea rows={3} value={block.text} maxLength={1000} onChange={(text) => onChange({ ...block, text })} placeholder="The quote" />
           <input value={block.by} maxLength={300} onChange={(e) => onChange({ ...block, by: e.target.value })} placeholder="Who said it (optional)" className={input} />
         </div>
       );

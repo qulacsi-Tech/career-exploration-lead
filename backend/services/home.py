@@ -176,6 +176,8 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
     locations = await location_svc.list_locations()
     home_locations = await location_svc.list_home_locations()
     articles = await article_svc.get_for_home(limit=3)
+    # The newest stories, for the category filter on the homepage news.
+    latest_articles = await article_svc.get_recent(limit=40)
     programs = await program_svc.get_recommended(limit=6)
     stream_counts = await college_svc.get_stream_counts()
     universities_raw = await college_svc.get_recommended_universities(limit=6)
@@ -190,6 +192,7 @@ async def get_home_data(db: AsyncSession) -> HomeDataSchema:
         locations=locations,
         homeLocations=home_locations,
         articles=articles,
+        latestArticles=latest_articles,
         recommendedPrograms=programs,
         careerPanels=await _stored(db, "home.careerPanels", CareerPanelSchema),
         recommendedUniversities=[

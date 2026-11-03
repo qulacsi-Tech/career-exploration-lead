@@ -109,7 +109,7 @@ export function NewsManager({ news, categories, picker }: { news: AdminNews; cat
   return (
     <AdminSection
       title="Manage news"
-      description={`Every news story, and which ${MAX_PINNED} the homepage news shows. With none pinned, it shows the ${MAX_PINNED} most recent published stories.`}
+      description={`Every news story, and which ${MAX_PINNED} the homepage news leads with. The newest published stories fill any spare place, so the homepage news is always up to date.`}
       actions={
         <button type="button" onClick={() => setModal(null)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
           Add news
@@ -119,7 +119,7 @@ export function NewsManager({ news, categories, picker }: { news: AdminNews; cat
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-semibold text-ink">
-            {pinned.length === 0 ? "None pinned: the homepage shows the most recent" : `${pinned.length} of ${MAX_PINNED} pinned to the homepage`}
+            {pinned.length === 0 ? "None pinned: the homepage shows the newest stories" : `${pinned.length} of ${MAX_PINNED} pinned to the homepage`}
           </p>
           <label className="sr-only" htmlFor="news-search">Search news</label>
           <input id="news-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title or category" className="w-full max-w-xs rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none" />

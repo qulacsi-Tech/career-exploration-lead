@@ -8,7 +8,10 @@ import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
 import { motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowUpRight, Pause, Play } from "lucide-react";
 
-type Article = { slug: string; title: string; excerpt: string; date: string; image?: string };
+type Article = { slug: string; title: string; excerpt: string; date: string; image?: string; category?: string };
+
+/** How many stories the book holds at a time. */
+const BOOK_SIZE = 3;
 
 /** How long a spread stays open before the page turns itself. */
 const DWELL = 7000;
@@ -77,10 +80,14 @@ function usePinnedBook() {
  * in the kicker and the links, roughly where a real masthead spends its colour.
  */
 export function NewspaperDispatch({
-  articles,
+  articles: curated,
+  pool = curated,
   copy = DEFAULT_HOME_COPY.articles,
 }: {
+  /** The stories the book opens on: the ones pinned in the admin, topped up with the newest. */
   articles: Article[];
+  /** The newest stories, which the category chips narrow down. */
+  pool?: Article[];
   copy?: SectionCopy;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -92,6 +99,18 @@ export function NewspaperDispatch({
   const [edition, setEdition] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [turning, setTurning] = useState(false);
+
+  // The category chips: "All" keeps the curated run; a category shows the newest stories in it.
+  const [category, setCategory] = useState("");
+  const categories = [...new Set(pool.map((a) => a.category).filter((c): c is string => !!c))]
+    .map((name) => [name, pool.filter((a) => a.category === name).length] as const)
+    .sort((a, b) => b[1] - a[1]);
+  const articles = category ? pool.filter((a) => a.category === category).slice(0, BOOK_SIZE) : curated;
+  const pickCategory = (name: string) => {
+    setCategory(name);
+    setEdition(0);
+    setTurning(false);
+  };
 
   const total = articles.length;
   const next = (edition + 1) % total;
@@ -180,6 +199,23 @@ export function NewspaperDispatch({
               {copy.heading}{" "}
               {copy.accent && <span className="italic text-brand">{copy.accent}</span>}
             </h2>
+            {categories.length > 1 && (
+              <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Show news about">
+                {[["", pool.length] as const, ...categories].map(([name, count]) => (
+                  <button
+                    key={name || "all"}
+                    type="button"
+                    onClick={() => pickCategory(name)}
+                    aria-pressed={category === name}
+                    className={`rounded-full border px-3.5 py-1 text-xs font-semibold transition ${
+                      category === name ? "border-brand bg-brand text-white" : "border-line bg-surface text-ink-soft hover:border-brand hover:text-brand"
+                    }`}
+                  >
+                    {name || "All"} <span className={category === name ? "text-white/75" : "text-ink-faint"}>{count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -284,10 +320,10 @@ export function NewspaperDispatch({
           <div className="mt-5 flex items-center justify-between gap-4">
             <p className="text-xs text-ink-faint">{pinned && total > 1 ? "Keep scrolling to turn the page. The next section follows the last one." : ""}</p>
             <Link
-              href="/articles"
+              href={category ? `/articles?category=${encodeURIComponent(category)}` : "/articles"}
               className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
             >
-              View all
+              {category ? `View all ${category} news` : "View all"}
               <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </Link>
           </div>
