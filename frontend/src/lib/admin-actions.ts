@@ -95,6 +95,10 @@ import {
   adminGetCollegeRankings,
   adminSetCollegeRanking,
   adminRemoveCollegeRanking,
+  adminPinCollegeRanking,
+  adminDecideRating,
+  adminActivityCounts,
+  type ActivityCounts,
   type ListingHeader,
   type ListingPage,
   type SlotPage,
@@ -1161,7 +1165,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "recruiter_logo" && kind !== "gallery") {
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "recruiter_logo" && kind !== "gallery" && kind !== "ranking_banner" && kind !== "award" && kind !== "faculty_photo") {
     return { error: "Unknown image slot." };
   }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
@@ -1597,6 +1601,12 @@ export async function setCollegeRanking(listSlug: string, collegeSlug: string, r
   return result;
 }
 
+export async function pinCollegeRanking(collegeSlug: string, rankingSlug: string | null): Promise<AdminActionResult> {
+  const result = await attempt("/admin/colleges", (token) => adminPinCollegeRanking(token, collegeSlug, rankingSlug));
+  if ("ok" in result) refreshRankings(collegeSlug);
+  return result;
+}
+
 export async function removeCollegeRanking(listSlug: string, collegeSlug: string): Promise<AdminActionResult> {
   const result = await attempt("/admin/colleges", (token) => adminRemoveCollegeRanking(token, listSlug, collegeSlug));
   if ("ok" in result) refreshRankings(collegeSlug);
@@ -1842,5 +1852,22 @@ export async function unshareLead(slug: string, leadId: string): Promise<{ ok: t
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) redirect("/login");
     return { error: err instanceof ApiError ? err.message : "Could not take the lead back. Try again." };
+  }
+}
+
+/** Shows a student's review on its college's page, or hides it. */
+export async function decideRating(id: string, approved: boolean): Promise<AdminActionResult> {
+  const result = await attempt("/admin/ratings", (token) => adminDecideRating(token, id, approved));
+  if ("ok" in result) revalidatePath("/college", "layout");
+  return result;
+}
+
+/** The numbers beside Questions, Approvals, Messages and Ratings in the sidebar. Null when they cannot be read. */
+export async function loadActivityCounts(): Promise<ActivityCounts | null> {
+  try {
+    const token = await requireAdminToken();
+    return await adminActivityCounts(token);
+  } catch {
+    return null;
   }
 }

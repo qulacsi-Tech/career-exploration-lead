@@ -33,6 +33,7 @@ import {
 } from "@/components/college/detail-ui";
 import { ActionButton } from "@/components/college/college-actions";
 import { StudentQA } from "@/components/college/student-qa";
+import { AwardsSection } from "@/components/college/awards-section";
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 import { PlacementBreakdownTable } from "@/components/college/placement-breakdown";
 import { CollegeSectionPage } from "@/components/college/section-page";
@@ -48,6 +49,7 @@ import { DEFAULT_TAB_ICON } from "@/lib/tab-icons";
 import { Chip } from "@/components/ui/chip";
 import { faqsOf, isRealPackage, longDate, lakhValue, overallScore, percentOf, rankingTable, shortFee, programmeTitle, cutoffLabel, cutoffProgramme } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
+import { mediaUrl } from "@/lib/media";
 import { TAB_SLUG_FOR_SECTION, collegeSections, sectionBySlug } from "@/lib/college-sections";
 import { comparisonsFeaturing, compareUrl } from "@/lib/comparison-data";
 import { collegesBySlugs, similarColleges } from "@/lib/comparison-resolve";
@@ -671,25 +673,43 @@ async function Rankings({ college }: { college: College }) {
   } catch {
     directory = [];
   }
-  const { rows, position, of } = rankingTable(college, directory);
+  const { rows } = rankingTable(college, directory);
+  // The ranking the admin pinned is the big figure; nothing is pinned by default. The rest move past as small badges.
+  const held = college.allRankings ?? [];
+  const pinned = college.pinnedRanking ? held.find((r) => r.slug === college.pinnedRanking) : undefined;
+  const others = held.filter((r) => r !== pinned);
   const best = Math.min(...rows.map((row) => row.ranking.rank), college.ranking.rank || 1);
 
   return (
     <>
       <DetailCard>
         <div className="grid gap-8 sm:grid-cols-3">
-          {college.ranking.rank > 0 && (
+          {pinned && (
             <BigFigure
-              label={`${college.ranking.authority} rank`}
-              value={`#${college.ranking.rank}`}
-              note={`${college.stream} category`}
+              label={pinned.shortName || pinned.authority || "Ranking"}
+              value={`#${pinned.rank}`}
+              note={pinned.name}
             />
           )}
-          <BigFigure
-            label="Among colleges listed here"
-            value={`${position} of ${of}`}
-            note={`${college.stream} colleges on this site`}
-          />
+          {others.length > 0 && (
+            <div className="min-w-0 sm:col-span-1">
+              <p className="text-base text-ink">{pinned ? "Other rankings" : "Rankings"}</p>
+              <div className="recruiter-marquee mt-3 overflow-hidden">
+                <div className="recruiter-marquee-track flex w-max" style={{ animationDuration: `${Math.max(others.length * 5, 20)}s` }}>
+                  {[false, true].map((hidden) => (
+                    <ul key={String(hidden)} className="recruiter-marquee-row flex shrink-0 items-center gap-2 pr-2" aria-hidden={hidden || undefined}>
+                      {others.map((r) => (
+                        <li key={`${r.slug ?? r.name}-${r.rank}`} title={r.name} className="flex items-center gap-2 whitespace-nowrap rounded-full border border-line bg-surface py-1 pl-1 pr-3 text-xs font-semibold text-ink shadow-sm">
+                          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-brand-soft px-1.5 font-bold text-brand-ink">#{r.rank}</span>
+                          {r.shortName || r.name}
+                        </li>
+                      ))}
+                    </ul>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           <div>
             <p className="text-base text-ink">Student rating</p>
             <div className="mt-2 flex items-center gap-3">
@@ -705,19 +725,28 @@ async function Rankings({ college }: { college: College }) {
         <DetailCard title={`All Rankings (${college.allRankings?.length})`}>
           <ul className="divide-y divide-line border-y border-line">
             {college.allRankings?.map((r) => (
-              <li key={`${r.slug ?? r.name}-${r.rank}`} className="flex items-center gap-4 py-4">
-                <span className="grid h-12 min-w-12 shrink-0 place-items-center rounded-xl bg-brand-soft px-2 font-display text-lg font-extrabold text-brand-ink">#{r.rank}</span>
-                <div className="min-w-0">
-                  <p className="font-display text-base font-bold text-ink">{r.name}</p>
-                  <p className="mt-0.5 text-sm text-ink-soft">
-                    {[r.authority, r.stream, r.score ? `Score ${r.score}` : ""].filter(Boolean).join(" · ") || "Ranking"}
-                  </p>
+              <li key={`${r.slug ?? r.name}-${r.rank}`} className="py-4">
+                <div className="flex items-center gap-4">
+                  <span className="grid h-12 min-w-12 shrink-0 place-items-center rounded-xl bg-brand-soft px-2 font-display text-lg font-extrabold text-brand-ink">#{r.rank}</span>
+                  <div className="min-w-0">
+                    <p className="font-display text-base font-bold text-ink">{r.name}</p>
+                    <p className="mt-0.5 text-sm text-ink-soft">
+                      {[r.authority, r.stream, r.score ? `Score ${r.score}` : ""].filter(Boolean).join(" · ") || "Ranking"}
+                    </p>
+                  </div>
                 </div>
+                {/* This ranking's own banner, whole and uncropped. */}
+                {r.slug && college.rankingBanners?.[r.slug] && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaUrl(college.rankingBanners[r.slug])} alt={`${college.name}: ${r.name}`} className="mt-4 h-auto w-full rounded-xl border border-line bg-surface" />
+                )}
               </li>
             ))}
           </ul>
         </DetailCard>
       )}
+
+      <AwardsSection awards={college.awards ?? []} college={college.name} />
 
       {rows.length > 0 && (
         <DetailCard title={`${college.ranking.authority} Rank Among ${college.stream} Peers`}>

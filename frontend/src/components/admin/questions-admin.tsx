@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { CheckCircle2, Clock, Eye, EyeOff, Loader2, ThumbsUp } from "lucide-react";
 import { answerQuestion, setQuestionPublished } from "@/lib/admin-actions";
 import { formatFull } from "@/lib/lead-labels";
 import type { AdminQuestion, AnswerRole } from "@/lib/api";
+import { optionsOf, useTableTools } from "@/components/admin/table-tools";
 
 type Filter = "all" | "waiting" | "answered" | "shown";
 
@@ -21,9 +22,10 @@ const FILTERS: { key: Filter; label: string }[] = [
  * earlier answer. The platform team also has the button that puts a question and its answer on the college's
  * Q&A page; a college admin's answer has to be approved there again.
  */
-export function QuestionsAdmin({ role, items: initial }: { role: AnswerRole; items: AdminQuestion[] }) {
+export function QuestionsAdmin({ role, items: initial, initialCollege }: { role: AnswerRole; items: AdminQuestion[]; initialCollege?: string }) {
   const [items, setItems] = useState(initial);
   const [filter, setFilter] = useState<Filter>("all");
+  const [openId, setOpenId] = useState<string | null>(null);
   const shown = items.filter((q) => (filter === "waiting" ? !q.answer : filter === "answered" ? !!q.answer : filter === "shown" ? q.published : true));
   const counts: Record<Filter, number> = {
     all: items.length,
@@ -31,6 +33,26 @@ export function QuestionsAdmin({ role, items: initial }: { role: AnswerRole; ite
     answered: items.filter((q) => q.answer).length,
     shown: items.filter((q) => q.published).length,
   };
+
+  const t = useTableTools<AdminQuestion>({
+    rows: shown,
+    search: (q) => [q.collegeName, q.askedBy, q.askedByEmail, q.question, q.answer ?? ""].join(" "),
+    placeholder: "Search college, student, question",
+    initialFilters: initialCollege && role === "experts" ? { college: initialCollege } : undefined,
+    sorts: {
+      college: (q) => q.collegeName,
+      type: (q) => q.kind,
+      askedBy: (q) => q.askedBy,
+      question: (q) => q.question,
+      date: (q) => (q.createdAt ? Date.parse(q.createdAt) : null),
+      status: (q) => (q.answer ? 1 : 0),
+      published: (q) => (q.published ? 1 : 0),
+    },
+    filters: [
+      ...(role === "experts" ? [{ key: "college", label: "College", options: optionsOf(items, (q) => q.collegeName), match: (q: AdminQuestion, v: string) => q.collegeName === v }] : []),
+      { key: "type", label: "Type", options: [{ value: "question", label: "Question" }, { value: "concern", label: "Concern" }], match: (q, v) => q.kind === v },
+    ],
+  });
 
   const patch = (id: string, change: Partial<AdminQuestion>) => setItems((current) => current.map((q) => (q.id === id ? { ...q, ...change } : q)));
 
@@ -56,11 +78,63 @@ export function QuestionsAdmin({ role, items: initial }: { role: AnswerRole; ite
           {items.length === 0 ? "No questions yet. They appear here when students ask." : "Nothing in this view."}
         </p>
       ) : (
-        <ul className="space-y-4">
-          {shown.map((q) => (
-            <QuestionCard key={q.id} q={q} role={role} onChange={(change) => patch(q.id, change)} />
-          ))}
-        </ul>
+        <>
+        {t.toolbar}
+        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+          <table className="w-full min-w-[880px] border-collapse text-left text-sm">
+            <thead className="bg-bg-alt text-xs font-semibold uppercase tracking-wide text-ink-soft">
+              <tr>
+                {t.th("college", "College")}
+                {t.th("type", "Type")}
+                {t.th("askedBy", "Asked by")}
+                {t.th("question", "Question")}
+                {t.th("date", "Asked on")}
+                {t.th("status", "Status")}
+                {t.th("published", "On Q&A page")}
+                <th className="px-3 py-2.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line-soft">
+              {t.rows.map((q) => (
+                <Fragment key={q.id}>
+                  <tr className={openId === q.id ? "bg-brand-soft/30" : "hover:bg-bg-alt/50"}>
+                    <td className="px-3 py-2.5 font-semibold text-ink">{q.collegeName}</td>
+                    <td className="px-3 py-2.5 text-ink-soft">{q.kind === "concern" ? "Concern" : "Question"}</td>
+                    <td className="px-3 py-2.5 text-ink-soft">
+                      {q.askedBy}
+                      {role === "experts" && q.askedByEmail && <span className="block text-xs text-ink-faint">{q.askedByEmail}</span>}
+                    </td>
+                    <td className="max-w-[18rem] px-3 py-2.5 text-ink"><span className="line-clamp-2">{q.question}</span></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-ink-soft">{formatFull(q.createdAt)}</td>
+                    <td className="px-3 py-2.5">
+                      {q.answer ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800"><CheckCircle2 className="h-3.5 w-3.5" /> {q.answeredBy}</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900"><Clock className="h-3.5 w-3.5" /> Waiting</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {q.published ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Eye className="h-3.5 w-3.5" /> Shown{q.helpful > 0 ? ` · ${q.helpful} helpful` : ""}</span> : <span className="text-ink-faint">–</span>}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                      <button type="button" onClick={() => setOpenId(openId === q.id ? null : q.id)} className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-soft transition hover:border-brand hover:text-brand">
+                        {openId === q.id ? "Close" : q.answer ? "View" : "Reply"}
+                      </button>
+                    </td>
+                  </tr>
+                  {openId === q.id && (
+                    <tr className="bg-bg-alt/40">
+                      <td colSpan={8} className="px-4 py-4">
+                        <QuestionCard q={q} role={role} onChange={(change) => patch(q.id, change)} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        </>
       )}
     </div>
   );
@@ -99,7 +173,7 @@ function QuestionCard({ q, role, onChange }: { q: AdminQuestion; role: AnswerRol
     });
 
   return (
-    <li className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-2xl border border-line bg-surface p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-display text-base font-bold text-ink">{q.collegeName}</p>
@@ -151,6 +225,6 @@ function QuestionCard({ q, role, onChange }: { q: AdminQuestion; role: AnswerRol
       {message && (
         <p role={message.ok ? "status" : "alert"} className={`mt-2 text-sm ${message.ok ? "font-medium text-emerald-700" : "text-red-700"}`}>{message.text}</p>
       )}
-    </li>
+    </div>
   );
 }

@@ -50,13 +50,19 @@ MIN_SIZE = {
     # A company logo for the recruiters strip. Small marks are fine.
     "recruiter_logo": (60, 30),
     "gallery": (800, 450),
+    # The wide banner at the top of a college's Rankings tab.
+    "ranking_banner": (1200, 300),
+    # A small picture of an award (trophy, certificate or badge), shown about 96 by 72 px.
+    "award": (300, 225),
+    # A faculty member, shown as a circle about 56 px across (larger on their card).
+    "faculty_photo": (200, 200),
 }
 
 
 @router.post("", response_model=SuccessResponse[dict], status_code=201)
 async def upload_image(
     _admin: AdminPayload,
-    kind: Literal["hero", "banner", "location", "college", "exam", "practice", "program", "article", "article_figure", "logo", "site_logo", "recruiter_logo", "gallery"] = Form(...),
+    kind: Literal["hero", "banner", "location", "college", "exam", "practice", "program", "article", "article_figure", "logo", "site_logo", "recruiter_logo", "gallery", "ranking_banner", "award", "faculty_photo"] = Form(...),
     file: UploadFile = File(...),
 ):
     raw = await file.read(MAX_BYTES + 1)

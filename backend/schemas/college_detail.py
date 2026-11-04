@@ -52,7 +52,11 @@ class FacultyMember(BaseModel):
     designation: str = Field(default="", max_length=120)
     department: str = Field(default="", max_length=120)
     qualification: str = Field(default="", max_length=160)
+    # A round photo of the member. Empty: their initials are shown.
+    photo: str = Field(default="", max_length=200)
     model_config = ConfigDict(extra="forbid")
+
+    _photo = field_validator("photo")(photo_path)
 
 
 class Faculty(BaseModel):
@@ -112,6 +116,18 @@ class GalleryItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     _src = field_validator("src")(photo_path)
+
+
+class AwardItem(BaseModel):
+    title: str = Field(min_length=2, max_length=150)
+    # A year, or a range such as 2024-25.
+    year: str = Field(default="", max_length=9, pattern=r"^(\d{4}(-\d{2,4})?)?$")
+    awardedBy: str = Field(default="", max_length=150)
+    description: str = Field(default="", max_length=400)
+    image: str = Field(default="", max_length=200)
+    model_config = ConfigDict(extra="forbid")
+
+    _image = field_validator("image")(photo_path)
 
 
 class VideoItem(BaseModel):
@@ -199,6 +215,10 @@ class CollegeDetail(BaseModel):
     # The street or area before the city.
     locality: str = Field(default="", max_length=120)
     logo: str = Field(default="", max_length=200)
+    # A banner for each ranking list the college is in, by the list's slug. A list with none shows no banner.
+    # Awards the college has won, in the order shown.
+    awards: list[AwardItem] = Field(default_factory=list, max_length=40)
+    rankingBanners: dict[str, str] = Field(default_factory=dict, max_length=40)
     # A link to the brochure. Empty: the Brochure button opens the enquiry form.
     brochureUrl: str = Field(default="", max_length=300, pattern=r"^(/[^\s]*|https://[^\s]+)?$")
     faculty: Faculty = Field(default_factory=Faculty)
@@ -218,6 +238,16 @@ class CollegeDetail(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     _logo = field_validator("logo")(photo_path)
+
+    @field_validator("rankingBanners")
+    @classmethod
+    def _ranking_banners(cls, value: dict) -> dict:
+        out = {}
+        for slug, path in value.items():
+            path = photo_path(path)
+            if path:
+                out[str(slug)[:200]] = path
+        return out
 
     @field_validator("tabHeaders")
     @classmethod

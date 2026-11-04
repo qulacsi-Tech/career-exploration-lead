@@ -190,6 +190,7 @@ export type College = {
   placementAverage?: string;
   placementHighest?: string;
   /** Every ranking list it is in (the list's name with its year, and its place), best first. */
+  pinnedRanking?: string;
   allRankings?: { name: string; rank: number; slug?: string; authority?: string; stream?: string; score?: string; shortName?: string }[];
   city: string;
   state: string;
@@ -447,7 +448,7 @@ export async function getHomeData(): Promise<HomeData> {
  * A college from the detail endpoint: the list fields plus the detail-only ones.
  * `placement` is null for a college with no placement record.
  */
-export type FacultyMember = { name: string; designation: string; department: string; qualification: string };
+export type FacultyMember = { name: string; designation: string; department: string; qualification: string; /** A round photo; empty shows initials. */ photo?: string };
 export type CollegeFaculty = { count: number | null; studentRatio: string; phdPercent: number | null; members: FacultyMember[] };
 /**
  * A question and answer on a college's Q&A tab. One the editor wrote has a question and an answer. One with `auto`
@@ -477,6 +478,10 @@ export type CollegeDetail = Omit<College, "ratingBreakdown" | "placement" | "cut
   /** The street or area before the city. */
   locality: string;
   logo: string;
+  /** A banner for each ranking list, by the list's slug. */
+  rankingBanners: Record<string, string>;
+  /** Awards the college has won. */
+  awards: { title: string; year?: string; awardedBy?: string; description?: string; image?: string }[];
   /** Empty: the Brochure button opens the enquiry form. */
   brochureUrl: string;
   /** When the record was last saved (ISO date). */
@@ -606,6 +611,8 @@ function withCollegeDefaults(raw: Partial<CollegeDetail> & Pick<CollegeDetail, "
     tagline: raw.tagline ?? "",
     locality: raw.locality ?? "",
     logo: raw.logo ?? "",
+    rankingBanners: raw.rankingBanners ?? {},
+    awards: raw.awards ?? [],
     brochureUrl: raw.brochureUrl ?? "",
     updatedAt: raw.updatedAt ?? "",
     faculty: raw.faculty ?? { count: null, studentRatio: "", phdPercent: null, members: [] },
@@ -1001,10 +1008,15 @@ export async function adminPublishQuestion(token: string, id: string, published:
 export type ReviewInput = {
   course: string;
   batch: string;
-  ratingPlacements: number;
-  ratingFaculty: number;
-  ratingInfrastructure: number;
-  ratingCampusLife: number;
+  ratingPlacements?: number;
+  ratingFaculty?: number;
+  ratingInfrastructure?: number;
+  ratingCampusLife?: number;
+  /** An optional word on each rating. */
+  commentPlacements?: string;
+  commentFaculty?: string;
+  commentInfrastructure?: string;
+  commentCampusLife?: string;
   body: string;
 };
 
@@ -1054,16 +1066,20 @@ export type SearchResults = {
   locations: { slug: string; name: string }[];
   /** Absent from an API older than course search. */
   courses?: { slug: string; name: string; fullName?: string; stream?: string }[];
+  specialisations?: { slug: string; name: string; courseName?: string; stream?: string }[];
 };
 
-export async function search(q: string): Promise<SearchResults> {
-  return apiFetch<SearchResults>(`/search?q=${encodeURIComponent(q)}`);
+/** What the search box can be narrowed to. */
+export type SearchKind = "colleges" | "courses" | "specialisations" | "exams" | "cities";
+
+export async function search(q: string, kind?: SearchKind): Promise<SearchResults> {
+  return apiFetch<SearchResults>(`/search?q=${encodeURIComponent(q)}${kind ? `&kind=${kind}` : ""}`);
 }
 
 /** The same search, read fresh as the visitor types (not cached), optionally within one stream. */
-export async function searchLive(q: string, stream?: string, limit = 5): Promise<SearchResults> {
+export async function searchLive(q: string, kind?: SearchKind, limit = 5): Promise<SearchResults> {
   const qs = new URLSearchParams({ q, limit: String(limit) });
-  if (stream) qs.set("stream", stream);
+  if (kind) qs.set("kind", kind);
   const res = await fetch(`${API_BASE}/search?${qs}`, { cache: "no-store" });
   return apiJson(res);
 }
@@ -1967,7 +1983,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery" | "ranking_banner" | "award" | "faculty_photo", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);
@@ -2704,6 +2720,10 @@ export type RecordReview = {
   ratingFaculty: number | null;
   ratingInfrastructure: number | null;
   ratingCampusLife: number | null;
+  commentPlacements?: string;
+  commentFaculty?: string;
+  commentInfrastructure?: string;
+  commentCampusLife?: string;
   approved: boolean;
   /** Read-only, from the editor's load: how many students liked or disliked it. */
   likes?: number;
@@ -2714,6 +2734,8 @@ export type RecordDetail = {
   tagline: string;
   locality: string;
   logo: string;
+  rankingBanners?: Record<string, string>;
+  awards?: { title: string; year: string; awardedBy: string; description: string; image: string }[];
   brochureUrl: string;
   faculty: CollegeFaculty;
   faqs: CollegeFaq[];
@@ -2903,7 +2925,7 @@ export async function adminListingSlotScopes(token: string, page: SlotPage): Pro
 
 export type RankingListHead = { slug: string; name: string; authority: string; year: number; stream: string | null };
 export type CollegeRankingEntry = RankingListHead & { rank: number; score: string | null };
-export type CollegeRankings = { entries: CollegeRankingEntry[]; available: RankingListHead[] };
+export type CollegeRankings = { entries: CollegeRankingEntry[]; available: RankingListHead[]; pinned?: string };
 
 export async function adminGetCollegeRankings(token: string, collegeSlug: string): Promise<CollegeRankings> {
   return adminRequest<CollegeRankings>(token, "GET", `/admin/rankings/college/${encodeURIComponent(collegeSlug)}`);
@@ -2911,6 +2933,10 @@ export async function adminGetCollegeRankings(token: string, collegeSlug: string
 
 export async function adminSetCollegeRanking(token: string, listSlug: string, collegeSlug: string, body: { rank: number; score: string | null }) {
   return adminRequest<{ message: string }>(token, "PUT", `/admin/rankings/${encodeURIComponent(listSlug)}/entries/${encodeURIComponent(collegeSlug)}`, body);
+}
+
+export async function adminPinCollegeRanking(token: string, collegeSlug: string, rankingSlug: string | null) {
+  return adminRequest<{ message: string }>(token, "PUT", `/admin/rankings/college/${encodeURIComponent(collegeSlug)}/pin`, { rankingSlug });
 }
 
 export async function adminRemoveCollegeRanking(token: string, listSlug: string, collegeSlug: string) {
@@ -3240,3 +3266,35 @@ export async function adminCreateRecruiter(token: string, name: string) {
 export async function adminUpdateRecruiter(token: string, id: string, patch: { logo?: string; display?: RecruiterDisplay }) {
   return adminRequest<AdminRecruiter>(token, "PATCH", `/admin/recruiters/${encodeURIComponent(id)}`, patch);
 }
+
+// ── Activity: ratings (student reviews) and the sidebar's counts ───────────
+
+export type AdminRating = {
+  id: string;
+  collegeName: string;
+  collegeSlug: string;
+  author: string;
+  email: string;
+  course: string;
+  batch: string;
+  rating: number;
+  ratingPlacements: number | null;
+  ratingFaculty: number | null;
+  ratingInfrastructure: number | null;
+  ratingCampusLife: number | null;
+  commentPlacements: string;
+  commentFaculty: string;
+  commentInfrastructure: string;
+  commentCampusLife: string;
+  body: string;
+  approved: boolean;
+  createdAt: string | null;
+};
+export const adminListRatings = (token: string, params: { status?: "pending" | "approved" | "all"; page?: number; limit?: number }) =>
+  pagedList<AdminRating>(token, "/admin/ratings", params);
+export const adminDecideRating = (token: string, id: string, approved: boolean) =>
+  adminRequest<{ approved: boolean }>(token, "PUT", `/admin/ratings/${encodeURIComponent(id)}`, { approved });
+
+/** What is waiting in each Activity item. A college admin's has no approvals or ratings. */
+export type ActivityCounts = { questions: number; messages: number; leads?: number; approvals?: number; ratings?: number };
+export const adminActivityCounts = (token: string) => adminRequest<ActivityCounts>(token, "GET", "/admin/activity/counts");

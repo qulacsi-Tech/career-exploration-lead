@@ -7,6 +7,7 @@ import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section"
 import { loadLeadJourney, replyToLead, updateLeadStatus } from "@/lib/admin-actions";
 import { collegeReply, collegeSetLeadStatus } from "@/lib/college-actions";
 import { EventTimeline } from "@/components/admin/event-timeline";
+import { optionsOf, useTableTools } from "@/components/admin/table-tools";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { LEAD_STATUSES, type AdminLead, type LeadJourney, type LeadStatus, type PaginationMeta } from "@/lib/api";
 import {
@@ -229,14 +230,37 @@ export function LeadsInbox({
   meta,
   status,
   scope = "platform",
+  openLead,
 }: {
+  openLead?: string;
   leads: AdminLead[];
   meta: PaginationMeta;
   status: LeadStatus | undefined;
   scope?: InboxScope;
 }) {
   const [flash, showFlash] = useFlash();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(openLead && leads.some((l) => l.id === openLead) ? openLead : null);
+
+  const t = useTableTools<AdminLead>({
+    rows: leads,
+    search: (l) => [l.name, l.phone, l.email ?? "", l.collegeSlug ?? "", l.programName ?? "", l.city ?? "", l.message ?? ""].join(" "),
+    placeholder: "Search name, phone, email, college",
+    note: meta.pages > 1 ? "Search, filters and sorting cover the leads on this page. The status buttons above cover all pages." : undefined,
+    sorts: {
+      name: (l) => l.name,
+      phone: (l) => l.phone,
+      email: (l) => l.email,
+      college: (l) => l.collegeSlug,
+      type: (l) => LEAD_TYPE_LABEL[l.type] ?? l.type,
+      received: (l) => (l.createdAt ? Date.parse(l.createdAt) : null),
+      status: (l) => LEAD_STATUSES.indexOf(l.status),
+    },
+    filters: [
+      { key: "type", label: "Interest", options: optionsOf(leads, (l) => l.type, (v) => LEAD_TYPE_LABEL[v] ?? v), match: (l, v) => l.type === v },
+      { key: "college", label: "College", options: optionsOf(leads, (l) => l.collegeSlug), match: (l, v) => l.collegeSlug === v },
+      { key: "source", label: "Came from", options: optionsOf(leads, (l) => l.source), match: (l, v) => l.source === v },
+    ],
+  });
 
   return (
     <div className="space-y-6">
@@ -281,24 +305,29 @@ export function LeadsInbox({
         {leads.length === 0 ? (
           <p className="text-sm text-ink-soft">No leads match this filter.</p>
         ) : (
+          <div className="space-y-3">
+          {t.toolbar}
           <div className="-mx-5 overflow-x-auto px-5">
             <table className="w-full min-w-[860px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs text-ink-faint">
-                  <th scope="col" className="py-2 pr-3 font-semibold">Name</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Phone</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Email</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">College</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Interest</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Received</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Status</th>
+                  {t.th("name", "Name", "py-2 pr-3")}
+                  {t.th("phone", "Phone", "py-2 pr-3")}
+                  {t.th("email", "Email", "py-2 pr-3")}
+                  {t.th("college", "College", "py-2 pr-3")}
+                  {t.th("type", "Interest", "py-2 pr-3")}
+                  {t.th("received", "Received", "py-2 pr-3")}
+                  {t.th("status", "Status", "py-2 pr-3")}
                   <th scope="col" className="py-2 font-semibold">
                     <span className="sr-only">Details</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {leads.map((lead) => {
+                {t.rows.length === 0 && (
+                  <tr><td colSpan={8} className="py-8 text-center text-sm text-ink-soft">No leads match.</td></tr>
+                )}
+                {t.rows.map((lead) => {
                   const open = openId === lead.id;
                   return (
                     <Fragment key={lead.id}>
@@ -346,6 +375,7 @@ export function LeadsInbox({
                 })}
               </tbody>
             </table>
+          </div>
           </div>
         )}
       </AdminSection>

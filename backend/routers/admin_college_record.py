@@ -173,6 +173,11 @@ class ReviewRow(BaseModel):
     ratingFaculty: Optional[float] = Field(default=None, ge=1, le=5)
     ratingInfrastructure: Optional[float] = Field(default=None, ge=1, le=5)
     ratingCampusLife: Optional[float] = Field(default=None, ge=1, le=5)
+    # An optional word on each rating.
+    commentPlacements: str = Field(default="", max_length=500)
+    commentFaculty: str = Field(default="", max_length=500)
+    commentInfrastructure: str = Field(default="", max_length=500)
+    commentCampusLife: str = Field(default="", max_length=500)
     # A new review waits for a moderator unless the editor approves it on purpose.
     approved: bool = False
     # Read-only: the likes and dislikes shown in the editor. Sent back on save and ignored.
@@ -348,6 +353,10 @@ def _record(c: College) -> dict:
                 "ratingFaculty": r.rating_faculty,
                 "ratingInfrastructure": r.rating_infrastructure,
                 "ratingCampusLife": r.rating_campus_life,
+                "commentPlacements": r.comment_placements or "",
+                "commentFaculty": r.comment_faculty or "",
+                "commentInfrastructure": r.comment_infrastructure or "",
+                "commentCampusLife": r.comment_campus_life or "",
                 "approved": bool(r.is_approved),
             }
             for r in sorted(c.reviews or [], key=lambda r: r.review_date, reverse=True)
@@ -612,6 +621,8 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
             review_date=date.fromisoformat(r.date), rating=r.rating, body=r.body.strip(),
             rating_placements=r.ratingPlacements, rating_faculty=r.ratingFaculty,
             rating_infrastructure=r.ratingInfrastructure, rating_campus_life=r.ratingCampusLife, is_approved=r.approved,
+            comment_placements=r.commentPlacements.strip() or None, comment_faculty=r.commentFaculty.strip() or None,
+            comment_infrastructure=r.commentInfrastructure.strip() or None, comment_campus_life=r.commentCampusLife.strip() or None,
         )
         match = existing.get(r.id or "")
         if match is not None:

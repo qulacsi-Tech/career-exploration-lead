@@ -3,9 +3,9 @@ import { withAdminToken } from "@/lib/admin-session";
 import { isCollegeAdmin } from "@/lib/roles";
 import { LeadsInbox } from "@/components/admin/leads-inbox";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 100;
 
-type SearchParams = Promise<{ status?: string; page?: string }>;
+type SearchParams = Promise<{ status?: string; page?: string; lead?: string }>;
 
 /*
   Server component: reads one page of leads, filtered by status, through the admin
@@ -13,7 +13,7 @@ type SearchParams = Promise<{ status?: string; page?: string }>;
   view can be bookmarked and shared inside the team.
 */
 export default async function AdminLeadsPage({ searchParams }: { searchParams: SearchParams }) {
-  const { status, page } = await searchParams;
+  const { status, page, lead } = await searchParams;
   const filter = (LEAD_STATUSES as readonly string[]).includes(status ?? "")
     ? (status as LeadStatus)
     : undefined;
@@ -28,5 +28,5 @@ export default async function AdminLeadsPage({ searchParams }: { searchParams: S
     return { ...page, scope: forCollege ? ("college" as const) : ("platform" as const) };
   });
 
-  return <LeadsInbox leads={result.data} meta={result.meta} status={filter} scope={result.scope} />;
+  return <LeadsInbox leads={result.data} meta={result.meta} status={filter} scope={result.scope} openLead={lead} />;
 }

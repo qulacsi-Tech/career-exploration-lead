@@ -21,6 +21,17 @@ type Actions = {
  * cleared one at a time until acknowledged. "Clear all" acknowledges as it clears, after asking,
  * and the time is kept.
  */
+/**
+ * Where a notification leads. New ones carry the page and the college in their link; older ones about a review or a
+ * question only pointed at the list, so the college is read from the title ("New review for X").
+ */
+function destination(n: NotificationItem): string | null {
+  const named = n.title.match(/^New (?:review|question|concern) for (.+)$/);
+  if (n.kind === "review.new" && named && (!n.link || n.link === "/admin/colleges")) return `/admin/ratings?status=all&college=${encodeURIComponent(named[1])}`;
+  if (n.kind === "question.new" && named && n.link === "/admin/questions") return `/admin/questions?college=${encodeURIComponent(named[1])}`;
+  return n.link;
+}
+
 export function NotificationList({
   items,
   count,
@@ -75,8 +86,8 @@ export function NotificationList({
                 className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${waiting ? "bg-red-600" : n.read ? "bg-transparent" : "bg-brand"}`}
               />
               <div className="min-w-0 flex-1">
-                {n.link ? (
-                  <Link href={n.link} onClick={onNavigate} className="block hover:underline">
+                {destination(n) ? (
+                  <Link href={destination(n) as string} onClick={onNavigate} className="block hover:underline">
                     {body}
                   </Link>
                 ) : (

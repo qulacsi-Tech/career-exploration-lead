@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { adminNav, collegeAdminNav, findActiveItem, type AdminNavIcon } from "@/lib/admin-nav";
 import { isCollegeAdmin, roleLabel } from "@/lib/roles";
 import { signOut } from "@/lib/auth-actions";
+import { loadActivityCounts } from "@/lib/admin-actions";
+import type { ActivityCounts } from "@/lib/api";
 
 export type SidebarUser = { name: string; role: string };
 
@@ -33,6 +35,21 @@ export function AdminSidebar({ user, onNavigate }: { user: SidebarUser; onNaviga
   const active = findActiveItem(pathname, nav);
   const activeSectionId = active?.section.id ?? nav.find((s) => !s.single)?.id;
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+
+  // What is waiting in Questions, Ratings, Approvals and Messages: read on every page change, and once a minute.
+  const [counts, setCounts] = useState<ActivityCounts | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const read = () => loadActivityCounts().then((found) => alive && found && setCounts(found));
+    void read();
+    const timer = setInterval(read, 60000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [pathname]);
+  const waiting = (item: { badge?: keyof ActivityCounts }) => (item.badge && counts ? counts[item.badge] ?? 0 : 0);
+  const sectionWaiting = (items: { badge?: keyof ActivityCounts }[]) => items.reduce((total, item) => total + waiting(item), 0);
 
   const isOpen = (id: string) => overrides[id] ?? id === activeSectionId;
   const toggle = (id: string) =>
@@ -84,6 +101,7 @@ export function AdminSidebar({ user, onNavigate }: { user: SidebarUser; onNaviga
                 }`}
               />
               <span className="flex-1 truncate">{section.label}</span>
+              {!open && sectionWaiting(section.items) > 0 && <CountBadge n={sectionWaiting(section.items)} />}
               <ChevronIcon
                 className={`h-3.5 w-3.5 shrink-0 text-ink-faint transition-transform duration-200 ${
                   open ? "rotate-90" : ""
@@ -128,6 +146,7 @@ export function AdminSidebar({ user, onNavigate }: { user: SidebarUser; onNaviga
                         }`}
                       >
                         <span className="truncate">{item.label}</span>
+                        {waiting(item) > 0 && <CountBadge n={waiting(item)} />}
                         {item.phase === 2 && (
                           <span
                             title="Scheduled for phase 2"
@@ -174,6 +193,15 @@ export function AdminSidebar({ user, onNavigate }: { user: SidebarUser; onNaviga
         </div>
       </div>
     </div>
+  );
+}
+
+/** The number of things waiting, in a small round badge. */
+function CountBadge({ n }: { n: number }) {
+  return (
+    <span aria-label={`${n} waiting`} className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand px-1.5 text-[11px] font-bold leading-none text-white">
+      {n > 99 ? "99+" : n}
+    </span>
   );
 }
 

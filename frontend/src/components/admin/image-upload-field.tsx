@@ -18,7 +18,7 @@ import { mediaUrl } from "@/lib/media";
 */
 
 type Slot = {
-  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery";
+  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery" | "ranking_banner" | "award" | "faculty_photo";
   label: string;
   recommended: [number, number];
   minimum: [number, number];
@@ -107,6 +107,39 @@ const SLOTS: Record<Slot["kind"], Slot> = {
     notes: [
       "Shown in the header at about 72px tall and in the footer at 80px, on a white and a dark background. A wide logo with a transparent background (PNG) works best.",
       "On the dark footer a dark logo can be hard to read; use a mark that holds up on both, or keep the built-in logo.",
+    ],
+  },
+  faculty_photo: {
+    kind: "faculty_photo",
+    label: "Faculty photo",
+    recommended: [600, 600],
+    minimum: [200, 200],
+    previewClass: "aspect-square max-w-[140px] rounded-full",
+    notes: [
+      "A square photo, shown as a circle: about 56 px across on the Faculty list and larger on the member's card. Anything outside the circle is cropped, so keep the face in the middle with some space around it.",
+      "Recommended 600 × 600 px, at least 200 × 200 px. Without a photo the member's initials are shown in the circle.",
+    ],
+  },
+  award: {
+    kind: "award",
+    label: "Award picture",
+    recommended: [800, 600],
+    minimum: [300, 225],
+    previewClass: "aspect-[4/3] max-w-[200px]",
+    notes: [
+      "A small 4:3 picture of the award: the trophy, certificate or badge. It is shown about 96 by 72 px beside the award's name, so a simple, well-lit picture reads best.",
+      "It is fitted inside the box without cropping, so the whole award stays visible. Without a picture the award shows a medal icon.",
+    ],
+  },
+  ranking_banner: {
+    kind: "ranking_banner",
+    label: "Rankings banner",
+    recommended: [1600, 400],
+    minimum: [1200, 300],
+    previewClass: "aspect-[4/1]",
+    notes: [
+      "A wide 4:1 picture across the top of the college's Rankings page, about 1100 by 275 px. It is cropped to fit, so keep the subject in the middle.",
+      "Good for an award or ranking graphic. Keep any text well inside the picture: the edges are trimmed on phones.",
     ],
   },
   gallery: {

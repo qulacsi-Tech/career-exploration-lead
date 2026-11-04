@@ -220,6 +220,44 @@ const LEAD_THANKS = {
 } as const;
 
 /**
+ * A signed-in student asked to see the courses or specialisations a college page keeps folded. It is recorded as a
+ * lead tied to their account (what they looked at in the message), so the team sees the interest in the leads inbox.
+ * It never blocks the page: with no number on the account yet, or on any failure, it just does nothing.
+ */
+export async function recordCourseInterest(slug: string, course?: string): Promise<void> {
+  const token = await getUserToken();
+  if (!token) return;
+  try {
+    const profile = await getMe(token);
+    if (canUsePanel(profile.role)) return;
+    const phone = stripPhone(profile.phone || "");
+    if (phoneProblem(phone, true)) return;
+    const jar = await cookies();
+    const visitorId = jar.get(CONSENT_COOKIE)?.value === "granted" ? jar.get(VISITOR_COOKIE)?.value : undefined;
+    await submitLead(
+      {
+        name: profile.name,
+        phone,
+        email: profile.email,
+        collegeSlug: slug || undefined,
+        type: "enquiry",
+        stream: profile.preferredStream ?? undefined,
+        city: profile.city ?? undefined,
+        message: (course ? `Explored more specialisations of ${course}` : "Explored more courses").slice(0, 1000),
+        programName: course?.slice(0, 200) || undefined,
+        source: "college-courses-explore",
+        consent: true,
+        visitorId,
+      },
+      token,
+    );
+    revalidatePath("/account", "layout");
+  } catch {
+    // Browsing is not interrupted by a lead that could not be saved.
+  }
+}
+
+/**
  * Sends a callback request, an application or a brochure request for a college as a lead tied to the student's
  * account: the team sees it in the leads inbox, and the student sees it under Enquiries on their account. Their
  * name, email and number come from the account.

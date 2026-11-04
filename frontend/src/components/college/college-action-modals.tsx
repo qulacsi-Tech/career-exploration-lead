@@ -435,10 +435,10 @@ export function QueryModal({ kind, slug, collegeName, user, onClose }: { kind: "
  * ------------------------------------------------------------------ */
 
 const CATEGORIES = [
-  { key: "ratingPlacements", label: "Placements" },
-  { key: "ratingFaculty", label: "Faculty" },
-  { key: "ratingInfrastructure", label: "Infrastructure" },
-  { key: "ratingCampusLife", label: "Campus life" },
+  { key: "ratingPlacements", comment: "commentPlacements", label: "Placements" },
+  { key: "ratingFaculty", comment: "commentFaculty", label: "Faculty" },
+  { key: "ratingInfrastructure", comment: "commentInfrastructure", label: "Infrastructure" },
+  { key: "ratingCampusLife", comment: "commentCampusLife", label: "Campus life" },
 ] as const;
 
 type Ratings = Record<(typeof CATEGORIES)[number]["key"], number>;
@@ -461,6 +461,8 @@ export function ReviewModal({ slug, collegeName, courses, user, onClose }: { slu
   const [course, setCourse] = useState("");
   const [batch, setBatch] = useState("");
   const [ratings, setRatings] = useState<Ratings>({ ratingPlacements: 0, ratingFaculty: 0, ratingInfrastructure: 0, ratingCampusLife: 0 });
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [commenting, setCommenting] = useState<Record<string, boolean>>({});
   const [body, setBody] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -476,13 +478,13 @@ export function ReviewModal({ slug, collegeName, courses, user, onClose }: { slu
     if (!BATCH.test(batch.trim())) found.batch = "Enter the batch as a year or a range, such as 2002-2006.";
     else if (years.some((y) => y < 1950 || y > thisYear + 1)) found.batch = `Use years between 1950 and ${thisYear + 1}.`;
     else if (years.length === 2 && years[1] < years[0]) found.batch = "The end year comes after the start year.";
-    if (CATEGORIES.some((c) => ratings[c.key] === 0)) found.ratings = "Give every area a rating.";
+    if (CATEGORIES.every((c) => ratings[c.key] === 0)) found.ratings = "Rate at least one area. The others are optional.";
     if (body.trim().length < REVIEW_MIN) found.body = `Write at least ${REVIEW_MIN} characters.`;
     setErrors(found);
     setError(null);
     if (Object.keys(found).length > 0) return;
     start(async () => {
-      const result = await submitReview(slug, { course: course.trim(), batch: batch.trim(), body: body.trim(), ...ratings });
+      const result = await submitReview(slug, { course: course.trim(), batch: batch.trim(), body: body.trim(), ...Object.fromEntries(CATEGORIES.filter((c) => ratings[c.key] > 0).map((c) => [c.key, ratings[c.key]])) as Partial<Ratings>, commentPlacements: comments.commentPlacements?.trim(), commentFaculty: comments.commentFaculty?.trim(), commentInfrastructure: comments.commentInfrastructure?.trim(), commentCampusLife: comments.commentCampusLife?.trim() });
       if (result.ok) setDone(result.message);
       else setError(result.message);
     });
@@ -506,12 +508,29 @@ export function ReviewModal({ slug, collegeName, courses, user, onClose }: { slu
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-ink">Rate your experience</p>
+            <p className="text-xs font-semibold text-ink">Rate your experience <span className="font-normal text-ink-faint">(rate any, at least one)</span></p>
             <ul className="mt-2 divide-y divide-line-soft rounded-xl border border-line">
               {CATEGORIES.map((c) => (
-                <li key={c.key} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <span className="text-sm text-ink">{c.label}</span>
-                  <StarPicker label={c.label} value={ratings[c.key]} onChange={(n) => setRatings((r) => ({ ...r, [c.key]: n }))} />
+                <li key={c.key} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-ink">{c.label}</span>
+                    <StarPicker label={c.label} value={ratings[c.key]} onChange={(n) => setRatings((r) => ({ ...r, [c.key]: n }))} />
+                  </div>
+                  {commenting[c.key] || comments[c.comment] ? (
+                    <textarea
+                      aria-label={`Comment on ${c.label} (optional)`}
+                      value={comments[c.comment] ?? ""}
+                      onChange={(e) => setComments((v) => ({ ...v, [c.comment]: e.target.value }))}
+                      rows={2}
+                      maxLength={500}
+                      placeholder={`Anything to add about ${c.label.toLowerCase()}? (optional)`}
+                      className="mt-2 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+                    />
+                  ) : (
+                    <button type="button" onClick={() => setCommenting((v) => ({ ...v, [c.key]: true }))} className="mt-1 text-xs font-semibold text-brand hover:underline">
+                      + Add a comment (optional)
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

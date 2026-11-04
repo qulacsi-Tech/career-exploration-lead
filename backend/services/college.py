@@ -44,6 +44,7 @@ def _to_list_schema(college: College) -> CollegeListSchema:
     page_record = college.detail if isinstance(college.detail, dict) else {}
     placement = _latest_placement(college)
     return CollegeListSchema(
+        pinnedRanking=college.pinned_ranking or "",
         nirfRank=(college.ranking_rank or None) if "nirf" in (college.ranking_authority or "").lower() and (college.ranking_rank or 0) > 0 else None,
         placementAverage=(placement.average_package or "") if placement else "",
         placementHighest=(placement.highest_package or "") if placement else "",
@@ -55,6 +56,8 @@ def _to_list_schema(college: College) -> CollegeListSchema:
         viewCount=college.view_count or 0,
         logo=page_record.get("logo") or "",
         brochureUrl=page_record.get("brochureUrl") or "",
+        rankingBanners=page_record.get("rankingBanners") or {},
+        awards=[a for a in (page_record.get("awards") or []) if isinstance(a, dict)],
         slug=college.slug,
         name=college.name,
         city=college.city,
@@ -92,6 +95,36 @@ def _to_list_schema(college: College) -> CollegeListSchema:
             for c in (college.courses or [])
         ],
     )
+
+
+def _tab_media(tabs: dict, college_name: str):
+    """The pictures and videos in the written sections that were marked to show in the Gallery too."""
+    from schemas.college_detail import GalleryItem, VideoItem
+
+    photos, videos = [], []
+
+    def walk(node) -> None:
+        if not isinstance(node, dict):
+            return
+        attrs = node.get("attrs") or {}
+        if attrs.get("gallery"):
+            if node.get("type") == "image" and attrs.get("src"):
+                alt = (attrs.get("alt") or attrs.get("title") or "").strip()
+                try:
+                    photos.append(GalleryItem(src=attrs["src"], alt=alt if len(alt) >= 3 else f"Photo of {college_name}", name=(attrs.get("title") or "")[:120]))
+                except Exception:  # noqa: BLE001 - a bad picture is left out, not fatal
+                    pass
+            elif node.get("type") == "video" and attrs.get("videoId") and attrs.get("provider") in ("youtube", "vimeo"):
+                try:
+                    videos.append(VideoItem(title=(attrs.get("title") or f"Video of {college_name}")[:120] or "Video", provider=attrs["provider"], videoId=attrs["videoId"]))
+                except Exception:  # noqa: BLE001
+                    pass
+        for child in node.get("content") or []:
+            walk(child)
+
+    for doc in (tabs or {}).values():
+        walk(doc)
+    return photos, videos
 
 
 def _rating_breakdown(reviews: List[Review]) -> List[RatingBreakdownSchema]:
@@ -172,6 +205,10 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
             # Windows does not support %-d
             return d.strftime("%d %b %Y").lstrip("0")
 
+    # Pictures and videos put into a written section (Infrastructure and the others) and ticked "show in the
+    # Gallery" join the Gallery after the ones added there.
+    tab_photos, tab_videos = _tab_media(extra.tabs, college.name)
+
     return CollegeDetailSchema(
         **base.model_dump(),
         established=college.established,
@@ -191,8 +228,8 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
         faqs=extra.faqs,
         similarSlugs=extra.similarSlugs,
         seo=extra.seo,
-        gallery=extra.gallery,
-        videos=extra.videos,
+        gallery=[*extra.gallery, *[p for p in tab_photos if p.src not in {g.src for g in extra.gallery}]],
+        videos=[*extra.videos, *[v for v in tab_videos if v.videoId not in {x.videoId for x in extra.videos}]],
         media=extra.media,
         alerts=extra.alerts,
         articles=extra.articles,

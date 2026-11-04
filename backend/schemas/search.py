@@ -34,10 +34,20 @@ class SearchCourseResult(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class SearchSpecialisationResult(BaseModel):
+    slug: str
+    name: str
+    courseName: str = ""
+    stream: str = ""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class SearchResultsSchema(BaseModel):
     colleges: List[SearchCollegeResult]
     exams: List[SearchExamResult]
     locations: List[SearchLocationResult]
     courses: List[SearchCourseResult] = []
+    specialisations: List[SearchSpecialisationResult] = []
 
     model_config = ConfigDict(populate_by_name=True)

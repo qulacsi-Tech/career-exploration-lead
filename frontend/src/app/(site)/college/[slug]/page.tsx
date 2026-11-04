@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { batchLabel } from "@/lib/batch";
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { BellRing, Headset, MessagesSquare, PhoneCall, Sparkles } from "lucide-react";
+import { AwardsSection } from "@/components/college/awards-section";
+import { FacultyGlance } from "@/components/college/faculty-glance";
+import { BellRing, Headset, MessagesSquare, PhoneCall, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import {
   BigFigure,
   CardLink,
@@ -223,19 +225,7 @@ export default async function CollegeOverviewPage({
 
       {/* About */}
       {college.about && (
-        <DetailCard
-          title={`About ${short}`}
-          footer={
-            (college.approvals ?? []).length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-1 text-sm font-semibold text-ink">Approved by</span>
-                {(college.approvals ?? []).map((approval) => (
-                  <Chip key={approval} tone="brand">{approval}</Chip>
-                ))}
-              </div>
-            ) : undefined
-          }
-        >
+        <DetailCard title={`About ${short}`}>
           <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">{college.about}</p>
           <div className="mt-9 grid gap-8 sm:grid-cols-3">
             <BigFigure label="Programmes" value={`${courseGroups.length || college.coursesOffered}`} note="Degrees on offer" />
@@ -254,6 +244,48 @@ export default async function CollegeOverviewPage({
           </div>
         </DetailCard>
       )}
+
+      {/* Approvals, accreditations and rankings, straight under About. */}
+      {((college.approvals ?? []).length > 0 || (college.allRankings ?? []).length > 0) && (
+        <section aria-label="Approvals, accreditations and rankings" className="overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand-soft via-surface to-surface shadow-sm">
+          <div className="grid divide-y divide-brand/15 md:grid-cols-2 md:divide-x md:divide-y-0">
+            {(college.approvals ?? []).length > 0 && (
+              <div className="p-6">
+                <h2 className="flex items-center gap-2 font-display text-lg font-bold text-ink">
+                  <ShieldCheck className="h-5 w-5 text-brand" aria-hidden="true" /> Approvals &amp; Accreditations
+                </h2>
+                <ul className="mt-4 flex flex-wrap gap-2.5">
+                  {(college.approvals ?? []).map((approval) => (
+                    <li key={approval} className="flex items-center gap-1.5 rounded-xl border border-brand/30 bg-surface px-3.5 py-2 text-sm font-bold text-brand-ink shadow-sm">
+                      <ShieldCheck className="h-4 w-4 text-brand" aria-hidden="true" />
+                      {approval}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {(college.allRankings ?? []).length > 0 && (
+              <div className="p-6">
+                <h2 className="flex items-center gap-2 font-display text-lg font-bold text-ink">
+                  <Trophy className="h-5 w-5 text-brand" aria-hidden="true" /> Rankings
+                </h2>
+                <ul className="mt-4 flex flex-wrap gap-2.5">
+                  {(college.allRankings ?? []).map((r) => (
+                    <li key={`${r.slug ?? r.name}-${r.rank}`} title={r.name} className="flex items-center gap-2 rounded-xl border border-brand/30 bg-surface py-1.5 pl-1.5 pr-3.5 text-sm font-semibold text-ink shadow-sm">
+                      <span className="grid h-8 min-w-8 place-items-center rounded-lg bg-brand px-2 font-display font-extrabold text-white">#{r.rank}</span>
+                      {r.shortName || r.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {college.faculty && <FacultyGlance faculty={college.faculty} href={href("faculty")} />}
+
+      <AwardsSection awards={college.awards ?? []} college={college.name} />
 
       {/* Courses & fees */}
       {feeRows.length > 0 && (

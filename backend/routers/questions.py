@@ -10,6 +10,7 @@ The flow:
 """
 
 import uuid
+from urllib.parse import quote
 from datetime import datetime, timezone
 from typing import Annotated, Literal, Optional
 
@@ -89,7 +90,7 @@ async def ask_question(slug: str, data: AskBody, user_id: CurrentUserId, db: DbS
         if owner:
             recipients.add(owner)
         label = "concern" if data.kind == "concern" else "question"
-        await notify(db, recipients, kind="question.new", title=f"New {label} for {college.name}", body=f"From {user.name}: {data.message[:160]}", link="/admin/questions")
+        await notify(db, recipients, kind="question.new", title=f"New {label} for {college.name}", body=f"From {user.name}: {data.message[:160]}", link=f"/admin/questions?college={quote(college.name)}")
     except Exception:  # noqa: BLE001
         import logging
 

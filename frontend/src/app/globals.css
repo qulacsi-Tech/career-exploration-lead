@@ -956,3 +956,26 @@ body {
 
 
 /* The colours for matches from the search on a college page are added by components/college/page-search.tsx itself, because this build's CSS parser does not know ::highlight() and warns about it. */
+
+/* A video in a written section: 16:9, the width of the text. */
+.rich-text .rich-video,
+.tiptap-body .rich-video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 1em 0;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: var(--color-bg-alt);
+}
+.rich-text .rich-video iframe,
+.tiptap-body .rich-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.tiptap-body .rich-video iframe { pointer-events: none; }
+.tiptap-body .ProseMirror-selectednode.rich-video,
+.tiptap-body .ProseMirror-selectednode.rich-figure { outline: 2px solid var(--color-brand); }

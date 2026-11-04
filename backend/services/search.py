@@ -10,7 +10,8 @@ from models.college import College
 from models.course_catalogue import CourseCatalogue
 from models.exam import Exam
 from models.location import Location
-from schemas.search import SearchCollegeResult, SearchCourseResult, SearchExamResult, SearchLocationResult, SearchResultsSchema
+from models.specialisation import Specialisation
+from schemas.search import SearchCollegeResult, SearchCourseResult, SearchExamResult, SearchLocationResult, SearchResultsSchema, SearchSpecialisationResult
 
 
 async def _pg_search(db: AsyncSession, q: str, limit: int) -> SearchResultsSchema:
@@ -59,14 +60,42 @@ async def _courses(db: AsyncSession, q: str, limit: int, stream: Optional[str]) 
     return [SearchCourseResult(slug=r.slug, name=r.name, fullName=r.full_name or "", stream=r.stream or "") for r in rows]
 
 
-async def search(db: AsyncSession, q: str, limit: int = 10, stream: Optional[str] = None) -> SearchResultsSchema:
-    """Colleges, exams, cities and courses that match. With `stream`, only that category's colleges and courses."""
-    # A little more is read when a stream narrows the colleges afterwards, so the narrowed list is still full.
-    results = await _search_colleges_exams_locations(db, q, limit * 3 if stream else limit)
-    if stream:
-        wanted = stream.strip().lower()
-        results.colleges = [c for c in results.colleges if (c.stream or "").lower() == wanted][:limit]
-    results.courses = await _courses(db, q, limit, stream)
+async def _specialisations(db: AsyncSession, q: str, limit: int) -> list[SearchSpecialisationResult]:
+    """Specialisations (Finance, Mechanical, ...) whose name, or whose course's name, matches."""
+    term = f"%{q}%"
+    rows = (
+        await db.execute(
+            select(Specialisation.slug, Specialisation.name, Specialisation.course_name, Specialisation.stream)
+            .where(or_(Specialisation.name.ilike(term), Specialisation.course_name.ilike(term)))
+            .order_by(Specialisation.name)
+            .limit(limit)
+        )
+    ).fetchall()
+    return [SearchSpecialisationResult(slug=r.slug, name=r.name, courseName=r.course_name or "", stream=r.stream or "") for r in rows]
+
+
+async def search(db: AsyncSession, q: str, limit: int = 10, stream: Optional[str] = None, kind: Optional[str] = None) -> SearchResultsSchema:
+    """What matches. `kind` narrows it to one of colleges, courses, specialisations, exams or cities; `stream` to a
+    category's colleges and courses."""
+    want = lambda name: kind in (None, name)  # noqa: E731
+    results = SearchResultsSchema(colleges=[], exams=[], locations=[], courses=[], specialisations=[])
+    if want("colleges") or want("exams") or want("cities"):
+        # A little more is read when a stream narrows the colleges afterwards, so the narrowed list is still full.
+        found = await _search_colleges_exams_locations(db, q, limit * 3 if stream else limit)
+        if want("colleges"):
+            colleges = found.colleges
+            if stream:
+                wanted = stream.strip().lower()
+                colleges = [c for c in colleges if (c.stream or "").lower() == wanted]
+            results.colleges = colleges[:limit]
+        if want("exams"):
+            results.exams = found.exams[:limit]
+        if want("cities"):
+            results.locations = found.locations[:limit]
+    if want("courses"):
+        results.courses = await _courses(db, q, limit, stream)
+    if want("specialisations"):
+        results.specialisations = await _specialisations(db, q, limit)
     return results
 
 

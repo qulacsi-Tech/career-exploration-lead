@@ -16,6 +16,8 @@ export type AdminNavItem = {
   href: string;
   /** Delivery phase from the proposal; 2 renders as "later" in the sidebar. */
   phase?: 1 | 2 | 3;
+  /** The Activity count shown as a badge beside it. */
+  badge?: "questions" | "approvals" | "messages" | "ratings" | "leads";
 };
 
 /**
@@ -100,7 +102,7 @@ export const adminNav: AdminNavSection[] = [
     label: "Leads",
     icon: "leads",
     items: [
-      { label: "Inbox", href: "/admin/leads", phase: 1 },
+      { label: "Inbox", href: "/admin/leads", phase: 1, badge: "leads" },
       { label: "Visitor Analytics", href: "/admin/analytics", phase: 1 },
     ],
   },
@@ -109,9 +111,10 @@ export const adminNav: AdminNavSection[] = [
     label: "Activity",
     icon: "community",
     items: [
-      { label: "Questions", href: "/admin/questions", phase: 1 },
-      { label: "Approvals", href: "/admin/approvals", phase: 1 },
-      { label: "Messages", href: "/admin/messages", phase: 1 },
+      { label: "Questions", href: "/admin/questions", phase: 1, badge: "questions" },
+      { label: "Ratings", href: "/admin/ratings", phase: 1, badge: "ratings" },
+      { label: "Approvals", href: "/admin/approvals", phase: 1, badge: "approvals" },
+      { label: "Messages", href: "/admin/messages", phase: 1, badge: "messages" },
       { label: "Notifications", href: "/admin/notifications", phase: 1 },
     ],
   },
@@ -147,12 +150,12 @@ export const collegeAdminNav: AdminNavSection[] = [
     icon: "content",
     items: [
       { label: "College record", href: "/admin/college", phase: 1 },
-      { label: "Questions", href: "/admin/questions", phase: 1 },
+      { label: "Questions", href: "/admin/questions", phase: 1, badge: "questions" },
       { label: "My requests", href: "/admin/requests", phase: 1 },
-      { label: "Messages", href: "/admin/messages", phase: 1 },
+      { label: "Messages", href: "/admin/messages", phase: 1, badge: "messages" },
     ],
   },
-  { id: "leads", label: "Leads", icon: "leads", items: [{ label: "Inbox", href: "/admin/leads", phase: 1 }] },
+  { id: "leads", label: "Leads", icon: "leads", items: [{ label: "Inbox", href: "/admin/leads", phase: 1, badge: "leads" }] },
 ];
 
 /**

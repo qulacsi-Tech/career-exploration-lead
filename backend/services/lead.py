@@ -48,8 +48,38 @@ class LeadService:
         await self._tell_college(lead, data)
         return LeadResponseSchema(id=str(lead.id), message=THANKS)
 
+    async def _tell_platform(self, lead, data: LeadCreateSchema) -> None:
+        """The platform team hears of every new enquiry, application, callback and brochure request. Never fails the lead."""
+        try:
+            from sqlalchemy import select
+
+            from models.college import College
+            from services.notify import notify, platform_admin_ids
+
+            label = {"callback": "callback request", "counselling": "counselling request", "brochure": "brochure request", "enquiry": "enquiry"}.get(str(data.type), "enquiry")
+            if (data.source or "") == "college-apply":
+                label = "application"
+            elif (data.source or "") == "college-courses-explore":
+                label = "course exploration"
+            college = None
+            if lead.college_slug:
+                college = (await self.repo.db.execute(select(College.name).where(College.slug == lead.college_slug))).scalar_one_or_none()
+            await notify(
+                self.repo.db,
+                await platform_admin_ids(self.repo.db),
+                kind="lead.new",
+                title=f"New {label}" + (f" for {college}" if college else ""),
+                body=f"From {lead.name}" + (f": {(data.programName or data.message or '')[:160]}" if (data.programName or data.message) else ""),
+                link=f"/admin/leads?lead={lead.id}",
+            )
+        except Exception:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).exception("could not notify the platform team of a new lead")
+
     async def _tell_college(self, lead, data: LeadCreateSchema) -> None:
         """A new enquiry for a college goes to that college's admin, if it has one. Never allowed to fail the enquiry."""
+        await self._tell_platform(lead, data)
         if not (lead.college_slug and lead.consent):
             return  # only enquiries the sender agreed to share are shown to a college
         try:
@@ -63,7 +93,7 @@ class LeadService:
                     kind="lead.new",
                     title=f"New enquiry from {lead.name}",
                     body=(data.programName or data.message or "")[:200] or None,
-                    link="/admin/leads",
+                    link=f"/admin/leads?lead={lead.id}",
                 )
         except Exception:  # noqa: BLE001
             import logging

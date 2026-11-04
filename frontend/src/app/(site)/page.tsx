@@ -84,7 +84,7 @@ export default async function Home() {
     <>
       {/* Hero: one slide shows plain, several rotate. The search box stays under them. */}
       <HeroCarousel items={heroItems}>
-          <HeroSearch fields={fields.map((f) => ({ slug: f.slug, name: f.name }))} placeholder={copy.hero.searchPlaceholder} buttonLabel={copy.hero.searchButton} />
+          <HeroSearch placeholder={copy.hero.searchPlaceholder} buttonLabel={copy.hero.searchButton} />
       </HeroCarousel>
 
       {/* Browse by location */}

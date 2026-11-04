@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Home,
   Images,
+  Medal,
   MessagesSquare,
   Newspaper,
   Search,
@@ -29,6 +30,7 @@ import { InfoTab, type EditorProps } from "@/components/admin/college-editor/tab
 import { CoursesTab, CutoffsTab, PlacementsTab, RankingsTab } from "@/components/admin/college-editor/tab-numbers";
 import { CompareTab, FacultyTab, FaqTab, ReviewsTab } from "@/components/admin/college-editor/tab-people";
 import { GalleryTab, VideosTab } from "@/components/admin/college-editor/tab-media";
+import { AwardsTab } from "@/components/admin/college-editor/tab-awards";
 import { NewsTab } from "@/components/admin/college-editor/tab-news";
 import { SeoTab, WrittenTab } from "@/components/admin/college-editor/tab-written";
 import { AdministrativeTab } from "@/components/admin/college-editor/tab-administrative";
@@ -55,6 +57,7 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "placements", label: "Placements", icon: TrendingUp },
   { id: "cutoffs", label: "Cut-Offs", icon: Target },
   { id: "rankings", label: "Rankings", icon: Trophy },
+  { id: "awards", label: "Awards", icon: Medal },
   { id: "gallery", label: "Gallery", icon: Images },
   { id: "infrastructure", label: "Infrastructure", icon: Home },
   { id: "faculty", label: "Faculty", icon: Users },
@@ -195,6 +198,7 @@ export function CollegeRecordEditor({
       case "placements": return <PlacementsTab {...props} />;
       case "cutoffs": return <CutoffsTab {...props} />;
       case "rankings": return <RankingsTab {...props} />;
+      case "awards": return <AwardsTab {...props} />;
       case "gallery": return <div className="space-y-5"><GalleryTab {...props} /><VideosTab {...props} /></div>;
       case "faculty": return <FacultyTab {...props} />;
       case "compare": return <CompareTab {...props} />;

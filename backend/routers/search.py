@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Query
 
 from core.dependencies import DbSession
@@ -14,6 +16,7 @@ async def search_all(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50),
     stream: str | None = Query(None, max_length=100, description="Only this category's colleges and courses"),
+    kind: Literal["colleges", "courses", "specialisations", "exams", "cities"] | None = Query(None, description="Only this kind of result"),
 ):
-    results = await search(db, q=q, limit=limit, stream=stream)
+    results = await search(db, q=q, limit=limit, stream=stream, kind=kind)
     return SuccessResponse[SearchResultsSchema](data=results)

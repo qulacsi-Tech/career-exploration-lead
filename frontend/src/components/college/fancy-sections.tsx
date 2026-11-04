@@ -25,6 +25,7 @@ import {
 import { ActionButton } from "@/components/college/college-actions";
 import { CountUp, Reveal, RevealGroup, RevealItem } from "@/components/college/reveal";
 import { TAB_ICONS } from "@/lib/tab-icons";
+import { mediaUrl } from "@/lib/media";
 
 /**
  * The livelier bodies for the Infrastructure, Scholarships, Faculty, Compare,
@@ -180,7 +181,7 @@ const initials = (name: string) =>
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 
-export type FacultyMemberItem = { name: string; designation: string; department: string; qualification: string };
+export type FacultyMemberItem = { name: string; designation: string; department: string; qualification: string; photo?: string };
 
 export function FacultyShowcase({
   count,
@@ -226,9 +227,14 @@ export function FacultyShowcase({
               <RevealItem key={m.name}>
                 <article className="group h-full rounded-2xl border border-line bg-surface p-5 transition duration-200 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_12px_28px_-14px_rgba(177,36,62,0.4)]">
                   <div className="flex items-center gap-4">
-                    <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand to-brand-dark font-display text-lg font-bold text-white transition-transform group-hover:rotate-3 group-hover:scale-105">
-                      {initials(m.name)}
-                    </span>
+                    {m.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={mediaUrl(m.photo)} alt={m.name} className="h-16 w-16 shrink-0 rounded-full border-2 border-brand/20 object-cover transition-transform group-hover:scale-105" />
+                    ) : (
+                      <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-brand-dark font-display text-lg font-bold text-white transition-transform group-hover:scale-105">
+                        {initials(m.name)}
+                      </span>
+                    )}
                     <div className="min-w-0">
                       <p className="truncate font-display text-base font-bold text-ink">{m.name}</p>
                       <p className="truncate text-sm text-ink-soft">{m.designation || "Faculty"}</p>

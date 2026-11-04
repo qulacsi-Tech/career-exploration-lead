@@ -82,7 +82,7 @@ export function WrittenTab({ record, update, tab, title, description }: EditorPr
       </Card>
 
       <Card title={title} description={description}>
-        <RichTextField label={title} value={doc} onChange={change} minHeight={320} hint="Headings, lists, links and tables are available in the toolbar. Left empty, the tab shows an empty message." />
+        <RichTextField label={title} value={doc} onChange={change} minHeight={320} media hint="Headings, lists, links, tables, pictures and videos are available in the toolbar. Tick Also show in the Gallery on a picture or video to add it to the Gallery tab too. Left empty, the tab shows an empty message." />
       </Card>
     </div>
   );

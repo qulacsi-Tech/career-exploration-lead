@@ -34,6 +34,7 @@ export type TabId =
   | "placements"
   | "cutoffs"
   | "rankings"
+  | "awards"
   | "gallery"
   | "infrastructure"
   | "faculty"
@@ -71,6 +72,7 @@ export function cleanRecord(r: CollegeRecord): CollegeRecord {
       alerts: d.alerts.filter((a) => !empty(a.title, a.link)),
       articles: d.articles.filter((a) => !empty(a.title, a.summary, a.body)),
       media: d.media.filter((m) => !empty(m.title, m.publication, m.link)),
+      awards: (d.awards ?? []).filter((a) => !empty(a.title, a.year, a.awardedBy, a.description) || a.image),
       videos: d.videos.filter((v) => !(empty(v.title) && !v.videoId)),
       tabs: Object.fromEntries(Object.entries(d.tabs).map(([slug, doc]) => [slug, withoutBrokenImages(doc)])),
       tabHeaders: Object.fromEntries(Object.entries(d.tabHeaders ?? {}).filter(([, h]) => h.label.trim() || h.heading.trim() || h.icon)),
@@ -81,7 +83,7 @@ export function cleanRecord(r: CollegeRecord): CollegeRecord {
 export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   const r = cleanRecord(record);
   const out: Record<TabId, string[]> = {
-    info: [], courses: [], reviews: [], admissions: [], placements: [], cutoffs: [], rankings: [],
+    info: [], courses: [], reviews: [], admissions: [], placements: [], cutoffs: [], rankings: [], awards: [],
     gallery: [], infrastructure: [], faculty: [], compare: [], qna: [], scholarships: [], news: [], seo: [], administrative: [],
   };
   const d = r.detail;
@@ -99,6 +101,13 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   if (!SITE_OR_HTTPS.test(d.brochureUrl)) out.info.push("The brochure link must start with https:// or /.");
   [...r.tags, ...r.approvals].forEach((t) => {
     if (t.length > TAG_MAX_CHARS) out.info.push(`"${t.slice(0, 20)}…" is over ${TAG_MAX_CHARS} characters.`);
+  });
+
+  // Awards
+  (d.awards ?? []).forEach((a, i) => {
+    const label = a.title.trim() || `Award ${i + 1}`;
+    if (a.title.trim().length < 2) out.awards.push(`${label}: the award's name is required.`);
+    if (a.year && !/^\d{4}(-\d{2,4})?$/.test(a.year)) out.awards.push(`${label}: write the year as 2025 or 2024-25.`);
   });
 
   // Courses

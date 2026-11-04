@@ -44,7 +44,7 @@
  * college content, articles and course detail can all carry figures now.
  */
 
-import type { JSONContent } from "@tiptap/core";
+import { Node, mergeAttributes, type JSONContent } from "@tiptap/core";
 import { StarterKit } from "@tiptap/starter-kit";
 import { TableKit } from "@tiptap/extension-table";
 import { Image } from "@tiptap/extension-image";
@@ -60,6 +60,40 @@ import { mediaUrl } from "@/lib/media";
  * from the nodes inside one.
  */
 export type RichTextDoc = JSONContent & { type: "doc" };
+
+/**
+ * A YouTube or Vimeo video as a block. Only the provider and the id are stored; the embed address is built from
+ * them here, and only for an id of the expected shape, so no other address can reach the page.
+ */
+const VIDEO_ID = /^[A-Za-z0-9_-]{3,40}$/;
+export const VideoBlock = Node.create({
+  name: "video",
+  group: "block",
+  atom: true,
+  draggable: true,
+  addAttributes() {
+    return {
+      provider: { default: "youtube", parseHTML: (el: HTMLElement) => el.getAttribute("data-provider") ?? "youtube" },
+      videoId: { default: "", parseHTML: (el: HTMLElement) => el.getAttribute("data-video-id") ?? "" },
+      title: { default: "", parseHTML: (el: HTMLElement) => el.getAttribute("data-title") ?? "" },
+      // Also shown in the college's Gallery.
+      gallery: { default: false, parseHTML: (el: HTMLElement) => el.getAttribute("data-gallery") === "true" },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "div[data-rich-video]" }];
+  },
+  renderHTML({ node }) {
+    const { provider, videoId, title, gallery } = node.attrs as { provider: string; videoId: string; title: string; gallery: boolean };
+    if (!(provider === "youtube" || provider === "vimeo") || !VIDEO_ID.test(videoId)) return ["div", {}];
+    const src = provider === "youtube" ? `https://www.youtube-nocookie.com/embed/${videoId}` : `https://player.vimeo.com/video/${videoId}`;
+    return [
+      "div",
+      mergeAttributes({ class: "rich-video", "data-rich-video": "", "data-provider": provider, "data-video-id": videoId, "data-title": title || "", "data-gallery": gallery ? "true" : "false" }),
+      ["iframe", { src, title: title || "Video", loading: "lazy", allowfullscreen: "true", referrerpolicy: "strict-origin-when-cross-origin" }],
+    ];
+  },
+});
 
 /**
  * The schema. Formatted text, tables, lists and figures.
@@ -105,9 +139,12 @@ export const richTextExtensions = [
         ...this.parent?.(),
         width: { default: null },
         height: { default: null },
+        // Also shown in the college's Gallery. Kept in the document, not on the page.
+        gallery: { default: false, rendered: false },
       };
     },
   }),
+  VideoBlock,
 ];
 
 /** An empty document — what a field holds before anyone types in it. */
@@ -128,7 +165,7 @@ export const emptyDoc = (): RichTextDoc => ({ type: "doc", content: [] });
  * an image, a horizontal rule. A heading containing only spaces is empty; a
  * table with empty cells is not, because someone deliberately built it.
  */
-const MEANINGFUL_WITHOUT_TEXT = new Set(["table", "image", "horizontalRule"]);
+const MEANINGFUL_WITHOUT_TEXT = new Set(["table", "image", "video", "horizontalRule"]);
 
 export function isRichTextEmpty(doc: RichTextDoc | null | undefined): boolean {
   if (!doc || !doc.content) return true;

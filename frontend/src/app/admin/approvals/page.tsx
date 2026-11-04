@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
+import { ApprovalsTable } from "@/components/admin/approvals-table";
 import { adminListRequests } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
-import { formatFull } from "@/lib/lead-labels";
-import { REQUEST_KIND_LABEL, REQUEST_STATUS_LABEL, REQUEST_STATUS_STYLE } from "@/lib/request-labels";
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 const TABS = [
@@ -22,7 +21,7 @@ export default async function ApprovalsPage({ searchParams }: PageProps<"/admin/
   const status = raw === "decided" || raw === "all" ? raw : "pending";
   const page = Math.max(1, Number.parseInt(first(params.page) ?? "1", 10) || 1);
 
-  const { data, meta } = await withAdminToken((token) => adminListRequests(token, { status, page, limit: 25 }));
+  const { data, meta } = await withAdminToken((token) => adminListRequests(token, { status, page, limit: 100 }));
   const href = (nextPage: number) => `/admin/approvals?status=${status}${nextPage > 1 ? `&page=${nextPage}` : ""}`;
 
   return (
@@ -48,24 +47,7 @@ export default async function ApprovalsPage({ searchParams }: PageProps<"/admin/
         {data.length === 0 ? (
           <p className="text-sm text-ink-soft">{status === "pending" ? "Nothing is waiting for review." : "No requests here."}</p>
         ) : (
-          <ul className="divide-y divide-line-soft">
-            {data.map((r) => (
-              <li key={r.id}>
-                <Link href={`/admin/approvals/${r.id}`} className="flex flex-wrap items-center justify-between gap-3 py-3 hover:bg-bg-alt/60">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">{r.collegeName ?? "A college"}</p>
-                    <p className="text-xs text-ink-soft">
-                      {REQUEST_KIND_LABEL[r.kind]} from {r.requestedBy} · {formatFull(r.createdAt)}
-                      {r.reviewedBy && ` · ${r.status} by ${r.reviewedBy}`}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium ${REQUEST_STATUS_STYLE[r.status]}`}>
-                    {REQUEST_STATUS_LABEL[r.status]}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <ApprovalsTable items={data} paged={meta.pages > 1} />
         )}
       </AdminSection>
 

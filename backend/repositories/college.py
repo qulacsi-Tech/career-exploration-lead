@@ -147,6 +147,10 @@ def _apply_filters(stmt, params: CollegeFilterParams):
     # A header-menu link's own priorities come before everything else.
     menu_first = [case(*[(College.slug == s, n) for s, n in params.priority.items()], else_=1000000)] if params.priority else []
 
+    # The college's own priority (set in the admin; 1 first, none last). On every list page it comes straight
+    # after the link's own priorities, so a college with priority 1 leads a NIRF list even if its NIRF rank is 3.
+    general_priority = func.coalesce(College.priority, 1000000)
+
     # Sort
     # Every order ends on the name and id, so ties (most colleges have no reviews yet) fall the same way
     # on every request and on every page, instead of in whatever order the database happens to return.
@@ -179,17 +183,17 @@ def _apply_filters(stmt, params: CollegeFilterParams):
                 .where(RankingList.slug == params.order_list, RankingEntry.college_slug == College.slug)
                 .scalar_subquery()
             )
-            stmt = stmt.order_by(*menu_first, func.coalesce(picked_rank, 1000000), position, College.id)
+            stmt = stmt.order_by(*menu_first, general_priority, func.coalesce(picked_rank, 1000000), position, College.id)
         else:
-            stmt = stmt.order_by(*menu_first, position, College.id)
-    elif list_rank is not None:  # popularity inside a ranking list is the list's own order
-        stmt = stmt.order_by(*menu_first, list_rank, College.id)
+            stmt = stmt.order_by(*menu_first, general_priority, position, College.id)
+    elif list_rank is not None:  # popularity inside a ranking list: the college's own priority first, then its rank in the list
+        stmt = stmt.order_by(*menu_first, general_priority, list_rank, College.id)
     else:
         # Popularity (default): the priority set for the link, then the college's default priority, then its
         # NIRF rank (a college with none after those that have one), then how much it is reviewed.
         stmt = stmt.order_by(
             *menu_first,
-            func.coalesce(College.priority, 1000000),
+            general_priority,
             case((or_(College.ranking_rank.is_(None), College.ranking_rank <= 0), 1), else_=0),
             College.ranking_rank.asc(),
             College.review_count.desc(),

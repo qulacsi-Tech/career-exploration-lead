@@ -37,6 +37,8 @@ class College(Base):
     ranking_rank = Column(Integer, nullable=True)
     # Default priority: 1 is shown first. Empty: after the colleges that have one, by NIRF rank.
     priority = Column(Integer, nullable=True, index=True)
+    # Slug of the ranking list the admin pinned as the big figure on the Rankings tab; None when none is.
+    pinned_ranking = Column(String(200), nullable=True)
     rating = Column(Float, nullable=False, default=0.0)
     review_count = Column(Integer, nullable=False, default=0)
     courses_offered = Column(Integer, nullable=False, default=0)

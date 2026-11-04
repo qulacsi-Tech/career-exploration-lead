@@ -96,7 +96,9 @@ class CollectionService:
 
         ranked = sorted((c for c in chosen if c.slug in rank), key=lambda c: rank[c.slug])
         unranked = [c for c in chosen if c.slug not in rank]
-        ordered = [_to_list_schema(c) for c in ranked + unranked]
+        # The college's own priority (1 first, none last) leads; the list rank, then the editor's order, break ties.
+        ordered_rows = sorted(ranked + unranked, key=lambda c: c.priority if c.priority is not None else 1000000)
+        ordered = [_to_list_schema(c) for c in ordered_rows]
         return ordered[:limit] if isinstance(limit, int) else ordered
 
     async def colleges_for(self, data: dict, limit: Optional[int] = None) -> list:

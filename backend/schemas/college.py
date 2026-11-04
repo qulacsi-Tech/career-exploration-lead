@@ -148,6 +148,10 @@ class CollegeListSchema(BaseModel):
     # The college's logo and brochure, from its page record. Empty: none uploaded.
     logo: str = ""
     brochureUrl: str = ""
+    # A banner per ranking list (by its slug) for the Rankings tab, uploaded in the admin.
+    rankingBanners: dict[str, str] = {}
+    # Awards the college has won, for its Rankings tab and overview.
+    awards: List[dict] = []
     # Listing badges: all three are ticked in the admin. `viewCount` is the page visits counted so far.
     isFeatured: bool = False
     isTopRated: bool = False
@@ -157,6 +161,8 @@ class CollegeListSchema(BaseModel):
     priority: Optional[int] = None
     # Its NIRF rank, kept apart from `ranking` (which a ranking-list page swaps for the list's own rank).
     nirfRank: Optional[int] = None
+    # Slug of the ranking list pinned on the Rankings tab by the admin (empty: none).
+    pinnedRanking: str = ""
     # The newest placement year's figures, for the listing card. Empty when it has none.
     placementAverage: str = ""
     placementHighest: str = ""

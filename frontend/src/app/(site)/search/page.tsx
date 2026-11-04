@@ -3,9 +3,11 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { TrackOnMount } from "@/components/analytics/track-on-mount";
 import { EVENTS } from "@/lib/analytics";
-import { search, type SearchResults } from "@/lib/api";
+import { search, type SearchKind, type SearchResults } from "@/lib/api";
 
-type SearchParams = Promise<{ q?: string }>;
+type SearchParams = Promise<{ q?: string; type?: string }>;
+
+const KINDS: SearchKind[] = ["colleges", "courses", "specialisations", "exams", "cities"];
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
   const { q } = await searchParams;
@@ -22,11 +24,15 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
  * are shown as three groups, each linking to its own page.
  */
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
-  const { q } = await searchParams;
+  const { q, type } = await searchParams;
   const term = q?.trim() ?? "";
+  // The box's dropdown narrows the search to one kind of result; anything else means all of them.
+  const kind = KINDS.find((k) => k === type);
 
-  const results: SearchResults | null = term ? await search(term) : null;
-  const total = results ? results.colleges.length + results.exams.length + results.locations.length : 0;
+  const results: SearchResults | null = term ? await search(term, kind) : null;
+  const courses = results?.courses ?? [];
+  const specialisations = results?.specialisations ?? [];
+  const total = results ? results.colleges.length + results.exams.length + results.locations.length + courses.length + specialisations.length : 0;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -65,6 +71,38 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                   <p className="text-xs text-ink-faint">
                     {college.city} · {college.stream}
                   </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {courses.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-display text-lg font-bold text-ink">Courses</h2>
+          <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
+            {courses.map((course) => (
+              <li key={course.slug}>
+                <Link href={`/courses/${course.slug}`} className="block px-5 py-3 transition hover:bg-bg">
+                  <p className="font-medium text-ink">{course.name}</p>
+                  {(course.fullName || course.stream) && <p className="text-xs text-ink-faint">{[course.fullName && course.fullName !== course.name ? course.fullName : "", course.stream].filter(Boolean).join(" · ")}</p>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {specialisations.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-display text-lg font-bold text-ink">Specialisations</h2>
+          <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
+            {specialisations.map((specialisation) => (
+              <li key={specialisation.slug}>
+                <Link href={`/colleges?specialisation=${encodeURIComponent(specialisation.name)}`} className="block px-5 py-3 transition hover:bg-bg">
+                  <p className="font-medium text-ink">{specialisation.name}</p>
+                  {(specialisation.courseName || specialisation.stream) && <p className="text-xs text-ink-faint">{[specialisation.courseName, specialisation.stream].filter(Boolean).join(" · ")}</p>}
                 </Link>
               </li>
             ))}

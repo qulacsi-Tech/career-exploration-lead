@@ -31,6 +31,11 @@ class Review(Base):
     rating_faculty = Column(Float, nullable=True)
     rating_infrastructure = Column(Float, nullable=True)
     rating_campus_life = Column(Float, nullable=True)
+    # An optional word on each rating, written by the student.
+    comment_placements = Column(Text, nullable=True)
+    comment_faculty = Column(Text, nullable=True)
+    comment_infrastructure = Column(Text, nullable=True)
+    comment_campus_life = Column(Text, nullable=True)
     is_approved = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 

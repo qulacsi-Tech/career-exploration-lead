@@ -5,7 +5,8 @@ import { Award, ChevronDown, Clock, IndianRupee, Layers, Loader2 } from "lucide-
 import { ApplyRowTrigger } from "@/components/college/course-apply";
 import { Chip } from "@/components/ui/chip";
 import { shortFee } from "@/lib/college-insights";
-import { loadMoreProgrammes, loadMoreSpecialisations } from "@/lib/college-engage-actions";
+import { loadMoreProgrammes, loadMoreSpecialisations, recordCourseInterest } from "@/lib/college-engage-actions";
+import { useCollegeActions } from "@/components/college/college-actions";
 import type { Course, ProgrammeGroup, ProgrammePage } from "@/lib/api";
 
 /** How many to fetch each time the visitor asks for more, or scrolls to the end of what is shown. */
@@ -111,6 +112,27 @@ const MoreButton = ({ onClick, loading, children }: { onClick: () => void; loadi
 );
 
 /**
+ * Folded courses and specialisations are shown to signed-in students only: anyone else is asked to sign in or
+ * register first, and what they opened is then recorded as a lead. Without a provider (no college page) it just opens.
+ */
+function useGate(slug: string, course?: string) {
+  const ctx = useCollegeActions();
+  return useCallback(
+    (open: () => void) => {
+      if (!ctx) return open();
+      void ctx.ensureSignedIn(
+        course ? "Sign in to see more specialisations. It takes a minute." : "Sign in to see more courses. It takes a minute.",
+        () => {
+          void recordCourseInterest(slug, course);
+          open();
+        },
+      );
+    },
+    [ctx, slug, course],
+  );
+}
+
+/**
  * The Courses tab's list: three courses to begin with, each showing two specialisations. "N more courses available"
  * (and "N more specialisations available" inside a course) fetches the next batch from the server; after that first
  * click, the rest keep loading as the visitor scrolls, until everything is shown. Clicking a course or
@@ -135,6 +157,7 @@ export function CourseList({ slug, initial }: { slug: string; initial: Programme
   }, [slug, groups.length, loading]);
 
   const remaining = Math.max(0, total - groups.length);
+  const gate = useGate(slug);
 
   return (
     <div>
@@ -149,10 +172,12 @@ export function CourseList({ slug, initial }: { slug: string; initial: Programme
           {!expanded ? (
             <MoreButton
               loading={loading}
-              onClick={() => {
-                setExpanded(true);
-                void more();
-              }}
+              onClick={() =>
+                gate(() => {
+                  setExpanded(true);
+                  void more();
+                })
+              }
             >
               {remaining} more {remaining === 1 ? "course" : "courses"} available
             </MoreButton>
@@ -185,6 +210,7 @@ function CourseRow({ slug, group }: { slug: string; group: ProgrammeGroup }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const gate = useGate(slug, group.name);
 
   const more = useCallback(async () => {
     if (loading) return;
@@ -253,10 +279,12 @@ function CourseRow({ slug, group }: { slug: string; group: ProgrammeGroup }) {
             {!expanded ? (
               <MoreButton
                 loading={loading}
-                onClick={() => {
-                  setExpanded(true);
-                  void more();
-                }}
+                onClick={() =>
+                  gate(() => {
+                    setExpanded(true);
+                    void more();
+                  })
+                }
               >
                 {remaining} more {remaining === 1 ? "specialisation" : "specialisations"} available
               </MoreButton>

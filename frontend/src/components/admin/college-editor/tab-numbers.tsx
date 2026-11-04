@@ -4,8 +4,9 @@ import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { scoreProblem } from "@/lib/college-rules";
 import type { CollegeRankings, PlacementBreakdown, RankingListHead, RecordCourse, RecordCutoff, RecordPlacement } from "@/lib/api";
-import { checkRankHolder, loadCollegeRankings, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
+import { checkRankHolder, loadCollegeRankings, pinCollegeRanking, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
 import { AmountField } from "@/components/admin/range-field";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { packageProblem } from "@/lib/college-rules";
 import { CategoryTicks, CourseTicks, type CoursePick } from "@/components/admin/college-editor/course-picker";
@@ -519,7 +520,7 @@ export function CutoffsTab({ record, update, pools }: EditorProps) {
  * hand: the rank on the college's cards is worked out from these. Adding or removing a ranking here
  * is saved at once (it edits the ranking list), not with the Save button.
  */
-export function RankingsTab({ slug }: EditorProps) {
+export function RankingsTab({ slug, record, update }: EditorProps) {
   const [data, setData] = useState<CollegeRankings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listSlug, setListSlug] = useState("");
@@ -579,8 +580,17 @@ export function RankingsTab({ slug }: EditorProps) {
 
   const label = (l: RankingListHead) => `${l.name}${l.name.includes(String(l.year)) ? "" : ` (${l.year})`}`;
 
+  const banners = record.detail.rankingBanners ?? {};
+  const setBanner = (listSlug: string, path: string) =>
+    update((r) => {
+      const next = { ...(r.detail.rankingBanners ?? {}) };
+      if (path) next[listSlug] = path;
+      else delete next[listSlug];
+      return { ...r, detail: { ...r.detail, rankingBanners: next } };
+    });
+
   return (
-    <Card title="Rankings" description="Where this college stands in each ranking list on the Rankings page. The rank on its cards is taken from these, with NIRF first. Add it to another list below; changes here are saved straight away.">
+    <Card title="Rankings" description="Where this college stands in each ranking list on the Rankings page. The rank on its cards is taken from these, with NIRF first. Pin the one to show as the big figure on its Rankings page (the others move beside it as small badges). Add it to another list below; changes here are saved straight away.">
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
       {!data && !error && <p className="text-sm text-ink-soft">Loading the rankings…</p>}
 
@@ -604,11 +614,26 @@ export function RankingsTab({ slug }: EditorProps) {
                   <button
                     type="button"
                     disabled={pending}
+                    aria-pressed={data.pinned === e.slug}
+                    onClick={() => run(() => pinCollegeRanking(slug, data.pinned === e.slug ? null : e.slug))}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${data.pinned === e.slug ? "border-brand bg-brand text-white" : "border-line text-ink-soft hover:border-brand hover:text-brand"}`}
+                  >
+                    {data.pinned === e.slug ? "Pinned" : "Pin"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
                     onClick={() => run(() => removeCollegeRanking(e.slug, slug))}
                     className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-red-300 hover:text-red-700 disabled:opacity-50"
                   >
                     Remove
                   </button>
+                  <details className="basis-full" open={!!banners[e.slug]}>
+                    <summary className="cursor-pointer text-xs font-semibold text-brand">Banner for this ranking{banners[e.slug] ? " (uploaded)" : ""}</summary>
+                    <div className="mt-3">
+                      <ImageUploadField kind="ranking_banner" value={banners[e.slug] ?? ""} onChange={(v) => setBanner(e.slug, v)} fallbackNote="No banner for this ranking. Saved with the Save button below." />
+                    </div>
+                  </details>
                 </li>
               ))}
             </ul>

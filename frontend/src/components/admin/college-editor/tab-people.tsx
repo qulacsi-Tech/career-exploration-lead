@@ -6,6 +6,7 @@ import { loadGeneratedFaqs } from "@/lib/admin-actions";
 import type { FacultyMember, RecordReview } from "@/lib/api";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { REVIEW_MIN_CHARS } from "@/lib/college-rules";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { AddButton, Card, EmptyNote, IsoDate, NumberInput, Row, SelectInput, TextArea, TextInput, move, today } from "@/components/admin/college-editor/shared";
 
 /*
@@ -26,12 +27,26 @@ const blankReview = (course: string): RecordReview => ({
   ratingFaculty: null,
   ratingInfrastructure: null,
   ratingCampusLife: null,
+  commentPlacements: "",
+  commentFaculty: "",
+  commentInfrastructure: "",
+  commentCampusLife: "",
   // A new review waits for a moderator unless approved on purpose.
   approved: false,
 });
 
+const COMMENT_FIELDS = [
+  { rating: "ratingPlacements", comment: "commentPlacements", label: "Placements" },
+  { rating: "ratingFaculty", comment: "commentFaculty", label: "Faculty" },
+  { rating: "ratingInfrastructure", comment: "commentInfrastructure", label: "Infrastructure" },
+  { rating: "ratingCampusLife", comment: "commentCampusLife", label: "Campus life" },
+] as const;
+
+const fixed = (n: number | null | undefined) => (n === null || n === undefined ? "–" : Number(n).toFixed(1));
+
 export function ReviewsTab({ record, update }: EditorProps) {
   const rows = record.reviews;
+  const [open, setOpen] = useState<number | null>(null);
   const set = (list: RecordReview[]) => update((r) => ({ ...r, reviews: list }));
   const patch = (i: number, change: Partial<RecordReview>) => set(rows.map((r, n) => (n === i ? { ...r, ...change } : r)));
   const courseNames = [...new Set(record.courses.map((c) => c.name).filter(Boolean))];
@@ -42,7 +57,17 @@ export function ReviewsTab({ record, update }: EditorProps) {
     <Card
       title="Student reviews"
       description="Approved reviews appear on the Reviews tab (the ten newest) and set the college's rating and review count. A review that is not approved is kept here but hidden from the site."
-      actions={<AddButton onClick={() => set([blankReview(courseNames[0] ?? ""), ...rows])} disabled={rows.length >= 100}>Add a review</AddButton>}
+      actions={
+        <AddButton
+          onClick={() => {
+            set([blankReview(courseNames[0] ?? ""), ...rows]);
+            setOpen(0);
+          }}
+          disabled={rows.length >= 100}
+        >
+          Add a review
+        </AddButton>
+      }
     >
       <p className="text-sm text-ink-soft">
         {rows.length} review{rows.length === 1 ? "" : "s"}, {approved.length} approved
@@ -51,47 +76,125 @@ export function ReviewsTab({ record, update }: EditorProps) {
       {rows.length === 0 ? (
         <EmptyNote>No reviews. The Reviews tab invites the first one.</EmptyNote>
       ) : (
-        <ul className="space-y-4">
-          {rows.map((r, i) => (
-            <Row key={r.id ?? `new-${i}`} title={`${r.author || "Reviewer"} · ${r.course || "course"}`} index={i} count={rows.length} onRemove={() => set(rows.filter((_, n) => n !== i))}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <TextInput id={`rv-${i}-author`} label="Reviewer" required max={200} value={r.author} onChange={(v) => patch(i, { author: v })} />
-                <SelectInput id={`rv-${i}-course`} label="Programme" required value={r.course} onChange={(v) => patch(i, { course: v })} options={courseNames} placeholder="Select a programme" hint={courseNames.length === 0 ? "Add programmes on the Courses tab first." : undefined} />
-                <TextInput id={`rv-${i}-batch`} label="Batch" required max={50} value={r.batch} onChange={(v) => patch(i, { batch: v })} placeholder="e.g. 2023-25" />
-                <IsoDate id={`rv-${i}-date`} label="Review date" value={r.date} onChange={(v) => patch(i, { date: v })} notFuture />
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-5">
-                <NumberInput id={`rv-${i}-rating`} label="Overall (1-5)" required min={1} max={5} step={0.1} value={r.rating} onChange={(v) => patch(i, { rating: v ?? 0 })} />
-                <NumberInput id={`rv-${i}-rp`} label="Placements" min={1} max={5} step={0.1} value={r.ratingPlacements} onChange={(v) => patch(i, { ratingPlacements: v })} />
-                <NumberInput id={`rv-${i}-rf`} label="Faculty" min={1} max={5} step={0.1} value={r.ratingFaculty} onChange={(v) => patch(i, { ratingFaculty: v })} />
-                <NumberInput id={`rv-${i}-ri`} label="Infrastructure" min={1} max={5} step={0.1} value={r.ratingInfrastructure} onChange={(v) => patch(i, { ratingInfrastructure: v })} />
-                <NumberInput id={`rv-${i}-rc`} label="Campus life" min={1} max={5} step={0.1} value={r.ratingCampusLife} onChange={(v) => patch(i, { ratingCampusLife: v })} />
-              </div>
-              <div className="mt-4">
-                <TextArea id={`rv-${i}-body`} label="Review" required rows={3} max={2000} value={r.body} onChange={(v) => patch(i, { body: v })} hint={r.id ? undefined : `At least ${REVIEW_MIN_CHARS} characters.`} />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-5">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
-                  <input type="checkbox" checked={r.verified} onChange={(e) => patch(i, { verified: e.target.checked })} className="h-4 w-4 accent-[var(--color-brand)]" />
-                  Verified student
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
-                  <input type="checkbox" checked={r.approved} onChange={(e) => patch(i, { approved: e.target.checked })} className="h-4 w-4 accent-[var(--color-brand)]" />
-                  Approved: show on the site
-                </label>
-                {r.id && (
-                  <span className="ml-auto inline-flex items-center gap-3 text-sm text-ink-soft" title="Students who liked or disliked this review">
-                    <span className="inline-flex items-center gap-1"><ThumbsUp className="h-4 w-4" /> {r.likes ?? 0}</span>
-                    <span className="inline-flex items-center gap-1"><ThumbsDown className="h-4 w-4" /> {r.dislikes ?? 0}</span>
-                  </span>
-                )}
-              </div>
-            </Row>
-          ))}
-        </ul>
+        <div className="overflow-x-auto rounded-xl border border-line">
+          <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+            <thead className="bg-bg-alt text-xs font-semibold uppercase tracking-wide text-ink-soft">
+              <tr>
+                <th className="px-3 py-2.5">Reviewer</th>
+                <th className="px-3 py-2.5">Programme</th>
+                <th className="px-3 py-2.5">Batch</th>
+                <th className="px-3 py-2.5">Date</th>
+                <th className="px-3 py-2.5 text-center">Overall</th>
+                <th className="px-3 py-2.5 text-center">Placements</th>
+                <th className="px-3 py-2.5 text-center">Faculty</th>
+                <th className="px-3 py-2.5 text-center">Infra</th>
+                <th className="px-3 py-2.5 text-center">Campus</th>
+                <th className="px-3 py-2.5 text-center">Comments</th>
+                <th className="px-3 py-2.5">Status</th>
+                <th className="px-3 py-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line-soft">
+              {rows.map((r, i) => {
+                const commentCount = COMMENT_FIELDS.filter((f) => (r[f.comment] ?? "").trim()).length;
+                const isOpen = open === i;
+                return (
+                  <ReviewRows key={r.id ?? `new-${i}`}>
+                    <tr className={isOpen ? "bg-brand-soft/30" : "hover:bg-bg-alt/50"}>
+                      <td className="px-3 py-2.5 font-semibold text-ink">{r.author || "Reviewer"}{r.verified && <span className="ml-1.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">Verified</span>}</td>
+                      <td className="px-3 py-2.5 text-ink-soft">{r.course || "–"}</td>
+                      <td className="px-3 py-2.5 text-ink-soft">{r.batch || "–"}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-ink-soft">{r.date}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-ink">{fixed(r.rating)}</td>
+                      <td className="px-3 py-2.5 text-center text-ink-soft">{fixed(r.ratingPlacements)}</td>
+                      <td className="px-3 py-2.5 text-center text-ink-soft">{fixed(r.ratingFaculty)}</td>
+                      <td className="px-3 py-2.5 text-center text-ink-soft">{fixed(r.ratingInfrastructure)}</td>
+                      <td className="px-3 py-2.5 text-center text-ink-soft">{fixed(r.ratingCampusLife)}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        {commentCount > 0 ? (
+                          <button type="button" onClick={() => setOpen(isOpen ? null : i)} className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand-ink" title="Show the comments">
+                            {commentCount}
+                          </button>
+                        ) : (
+                          <span className="text-ink-faint">–</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.approved ? "bg-emerald-50 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{r.approved ? "Shown" : "Waiting"}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                        <button type="button" onClick={() => setOpen(isOpen ? null : i)} className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-soft transition hover:border-brand hover:text-brand">
+                          {isOpen ? "Close" : "Edit"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            set(rows.filter((_, n) => n !== i));
+                            setOpen(null);
+                          }}
+                          className="ml-1.5 rounded-md border border-line px-2.5 py-1 text-xs font-medium text-ink-soft transition hover:border-red-300 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="bg-bg-alt/40">
+                        <td colSpan={12} className="px-4 py-4">
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                            <TextInput id={`rv-${i}-author`} label="Reviewer" required max={200} value={r.author} onChange={(v) => patch(i, { author: v })} />
+                            <SelectInput id={`rv-${i}-course`} label="Programme" required value={r.course} onChange={(v) => patch(i, { course: v })} options={courseNames} placeholder="Select a programme" hint={courseNames.length === 0 ? "Add programmes on the Courses tab first." : undefined} />
+                            <TextInput id={`rv-${i}-batch`} label="Batch" required max={50} value={r.batch} onChange={(v) => patch(i, { batch: v })} placeholder="e.g. 2023-25" />
+                            <IsoDate id={`rv-${i}-date`} label="Review date" value={r.date} onChange={(v) => patch(i, { date: v })} notFuture />
+                          </div>
+                          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <NumberInput id={`rv-${i}-rating`} label="Overall (1-5)" required min={1} max={5} step={0.1} value={r.rating} onChange={(v) => patch(i, { rating: v ?? 0 })} />
+                            <span />
+                            {COMMENT_FIELDS.map((f) => (
+                              <div key={f.rating} className="rounded-lg border border-line bg-surface p-3">
+                                <NumberInput id={`rv-${i}-${f.rating}`} label={`${f.label} (1-5)`} min={1} max={5} step={0.1} value={r[f.rating]} onChange={(v) => patch(i, { [f.rating]: v })} />
+                                <div className="mt-3">
+                                  <TextArea id={`rv-${i}-${f.comment}`} label={`Comment on ${f.label.toLowerCase()} (optional)`} rows={2} max={500} value={r[f.comment] ?? ""} onChange={(v) => patch(i, { [f.comment]: v })} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-4">
+                            <TextArea id={`rv-${i}-body`} label="Review" required rows={3} max={2000} value={r.body} onChange={(v) => patch(i, { body: v })} hint={r.id ? undefined : `At least ${REVIEW_MIN_CHARS} characters.`} />
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-5">
+                            <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                              <input type="checkbox" checked={r.verified} onChange={(e) => patch(i, { verified: e.target.checked })} className="h-4 w-4 accent-[var(--color-brand)]" />
+                              Verified student
+                            </label>
+                            <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                              <input type="checkbox" checked={r.approved} onChange={(e) => patch(i, { approved: e.target.checked })} className="h-4 w-4 accent-[var(--color-brand)]" />
+                              Approved: show on the site
+                            </label>
+                            {r.id && (
+                              <span className="ml-auto inline-flex items-center gap-3 text-sm text-ink-soft" title="Students who liked or disliked this review">
+                                <span className="inline-flex items-center gap-1"><ThumbsUp className="h-4 w-4" /> {r.likes ?? 0}</span>
+                                <span className="inline-flex items-center gap-1"><ThumbsDown className="h-4 w-4" /> {r.dislikes ?? 0}</span>
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </ReviewRows>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );
+}
+
+/** A table body can hold only rows, so a review's two rows are grouped without adding an element. */
+function ReviewRows({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }
 
 // ── Faculty ──────────────────────────────────────────────────────────────────
@@ -116,7 +219,7 @@ export function FacultyTab({ record, update }: EditorProps) {
       <Card
         title="Faculty members"
         description="The roster table on the Faculty tab."
-        actions={<AddButton onClick={() => setMembers([...members, { name: "", designation: "", department: "", qualification: "" }])} disabled={members.length >= 60}>Add a member</AddButton>}
+        actions={<AddButton onClick={() => setMembers([...members, { name: "", designation: "", department: "", qualification: "", photo: "" }])} disabled={members.length >= 60}>Add a member</AddButton>}
       >
         {members.length === 0 ? (
           <EmptyNote>No faculty listed.</EmptyNote>
@@ -129,6 +232,10 @@ export function FacultyTab({ record, update }: EditorProps) {
                   <TextInput id={`fm-${i}-desig`} label="Designation" max={120} value={m.designation} onChange={(v) => patch(i, { designation: v })} placeholder="e.g. Professor" />
                   <TextInput id={`fm-${i}-dept`} label="Department" max={120} value={m.department} onChange={(v) => patch(i, { department: v })} />
                   <TextInput id={`fm-${i}-qual`} label="Qualification" max={160} value={m.qualification} onChange={(v) => patch(i, { qualification: v })} placeholder="e.g. PhD, IIM Bangalore" />
+                </div>
+                <div className="mt-4 max-w-sm">
+                  <p className="mb-1.5 text-sm font-semibold text-ink">Photo <span className="font-normal text-ink-faint">(optional, shown as a circle)</span></p>
+                  <ImageUploadField kind="faculty_photo" value={m.photo ?? ""} onChange={(v) => patch(i, { photo: v })} fallbackNote="No photo. Their initials are shown in the circle." />
                 </div>
               </Row>
             ))}

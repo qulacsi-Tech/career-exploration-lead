@@ -13,7 +13,7 @@ from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import selectinload
 
 from core.dependencies import AdminPayload, DbSession
@@ -185,7 +185,32 @@ async def admin_college_rankings(college_slug: str, _admin: AdminPayload, db: Db
             mine.append({**head, "rank": entry.rank, "score": entry.score})
         else:
             available.append(head)
-    return SuccessResponse[dict](data={"entries": mine, "available": available})
+    pinned = (await db.execute(select(College.pinned_ranking).where(College.slug == college_slug))).scalar_one_or_none() or ""
+    return SuccessResponse[dict](data={"entries": mine, "available": available, "pinned": pinned})
+
+
+class PinBody(BaseModel):
+    rankingSlug: Optional[str] = Field(default=None, max_length=200)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.put("/college/{college_slug}/pin", response_model=SuccessResponse[dict])
+async def admin_pin_ranking(college_slug: str, _admin: AdminPayload, db: DbSession, body: dict):
+    """Chooses which of the college's rankings is the big figure on its Rankings tab (None unpins)."""
+    data = _validate(PinBody, body)
+    college = (await db.execute(select(College).where(College.slug == college_slug))).scalar_one_or_none()
+    if college is None:
+        raise NotFoundError("College")
+    if data.rankingSlug:
+        held = (await db.execute(
+            select(RankingEntry.id).join(RankingList, RankingEntry.ranking_list_id == RankingList.id)
+            .where(RankingList.slug == data.rankingSlug, RankingEntry.college_slug == college_slug)
+        )).first()
+        if held is None:
+            raise ValidationError("The college is not in that ranking list.")
+    college.pinned_ranking = data.rankingSlug or None
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Saved."})
 
 
 @router.get("/{slug}/rank/{rank}", response_model=SuccessResponse[dict])
@@ -230,6 +255,7 @@ async def admin_remove_entry(slug: str, college_slug: str, _admin: AdminPayload,
         raise NotFoundError("Ranking entry")
     await db.delete(entry)
     await db.flush()
+    await db.execute(update(College).where(College.slug == college_slug, College.pinned_ranking == slug).values(pinned_ranking=None))
     await _sync_primary(db, [college_slug])
     await db.commit()
     return SuccessResponse[dict](data={"message": "Removed."})

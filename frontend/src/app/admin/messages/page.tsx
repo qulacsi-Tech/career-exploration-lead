@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-section";
+import { ThreadsTable } from "@/components/admin/threads-table";
 import { CollegeThread, NewThreadForm, PlatformThread } from "@/components/messages/bound-threads";
 import {
   adminGetThread,
@@ -9,10 +10,8 @@ import {
   getMe,
   type PaginationMeta,
   type ThreadDetail,
-  type ThreadSummary,
 } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
-import { formatFull } from "@/lib/lead-labels";
 import { isCollegeAdmin } from "@/lib/roles";
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
@@ -45,7 +44,7 @@ export default async function AdminMessagesPage({ searchParams }: PageProps<"/ad
       const thread = selected ? await collegeGetThread(token, selected).catch(() => null) : null;
       return { college: true as const, threads, meta: null as PaginationMeta | null, thread };
     }
-    const list = await adminListThreads(token, { status, page, limit: 25 });
+    const list = await adminListThreads(token, { status, page, limit: 100 });
     const thread = selected ? await adminGetThread(token, selected).catch(() => null) : null;
     return { college: false as const, threads: list.data, meta: list.meta, thread };
   });
@@ -92,8 +91,8 @@ export default async function AdminMessagesPage({ searchParams }: PageProps<"/ad
         </nav>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
-        <ThreadList threads={view.threads} selected={selected} showCollege={!view.college} href={href} />
+      <div className="space-y-6">
+        <ThreadsTable threads={view.threads} selected={selected} showCollege={!view.college} status={!view.college && status !== "open" ? status : null} paged={!!view.meta && view.meta.pages > 1} />
 
         <div className="min-w-0">
           {view.college && startNew ? (
@@ -130,52 +129,5 @@ export default async function AdminMessagesPage({ searchParams }: PageProps<"/ad
         </nav>
       )}
     </div>
-  );
-}
-
-function ThreadList({
-  threads,
-  selected,
-  showCollege,
-  href,
-}: {
-  threads: ThreadSummary[];
-  selected: string | undefined;
-  showCollege: boolean;
-  href: (extra: Record<string, string | undefined>) => string;
-}) {
-  if (threads.length === 0) return <p className="text-sm text-ink-soft">Nothing here.</p>;
-  return (
-    <ul className="space-y-2">
-      {threads.map((t) => (
-        <li key={t.id}>
-          <Link
-            href={href({ thread: t.id })}
-            aria-current={t.id === selected ? "true" : undefined}
-            className={`block rounded-xl border px-4 py-3 transition ${
-              t.id === selected ? "border-brand bg-brand-soft/50" : "border-line bg-surface hover:border-brand/40"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <p className="min-w-0 truncate text-sm font-semibold text-ink">{t.subject}</p>
-              <span
-                className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
-                  t.status === "open" ? "border-brand/40 bg-brand-soft text-brand-ink" : "border-line bg-bg-alt text-ink-faint"
-                }`}
-              >
-                {t.status === "open" ? "Waiting" : "Resolved"}
-              </span>
-            </div>
-            {showCollege && t.collegeName && <p className="mt-0.5 truncate text-xs text-ink-soft">{t.collegeName}</p>}
-            {t.last && (
-              <p className="mt-1 line-clamp-2 text-xs text-ink-soft">
-                {t.last.sender}: {t.last.body}
-              </p>
-            )}
-            <p className="mt-1 text-[11px] text-ink-faint">{formatFull(t.updatedAt)}</p>
-          </Link>
-        </li>
-      ))}
-    </ul>
   );
 }

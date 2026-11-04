@@ -6,11 +6,12 @@ One review per student per college, so a repeat is refused with a message rather
 """
 
 from datetime import date
+from urllib.parse import quote
 import uuid
 from typing import Literal, Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import case, delete, func, select
 
 from core import college_rules as rules
@@ -27,11 +28,17 @@ router = APIRouter(tags=["reviews"])
 class ReviewBody(BaseModel):
     course: str = Field(min_length=1, max_length=200)
     batch: str = Field(min_length=1, max_length=50)
-    ratingPlacements: float = Field(ge=1, le=5)
-    ratingFaculty: float = Field(ge=1, le=5)
-    ratingInfrastructure: float = Field(ge=1, le=5)
-    ratingCampusLife: float = Field(ge=1, le=5)
+    # Any of the four may be left out; at least one is needed.
+    ratingPlacements: Optional[float] = Field(default=None, ge=1, le=5)
+    ratingFaculty: Optional[float] = Field(default=None, ge=1, le=5)
+    ratingInfrastructure: Optional[float] = Field(default=None, ge=1, le=5)
+    ratingCampusLife: Optional[float] = Field(default=None, ge=1, le=5)
     body: str = Field(min_length=rules.REVIEW_MIN_CHARS, max_length=2000)
+    # An optional word on each rating.
+    commentPlacements: str = Field(default="", max_length=500)
+    commentFaculty: str = Field(default="", max_length=500)
+    commentInfrastructure: str = Field(default="", max_length=500)
+    commentCampusLife: str = Field(default="", max_length=500)
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("course")
@@ -43,6 +50,17 @@ class ReviewBody(BaseModel):
     @classmethod
     def _batch(cls, value: str) -> str:
         return rules.check_batch(value)
+
+    @field_validator("commentPlacements", "commentFaculty", "commentInfrastructure", "commentCampusLife")
+    @classmethod
+    def _comment(cls, value: str) -> str:
+        return " ".join(value.split())
+
+    @model_validator(mode="after")
+    def _one_rating(self):
+        if all(v is None for v in (self.ratingPlacements, self.ratingFaculty, self.ratingInfrastructure, self.ratingCampusLife)):
+            raise ValueError("Rate at least one area.")
+        return self
 
     @field_validator("body")
     @classmethod
@@ -69,7 +87,8 @@ async def submit_review(slug: str, data: ReviewBody, user_id: CurrentUserId, db:
     if already:
         raise ConflictError("ALREADY_REVIEWED", "You have already reviewed this college. Your review is with our team.")
 
-    overall = round((data.ratingPlacements + data.ratingFaculty + data.ratingInfrastructure + data.ratingCampusLife) / 4, 1)
+    given = [v for v in (data.ratingPlacements, data.ratingFaculty, data.ratingInfrastructure, data.ratingCampusLife) if v is not None]
+    overall = round(sum(given) / len(given), 1)
     db.add(
         Review(
             college_id=college.id,
@@ -85,6 +104,10 @@ async def submit_review(slug: str, data: ReviewBody, user_id: CurrentUserId, db:
             rating_faculty=data.ratingFaculty,
             rating_infrastructure=data.ratingInfrastructure,
             rating_campus_life=data.ratingCampusLife,
+            comment_placements=data.commentPlacements or None,
+            comment_faculty=data.commentFaculty or None,
+            comment_infrastructure=data.commentInfrastructure or None,
+            comment_campus_life=data.commentCampusLife or None,
             is_approved=False,
         )
     )
@@ -195,6 +218,10 @@ async def my_reviews(user_id: CurrentUserId, db: DbSession):
                 "ratingFaculty": r.rating_faculty,
                 "ratingInfrastructure": r.rating_infrastructure,
                 "ratingCampusLife": r.rating_campus_life,
+                "commentPlacements": r.comment_placements or "",
+                "commentFaculty": r.comment_faculty or "",
+                "commentInfrastructure": r.comment_infrastructure or "",
+                "commentCampusLife": r.comment_campus_life or "",
                 "body": r.body,
                 "approved": bool(r.is_approved),
                 "createdAt": r.created_at.isoformat() if r.created_at else None,
@@ -215,7 +242,7 @@ async def _tell_platform(db, college: College, user: User, note: Optional[str] =
             kind="review.new",
             title=f"New review for {college.name}",
             body=note or f"From {user.name}. Approve or reject it on the college's Reviews tab.",
-            link="/admin/colleges",
+            link=f"/admin/ratings?status=all&college={quote(college.name)}",
         )
     except Exception:  # noqa: BLE001
         import logging
