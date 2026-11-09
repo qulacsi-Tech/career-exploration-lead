@@ -4,12 +4,12 @@ import { mediaUrl } from "@/lib/media";
 export type CollegeAward = { title: string; year?: string; awardedBy?: string; description?: string; image?: string };
 
 /** The awards a college has won: a small picture where there is one, the award's name, who gave it and when. */
-export function AwardsSection({ awards, college }: { awards: CollegeAward[]; college: string }) {
+export function AwardsSection({ awards, college, title }: { awards: CollegeAward[]; college: string; /** Written in the admin; empty means the usual heading. */ title?: string }) {
   if (awards.length === 0) return null;
   return (
     <section aria-label="Awards and recognition" className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
       <h2 className="flex items-center gap-2 font-display text-xl font-bold text-brand-ink">
-        <Medal className="h-5 w-5 text-gold" aria-hidden="true" /> Awards &amp; Recognition
+        <Medal className="h-5 w-5 text-gold" aria-hidden="true" /> {title?.trim() || "Awards & Recognition"}
       </h2>
       <ul className="mt-5 grid gap-4 sm:grid-cols-2">
         {awards.map((a, i) => (

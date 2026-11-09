@@ -116,6 +116,8 @@ class ReviewSchema(BaseModel):
     date: str
     rating: float
     body: str
+    # True when the student has changed it since writing it.
+    edited: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -152,6 +154,12 @@ class CollegeListSchema(BaseModel):
     rankingBanners: dict[str, str] = {}
     # Awards the college has won, for its Rankings tab and overview.
     awards: List[dict] = []
+    # The words and layout of the Rankings tab, written in the admin.
+    rankingsPage: dict = {}
+    # Headings and descriptions the admin reworded, by key.
+    pageText: dict[str, str] = {}
+    # Pictures and videos under each written tab.
+    tabMedia: dict[str, list[dict]] = {}
     # Listing badges: all three are ticked in the admin. `viewCount` is the page visits counted so far.
     isFeatured: bool = False
     isTopRated: bool = False
@@ -246,3 +254,8 @@ class CollegeFilterParams(BaseModel):
     exclude_slugs: Optional[List[str]] = None
     # A header-menu link's own priorities, slug -> 1, 2, 3...: those colleges come first, in that order.
     priority: Optional[dict[str, int]] = None
+    # Priority as a place in the list (see services/priority_slots.py): slug -> place, for the popularity order.
+    # When set, the list is arranged in code and the database does not order by priority.
+    slot_priority: Optional[dict[str, int]] = None
+    # Decides who takes a place several colleges share; the same seed keeps the pages of one visit together.
+    seed: Optional[int] = None

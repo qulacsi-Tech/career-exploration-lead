@@ -36,7 +36,7 @@ export function LoginForm({ next, copy, signupCopy }: { next?: string; copy: Aut
         next={next}
         copy={signupCopy}
         prefill={typed.includes("@") ? { email: typed } : { phone: typed }}
-        notice={`We could not find an account for ${typed}. Create one below. It takes a minute.`}
+        notice={`No account is available for ${typed}. Create a new one below. It takes a minute.`}
       />
     );
   }

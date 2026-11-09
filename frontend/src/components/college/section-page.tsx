@@ -21,10 +21,15 @@ import { PageSearch } from "@/components/college/page-search";
 export function CollegeSectionPage({
   college,
   sectionSlug,
+  heading,
+  description,
   children,
 }: {
   college: College;
   sectionSlug: string;
+  /** Written in the admin for this page; empty means the usual wording. */
+  heading?: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   const available = collegeSections;
@@ -47,11 +52,11 @@ export function CollegeSectionPage({
 
       <header className="mt-4">
         <h2 className="font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
-          {college.name} {section?.label}
+          {heading?.trim() || `${college.name} ${section?.label}`}
         </h2>
-        {section && (
+        {(description?.trim() || section) && (
           <p className="mt-2 max-w-3xl text-base leading-relaxed text-ink-soft">
-            {section.blurb(college)}
+            {description?.trim() || section?.blurb(college)}
           </p>
         )}
       </header>

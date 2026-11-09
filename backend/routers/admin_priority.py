@@ -2,21 +2,27 @@
 
 Two levels. The default priority sits on the college itself and applies to every list that has no
 priority of its own. A header-menu link (Popular Courses > MBA, Colleges by Location > Bengaluru, a
-collection...) can carry its own priorities for the institutes in its list. Within either level a
-priority number belongs to one institute only: 1 is shown first, then 2, and so on. Institutes with
-none come after, ordered by NIRF rank.
+collection...) and every filter of the college listing (category, course, specialisation, location, ranking,
+credential, level, mode, ownership, exam, approval, fees) can carry priorities of their own. A priority is a
+place in the list: 1 is the first place, 2 the second. Several institutes may share a number; they take turns at
+that place on each visit (see services/priority_slots.py). Institutes with none fill the other places, by NIRF rank.
 """
 
 from typing import Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import case, select
+from sqlalchemy import case, delete, select
 
 from core.dependencies import AdminPayload, DbSession
 from core.exceptions import ValidationError
 from core.validation import validate_body
 from models.college import College
+from models.listing_priority import ListingPriority
+from models.ranking import RankingList
+from repositories.college import CollegeRepository
+from schemas.college import CollegeFilterParams
+from services.listing_priority import params_of_scope
 from routers.nav_menu import set_item_priority
 from schemas.common import SuccessResponse
 
@@ -37,15 +43,10 @@ class MenuBody(BaseModel):
 
 
 def _check_numbers(values: dict[str, int], names: dict[str, str]) -> None:
-    """Each number once, from 1 to 100000. A repeat names the institutes that share it."""
-    holders: dict[int, list[str]] = {}
+    """Whole numbers from 1 to 100000. Several institutes may share a number: they take turns at that place."""
     for slug, n in values.items():
         if n < 1 or n > 100000:
             raise ValidationError(f"priority: {names.get(slug, slug)} has {n}; a priority is a whole number from 1 to 100000.")
-        holders.setdefault(n, []).append(names.get(slug, slug))
-    for n, who in sorted(holders.items()):
-        if len(who) > 1:
-            raise ValidationError(f"priority: {n} is given to both {who[0]} and {who[1]}. Each priority belongs to one institute.")
 
 
 @router.get("/default", response_model=SuccessResponse[list])
@@ -93,5 +94,83 @@ async def admin_set_menu_priorities(_admin: AdminPayload, db: DbSession, body: d
         raise ValidationError(f"priority: unknown college '{unknown[0]}'.")
     _check_numbers(data.priority, names)
     await set_item_priority(db, data.menu, data.priority)
+    await db.commit()
+    return SuccessResponse[dict](data={"message": "Priorities saved."})
+
+
+# ── Priorities for each filter of the college listing ───────────────────────
+
+class ScopeBody(BaseModel):
+    # "<filter>=<value>", e.g. "city=Pune"; slug -> priority for the institutes in that filter's list.
+    scope: str = Field(min_length=3, max_length=300)
+    priority: dict[str, int] = Field(default_factory=dict, max_length=2000)
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.get("/scopes", response_model=SuccessResponse[list])
+async def admin_priority_scopes(_admin: AdminPayload, db: DbSession):
+    """Every filter the college listing offers, with each of its values: what a priority can be set for."""
+    facets = await CollegeRepository(db).facets()
+    lists = (await db.execute(select(RankingList.slug, RankingList.name, RankingList.short_name, RankingList.year).order_by(RankingList.year.desc(), RankingList.name))).all()
+
+    def group(gid: str, label: str, name: str, values: list[str]) -> dict:
+        return {"id": gid, "label": label, "options": [{"scope": f"{name}={v}", "label": v} for v in values]}
+
+    groups = [
+        group("stream", "Category", "stream", facets["streams"]),
+        group("course", "Course", "course", facets["courses"]),
+        group("specialisation", "Specialisation", "specialisation", facets["specialisations"]),
+        group("city", "Location", "city", facets["cities"]),
+        {
+            "id": "ranking_list",
+            "label": "Ranking",
+            "options": [
+                {"scope": f"ranking_list={slug}", "label": (short or "").strip() or (name if str(year) in name else f"{name} {year}")}
+                for slug, name, short, year in lists
+            ],
+        },
+        group("credential", "Credential", "credential", ["Degree", "Diploma", "Doctorate"]),
+        group("level", "Course Level", "level", ["UG", "PG", "Doctorate"]),
+        group("mode", "Mode of Study", "mode", facets["modes"]),
+        {"id": "fees", "label": "Total Fees", "options": [
+            {"scope": "fees=-5", "label": "< 5 Lakh"}, {"scope": "fees=5-10", "label": "5 - 10 Lakh"},
+            {"scope": "fees=10-20", "label": "10 - 20 Lakh"}, {"scope": "fees=20-", "label": "> 20 Lakh"},
+        ]},
+        group("ownership", "Ownership", "ownership", ["Private", "Government", "Deemed"]),
+        group("exam", "Exam accepted", "exam", facets["exams"]),
+        group("approval", "Approval", "approval", facets["approvals"]),
+    ]
+    return SuccessResponse[list](data=[g for g in groups if g["options"]])
+
+
+@router.get("/scope", response_model=SuccessResponse[dict])
+async def admin_scope_institutes(scope: str, _admin: AdminPayload, db: DbSession):
+    """The published institutes a filter would list, with the priority already saved for each in that filter."""
+    narrowing = params_of_scope(scope)
+    if not narrowing:
+        raise ValidationError("scope: not a filter of the college listing.")
+    params = CollegeFilterParams(page=1, limit=500, **narrowing)
+    colleges, total = await CollegeRepository(db).list(params)
+    saved = dict((await db.execute(select(ListingPriority.college_slug, ListingPriority.priority).where(ListingPriority.scope == scope))).all())
+    return SuccessResponse[dict](data={
+        "truncated": total > len(colleges),
+        "colleges": [{"slug": c.slug, "name": c.name, "city": c.city, "rank": c.ranking_rank, "priority": saved.get(c.slug)} for c in colleges],
+    })
+
+
+@router.put("/scope", response_model=SuccessResponse[dict])
+async def admin_set_scope_priorities(_admin: AdminPayload, db: DbSession, body: dict):
+    """Saves the priorities of one filter's list. Replaces what it had. Institutes may share a number."""
+    data = validate_body(ScopeBody, body)
+    if not params_of_scope(data.scope):
+        raise ValidationError("scope: not a filter of the college listing.")
+    names = {slug: name for slug, name in (await db.execute(select(College.slug, College.name).where(College.slug.in_(list(data.priority))))).all()} if data.priority else {}
+    unknown = [s for s in data.priority if s not in names]
+    if unknown:
+        raise ValidationError(f"priority: unknown college '{unknown[0]}'.")
+    _check_numbers(data.priority, names)
+    await db.execute(delete(ListingPriority).where(ListingPriority.scope == data.scope))
+    for slug, n in data.priority.items():
+        db.add(ListingPriority(scope=data.scope, college_slug=slug, priority=n))
     await db.commit()
     return SuccessResponse[dict](data={"message": "Priorities saved."})

@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSessionUser, type SessionUser } from "@/lib/auth-actions";
+import type { MyReview } from "@/lib/api";
 import { AdminNoticeModal, AuthModal, LeadModal, ProfileModal, QueryModal, ReviewModal, profileIncomplete } from "@/components/college/college-action-modals";
 import { SESSION_CHANGED_EVENT } from "@/lib/user-session-cookie";
 import { canUsePanel } from "@/lib/roles";
@@ -28,6 +29,8 @@ export type ActionOptions = {
   collegeSlug?: string;
   collegeName?: string;
   brochureUrl?: string;
+  /** The student's own review, to change it instead of writing a new one. */
+  editReview?: MyReview;
 };
 
 type Stage =
@@ -130,7 +133,7 @@ export function CollegeActions({ slug, name, courses, programmes = [], brochureU
       {stage?.step === "auth" && <AuthModal reason={stage.reason ?? REASON[stage.then ?? "query"]} onAuthed={onAuthed} onDone={afterAuth} onClose={close} />}
       {stage?.step === "admin" && <AdminNoticeModal onClose={close} />}
       {stage?.step === "profile" && <ProfileModal user={stage.user} onDone={afterProfile} onClose={close} />}
-      {stage?.step === "form" && stage.kind === "review" && <ReviewModal slug={slug} collegeName={name} courses={courses} user={stage.user} onClose={close} />}
+      {stage?.step === "form" && stage.kind === "review" && <ReviewModal slug={slug} collegeName={name} courses={courses} user={stage.user} existing={stage.options?.editReview ?? null} onClose={close} />}
       {stage?.step === "form" && (stage.kind === "query" || stage.kind === "counsellor") && <QueryModal kind={stage.kind} slug={slug} collegeName={name} user={stage.user} onClose={close} />}
       {stage?.step === "form" && (stage.kind === "callback" || stage.kind === "apply" || stage.kind === "brochure") && (
         <LeadModal

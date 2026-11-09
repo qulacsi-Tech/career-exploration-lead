@@ -26,7 +26,6 @@ import {
   IconStat,
   MeterList,
   PollStat,
-  ReviewSnippet,
   ScoreBadge,
   Stars,
   type IconName,
@@ -34,6 +33,10 @@ import {
 import { ActionButton } from "@/components/college/college-actions";
 import { StudentQA } from "@/components/college/student-qa";
 import { AwardsSection } from "@/components/college/awards-section";
+import { RankComparison } from "@/components/college/rank-comparison";
+import { pageText } from "@/lib/page-text";
+import { TabMediaCard } from "@/components/college/tab-media-card";
+import { ReviewList } from "@/components/college/review-list";
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
 import { PlacementBreakdownTable } from "@/components/college/placement-breakdown";
 import { CollegeSectionPage } from "@/components/college/section-page";
@@ -47,6 +50,7 @@ import { AdmissionCutoffs } from "@/components/college/admission-cutoffs";
 import { splitByHeadings } from "@/lib/rich-text-sections";
 import { DEFAULT_TAB_ICON } from "@/lib/tab-icons";
 import { Chip } from "@/components/ui/chip";
+import { DEFAULT_RANKINGS_PAGE, type RankingsPageConfig, type RankingsSection } from "@/lib/api";
 import { faqsOf, isRealPackage, longDate, lakhValue, overallScore, percentOf, rankingTable, shortFee, programmeTitle, cutoffLabel, cutoffProgramme } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
 import { mediaUrl } from "@/lib/media";
@@ -130,10 +134,20 @@ export default async function CollegeSectionRoute({
   if (!section || section.slug === "") notFound();
 
   return (
-    <CollegeSectionPage college={college} sectionSlug={section.slug}>
+    <CollegeSectionPage
+      college={college}
+      sectionSlug={section.slug}
+      heading={section.slug === "rankings" ? college.rankingsPage?.heading : reworded(college, `${section.slug}.heading`)}
+      description={section.slug === "rankings" ? college.rankingsPage?.description : reworded(college, `${section.slug}.description`)}
+    >
       <SectionBody college={college} sectionSlug={section.slug} />
     </CollegeSectionPage>
   );
+}
+
+/** The admin's own wording for a key, or undefined when none was written (the usual one is then used). */
+function reworded(college: College, key: string): string | undefined {
+  return college.pageText?.[key]?.trim() ? pageText(college, key) : undefined;
 }
 
 const RICH_TEXT_ICON: Record<string, IconName> = {
@@ -174,6 +188,10 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
       const doc = college.tabs?.[tabSlug] ?? emptyDoc();
       if (isRichTextEmpty(doc)) {
         const label = sectionBySlug(sectionSlug)?.label.toLowerCase() ?? "these";
+        // No text, but pictures or videos were added: show those rather than the empty message.
+        if ((college.tabMedia?.[tabSlug] ?? []).length > 0) {
+          return <TabMediaCard items={college.tabMedia?.[tabSlug] ?? []} title={pageText(college, "written.media")} college={college.name} />;
+        }
         return (
           <EmptyCard
             icon={RICH_TEXT_ICON[sectionSlug] ?? "grad"}
@@ -225,7 +243,7 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
             words={outline.words}
           />
           <DetailCard
-            title="Full Details"
+            title={pageText(college, "written.full")}
             footer={
               sectionSlug === "admission-process" && college.examsAccepted.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-2">
@@ -241,6 +259,7 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
           >
             <RichText doc={doc} className="max-w-3xl" />
           </DetailCard>
+          <TabMediaCard items={college.tabMedia?.[tabSlug] ?? []} title={pageText(college, "written.media")} college={college.name} />
           {/* What score it takes, without leaving the page. */}
           {admission && (college.cutoffs ?? []).length > 0 && <AdmissionCutoffs cutoffs={college.cutoffs ?? []} href={`/college/${college.slug}/cutoffs`} />}
           <CounsellorBand label={label} collegeName={college.name} />
@@ -259,8 +278,8 @@ async function Courses({ college }: { college: College }) {
     return (
       <EmptyCard
         icon="book"
-        title="No programmes listed yet"
-        body={`${college.name} has not published its programme list here yet.`}
+        title={pageText(college, "courses.empty.title")}
+        body={pageText(college, "courses.empty.body")}
       />
     );
   }
@@ -306,7 +325,7 @@ async function Courses({ college }: { college: College }) {
         </div>
       </DetailCard>
 
-      <DetailCard title="All Courses" action={<ApplyButton />}>
+      <DetailCard title={pageText(college, "courses.all")} action={<ApplyButton />}>
         <p className="-mt-4 mb-5 text-sm text-ink-soft">Click a course to apply for it, or use Apply now to choose from everything on offer.</p>
         <CourseList slug={college.slug} initial={initial} />
       </DetailCard>
@@ -319,8 +338,8 @@ function Fees({ college }: { college: College }) {
     return (
       <EmptyCard
         icon="rupee"
-        title="No fee details yet"
-        body={`${college.name} has not published its fee structure here yet.`}
+        title={pageText(college, "fees.empty.title")}
+        body={pageText(college, "fees.empty.body")}
       />
     );
   }
@@ -342,7 +361,7 @@ function Fees({ college }: { college: College }) {
       </DetailCard>
 
       <DetailCard
-        title="Total Fees by Programme"
+        title={pageText(college, "fees.total")}
         footer={
           <p className="text-sm text-ink-soft">
             Total programme fees as published by the college. Hostel and mess charges are covered
@@ -359,7 +378,7 @@ function Fees({ college }: { college: College }) {
         />
       </DetailCard>
 
-      <DetailCard title="Fee Structure">
+      <DetailCard title={pageText(college, "fees.structure")}>
         <div className="-mx-2 overflow-x-auto px-2">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead>
@@ -420,7 +439,7 @@ function Faculty({ college }: { college: College }) {
   return (
     <>
       {hasRoster && (
-        <DetailCard title="Faculty at a Glance">
+        <DetailCard title={pageText(college, "faculty.glance")}>
           <FacultyShowcase
             count={roster.count}
             ratio={roster.studentRatio}
@@ -430,7 +449,7 @@ function Faculty({ college }: { college: College }) {
         </DetailCard>
       )}
       {faculty && (
-        <DetailCard title="What Students Say About Faculty">
+        <DetailCard title={pageText(college, "faculty.say")}>
           <div className="grid gap-10 md:grid-cols-2 md:items-center">
             <PollStat
               fraction={faculty.score / 5}
@@ -455,8 +474,8 @@ function Faculty({ college }: { college: College }) {
       {!hasRoster && (
         <EmptyCard
           icon="users"
-          title="Faculty profiles coming soon"
-          body={`${college.name} has not published its faculty list here yet. A counsellor can share department and teaching staff details.`}
+          title={pageText(college, "faculty.empty.title")}
+          body={pageText(college, "faculty.empty.body")}
         />
       )}
     </>
@@ -468,8 +487,8 @@ function Reviews({ college }: { college: College }) {
     return (
       <EmptyCard
         icon="star"
-        title="No reviews yet"
-        body={`Be the first to review ${college.name} — or ask a counsellor what current students say.`}
+        title={pageText(college, "reviews.empty.title")}
+        body={pageText(college, "reviews.empty.body")}
       />
     );
   }
@@ -491,7 +510,7 @@ function Reviews({ college }: { college: College }) {
             </p>
           </div>
           <div>
-            <ColumnLabel>Rating by category</ColumnLabel>
+            <ColumnLabel>{pageText(college, "reviews.category")}</ColumnLabel>
             <MeterList
               rows={college.ratingBreakdown.map((row) => ({
                 label: row.label,
@@ -504,7 +523,7 @@ function Reviews({ college }: { college: College }) {
       </DetailCard>
 
       <DetailCard
-        title={`Reviews from ${college.name} Students`}
+        title={pageText(college, "reviews.list")}
         action={
           <ActionButton
             kind="review"
@@ -515,11 +534,7 @@ function Reviews({ college }: { college: College }) {
           </ActionButton>
         }
       >
-        <div className="space-y-5">
-          {college.reviews.map((review, i) => (
-            <ReviewSnippet key={`${review.author}-${i}`} review={review} />
-          ))}
-        </div>
+        <ReviewList reviews={college.reviews} />
       </DetailCard>
     </>
   );
@@ -529,7 +544,7 @@ function Placements({ college }: { college: College }) {
   const placement = college.placement;
   if (!placement) {
     return (
-      <EmptyCard icon="grad" title="No placement data" body={`${college.name} has not published placement figures.`} />
+      <EmptyCard icon="grad" title={pageText(college, "placements.empty.title")} body={pageText(college, "placements.empty.body")} />
     );
   }
   const packages = [
@@ -541,7 +556,7 @@ function Placements({ college }: { college: College }) {
 
   return (
     <>
-      <DetailCard title={`Placement Statistics ${batchLabel(placement)}`}>
+      <DetailCard title={`${pageText(college, "placements.stats")} ${batchLabel(placement)}`}>
         <div className="grid gap-8 sm:grid-cols-2">
           {packages.map((p) => (
             <BigFigure key={p.label} label={p.label} value={p.value} />
@@ -553,7 +568,7 @@ function Placements({ college }: { college: College }) {
           </div>
         )}
         <div className="mt-10">
-          <ColumnLabel>Package spread</ColumnLabel>
+          <ColumnLabel>{pageText(college, "placements.spread")}</ColumnLabel>
           <MeterList
             rows={packages.map((p) => {
               const lakh = lakhValue(p.value);
@@ -569,19 +584,19 @@ function Placements({ college }: { college: College }) {
       </DetailCard>
 
       {placement.topRecruiters.length > 0 && (
-        <DetailCard title="Top Recruiters">
+        <DetailCard title={pageText(college, "placements.recruiters")}>
           <RecruiterMarquee recruiters={placement.recruiters?.length ? placement.recruiters : placement.topRecruiters} />
         </DetailCard>
       )}
 
       {(placement.breakdown?.length ?? 0) > 0 && (
-        <DetailCard title={`By Course and Specialisation ${batchLabel(placement)}`}>
+        <DetailCard title={`${pageText(college, "placements.byCourse")} ${batchLabel(placement)}`}>
           <PlacementBreakdownTable rows={placement.breakdown} />
         </DetailCard>
       )}
 
       {college.placements.length > 1 && (
-        <DetailCard title="Earlier Years">
+        <DetailCard title={pageText(college, "placements.earlier")}>
           <div className="-mx-2 overflow-x-auto px-2">
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
@@ -616,7 +631,7 @@ function Placements({ college }: { college: College }) {
       )}
 
       {placementScore && (
-        <DetailCard title="What Students Say About Placements">
+        <DetailCard title={pageText(college, "placements.say")}>
           <PollStat
             fraction={placementScore.score / 5}
             value={placementScore.score}
@@ -634,14 +649,14 @@ function Cutoffs({ college }: { college: College }) {
     return (
       <EmptyCard
         icon="trend"
-        title="No cut-offs published yet"
-        body={`${college.name} has not published entrance cut-offs here yet.`}
+        title={pageText(college, "cutoffs.empty.title")}
+        body={pageText(college, "cutoffs.empty.body")}
       />
     );
   }
   return (
     <>
-      <DetailCard title="Cut-Off Summary">
+      <DetailCard title={pageText(college, "cutoffs.summary")}>
         <MeterList
           rows={college.cutoffs.map((cutoff) => {
             const percent = percentOf(cutoff.score);
@@ -657,7 +672,7 @@ function Cutoffs({ college }: { college: College }) {
       {[...new Set(college.cutoffs.map((cutoff) => cutoffProgramme(cutoff)))]
         .sort((a, b) => (a === "" ? -1 : b === "" ? 1 : a.localeCompare(b)))
         .map((programme) => (
-          <DetailCard key={programme || "all"} title={programme ? `${programme}: by Exam and Caste` : "By Exam and Caste"}>
+          <DetailCard key={programme || "all"} title={programme ? `${programme}: ${pageText(college, "cutoffs.byExam")}` : pageText(college, "cutoffs.byExam")}>
             <CutoffCards cutoffs={college.cutoffs.filter((cutoff) => cutoffProgramme(cutoff) === programme)} />
           </DetailCard>
         ))}
@@ -666,65 +681,57 @@ function Cutoffs({ college }: { college: College }) {
 }
 
 async function Rankings({ college }: { college: College }) {
-  // The colleges of this stream, from the directory, so the table is real ranks.
-  let directory: Awaited<ReturnType<typeof getColleges>>["data"] = [];
-  try {
-    directory = (await getColleges({ stream: college.stream, limit: 100 })).data;
-  } catch {
-    directory = [];
-  }
-  const { rows } = rankingTable(college, directory);
-  // The ranking the admin pinned is the big figure; nothing is pinned by default. The rest move past as small badges.
+  const cfg: RankingsPageConfig = { ...DEFAULT_RANKINGS_PAGE, ...(college.rankingsPage ?? {}) };
   const held = college.allRankings ?? [];
-  const pinned = college.pinnedRanking ? held.find((r) => r.slug === college.pinnedRanking) : undefined;
-  const others = held.filter((r) => r !== pinned);
-  const best = Math.min(...rows.map((row) => row.ranking.rank), college.ranking.rank || 1);
 
-  return (
-    <>
-      <DetailCard>
-        <div className="grid gap-8 sm:grid-cols-3">
-          {pinned && (
-            <BigFigure
-              label={pinned.shortName || pinned.authority || "Ranking"}
-              value={`#${pinned.rank}`}
-              note={pinned.name}
-            />
-          )}
-          {others.length > 0 && (
-            <div className="min-w-0 sm:col-span-1">
-              <p className="text-base text-ink">{pinned ? "Other rankings" : "Rankings"}</p>
-              <div className="recruiter-marquee mt-3 overflow-hidden">
-                <div className="recruiter-marquee-track flex w-max" style={{ animationDuration: `${Math.max(others.length * 5, 20)}s` }}>
-                  {[false, true].map((hidden) => (
-                    <ul key={String(hidden)} className="recruiter-marquee-row flex shrink-0 items-center gap-2 pr-2" aria-hidden={hidden || undefined}>
-                      {others.map((r) => (
-                        <li key={`${r.slug ?? r.name}-${r.rank}`} title={r.name} className="flex items-center gap-2 whitespace-nowrap rounded-full border border-line bg-surface py-1 pl-1 pr-3 text-xs font-semibold text-ink shadow-sm">
-                          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-brand-soft px-1.5 font-bold text-brand-ink">#{r.rank}</span>
-                          {r.shortName || r.name}
-                        </li>
-                      ))}
-                    </ul>
-                  ))}
+  // The comparison: the colleges the admin chose, or else this college's peers in its category by rank.
+  type Peer = { slug: string; name: string; ranking: { authority: string; rank: number } };
+  let peers: Peer[] = [];
+  if (cfg.showCompare) {
+    try {
+      if (cfg.comparePeers.length > 0) {
+        const chosen = (await collegesBySlugs(cfg.comparePeers.filter((s) => s !== college.slug))).map((c) => ({ slug: c.slug, name: c.name, ranking: c.ranking }));
+        peers = [{ slug: college.slug, name: college.name, ranking: college.ranking }, ...chosen].filter((p) => p.ranking.rank > 0).sort((a, b) => a.ranking.rank - b.ranking.rank);
+      } else {
+        const directory = (await getColleges({ stream: college.stream, limit: 100 })).data;
+        peers = rankingTable(college, directory).rows;
+      }
+    } catch {
+      peers = [];
+    }
+  }
+
+  // The top row: at most two rankings, the ones chosen for it (else the first two, the pinned one first), then the student rating.
+  const chosen = cfg.summaryRankings.length > 0 ? held.filter((r) => r.slug && cfg.summaryRankings.includes(r.slug)) : held;
+  const top = [...chosen].sort((a, b) => Number(b.slug === college.pinnedRanking) - Number(a.slug === college.pinnedRanking)).slice(0, 2);
+
+  const sections: Record<RankingsSection, React.ReactNode> = {
+    summary:
+      top.length > 0 || cfg.showRating ? (
+        <DetailCard key="summary">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-x-8 gap-y-8">
+            {top.map((r) => (
+              <BigFigure key={`${r.slug ?? r.name}-${r.rank}`} label={r.shortName || r.authority || "Ranking"} value={`#${r.rank}`} note={r.name} />
+            ))}
+            {cfg.showRating && (
+              <div>
+                <p className="text-base text-ink">{cfg.ratingLabel || "Student rating"}</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <ScoreBadge score={college.rating} size="lg" />
+                  <Stars score={college.rating} className="h-5 w-5" />
                 </div>
               </div>
-            </div>
-          )}
-          <div>
-            <p className="text-base text-ink">Student rating</p>
-            <div className="mt-2 flex items-center gap-3">
-              <ScoreBadge score={college.rating} size="lg" />
-              <Stars score={college.rating} className="h-5 w-5" />
-            </div>
+            )}
           </div>
-        </div>
-      </DetailCard>
+        </DetailCard>
+      ) : null,
 
-      {/* Every ranking list the college has been placed in, as entered in the admin (Rankings tab of the college). */}
-      {(college.allRankings ?? []).length > 0 && (
-        <DetailCard title={`All Rankings (${college.allRankings?.length})`}>
+    // Every ranking list the college has been placed in, as entered in the admin (Rankings tab of the college).
+    all:
+      cfg.showAll && held.length > 0 ? (
+        <DetailCard key="all" title={cfg.allTitle ? `${cfg.allTitle} (${held.length})` : `All Rankings (${held.length})`}>
           <ul className="divide-y divide-line border-y border-line">
-            {college.allRankings?.map((r) => (
+            {held.map((r) => (
               <li key={`${r.slug ?? r.name}-${r.rank}`} className="py-4">
                 <div className="flex items-center gap-4">
                   <span className="grid h-12 min-w-12 shrink-0 place-items-center rounded-xl bg-brand-soft px-2 font-display text-lg font-extrabold text-brand-ink">#{r.rank}</span>
@@ -744,28 +751,20 @@ async function Rankings({ college }: { college: College }) {
             ))}
           </ul>
         </DetailCard>
-      )}
+      ) : null,
 
-      <AwardsSection awards={college.awards ?? []} college={college.name} />
+    awards: cfg.showAwards ? <AwardsSection key="awards" awards={college.awards ?? []} college={college.name} title={cfg.awardsTitle || undefined} /> : null,
 
-      {rows.length > 0 && (
-        <DetailCard title={`${college.ranking.authority} Rank Among ${college.stream} Peers`}>
-          <p className="mb-5 text-sm text-ink-soft">
-            Longer bars rank higher. Bars are drawn relative to the best-ranked college shown.
-          </p>
-          <MeterList
-            rows={rows.map((row) => ({
-              label: row.name,
-              display: `#${row.ranking.rank}`,
-              fraction: best / row.ranking.rank,
-              highlight: row.slug === college.slug,
-              href: row.slug === college.slug ? undefined : `/college/${row.slug}/rankings`,
-            }))}
-          />
+    compare:
+      cfg.showCompare && peers.length > 0 ? (
+        <DetailCard key="compare" title={cfg.compareTitle || `${college.ranking.authority} Rank Among ${college.stream} Peers`}>
+          <p className="mb-5 text-sm text-ink-soft">{cfg.compareDescription || "Longer bars rank higher. Bars are drawn relative to the best-ranked college shown."}</p>
+          <RankComparison currentSlug={college.slug} peers={peers.map((row) => ({ slug: row.slug, name: row.name, rank: row.ranking.rank }))} />
         </DetailCard>
-      )}
-    </>
-  );
+      ) : null,
+  };
+
+  return <>{cfg.order.map((key) => sections[key])}</>;
 }
 
 function Gallery({ college }: { college: College }) {
@@ -776,8 +775,8 @@ function Gallery({ college }: { college: College }) {
     return (
       <EmptyCard
         icon="images"
-        title="No photos or videos yet"
-        body={`${college.name} has not published campus photos or videos here yet.`}
+        title={pageText(college, "gallery.empty.title")}
+        body={pageText(college, "gallery.empty.body")}
       />
     );
   }
@@ -805,8 +804,8 @@ async function Compare({ college }: { college: College }) {
     return (
       <EmptyCard
         icon="compare"
-        title="No comparisons yet"
-        body={`There are no similar colleges to compare ${college.name} with yet.`}
+        title={pageText(college, "compare.empty.title")}
+        body={pageText(college, "compare.empty.body")}
       />
     );
   }
@@ -815,7 +814,7 @@ async function Compare({ college }: { college: College }) {
     <>
       {peers.length > 0 && (
         <DetailCard
-          title={`${college.name} vs Similar Colleges`}
+          title={pageText(college, "compare.vs")}
           footer={
             <CardLink href={compareUrl([college.slug, ...peers.map((c) => c.slug)])}>
               Open full comparison
@@ -840,7 +839,7 @@ async function Compare({ college }: { college: College }) {
       )}
 
       {curated.length > 0 && (
-        <DetailCard title="Which Should You Choose?">
+        <DetailCard title={pageText(college, "compare.choose")}>
           <CuratedComparisons
             items={curated.map((c) => ({ slug: c.slug, title: c.title, intro: c.intro }))}
           />
@@ -872,8 +871,8 @@ async function News({ college }: { college: College }) {
     return (
       <EmptyCard
         icon="news"
-        title="No news yet"
-        body={`There are no news or updates about ${college.name} yet.`}
+        title={pageText(college, "news.empty.title")}
+        body={pageText(college, "news.empty.body")}
       />
     );
   }
@@ -881,7 +880,7 @@ async function News({ college }: { college: College }) {
   return (
     <>
       {alerts.length > 0 && (
-        <DetailCard title="Alerts">
+        <DetailCard title={pageText(college, "news.alerts")}>
           <AlertCards
             alerts={alerts.map((a) => ({
               title: a.title,
@@ -895,7 +894,7 @@ async function News({ college }: { college: College }) {
       )}
 
       {linked.length > 0 && (
-        <DetailCard title="Latest News">
+        <DetailCard title={pageText(college, "news.latest")}>
           {/* The newest in full, then the rest as a compact list. */}
           <NewsCard article={linked[0]} lead />
           {linked.length > 1 && (
@@ -922,7 +921,7 @@ async function News({ college }: { college: College }) {
       )}
 
       {articles.length > 0 && (
-        <DetailCard title={linked.length > 0 ? "More Updates" : "Latest News"}>
+        <DetailCard title={linked.length > 0 ? pageText(college, "news.more") : pageText(college, "news.latest")}>
           <NewsTimeline
             articles={articles.map((a) => ({
               title: a.title,
@@ -936,7 +935,7 @@ async function News({ college }: { college: College }) {
       )}
 
       {press.length > 0 && (
-        <DetailCard title="In the Press">
+        <DetailCard title={pageText(college, "news.press")}>
           <PressGrid
             items={press.map((m) => ({
               title: m.title,

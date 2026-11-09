@@ -21,6 +21,7 @@ import {
   MapPin,
   MessageSquareText,
   Newspaper,
+  Pencil,
   Star,
   ThumbsDown,
   ThumbsUp,
@@ -30,9 +31,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ActionButton, useCollegeActions } from "@/components/college/college-actions";
-import { loadReviewVotes, voteReview } from "@/lib/college-engage-actions";
+import { ReviewReplies } from "@/components/college/review-replies";
+import { loadMyReviewsOf, loadReviewVotes, voteReview } from "@/lib/college-engage-actions";
 import { SESSION_CHANGED_EVENT } from "@/lib/user-session-cookie";
-import type { ReviewVotes as ReviewVoteState } from "@/lib/api";
+import type { MyReview, ReviewVotes as ReviewVoteState } from "@/lib/api";
 import { scoreTone } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
 
@@ -562,6 +564,8 @@ export type ReviewSnippetItem = {
   date: string;
   rating: number;
   body: string;
+  /** The student changed it after writing it. */
+  edited?: boolean;
 };
 
 /**
@@ -569,6 +573,51 @@ export type ReviewSnippetItem = {
  * a "Read more" that opens it in place — the overview shows the voice, not the
  * whole essay.
  */
+/** The signed-in student's own reviews of a college, fetched once and shared, so their review can offer Edit. */
+const mineCache = new Map<string, Promise<Record<string, MyReview>>>();
+const REVIEWS_CHANGED = "tcp:reviews-changed";
+
+function mineFor(slug: string, fresh = false) {
+  if (fresh || !mineCache.has(slug)) mineCache.set(slug, loadMyReviewsOf(slug));
+  return mineCache.get(slug)!;
+}
+
+/** "Edit" under a review the signed-in student wrote themselves. Nothing shows on anyone else's. */
+function EditOwnReview({ reviewId }: { reviewId?: string }) {
+  const actions = useCollegeActions();
+  const slug = actions?.slug;
+  const [mine, setMine] = useState<MyReview | null>(null);
+
+  useEffect(() => {
+    if (!slug || !reviewId) return;
+    let alive = true;
+    const load = (fresh: boolean) => mineFor(slug, fresh).then((all) => alive && setMine(all[reviewId] ?? null));
+    void load(false);
+    // Signed in or out from a dialog, or the review just changed: ask again.
+    const again = () => void load(true);
+    window.addEventListener(SESSION_CHANGED_EVENT, again);
+    window.addEventListener(REVIEWS_CHANGED, again);
+    return () => {
+      alive = false;
+      window.removeEventListener(SESSION_CHANGED_EVENT, again);
+      window.removeEventListener(REVIEWS_CHANGED, again);
+    };
+  }, [slug, reviewId]);
+
+  if (!actions || !mine) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => actions.start("review", { editReview: mine })}
+      title="Edit your review"
+      aria-label="Edit your review"
+      className="grid h-8 w-8 place-items-center rounded-full border border-line bg-surface text-ink-soft transition hover:border-brand hover:text-brand"
+    >
+      <Pencil className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
+
 /** What the votes on a college's reviews are, fetched once for all of them and shared by every card. */
 const votesCache = new Map<string, Promise<Record<string, ReviewVoteState>>>();
 
@@ -638,13 +687,11 @@ function ReviewVotes({ reviewId }: { reviewId?: string }) {
   };
 
   return (
-    <div className="mt-4 border-t border-line pt-4 text-xs">
-      <div className="flex flex-wrap items-center gap-2">
-        {button("like", ThumbsUp, votes.likes)}
-        {button("dislike", ThumbsDown, votes.dislikes)}
-        {error && <span role="alert" className="text-red-700">{error}</span>}
-      </div>
-    </div>
+    <>
+      {button("like", ThumbsUp, votes.likes)}
+      {button("dislike", ThumbsDown, votes.dislikes)}
+      {error && <span role="alert" className="text-red-700">{error}</span>}
+    </>
   );
 }
 
@@ -656,8 +703,11 @@ export function ReviewSnippet({ review, clamp = false }: { review: ReviewSnippet
     <article className="rounded-2xl bg-bg-alt p-6 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Stars score={review.rating} className="h-5 w-5" />
-        <span className="font-display text-sm font-bold text-ink">
-          {review.rating.toFixed(1)} / 5
+        <span className="flex items-center gap-3">
+          <span className="font-display text-sm font-bold text-ink">
+            {review.rating.toFixed(1)} / 5
+          </span>
+          <EditOwnReview reviewId={review.id} />
         </span>
       </div>
 
@@ -698,9 +748,17 @@ export function ReviewSnippet({ review, clamp = false }: { review: ReviewSnippet
         </span>
         <span aria-hidden>&middot;</span>
         <span>{review.date}</span>
+        {review.edited && (
+          <>
+            <span aria-hidden>&middot;</span>
+            <span className="rounded-full bg-bg px-2 py-0.5 text-xs font-semibold text-ink-faint">Edited</span>
+          </>
+        )}
       </p>
 
-      <ReviewVotes reviewId={review.id} />
+      <ReviewReplies reviewId={review.id}>
+        <ReviewVotes reviewId={review.id} />
+      </ReviewReplies>
     </article>
   );
 }

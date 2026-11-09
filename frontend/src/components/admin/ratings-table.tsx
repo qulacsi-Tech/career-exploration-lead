@@ -3,9 +3,9 @@
 import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import { MessageSquareText } from "lucide-react";
-import { decideRating } from "@/lib/admin-actions";
+import { decideRating, deleteRating, deleteReviewReply, loadRatingReplies, markRatingChecked } from "@/lib/admin-actions";
 import { formatFull } from "@/lib/lead-labels";
-import type { AdminRating } from "@/lib/api";
+import type { AdminRating, AdminReviewReply } from "@/lib/api";
 import { optionsOf, useTableTools } from "@/components/admin/table-tools";
 
 const AREAS = [
@@ -58,8 +58,8 @@ export function RatingsTable({ items: initial, paged = false, initialCollege }: 
       {
         key: "status",
         label: "Status",
-        options: [{ value: "shown", label: "Shown" }, { value: "waiting", label: "Waiting" }],
-        match: (r, v) => (r.approved ? v === "shown" : v === "waiting"),
+        options: [{ value: "live", label: "Live" }, { value: "hidden", label: "Hidden" }, { value: "new", label: "Not checked yet" }],
+        match: (r, v) => (v === "new" ? !r.checked : r.approved ? v === "live" : v === "hidden"),
       },
     ],
   });
@@ -71,6 +71,39 @@ export function RatingsTable({ items: initial, paged = false, initialCollege }: 
       if ("error" in result) return setMessage(result.error);
       setItems((current) => current.map((r) => (r.id === id ? { ...r, approved } : r)));
     });
+
+  // The replies under the review that is open, for the team to read and remove.
+  const [replies, setReplies] = useState<AdminReviewReply[] | null>(null);
+  const toggle = (id: string) => {
+    const next = open === id ? null : id;
+    setOpen(next);
+    setReplies(null);
+    if (next) void loadRatingReplies(next).then((found) => (Array.isArray(found) ? setReplies(found) : setMessage(found.error)));
+  };
+  const removeReply = (replyId: string) =>
+    start(async () => {
+      const result = await deleteReviewReply(replyId);
+      if ("error" in result) return setMessage(result.error);
+      setReplies((current) => (current ?? []).filter((x) => x.id !== replyId && x.parentId !== replyId));
+    });
+
+  const check = (id: string) =>
+    start(async () => {
+      setMessage(null);
+      const result = await markRatingChecked(id);
+      if ("error" in result) return setMessage(result.error);
+      setItems((current) => current.map((r) => (r.id === id ? { ...r, checked: true } : r)));
+    });
+
+  const remove = (r: AdminRating) => {
+    if (!window.confirm(`Remove ${r.author}'s review of ${r.collegeName} for good? This cannot be undone.`)) return;
+    start(async () => {
+      setMessage(null);
+      const result = await deleteRating(r.id);
+      if ("error" in result) return setMessage(result.error);
+      setItems((current) => current.filter((x) => x.id !== r.id));
+    });
+  };
 
   if (items.length === 0) return <p className="rounded-xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-soft">No ratings here.</p>;
 
@@ -117,7 +150,7 @@ export function RatingsTable({ items: initial, paged = false, initialCollege }: 
                       <td key={a.rating} className="px-3 py-2.5 text-center text-ink-soft">
                         {fixed(r[a.rating])}
                         {r[a.comment] && (
-                          <button type="button" title={r[a.comment]} aria-label={`Comment on ${a.label}`} onClick={() => setOpen(isOpen ? null : r.id)} className="ml-1 inline-block align-middle text-brand">
+                          <button type="button" title={r[a.comment]} aria-label={`Comment on ${a.label}`} onClick={() => toggle(r.id)} className="ml-1 inline-block align-middle text-brand">
                             <MessageSquareText className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -125,17 +158,22 @@ export function RatingsTable({ items: initial, paged = false, initialCollege }: 
                     ))}
                     <td className="whitespace-nowrap px-3 py-2.5 text-ink-soft">{r.createdAt ? formatFull(r.createdAt) : "–"}</td>
                     <td className="px-3 py-2.5">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.approved ? "bg-emerald-50 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{r.approved ? "Shown" : "Waiting"}</span>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.approved ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>{r.approved ? "Live" : "Hidden"}</span>
+                      {!r.checked && <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">New</span>}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right">
-                      <button type="button" onClick={() => setOpen(isOpen ? null : r.id)} className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-soft transition hover:border-brand hover:text-brand">
+                      <button type="button" onClick={() => toggle(r.id)} className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-soft transition hover:border-brand hover:text-brand">
                         {isOpen ? "Hide" : "Read"}
                       </button>
-                      {r.approved ? (
-                        <button type="button" disabled={pending} onClick={() => decide(r.id, false)} className="ml-1.5 rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-soft transition hover:border-red-300 hover:text-red-700 disabled:opacity-50">Hide it</button>
-                      ) : (
-                        <button type="button" disabled={pending} onClick={() => decide(r.id, true)} className="ml-1.5 rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50">Approve</button>
+                      {!r.checked && (
+                        <button type="button" disabled={pending} onClick={() => check(r.id)} className="ml-1.5 rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50">Checked</button>
                       )}
+                      {r.approved ? (
+                        <button type="button" disabled={pending} onClick={() => decide(r.id, false)} className="ml-1.5 rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-soft transition hover:border-red-300 hover:text-red-700 disabled:opacity-50">Hide</button>
+                      ) : (
+                        <button type="button" disabled={pending} onClick={() => decide(r.id, true)} className="ml-1.5 rounded-md border border-brand px-2.5 py-1 text-xs font-semibold text-brand transition hover:bg-brand-soft disabled:opacity-50">Show</button>
+                      )}
+                      <button type="button" disabled={pending} onClick={() => remove(r)} className="ml-1.5 rounded-md border border-line px-2.5 py-1 text-xs font-medium text-ink-soft transition hover:border-red-300 hover:text-red-700 disabled:opacity-50">Remove</button>
                     </td>
                   </tr>
                   {isOpen && (
@@ -154,6 +192,26 @@ export function RatingsTable({ items: initial, paged = false, initialCollege }: 
                         ) : (
                           <p className="mt-2 text-xs text-ink-faint">No comments on the individual ratings.</p>
                         )}
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold text-ink-soft">Replies{replies ? ` (${replies.length})` : ""}</p>
+                          {replies === null ? (
+                            <p className="mt-1 text-xs text-ink-faint">Loading…</p>
+                          ) : replies.length === 0 ? (
+                            <p className="mt-1 text-xs text-ink-faint">No replies.</p>
+                          ) : (
+                            <ul className="mt-2 space-y-2">
+                              {replies.map((x) => (
+                                <li key={x.id} className={`flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2 ${x.parentId ? "ml-6" : ""}`}>
+                                  <div className="min-w-0">
+                                    <p className="text-sm text-ink">{x.body}</p>
+                                    <p className="mt-0.5 text-xs text-ink-faint">{x.author}{x.createdAt ? ` · ${formatFull(x.createdAt)}` : ""}</p>
+                                  </div>
+                                  <button type="button" disabled={pending} onClick={() => removeReply(x.id)} className="shrink-0 rounded-md border border-line px-2 py-1 text-xs font-medium text-ink-soft transition hover:border-red-300 hover:text-red-700 disabled:opacity-50">Remove</button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}

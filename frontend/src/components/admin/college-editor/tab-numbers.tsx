@@ -7,6 +7,7 @@ import type { CollegeRankings, PlacementBreakdown, RankingListHead, RecordCourse
 import { checkRankHolder, loadCollegeRankings, pinCollegeRanking, removeCollegeRanking, setCollegeRanking } from "@/lib/admin-actions";
 import { AmountField } from "@/components/admin/range-field";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { RankingsPageCard } from "@/components/admin/college-editor/tab-rankings-page";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { packageProblem } from "@/lib/college-rules";
 import { CategoryTicks, CourseTicks, type CoursePick } from "@/components/admin/college-editor/course-picker";
@@ -520,7 +521,7 @@ export function CutoffsTab({ record, update, pools }: EditorProps) {
  * hand: the rank on the college's cards is worked out from these. Adding or removing a ranking here
  * is saved at once (it edits the ranking list), not with the Save button.
  */
-export function RankingsTab({ slug, record, update }: EditorProps) {
+export function RankingsTab({ slug, record, update, pools, mode }: EditorProps) {
   const [data, setData] = useState<CollegeRankings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listSlug, setListSlug] = useState("");
@@ -590,6 +591,7 @@ export function RankingsTab({ slug, record, update }: EditorProps) {
     });
 
   return (
+    <div className="space-y-5">
     <Card title="Rankings" description="Where this college stands in each ranking list on the Rankings page. The rank on its cards is taken from these, with NIRF first. Pin the one to show as the big figure on its Rankings page (the others move beside it as small badges). Add it to another list below; changes here are saved straight away.">
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
       {!data && !error && <p className="text-sm text-ink-soft">Loading the rankings…</p>}
@@ -672,5 +674,7 @@ export function RankingsTab({ slug, record, update }: EditorProps) {
       )}
       <p className="text-xs text-ink-faint">Approvals (AICTE, NAAC and so on) are edited on the College Info tab.</p>
     </Card>
+    <RankingsPageCard record={record} update={update} pools={pools} slug={slug} mode={mode} entries={data?.entries ?? []} pinned={data?.pinned} />
+    </div>
   );
 }

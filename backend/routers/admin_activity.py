@@ -16,9 +16,10 @@ from models.collab import ChangeRequest, MessageThread
 from models.college import College
 from models.lead import Lead, LeadShare, LeadStatus
 from models.question import Question
-from models.review import Review
+from models.review import Review, ReviewReply
 from models.user import User
 from routers.questions import Staff
+from routers.reviews import refresh_college_rating
 from schemas.common import ListResponse, Meta, SuccessResponse
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -48,7 +49,7 @@ async def activity_counts(who: Staff, db: DbSession):
     data["leads"] = await count(Lead, *lead_conds)
     if not college_id:
         data["approvals"] = await count(ChangeRequest, ChangeRequest.status == "pending")
-        data["ratings"] = await count(Review, Review.is_approved.is_(False))
+        data["ratings"] = await count(Review, Review.checked.is_(False))
     return SuccessResponse[dict](data=data)
 
 
@@ -60,16 +61,18 @@ def _iso(value) -> Optional[str]:
 async def list_ratings(
     _admin: AdminPayload,
     db: DbSession,
-    status: str = Query("pending", pattern="^(pending|approved|all)$"),
+    status: str = Query("tocheck", pattern="^(tocheck|shown|hidden|all)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(25, ge=1, le=100),
 ):
     """Every review students have written, with its four ratings and the comment on each."""
     conds = []
-    if status == "pending":
-        conds.append(Review.is_approved.is_(False))
-    elif status == "approved":
+    if status == "tocheck":
+        conds.append(Review.checked.is_(False))
+    elif status == "shown":
         conds.append(Review.is_approved.is_(True))
+    elif status == "hidden":
+        conds.append(Review.is_approved.is_(False))
     total = int((await db.execute(select(func.count()).select_from(Review).where(*conds))).scalar_one())
     rows = (
         await db.execute(
@@ -77,11 +80,13 @@ async def list_ratings(
             .join(College, College.id == Review.college_id)
             .outerjoin(User, User.id == Review.user_id)
             .where(*conds)
-            .order_by(Review.is_approved.asc(), Review.created_at.desc())
+            .order_by(Review.checked.asc(), Review.created_at.desc())
             .offset((page - 1) * limit)
             .limit(limit)
         )
     ).all()
+    ids = [r.id for r, *_ in rows]
+    reply_counts = dict((await db.execute(select(ReviewReply.review_id, func.count()).where(ReviewReply.review_id.in_(ids)).group_by(ReviewReply.review_id))).all()) if ids else {}
     data = [
         {
             "id": str(r.id),
@@ -102,6 +107,8 @@ async def list_ratings(
             "commentCampusLife": r.comment_campus_life or "",
             "body": r.body,
             "approved": bool(r.is_approved),
+            "checked": bool(r.checked),
+            "replyCount": reply_counts.get(r.id, 0),
             "createdAt": _iso(r.created_at),
         }
         for r, name, slug, email in rows
@@ -114,9 +121,7 @@ class DecisionBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-@router.put("/ratings/{review_id}", response_model=SuccessResponse[dict])
-async def decide_rating(review_id: str, body: DecisionBody, _admin: AdminPayload, db: DbSession):
-    """Shows a review on its college's page (approve) or hides it (reject). The college's rating follows."""
+async def _review(db, review_id: str) -> Review:
     try:
         wanted = uuid.UUID(review_id)
     except ValueError:
@@ -124,14 +129,65 @@ async def decide_rating(review_id: str, body: DecisionBody, _admin: AdminPayload
     review = await db.get(Review, wanted)
     if review is None:
         raise NotFoundError("Review")
+    return review
+
+
+@router.put("/ratings/{review_id}", response_model=SuccessResponse[dict])
+async def decide_rating(review_id: str, body: DecisionBody, _admin: AdminPayload, db: DbSession):
+    """Shows a review on its college's page, or hides it. Either way it counts as checked. The rating follows."""
+    review = await _review(db, review_id)
     review.is_approved = body.approved
+    review.checked = True
     await db.flush()
-    live = (await db.execute(select(Review.rating).where(Review.college_id == review.college_id, Review.is_approved.is_(True)))).scalars().all()
-    college = await db.get(College, review.college_id)
-    if college is not None and live:
-        college.rating = round(sum(live) / len(live), 1)
-        college.review_count = len(live)
-    elif college is not None:
-        college.review_count = 0
+    await refresh_college_rating(db, review.college_id)
     await db.commit()
     return SuccessResponse[dict](data={"approved": body.approved})
+
+
+@router.put("/ratings/{review_id}/checked", response_model=SuccessResponse[dict])
+async def mark_checked(review_id: str, _admin: AdminPayload, db: DbSession):
+    """The team has looked at a review and is happy for it to stay."""
+    review = await _review(db, review_id)
+    review.checked = True
+    await db.commit()
+    return SuccessResponse[dict](data={"checked": True})
+
+
+@router.delete("/ratings/{review_id}", response_model=SuccessResponse[dict])
+async def delete_rating(review_id: str, _admin: AdminPayload, db: DbSession):
+    """Removes a review for good. The college's rating and count follow."""
+    review = await _review(db, review_id)
+    college_id = review.college_id
+    await db.delete(review)
+    await db.flush()
+    await refresh_college_rating(db, college_id)
+    await db.commit()
+    return SuccessResponse[dict](data={"deleted": True})
+
+
+@router.get("/ratings/{review_id}/replies", response_model=SuccessResponse[list])
+async def rating_replies(review_id: str, _admin: AdminPayload, db: DbSession):
+    """The replies under one review, oldest first, for the team to read and remove."""
+    review = await _review(db, review_id)
+    rows = (await db.execute(select(ReviewReply).where(ReviewReply.review_id == review.id).order_by(ReviewReply.created_at.asc()))).scalars().all()
+    return SuccessResponse[list](
+        data=[
+            {"id": str(x.id), "parentId": str(x.parent_id) if x.parent_id else None, "author": x.author_name, "body": x.body, "createdAt": _iso(x.created_at)}
+            for x in rows
+        ]
+    )
+
+
+@router.delete("/review-replies/{reply_id}", response_model=SuccessResponse[dict])
+async def delete_review_reply(reply_id: str, _admin: AdminPayload, db: DbSession):
+    """Removes a reply (and the replies under it)."""
+    try:
+        wanted = uuid.UUID(reply_id)
+    except ValueError:
+        raise NotFoundError("Reply") from None
+    reply = await db.get(ReviewReply, wanted)
+    if reply is None:
+        raise NotFoundError("Reply")
+    await db.delete(reply)
+    await db.commit()
+    return SuccessResponse[dict](data={"deleted": True})

@@ -7,7 +7,7 @@ from models.course import Course  # noqa: F401
 from models.placement import Placement  # noqa: F401
 from models.recruiter import Recruiter  # noqa: F401
 from models.cutoff import Cutoff  # noqa: F401
-from models.review import Review, ReviewVote  # noqa: F401
+from models.review import Review, ReviewReply, ReviewReplyVote, ReviewVote  # noqa: F401
 from models.exam import Exam, ExamLevel  # noqa: F401
 from models.location import Location, LocationLabel, LocationLabelLink  # noqa: F401
 from models.article import Article  # noqa: F401
@@ -28,3 +28,4 @@ from models.notification import Notification  # noqa: F401
 from models.question import Question, QuestionHelpful  # noqa: F401
 from models.collab import ChangeRequest, MessageThread, ThreadMessage  # noqa: F401
 from models.password_reset import PasswordReset  # noqa: F401
+from models.listing_priority import ListingPriority  # noqa: F401

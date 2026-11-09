@@ -112,16 +112,17 @@ const MoreButton = ({ onClick, loading, children }: { onClick: () => void; loadi
 );
 
 /**
- * Folded courses and specialisations are shown to signed-in students only: anyone else is asked to sign in or
- * register first, and what they opened is then recorded as a lead. Without a provider (no college page) it just opens.
+ * Courses can be opened freely, as many as a visitor likes. The specialisations a course keeps folded are for
+ * signed-in students: anyone else is asked to sign in or register first, and what they opened is then recorded as a
+ * lead. Without a provider (no college page) it just opens.
  */
-function useGate(slug: string, course?: string) {
+function useGate(slug: string, course: string) {
   const ctx = useCollegeActions();
   return useCallback(
     (open: () => void) => {
       if (!ctx) return open();
       void ctx.ensureSignedIn(
-        course ? "Sign in to see more specialisations. It takes a minute." : "Sign in to see more courses. It takes a minute.",
+        "Sign in to see more specialisations. It takes a minute.",
         () => {
           void recordCourseInterest(slug, course);
           open();
@@ -157,7 +158,6 @@ export function CourseList({ slug, initial }: { slug: string; initial: Programme
   }, [slug, groups.length, loading]);
 
   const remaining = Math.max(0, total - groups.length);
-  const gate = useGate(slug);
 
   return (
     <div>
@@ -172,12 +172,10 @@ export function CourseList({ slug, initial }: { slug: string; initial: Programme
           {!expanded ? (
             <MoreButton
               loading={loading}
-              onClick={() =>
-                gate(() => {
-                  setExpanded(true);
-                  void more();
-                })
-              }
+              onClick={() => {
+                setExpanded(true);
+                void more();
+              }}
             >
               {remaining} more {remaining === 1 ? "course" : "courses"} available
             </MoreButton>

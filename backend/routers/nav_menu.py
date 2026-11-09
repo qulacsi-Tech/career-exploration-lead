@@ -69,7 +69,7 @@ class ItemBody(BaseModel):
     seoDescription: str = Field(default="", max_length=320)
     # Slugs of institutes the link's listing leaves out.
     excluded: list[str] = Field(default_factory=list, max_length=1000)
-    # Priority of institutes within this link's list: slug -> 1, 2, 3... (1 first), each number once.
+    # Priority of institutes within this link's list: slug -> 1, 2, 3... (1 first); institutes may share a number.
     priority: dict[str, int] = Field(default_factory=dict, max_length=1000)
     model_config = ConfigDict(extra="forbid")
 
@@ -80,8 +80,7 @@ class ItemBody(BaseModel):
     def _priority_numbers(cls, value: dict[str, int]) -> dict[str, int]:
         if any(n < 1 or n > 100000 for n in value.values()):
             raise ValueError("a priority is a whole number from 1 to 100000.")
-        if len(set(value.values())) != len(value):
-            raise ValueError("two institutes share a priority number.")
+        # Institutes may share a number: they take turns at that place.
         return value
 
 

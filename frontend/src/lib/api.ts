@@ -60,11 +60,11 @@ const BUILDING = process.env.NEXT_PHASE === "phase-production-build";
 const DEFAULT_RETRIES = BUILDING ? 8 : 2;
 const retryDelay = (attempt: number) => (BUILDING ? Math.min(2000 * 2 ** attempt, 15000) : 600 * (attempt + 1));
 
-async function apiFetch<T>(path: string, retries = DEFAULT_RETRIES): Promise<T> {
+async function apiFetch<T>(path: string, retries = DEFAULT_RETRIES, tags?: string[]): Promise<T> {
   const url = `${API_BASE}${path}`;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } });
+      const res = await fetch(url, { next: { revalidate: PUBLIC_REVALIDATE_SECONDS, ...(tags ? { tags } : {}) } });
       if (!res.ok) {
         if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
           await new Promise((r) => setTimeout(r, retryDelay(attempt)));
@@ -175,6 +175,8 @@ export type Review = {
   date: string;
   rating: number;
   body: string;
+  /** The student changed it after writing it. */
+  edited?: boolean;
 };
 
 export type CollegeStatus = "draft" | "published" | "archived";
@@ -480,6 +482,12 @@ export type CollegeDetail = Omit<College, "ratingBreakdown" | "placement" | "cut
   logo: string;
   /** A banner for each ranking list, by the list's slug. */
   rankingBanners: Record<string, string>;
+  /** The words and layout of the Rankings tab. */
+  rankingsPage?: Partial<RankingsPageConfig>;
+  /** Headings and descriptions the admin reworded, by key. */
+  pageText?: Record<string, string>;
+  /** Pictures and videos under each written tab, by the tab's slug. */
+  tabMedia?: Record<string, TabMediaItem[]>;
   /** Awards the college has won. */
   awards: { title: string; year?: string; awardedBy?: string; description?: string; image?: string }[];
   /** Empty: the Brochure button opens the enquiry form. */
@@ -503,6 +511,46 @@ export type CollegeDetail = Omit<College, "ratingBreakdown" | "placement" | "cut
 };
 
 export type TabHeaderConfig = { label: string; heading: string; icon: string };
+
+/** A picture or a video under a written tab, with whether it is also in the Gallery. */
+export type TabMediaItem = { kind: "image" | "video"; src: string; provider: "youtube" | "vimeo" | ""; videoId: string; title: string; gallery: boolean };
+
+export type RankingsSection = "summary" | "all" | "awards" | "compare";
+
+/** The words and layout of a college's Rankings tab, as written in the admin. Empty text means the usual wording. */
+export type RankingsPageConfig = {
+  heading: string;
+  description: string;
+  summaryRankings: string[];
+  showRating: boolean;
+  ratingLabel: string;
+  showAll: boolean;
+  allTitle: string;
+  showAwards: boolean;
+  awardsTitle: string;
+  showCompare: boolean;
+  compareTitle: string;
+  compareDescription: string;
+  comparePeers: string[];
+  order: RankingsSection[];
+};
+
+export const DEFAULT_RANKINGS_PAGE: RankingsPageConfig = {
+  heading: "",
+  description: "",
+  summaryRankings: [],
+  showRating: true,
+  ratingLabel: "",
+  showAll: true,
+  allTitle: "",
+  showAwards: true,
+  awardsTitle: "",
+  showCompare: true,
+  compareTitle: "",
+  compareDescription: "",
+  comparePeers: [],
+  order: ["summary", "all", "awards", "compare"],
+};
 
 export type CollegeParams = {
   page?: number;
@@ -534,6 +582,8 @@ export type CollegeParams = {
   collection?: string;
   /** A header-menu link, "<category id>:<link key>": the institutes the admin left out of it stay out. */
   menu?: string;
+  /** Who takes a place that several promoted colleges share. A new value shuffles them; pages of one visit keep theirs. */
+  seed?: number;
 };
 
 /** College listing with optional filters / search / pagination. */
@@ -563,6 +613,7 @@ export async function getColleges(
   if (params?.fees_max !== undefined) qs.set("fees_max", String(params.fees_max));
   if (params?.min_rating) qs.set("min_rating", String(params.min_rating));
   if (params?.collection) qs.set("collection", params.collection);
+  if (params?.seed !== undefined) qs.set("seed", String(params.seed));
   if (params?.menu) qs.set("menu", params.menu);
   const query = qs.toString() ? `?${qs}` : "";
   return apiListFetch<College>(`/colleges${query}`);
@@ -630,7 +681,8 @@ function withCollegeDefaults(raw: Partial<CollegeDetail> & Pick<CollegeDetail, "
 }
 
 export async function getCollege(slug: string): Promise<CollegeDetail> {
-  return withCollegeDefaults(await apiFetch<CollegeDetail>(`/colleges/${slug}`));
+  // Tagged, so what a student writes on the page (a review, an edit) can expire it at once.
+  return withCollegeDefaults(await apiFetch<CollegeDetail>(`/colleges/${slug}`, DEFAULT_RETRIES, [`college:${slug}`]));
 }
 
 /** College by slug, or null when the API has no such college. Other errors still throw. */
@@ -846,8 +898,13 @@ export type MyReview = {
   ratingFaculty: number | null;
   ratingInfrastructure: number | null;
   ratingCampusLife: number | null;
+  commentPlacements?: string;
+  commentFaculty?: string;
+  commentInfrastructure?: string;
+  commentCampusLife?: string;
   body: string;
   approved: boolean;
+  edited?: boolean;
   createdAt: string | null;
 };
 
@@ -1021,6 +1078,22 @@ export type ReviewInput = {
 };
 
 /** Saves a signed-in student's review of a college. It waits for the team to approve it. */
+/** Saves a change to a student's own review. */
+export async function putReview(id: string, data: ReviewInput, token: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/reviews/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+  const json = await res.json().catch(() => null);
+  if (!json?.success) {
+    const message = json?.error?.message ?? (Array.isArray(json?.detail) ? json.detail[0]?.msg : undefined) ?? "Could not save the review";
+    throw new ApiError(res.status, message);
+  }
+  return json.data;
+}
+
 export async function postReview(slug: string, data: ReviewInput, token: string): Promise<{ message: string }> {
   const res = await fetch(`${API_BASE}/colleges/${encodeURIComponent(slug)}/reviews`, {
     method: "POST",
@@ -2736,6 +2809,9 @@ export type RecordDetail = {
   logo: string;
   rankingBanners?: Record<string, string>;
   awards?: { title: string; year: string; awardedBy: string; description: string; image: string }[];
+  rankingsPage?: RankingsPageConfig;
+  pageText?: Record<string, string>;
+  tabMedia?: Record<string, TabMediaItem[]>;
   brochureUrl: string;
   faculty: CollegeFaculty;
   faqs: CollegeFaq[];
@@ -3288,13 +3364,66 @@ export type AdminRating = {
   commentCampusLife: string;
   body: string;
   approved: boolean;
+  /** False until the team has looked at a review that went live on its own. */
+  checked: boolean;
+  replyCount?: number;
   createdAt: string | null;
 };
-export const adminListRatings = (token: string, params: { status?: "pending" | "approved" | "all"; page?: number; limit?: number }) =>
+export const adminListRatings = (token: string, params: { status?: "tocheck" | "shown" | "hidden" | "all"; page?: number; limit?: number }) =>
   pagedList<AdminRating>(token, "/admin/ratings", params);
+export const adminMarkRatingChecked = (token: string, id: string) => adminRequest<{ checked: boolean }>(token, "PUT", `/admin/ratings/${encodeURIComponent(id)}/checked`);
+export const adminDeleteRating = (token: string, id: string) => adminRequest<{ deleted: boolean }>(token, "DELETE", `/admin/ratings/${encodeURIComponent(id)}`);
 export const adminDecideRating = (token: string, id: string, approved: boolean) =>
   adminRequest<{ approved: boolean }>(token, "PUT", `/admin/ratings/${encodeURIComponent(id)}`, { approved });
 
 /** What is waiting in each Activity item. A college admin's has no approvals or ratings. */
 export type ActivityCounts = { questions: number; messages: number; leads?: number; approvals?: number; ratings?: number };
 export const adminActivityCounts = (token: string) => adminRequest<ActivityCounts>(token, "GET", "/admin/activity/counts");
+
+// ── Replies under reviews ──────────────────────────────────────────────────
+
+/** A reply under a review, or under another reply (`parentId`). `mine` is true for the signed-in student's own. */
+export type ReviewReplyItem = { id: string; parentId: string | null; author: string; body: string; createdAt: string | null; mine: boolean; likes: number; dislikes: number; myVote: "like" | "dislike" | null };
+
+export async function getReviewReplies(slug: string, token?: string | null): Promise<Record<string, ReviewReplyItem[]>> {
+  const res = await fetch(`${API_BASE}/colleges/${encodeURIComponent(slug)}/review-replies`, { headers: bearer(token), cache: "no-store" });
+  return apiJson(res);
+}
+
+export async function postReviewReply(reviewId: string, body: string, parentId: string | null, token: string): Promise<ReviewReplyItem> {
+  const res = await fetch(`${API_BASE}/reviews/${encodeURIComponent(reviewId)}/replies`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...bearer(token) },
+    body: JSON.stringify({ body, parentId }),
+    cache: "no-store",
+  });
+  return apiJson(res);
+}
+
+export async function postReplyVote(id: string, vote: "like" | "dislike", token: string): Promise<ReviewVotes> {
+  const res = await fetch(`${API_BASE}/replies/${encodeURIComponent(id)}/vote`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...bearer(token) },
+    body: JSON.stringify({ vote }),
+    cache: "no-store",
+  });
+  return apiJson(res);
+}
+
+export async function deleteReviewReply(id: string, token: string): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/replies/${encodeURIComponent(id)}`, { method: "DELETE", headers: bearer(token), cache: "no-store" });
+  return apiJson(res);
+}
+
+export type AdminReviewReply = { id: string; parentId: string | null; author: string; body: string; createdAt: string | null };
+export const adminListRatingReplies = (token: string, id: string) => adminRequest<AdminReviewReply[]>(token, "GET", `/admin/ratings/${encodeURIComponent(id)}/replies`);
+export const adminDeleteReviewReply = (token: string, id: string) => adminRequest<{ deleted: boolean }>(token, "DELETE", `/admin/review-replies/${encodeURIComponent(id)}`);
+
+// ── Priorities for each filter of the college listing ──────────────────────
+
+export type PriorityScopeGroup = { id: string; label: string; options: { scope: string; label: string }[] };
+export const adminPriorityScopes = (token: string) => adminRequest<PriorityScopeGroup[]>(token, "GET", "/admin/priority/scopes");
+export const adminScopeInstitutes = (token: string, scope: string) =>
+  adminRequest<{ truncated: boolean; colleges: { slug: string; name: string; city: string; rank: number | null; priority: number | null }[] }>(token, "GET", `/admin/priority/scope?scope=${encodeURIComponent(scope)}`);
+export const adminSetScopePriorities = (token: string, scope: string, priority: Record<string, number>) =>
+  adminRequest<{ message: string }>(token, "PUT", "/admin/priority/scope", { scope, priority });

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { AwardsSection } from "@/components/college/awards-section";
 import { FacultyGlance } from "@/components/college/faculty-glance";
+import { pageText } from "@/lib/page-text";
 import { BellRing, Headset, MessagesSquare, PhoneCall, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import {
   BigFigure,
@@ -225,7 +226,7 @@ export default async function CollegeOverviewPage({
 
       {/* About */}
       {college.about && (
-        <DetailCard title={`About ${short}`}>
+        <DetailCard title={pageText(college, "overview.about")}>
           <p className="max-w-3xl text-lg leading-relaxed text-ink-soft">{college.about}</p>
           <div className="mt-9 grid gap-8 sm:grid-cols-3">
             <BigFigure label="Programmes" value={`${courseGroups.length || college.coursesOffered}`} note="Degrees on offer" />
@@ -291,7 +292,7 @@ export default async function CollegeOverviewPage({
       {feeRows.length > 0 && (
         <DetailCard
           id="courses"
-          title="Courses & Fees"
+          title={pageText(college, "overview.courses")}
           footer={
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -371,7 +372,7 @@ export default async function CollegeOverviewPage({
 
       {/* Top recruiters: the same moving strip as the Placements tab, so the names are not a single line of small print. */}
       {placement && placement.topRecruiters.length > 0 && (
-        <DetailCard title="Top Recruiters">
+        <DetailCard title={pageText(college, "overview.recruiters")}>
           <RecruiterMarquee recruiters={placement.recruiters?.length ? placement.recruiters : placement.topRecruiters} />
         </DetailCard>
       )}
@@ -407,7 +408,7 @@ export default async function CollegeOverviewPage({
       {/* What students say */}
       {(college.ratingBreakdown ?? []).length > 0 && (
         <DetailCard
-          title="What Students Say"
+          title={pageText(college, "overview.students")}
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-ink-soft">
@@ -435,7 +436,7 @@ export default async function CollegeOverviewPage({
       {/* Cutoffs */}
       {(college.cutoffs ?? []).length > 0 && (
         <DetailCard
-          title={`${short} Cut-Offs`}
+          title={pageText(college, "overview.cutoffs")}
           action={<CardLink href={href("cutoffs")}>All cut-offs</CardLink>}
         >
           <MeterList
@@ -454,7 +455,7 @@ export default async function CollegeOverviewPage({
       {/* Reviews */}
       {reviews.length > 0 && (
         <DetailCard
-          title={`Reviews about ${short}`}
+          title={pageText(college, "overview.reviews")}
           action={<CardLink href={href("reviews")}>All reviews</CardLink>}
         >
           <div className="space-y-5">
@@ -468,7 +469,7 @@ export default async function CollegeOverviewPage({
       {/* Similar colleges — live from API */}
       {peers.length > 0 && (
         <DetailCard
-          title={`Explore Colleges Similar to ${short}`}
+          title={pageText(college, "overview.similar")}
           action={<CardLink href={href("compare")}>Compare</CardLink>}
         >
           <PeerGrid

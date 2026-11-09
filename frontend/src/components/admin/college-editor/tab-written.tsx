@@ -4,6 +4,7 @@ import { RichTextField } from "@/components/admin/rich-text-editor";
 import { isRichTextEmpty, type RichTextDoc } from "@/lib/rich-text";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
 import { Card, TextArea, TextInput } from "@/components/admin/college-editor/shared";
+import { WrittenMedia } from "@/components/admin/college-editor/written-media";
 import { DEFAULT_TAB_ICON, TAB_ICONS } from "@/lib/tab-icons";
 
 /*
@@ -12,7 +13,7 @@ import { DEFAULT_TAB_ICON, TAB_ICONS } from "@/lib/tab-icons";
   message instead of a blank tab.
 */
 
-export function WrittenTab({ record, update, tab, title, description }: EditorProps & { tab: string; title: string; description: string }) {
+export function WrittenTab({ record, update, pools, slug, mode, tab, title, description }: EditorProps & { tab: string; title: string; description: string }) {
   const doc = record.detail.tabs[tab];
   const header = record.detail.tabHeaders?.[tab] ?? { label: "", heading: "", icon: "" };
   const shownIcon = header.icon || DEFAULT_TAB_ICON[tab] || "grad";
@@ -82,8 +83,10 @@ export function WrittenTab({ record, update, tab, title, description }: EditorPr
       </Card>
 
       <Card title={title} description={description}>
-        <RichTextField label={title} value={doc} onChange={change} minHeight={320} media hint="Headings, lists, links, tables, pictures and videos are available in the toolbar. Tick Also show in the Gallery on a picture or video to add it to the Gallery tab too. Left empty, the tab shows an empty message." />
+        <RichTextField label={title} value={doc} onChange={change} minHeight={320} hint="Headings, lists, links and tables are available in the toolbar. Add pictures and videos in the Pictures and videos box below. Left empty, the tab shows an empty message." />
       </Card>
+
+      <WrittenMedia record={record} update={update} tab={tab} pools={pools} slug={slug} mode={mode} />
     </div>
   );
 }

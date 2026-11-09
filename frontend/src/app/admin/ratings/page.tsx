@@ -6,8 +6,9 @@ import { withAdminToken } from "@/lib/admin-session";
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 const TABS = [
-  { value: "pending", label: "Waiting" },
-  { value: "approved", label: "Shown on the site" },
+  { value: "tocheck", label: "To check" },
+  { value: "shown", label: "Live on the site" },
+  { value: "hidden", label: "Hidden" },
   { value: "all", label: "All" },
 ] as const;
 
@@ -19,7 +20,7 @@ const TABS = [
 export default async function AdminRatingsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const raw = first(params.status);
-  const status = raw === "approved" || raw === "all" ? raw : "pending";
+  const status = raw === "shown" || raw === "hidden" || raw === "all" ? raw : "tocheck";
   // A notification links here with the college it is about already chosen.
   const college = first(params.college) || undefined;
   const page = Math.max(1, Number.parseInt(first(params.page) ?? "1", 10) || 1);
@@ -29,7 +30,7 @@ export default async function AdminRatingsPage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader title="Ratings" description="What students rated each college, with their comments. Approve a review to show it on the college's Reviews page." />
+      <AdminPageHeader title="Ratings" description="What students rated each college, with their comments. New reviews go live at once and wait here to be checked. You can hide one or remove it at any time." />
 
       <nav aria-label="Filter by status" className="flex flex-wrap gap-2">
         {TABS.map((tab) => (

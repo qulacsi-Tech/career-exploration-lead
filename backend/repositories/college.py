@@ -3,7 +3,7 @@
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import Numeric, String, and_, case, cast, func, or_, select
+from sqlalchemy import Numeric, String, and_, case, cast, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -15,6 +15,7 @@ from models.cutoff import Cutoff
 from models.placement import Placement
 from models.ranking import RankingEntry, RankingList
 from models.review import Review
+from services.priority_slots import arrange
 from schemas.college import CollegeFilterParams
 
 
@@ -144,12 +145,14 @@ def _apply_filters(stmt, params: CollegeFilterParams):
     if params.exclude_slugs:
         stmt = stmt.where(College.slug.not_in(params.exclude_slugs))
 
-    # A header-menu link's own priorities come before everything else.
-    menu_first = [case(*[(College.slug == s, n) for s, n in params.priority.items()], else_=1000000)] if params.priority else []
+    # A header-menu link's own priorities come before everything else. When priority is handled as a place in the
+    # list (slot_priority), the database orders without it and the list is arranged afterwards.
+    in_sql = not params.slot_priority
+    menu_first = [case(*[(College.slug == s, n) for s, n in params.priority.items()], else_=1000000)] if (params.priority and in_sql) else []
 
     # The college's own priority (set in the admin; 1 first, none last). On every list page it comes straight
     # after the link's own priorities, so a college with priority 1 leads a NIRF list even if its NIRF rank is 3.
-    general_priority = func.coalesce(College.priority, 1000000)
+    general_priority = func.coalesce(College.priority, 1000000) if in_sql else literal(1000000)
 
     # Sort
     # Every order ends on the name and id, so ties (most colleges have no reviews yet) fall the same way
@@ -212,6 +215,19 @@ class CollegeRepository:
         """Return (colleges_page, total_count)."""
         # Placements ride along so the listing card can show the newest year's average and highest package.
         base = select(College).options(selectinload(College.courses), selectinload(College.placements))
+
+        if params.slot_priority and params.sort == "popularity":
+            # Priority is a place in the list, so the whole list is put in order first and then cut into pages.
+            ordered = (await self.db.execute(_apply_filters(select(College.slug), params))).scalars().all()
+            arranged = arrange(list(ordered), params.slot_priority, params.seed)
+            offset = (params.page - 1) * params.limit
+            wanted = arranged[offset : offset + params.limit]
+            if not wanted:
+                return [], len(arranged)
+            rows = list((await self.db.execute(base.where(College.slug.in_(wanted)))).scalars().unique())
+            by_slug = {c.slug: c for c in rows}
+            return [by_slug[s] for s in wanted if s in by_slug], len(arranged)
+
         base = _apply_filters(base, params)
 
         # Count

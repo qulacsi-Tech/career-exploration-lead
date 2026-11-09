@@ -17,7 +17,7 @@ const AREAS = [
   ["ratingCampusLife", "Campus life"],
 ] as const;
 
-/** The reviews the student has written, and whether each one is live on the college's page or still with our team. */
+/** The reviews the student has written, and whether each one is live on the college's page or has been hidden. */
 export default async function ReviewsPage() {
   const token = await getUserToken();
   const items = token ? await getMyReviews(token).catch(() => null) : [];
@@ -47,7 +47,7 @@ export default async function ReviewsPage() {
             {r.approved ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800"><CheckCircle2 className="h-3.5 w-3.5" /> Live on the site</span>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900"><Clock className="h-3.5 w-3.5" /> Waiting for approval</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900"><Clock className="h-3.5 w-3.5" /> Hidden by our team</span>
             )}
           </div>
 

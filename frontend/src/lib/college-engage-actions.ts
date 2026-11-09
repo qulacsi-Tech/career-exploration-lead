@@ -1,8 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { cookies } from "next/headers";
-import { ApiError, getCollegeQuestions, getProgrammesPage, getSpecialisationsPage, getExams, getHomeData, getIndiaGeo, getMe, getReviewVotes, postHelpful, postReviewVote, postQuestion, postReview, submitLead, updateMe, type CollegeQuestion, type Course, type IndiaGeo, type ProgrammePage, type ReviewInput, type ReviewVotes } from "@/lib/api";
+import { ApiError, getCollegeQuestions, getProgrammesPage, getSpecialisationsPage, getExams, getHomeData, getIndiaGeo, getMe, getReviewVotes, postHelpful, postReviewVote, postQuestion, postReview, putReview, getMyReviews, getReviewReplies, postReviewReply, postReplyVote, deleteReviewReply, submitLead, updateMe, type CollegeQuestion, type Course, type IndiaGeo, type ProgrammePage, type MyReview, type ReviewInput, type ReviewReplyItem, type ReviewVotes } from "@/lib/api";
 import { CONSENT_COOKIE, VISITOR_COOKIE } from "@/lib/analytics-cookies";
 import { getUserToken } from "@/lib/user-session";
 import { canUsePanel } from "@/lib/roles";
@@ -19,17 +19,88 @@ export type EngageResult = { ok: true; message: string } | { ok: false; message:
 const SIGN_IN: EngageResult = { ok: false, needsSignIn: true, message: "Please sign in to continue." };
 const ADMIN_ACCOUNT: EngageResult = { ok: false, message: "Admin accounts cannot do this. Use a student account." };
 
-/** Saves a review. It waits for the platform team to approve it before it shows. */
+/** Saves a review. It goes live at once; the platform team checks it afterwards. */
 export async function submitReview(slug: string, input: ReviewInput): Promise<EngageResult> {
   const token = await getUserToken();
   if (!token) return SIGN_IN;
   try {
     const result = await postReview(slug, input, token);
+    updateTag(`college:${slug}`);
     revalidatePath(`/college/${slug}`, "layout");
     return { ok: true, message: result.message };
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) return SIGN_IN;
     return { ok: false, message: err instanceof ApiError ? err.message : "We could not save your review just now. Please try again." };
+  }
+}
+
+/** Saves a change to the signed-in student's own review. */
+export async function updateReview(id: string, slug: string, input: ReviewInput): Promise<EngageResult> {
+  const token = await getUserToken();
+  if (!token) return SIGN_IN;
+  try {
+    const result = await putReview(id, input, token);
+    updateTag(`college:${slug}`);
+    revalidatePath(`/college/${slug}`, "layout");
+    return { ok: true, message: result.message };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return SIGN_IN;
+    return { ok: false, message: err instanceof ApiError ? err.message : "We could not save your changes just now. Please try again." };
+  }
+}
+
+/** The signed-in student's own reviews of one college, by id, so their review can offer Edit. Empty when signed out. */
+export async function loadMyReviewsOf(slug: string): Promise<Record<string, MyReview>> {
+  try {
+    const token = await getUserToken();
+    if (!token) return {};
+    const mine = await getMyReviews(token);
+    return Object.fromEntries(mine.filter((r) => r.collegeSlug === slug).map((r) => [r.id, r]));
+  } catch {
+    return {};
+  }
+}
+
+/** Every reply under a college's reviews, with the signed-in student's own marked. A failure is an empty map. */
+export async function loadReviewReplies(slug: string): Promise<Record<string, ReviewReplyItem[]>> {
+  try {
+    return await getReviewReplies(slug, await getUserToken());
+  } catch {
+    return {};
+  }
+}
+
+/** Replies to a review, or to a reply under it. Needs a signed-in student. */
+export async function replyToReview(reviewId: string, slug: string, body: string, parentId: string | null): Promise<{ ok: true; reply: ReviewReplyItem } | { ok: false; message: string }> {
+  const token = await getUserToken();
+  if (!token) return { ok: false, message: "Please sign in to continue." };
+  try {
+    return { ok: true, reply: await postReviewReply(reviewId, body, parentId, token) };
+  } catch (err) {
+    return { ok: false, message: err instanceof ApiError ? err.message : "We could not post your reply just now. Please try again." };
+  }
+}
+
+/** Likes or dislikes a reply; the same choice again takes it back. Needs a signed-in student. */
+export async function voteReply(id: string, vote: "like" | "dislike"): Promise<({ ok: true } & ReviewVotes) | { ok: false; message: string }> {
+  const token = await getUserToken();
+  if (!token) return { ok: false, message: "Please sign in to continue." };
+  try {
+    return { ok: true, ...(await postReplyVote(id, vote, token)) };
+  } catch (err) {
+    return { ok: false, message: err instanceof ApiError ? err.message : "We could not save that just now. Please try again." };
+  }
+}
+
+/** A student takes back their own reply. */
+export async function removeReply(id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const token = await getUserToken();
+  if (!token) return { ok: false, message: "Please sign in to continue." };
+  try {
+    await deleteReviewReply(id, token);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err instanceof ApiError ? err.message : "We could not remove that reply just now. Please try again." };
   }
 }
 
@@ -246,6 +317,43 @@ export async function recordCourseInterest(slug: string, course?: string): Promi
         message: (course ? `Explored more specialisations of ${course}` : "Explored more courses").slice(0, 1000),
         programName: course?.slice(0, 200) || undefined,
         source: "college-courses-explore",
+        consent: true,
+        visitorId,
+      },
+      token,
+    );
+    revalidatePath("/account", "layout");
+  } catch {
+    // Browsing is not interrupted by a lead that could not be saved.
+  }
+}
+
+/**
+ * A signed-in student asked to see more of a college's reviews, or more of the replies under them, than the page shows
+ * a visitor at first. Recorded as a lead tied to their account, like the course exploration. Never blocks the page.
+ */
+export async function recordReviewInterest(slug: string, what: "reviews" | "replies"): Promise<void> {
+  const token = await getUserToken();
+  if (!token) return;
+  try {
+    const profile = await getMe(token);
+    if (canUsePanel(profile.role)) return;
+    const phone = stripPhone(profile.phone || "");
+    if (phoneProblem(phone, true)) return;
+    const jar = await cookies();
+    const visitorId = jar.get(CONSENT_COOKIE)?.value === "granted" ? jar.get(VISITOR_COOKIE)?.value : undefined;
+    await submitLead(
+      {
+        name: profile.name,
+        phone,
+        email: profile.email,
+        collegeSlug: slug || undefined,
+        type: "enquiry",
+        stream: profile.preferredStream ?? undefined,
+        city: profile.city ?? undefined,
+        message: what === "reviews" ? "Read more student reviews" : "Read more replies under the student reviews",
+        programName: what === "reviews" ? "Student reviews" : "Replies to student reviews",
+        source: what === "reviews" ? "college-reviews-explore" : "college-replies-explore",
         consent: true,
         visitorId,
       },

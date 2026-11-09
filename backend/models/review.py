@@ -36,11 +36,40 @@ class Review(Base):
     comment_faculty = Column(Text, nullable=True)
     comment_infrastructure = Column(Text, nullable=True)
     comment_campus_life = Column(Text, nullable=True)
+    # False until the team has looked at a review that went live on its own.
+    # When the student last changed their review; None if they never have.
+    edited_at = Column(DateTime(timezone=True), nullable=True)
+    checked = Column(Boolean, nullable=False, default=True, server_default="true")
     is_approved = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     college = relationship("College", back_populates="reviews")
     user = relationship("User", back_populates="reviews")
+
+
+class ReviewReply(Base):
+    """A reply to a review, or to another reply (`parent_id`), written by a signed-in student."""
+
+    __tablename__ = "review_replies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.id", ondelete="CASCADE"), nullable=False, index=True)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("review_replies.id", ondelete="CASCADE"), nullable=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    author_name = Column(String(200), nullable=False)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class ReviewReplyVote(Base):
+    """One signed-in student's like (1) or dislike (-1) of a reply. One vote per student per reply."""
+
+    __tablename__ = "review_reply_votes"
+
+    reply_id = Column(UUID(as_uuid=True), ForeignKey("review_replies.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    vote = Column(SmallInteger, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
 class ReviewVote(Base):

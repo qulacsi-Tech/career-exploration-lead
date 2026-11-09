@@ -97,6 +97,15 @@ import {
   adminRemoveCollegeRanking,
   adminPinCollegeRanking,
   adminDecideRating,
+  adminPriorityScopes,
+  adminScopeInstitutes,
+  adminSetScopePriorities,
+  type PriorityScopeGroup,
+  adminMarkRatingChecked,
+  adminDeleteRating,
+  adminListRatingReplies,
+  adminDeleteReviewReply,
+  type AdminReviewReply,
   adminActivityCounts,
   type ActivityCounts,
   type ListingHeader,
@@ -1862,6 +1871,18 @@ export async function decideRating(id: string, approved: boolean): Promise<Admin
   return result;
 }
 
+/** The team has looked at a review and it can stay. */
+export async function markRatingChecked(id: string): Promise<AdminActionResult> {
+  return attempt("/admin/ratings", (token) => adminMarkRatingChecked(token, id));
+}
+
+/** Removes a review for good. */
+export async function deleteRating(id: string): Promise<AdminActionResult> {
+  const result = await attempt("/admin/ratings", (token) => adminDeleteRating(token, id));
+  if ("ok" in result) revalidatePath("/college", "layout");
+  return result;
+}
+
 /** The numbers beside Questions, Approvals, Messages and Ratings in the sidebar. Null when they cannot be read. */
 export async function loadActivityCounts(): Promise<ActivityCounts | null> {
   try {
@@ -1870,4 +1891,46 @@ export async function loadActivityCounts(): Promise<ActivityCounts | null> {
   } catch {
     return null;
   }
+}
+
+/** The replies under one review, for the team to read. */
+export async function loadRatingReplies(id: string): Promise<AdminReviewReply[] | { error: string }> {
+  try {
+    return await adminListRatingReplies(await requireAdminToken(), id);
+  } catch {
+    return { error: "Could not load the replies. Try again." };
+  }
+}
+
+/** Removes a reply (and those under it). */
+export async function deleteReviewReply(id: string): Promise<AdminActionResult> {
+  return attempt("/admin/ratings", (token) => adminDeleteReviewReply(token, id));
+}
+
+/** Every filter of the college listing with its values: what a priority can be set for. */
+export async function loadPriorityScopes(): Promise<PriorityScopeGroup[] | { error: string }> {
+  try {
+    return await adminPriorityScopes(await requireAdminToken());
+  } catch {
+    return { error: "Could not load the filters. Try again." };
+  }
+}
+
+/** The institutes one filter lists, with the priority saved for each in that filter. */
+export async function loadScopeInstitutes(scope: string) {
+  try {
+    return await adminScopeInstitutes(await requireAdminToken(), scope);
+  } catch {
+    return { error: "Could not load the institutes. Try again." };
+  }
+}
+
+/** Saves the priorities of one filter's list. Institutes may share a number. */
+export async function saveScopePriorities(scope: string, priority: Record<string, number>): Promise<AdminActionResult> {
+  const result = await attempt("/admin/colleges", (token) => adminSetScopePriorities(token, scope, priority));
+  if ("ok" in result) {
+    revalidatePath("/colleges");
+    revalidatePath("/", "layout");
+  }
+  return result;
 }

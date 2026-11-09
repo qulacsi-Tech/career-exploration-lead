@@ -1,3 +1,4 @@
+import random
 from typing import Optional
 
 from fastapi import APIRouter, Query
@@ -8,6 +9,7 @@ from schemas.common import ListResponse, Meta, SuccessResponse
 from services.college import CollegeService
 from services.collections import CollectionService
 from routers.nav_menu import menu_settings
+from services.listing_priority import resolve_priorities
 
 router = APIRouter(prefix="/colleges", tags=["colleges"])
 
@@ -38,6 +40,7 @@ async def list_colleges(
     q: Optional[str] = Query(None),
     collection: Optional[str] = Query(None, max_length=200),
     menu: Optional[str] = Query(None, max_length=300),
+    seed: Optional[int] = Query(None, description="Who takes a place that several colleges share; a new value shuffles them"),
 ):
     params = CollegeFilterParams(
         page=page, limit=limit, stream=stream, city=city, state=state,
@@ -56,6 +59,12 @@ async def list_colleges(
         excluded, priority = await menu_settings(db, menu)
         params.exclude_slugs = excluded or None
         params.priority = priority or None
+    # Priority is a place in the list. Colleges sharing a place take turns: a new seed (a page opened afresh)
+    # shuffles them, and the pages of one visit keep the seed they started with.
+    promoted = await resolve_priorities(db, params)
+    if promoted and sort == "popularity" and not params.slugs:
+        params.slot_priority = promoted
+        params.seed = seed if seed is not None else random.SystemRandom().randrange(1, 2**31)
     svc = CollegeService(db)
     colleges, meta = await svc.list_colleges(params)
     return ListResponse[CollegeListSchema](data=colleges, meta=meta)

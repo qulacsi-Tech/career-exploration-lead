@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { Fragment } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -146,6 +147,8 @@ export default async function CollegesListingPage({
   }
 
   const page = num(str("page")) ?? 1;
+  // Colleges that share a promoted place take turns: a fresh seed on every visit, and the pages of one visit keep it.
+  const seed = num(str("seed")) ?? randomInt(1, 2 ** 31 - 1);
   const sort = str("sort") ?? "popularity";
   const query: CollegeParams = {
     q: str("q"),
@@ -177,7 +180,7 @@ export default async function CollegesListingPage({
 
   // The filter menu is secondary: if its request fails the listing still renders.
   const [list, facets, header, rankingLists, slots] = await Promise.all([
-    getColleges({ page, limit: 20, sort, ...query }).catch(() => null),
+    getColleges({ page, limit: 20, sort, seed, ...query }).catch(() => null),
     getCollegeFacets().catch(() => NO_FACETS),
     getListingHeader("colleges", scopeFromParams(str)).catch(() => null),
     getRankings().catch(() => [] as RankingList[]),
@@ -232,6 +235,7 @@ export default async function CollegesListingPage({
   const pageHref = (p: number) => {
     const next = new URLSearchParams(search.toString());
     next.set("page", String(p));
+    next.set("seed", String(seed));
     return `?${next.toString()}`;
   };
 

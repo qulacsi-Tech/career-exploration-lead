@@ -58,6 +58,9 @@ def _to_list_schema(college: College) -> CollegeListSchema:
         brochureUrl=page_record.get("brochureUrl") or "",
         rankingBanners=page_record.get("rankingBanners") or {},
         awards=[a for a in (page_record.get("awards") or []) if isinstance(a, dict)],
+        rankingsPage=page_record.get("rankingsPage") if isinstance(page_record.get("rankingsPage"), dict) else {},
+        pageText=page_record.get("pageText") if isinstance(page_record.get("pageText"), dict) else {},
+        tabMedia=page_record.get("tabMedia") if isinstance(page_record.get("tabMedia"), dict) else {},
         slug=college.slug,
         name=college.name,
         city=college.city,
@@ -175,7 +178,8 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
             breakdown=_breakdown(latest),
         )
 
-    approved_reviews = [r for r in (college.reviews or []) if r.is_approved]
+    # Newest first, so a review just written is the first one shown.
+    approved_reviews = sorted((r for r in (college.reviews or []) if r.is_approved), key=lambda r: (r.created_at is not None, r.created_at), reverse=True)
 
     history = [
         PlacementSchema(
@@ -208,6 +212,17 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
     # Pictures and videos put into a written section (Infrastructure and the others) and ticked "show in the
     # Gallery" join the Gallery after the ones added there.
     tab_photos, tab_videos = _tab_media(extra.tabs, college.name)
+    # The same for the pictures and videos listed under a written tab.
+    from schemas.college_detail import GalleryItem, VideoItem
+
+    for items in extra.tabMedia.values():
+        for m in items:
+            if not m.gallery:
+                continue
+            if m.kind == "image":
+                tab_photos.append(GalleryItem(src=m.src, alt=m.title if len(m.title.strip()) >= 3 else f"Photo of {college.name}", name=m.title[:120]))
+            else:
+                tab_videos.append(VideoItem(title=(m.title or f"Video of {college.name}")[:120] or "Video", provider=m.provider, videoId=m.videoId))
 
     return CollegeDetailSchema(
         **base.model_dump(),
@@ -245,6 +260,7 @@ def _to_detail_schema(college: College) -> CollegeDetailSchema:
                 date=fmt_date(r.review_date),
                 rating=r.rating,
                 body=r.body,
+                edited=bool(r.edited_at),
             )
             for r in approved_reviews[:10]  # cap at 10 for detail page
         ],

@@ -43,6 +43,7 @@ export type TabId =
   | "scholarships"
   | "news"
   | "seo"
+  | "pagetext"
   | "administrative";
 
 const SITE_OR_HTTPS = /^(\/[^\s]*|https:\/\/[^\s]+)?$/;
@@ -80,16 +81,39 @@ export function cleanRecord(r: CollegeRecord): CollegeRecord {
   };
 }
 
+/** How many pictures and videos a set of written sections holds. */
+export function mediaCount(tabs: Record<string, unknown>): number {
+  let n = 0;
+  const walk = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    const x = node as { type?: string; content?: unknown[] };
+    if (x.type === "image" || x.type === "video") n += 1;
+    (x.content ?? []).forEach(walk);
+  };
+  Object.values(tabs).forEach(walk);
+  return n;
+}
+
+const TAB_OF_SLUG: Record<string, TabId> = { "admission-process": "admissions", "hostel-facilities": "infrastructure", scholarships: "scholarships" };
+
 export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   const r = cleanRecord(record);
   const out: Record<TabId, string[]> = {
     info: [], courses: [], reviews: [], admissions: [], placements: [], cutoffs: [], rankings: [], awards: [],
-    gallery: [], infrastructure: [], faculty: [], compare: [], qna: [], scholarships: [], news: [], seo: [], administrative: [],
+    gallery: [], infrastructure: [], faculty: [], compare: [], qna: [], scholarships: [], news: [], seo: [], pagetext: [], administrative: [],
   };
   const d = r.detail;
   const add = (tab: TabId, message: string | null) => {
     if (message) out[tab].push(message);
   };
+
+  // A picture whose address cannot load is dropped when saving. Say so, rather than letting it vanish.
+  for (const [slug, doc] of Object.entries(record.detail.tabs)) {
+    const tab = TAB_OF_SLUG[slug];
+    if (tab && mediaCount({ [slug]: doc }) > mediaCount({ [slug]: withoutBrokenImages(doc) })) {
+      out[tab].push("A picture in the text has an address that cannot be saved. Remove it and add it again with the Image button.");
+    }
+  }
 
   // College Info
   add("info", nameProblem(r.name, "The college name"));

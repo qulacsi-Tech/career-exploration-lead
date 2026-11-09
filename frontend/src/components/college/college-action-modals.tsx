@@ -9,7 +9,9 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { SiteLogo } from "@/components/site-logo";
 import { emailProblem, identifierProblem, mobileDigits, nameProblem, passwordProblem, phoneProblem } from "@/lib/field-rules";
 import { PasswordResetFlow } from "@/components/auth/password-reset-flow";
-import { getProfileChoices, saveProfileDetails, submitCollegeLead, submitCollegeQuery, submitReview, type ProfileChoices } from "@/lib/college-engage-actions";
+import { useRouter } from "next/navigation";
+import type { MyReview } from "@/lib/api";
+import { getProfileChoices, saveProfileDetails, submitCollegeLead, submitCollegeQuery, submitReview, updateReview, type ProfileChoices } from "@/lib/college-engage-actions";
 import { StateCityFields } from "@/components/admin/state-city-fields";
 
 /**
@@ -245,7 +247,7 @@ export function AuthModal({ reason, onAuthed, onDone, onClose }: { reason: strin
           setMode("register");
           setErrors({});
           setFormError(null);
-          return setNotice(`We could not find an account for ${typed}. Create one below. It takes a minute.`);
+          return setNotice(`No account is available for ${typed}. Create a new one below. It takes a minute.`);
         }
         return setFormError(result.error ?? "Could not sign in.");
       }
@@ -435,14 +437,13 @@ export function QueryModal({ kind, slug, collegeName, user, onClose }: { kind: "
  * ------------------------------------------------------------------ */
 
 const CATEGORIES = [
-  { key: "ratingPlacements", comment: "commentPlacements", label: "Placements" },
-  { key: "ratingFaculty", comment: "commentFaculty", label: "Faculty" },
-  { key: "ratingInfrastructure", comment: "commentInfrastructure", label: "Infrastructure" },
-  { key: "ratingCampusLife", comment: "commentCampusLife", label: "Campus life" },
+  { key: "ratingPlacements", comment: "commentPlacements", label: "Placements", nudge: ["Ouch, tell us what went wrong with placements.", "Not great? Help others know what to expect.", "Middle of the road? What would have made it better?", "Nice! What made the placements work for you?", "Wow, five stars! Brag a little. Who hired you, and how?"] },
+  { key: "ratingFaculty", comment: "commentFaculty", label: "Faculty", nudge: ["Tough crowd. What was missing in the teaching?", "Not impressed? Tell us what you wish was different.", "Some good, some not? Who or what stood out?", "Good teachers! Anyone you'd shout out?", "Five stars! Which teacher changed how you think?"] },
+  { key: "ratingInfrastructure", comment: "commentInfrastructure", label: "Infrastructure", nudge: ["Yikes. What was the worst part of the campus?", "Not great? Labs, hostel, library: what let you down?", "Okay-ish? What would you fix first?", "Solid facilities! What did you use the most?", "Five stars! What would you show a visitor first?"] },
+  { key: "ratingCampusLife", comment: "commentCampusLife", label: "Campus life", nudge: ["Quiet campus? Tell us what was missing.", "Not much fun? What would have helped?", "Fine, but could be better? What would you add?", "Good vibes! What was your favourite part?", "Five stars! Share your best campus memory."] },
 ] as const;
 
 type Ratings = Record<(typeof CATEGORIES)[number]["key"], number>;
-const REVIEW_MIN = 20;
 const BATCH = /^\d{4}(?:\s*[-–—]\s*(?:\d{4}|\d{2}))?$/;
 
 function StarPicker({ value, onChange, label }: { value: number; onChange: (n: number) => void; label: string }) {
@@ -457,13 +458,14 @@ function StarPicker({ value, onChange, label }: { value: number; onChange: (n: n
   );
 }
 
-export function ReviewModal({ slug, collegeName, courses, user, onClose }: { slug: string; collegeName: string; courses: string[]; user: SessionUser; onClose: () => void }) {
-  const [course, setCourse] = useState("");
-  const [batch, setBatch] = useState("");
-  const [ratings, setRatings] = useState<Ratings>({ ratingPlacements: 0, ratingFaculty: 0, ratingInfrastructure: 0, ratingCampusLife: 0 });
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const [commenting, setCommenting] = useState<Record<string, boolean>>({});
-  const [body, setBody] = useState("");
+export function ReviewModal({ slug, collegeName, courses, user, existing = null, onClose }: { slug: string; collegeName: string; courses: string[]; user: SessionUser; /** The student's own review, when they are changing it. */ existing?: MyReview | null; onClose: () => void }) {
+  const router = useRouter();
+  const [course, setCourse] = useState(existing?.course ?? "");
+  const [batch, setBatch] = useState(existing?.batch ?? "");
+  const [ratings, setRatings] = useState<Ratings>({ ratingPlacements: existing?.ratingPlacements ?? 0, ratingFaculty: existing?.ratingFaculty ?? 0, ratingInfrastructure: existing?.ratingInfrastructure ?? 0, ratingCampusLife: existing?.ratingCampusLife ?? 0 });
+  const [comments, setComments] = useState<Record<string, string>>({ commentPlacements: existing?.commentPlacements ?? "", commentFaculty: existing?.commentFaculty ?? "", commentInfrastructure: existing?.commentInfrastructure ?? "", commentCampusLife: existing?.commentCampusLife ?? "" });
+  // What the student wrote in the overall box. A review saved without one holds the area comments as its text, so that is not put back.
+  const [body, setBody] = useState(existing && !/^(Placements|Faculty|Infrastructure|Campus life): /.test(existing.body) ? existing.body : "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -479,24 +481,30 @@ export function ReviewModal({ slug, collegeName, courses, user, onClose }: { slu
     else if (years.some((y) => y < 1950 || y > thisYear + 1)) found.batch = `Use years between 1950 and ${thisYear + 1}.`;
     else if (years.length === 2 && years[1] < years[0]) found.batch = "The end year comes after the start year.";
     if (CATEGORIES.every((c) => ratings[c.key] === 0)) found.ratings = "Rate at least one area. The others are optional.";
-    if (body.trim().length < REVIEW_MIN) found.body = `Write at least ${REVIEW_MIN} characters.`;
+    // At least one comment is needed: on any rating, or in the review box.
+    if (![body, ...Object.values(comments)].some((t) => (t ?? "").trim().length >= 3)) found.body = "Please write a comment, in any of the boxes, before you submit.";
     setErrors(found);
     setError(null);
     if (Object.keys(found).length > 0) return;
     start(async () => {
-      const result = await submitReview(slug, { course: course.trim(), batch: batch.trim(), body: body.trim(), ...Object.fromEntries(CATEGORIES.filter((c) => ratings[c.key] > 0).map((c) => [c.key, ratings[c.key]])) as Partial<Ratings>, commentPlacements: comments.commentPlacements?.trim(), commentFaculty: comments.commentFaculty?.trim(), commentInfrastructure: comments.commentInfrastructure?.trim(), commentCampusLife: comments.commentCampusLife?.trim() });
-      if (result.ok) setDone(result.message);
-      else setError(result.message);
+      const payload = { course: course.trim(), batch: batch.trim(), body: body.trim(), ...Object.fromEntries(CATEGORIES.filter((c) => ratings[c.key] > 0).map((c) => [c.key, ratings[c.key]])) as Partial<Ratings>, commentPlacements: comments.commentPlacements?.trim(), commentFaculty: comments.commentFaculty?.trim(), commentInfrastructure: comments.commentInfrastructure?.trim(), commentCampusLife: comments.commentCampusLife?.trim() };
+      const result = existing ? await updateReview(existing.id, slug, payload) : await submitReview(slug, payload);
+      if (result.ok) {
+        setDone(result.message);
+        // The page behind shows the change straight away, with no reload.
+        window.dispatchEvent(new Event("tcp:reviews-changed"));
+        router.refresh();
+      } else setError(result.message);
     });
   };
 
   return (
-    <Shell title="Write a review" subtitle={collegeName} onClose={onClose}>
+    <Shell title={existing ? "Edit your review" : "Write a review"} subtitle={collegeName} onClose={onClose}>
       {done ? (
-        <Done message="Thank you for your review!" note={done} onClose={onClose} />
+        <Done message={existing ? "Your review is updated!" : "Thank you for your review!"} note={done} onClose={onClose} />
       ) : (
         <form onSubmit={submit} noValidate className="space-y-4">
-          <p className="rounded-lg bg-bg-alt px-3 py-2 text-xs text-ink-soft">Posting as <strong className="text-ink">{user.name}</strong>. Our team reads every review before it goes live.</p>
+          <p className="rounded-lg bg-bg-alt px-3 py-2 text-xs text-ink-soft">Posting as <strong className="text-ink">{user.name}</strong>. Your review goes live right away.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id="rv-course" label="Course or programme" error={errors.course}>
               <input id="rv-course" list="rv-courses" maxLength={100} value={course} onChange={(e) => setCourse(e.target.value)} placeholder="e.g. MBA" className={fieldClass(errors.course)} />
@@ -516,33 +524,29 @@ export function ReviewModal({ slug, collegeName, courses, user, onClose }: { slu
                     <span className="text-sm text-ink">{c.label}</span>
                     <StarPicker label={c.label} value={ratings[c.key]} onChange={(n) => setRatings((r) => ({ ...r, [c.key]: n }))} />
                   </div>
-                  {commenting[c.key] || comments[c.comment] ? (
+                  {ratings[c.key] > 0 || comments[c.comment] ? (
                     <textarea
                       aria-label={`Comment on ${c.label} (optional)`}
                       value={comments[c.comment] ?? ""}
                       onChange={(e) => setComments((v) => ({ ...v, [c.comment]: e.target.value }))}
                       rows={2}
                       maxLength={500}
-                      placeholder={`Anything to add about ${c.label.toLowerCase()}? (optional)`}
+                      placeholder={`${ratings[c.key] > 0 ? c.nudge[ratings[c.key] - 1] : `Anything to add about ${c.label.toLowerCase()}?`}`}
                       className="mt-2 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
                     />
-                  ) : (
-                    <button type="button" onClick={() => setCommenting((v) => ({ ...v, [c.key]: true }))} className="mt-1 text-xs font-semibold text-brand hover:underline">
-                      + Add a comment (optional)
-                    </button>
-                  )}
+                  ) : null}
                 </li>
               ))}
             </ul>
             {errors.ratings && <p className="mt-1 text-xs text-red-700">{errors.ratings}</p>}
           </div>
 
-          <Field id="rv-body" label="Your review" error={errors.body} hint={`${body.trim().length} characters. At least ${REVIEW_MIN}.`}>
+          <Field id="rv-body" label="Your review" error={errors.body} >
             <textarea id="rv-body" value={body} onChange={(e) => setBody(e.target.value)} rows={4} maxLength={2000} placeholder="What was it like to study here?" className={fieldClass(errors.body)} />
           </Field>
 
           {error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-800">{error}</p>}
-          <SubmitButton busy={pending} label="Submit review" busyLabel="Submitting…" />
+          <SubmitButton busy={pending} label={existing ? "Save changes" : "Submit review"} busyLabel={existing ? "Saving…" : "Submitting…"} />
         </form>
       )}
     </Shell>

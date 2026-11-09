@@ -18,6 +18,7 @@ import {
   Target,
   TrendingUp,
   Trophy,
+  Type,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -31,10 +32,11 @@ import { CoursesTab, CutoffsTab, PlacementsTab, RankingsTab } from "@/components
 import { CompareTab, FacultyTab, FaqTab, ReviewsTab } from "@/components/admin/college-editor/tab-people";
 import { GalleryTab, VideosTab } from "@/components/admin/college-editor/tab-media";
 import { AwardsTab } from "@/components/admin/college-editor/tab-awards";
+import { PageTextTab } from "@/components/admin/college-editor/tab-pagetext";
 import { NewsTab } from "@/components/admin/college-editor/tab-news";
 import { SeoTab, WrittenTab } from "@/components/admin/college-editor/tab-written";
 import { AdministrativeTab } from "@/components/admin/college-editor/tab-administrative";
-import { cleanRecord, problemsByTab, type TabId } from "@/components/admin/college-editor/validate";
+import { cleanRecord, mediaCount, problemsByTab, type TabId } from "@/components/admin/college-editor/validate";
 import { LivePreview, hasLivePreview } from "@/components/admin/college-editor/live-preview";
 
 /*
@@ -66,6 +68,7 @@ const TABS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "scholarships", label: "Scholarships", icon: Award },
   { id: "news", label: "News", icon: Newspaper },
   { id: "seo", label: "SEO", icon: Search },
+  { id: "pagetext", label: "Page Text", icon: Type },
   // Who looks after this college in the panel. Platform team only; acts at once, outside Save.
   { id: "administrative", label: "Administrative", icon: ShieldCheck },
 ];
@@ -165,6 +168,13 @@ export function CollegeRecordEditor({
       setRecord(cleaned);
       setConfirmingClose(false);
       onSaved?.(cleaned.name, cleaned);
+      // Read it back: what the server holds should be what was sent. If pictures or videos in the written
+      // sections did not come back (say, someone else saved the same college meanwhile), say so.
+      const again = await loadCollegeRecord(slug);
+      if (!("error" in again) && mediaCount(again.detail.tabs) < mediaCount(cleaned.detail.tabs)) {
+        clearFlash();
+        return setError("Saved, but some pictures or videos in the written sections did not stay. Someone else may have saved this college at the same time. Reload it and add them again.");
+      }
       showFlash("ok", `${cleaned.name || "The college"} saved.`);
     });
   };
@@ -205,6 +215,7 @@ export function CollegeRecordEditor({
       case "qna": return <FaqTab {...props} />;
       case "news": return <NewsTab {...props} />;
       case "seo": return <SeoTab {...props} />;
+      case "pagetext": return <PageTextTab {...props} />;
       case "administrative": return <AdministrativeTab slug={slug} institutionType={props.record.institutionType} />;
       case "admissions":
       case "infrastructure":

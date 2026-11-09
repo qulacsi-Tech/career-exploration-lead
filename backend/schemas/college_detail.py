@@ -130,6 +130,68 @@ class AwardItem(BaseModel):
     _image = field_validator("image")(photo_path)
 
 
+RANKING_SECTIONS = ("summary", "all", "awards", "compare")
+
+
+class RankingsPage(BaseModel):
+    """Everything the college's Rankings tab says, and what it shows where. Empty text means the usual wording."""
+
+    heading: str = Field(default="", max_length=140)
+    description: str = Field(default="", max_length=300)
+    # The top row: up to two rankings (empty: the first two, the pinned one first) and the student rating beside them.
+    summaryRankings: list[str] = Field(default_factory=list, max_length=2)
+    showRating: bool = True
+    ratingLabel: str = Field(default="", max_length=40)
+    # The list of every ranking the college is in.
+    showAll: bool = True
+    allTitle: str = Field(default="", max_length=80)
+    # The awards, and the comparison with other colleges (empty peers: the nearest in its category by rank).
+    showAwards: bool = True
+    awardsTitle: str = Field(default="", max_length=80)
+    showCompare: bool = True
+    compareTitle: str = Field(default="", max_length=120)
+    compareDescription: str = Field(default="", max_length=300)
+    comparePeers: list[str] = Field(default_factory=list, max_length=12)
+    # Which section comes first, second and so on.
+    order: list[str] = Field(default_factory=lambda: list(RANKING_SECTIONS))
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("order")
+    @classmethod
+    def _order(cls, value: list[str]) -> list[str]:
+        seen = [k for k in dict.fromkeys(value) if k in RANKING_SECTIONS]
+        return seen + [k for k in RANKING_SECTIONS if k not in seen]
+
+    @field_validator("heading", "description", "ratingLabel", "allTitle", "awardsTitle", "compareTitle", "compareDescription")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return " ".join(value.split())
+
+
+class TabMediaItem(BaseModel):
+    """A picture or a video shown under a written tab (Admissions, Infrastructure, Scholarships)."""
+
+    kind: Literal["image", "video"]
+    src: str = Field(default="", max_length=200)
+    provider: Literal["youtube", "vimeo", ""] = ""
+    videoId: str = Field(default="", max_length=40, pattern=r"^[A-Za-z0-9_-]*$")
+    # A picture's description (read aloud, used by image search) or a video's title.
+    title: str = Field(default="", max_length=200)
+    # Also shown in the college's Gallery.
+    gallery: bool = False
+    model_config = ConfigDict(extra="forbid")
+
+    _src = field_validator("src")(photo_path)
+
+    @model_validator(mode="after")
+    def _complete(self):
+        if self.kind == "image" and not self.src:
+            raise ValueError("a picture needs its image")
+        if self.kind == "video" and not (self.provider and self.videoId):
+            raise ValueError("a video needs a YouTube or Vimeo link")
+        return self
+
+
 class VideoItem(BaseModel):
     title: str = Field(min_length=2, max_length=120)
     provider: Literal["youtube", "vimeo"]
@@ -218,6 +280,12 @@ class CollegeDetail(BaseModel):
     # A banner for each ranking list the college is in, by the list's slug. A list with none shows no banner.
     # Awards the college has won, in the order shown.
     awards: list[AwardItem] = Field(default_factory=list, max_length=40)
+    # The words and layout of the Rankings tab.
+    rankingsPage: RankingsPage = Field(default_factory=RankingsPage)
+    # Headings and descriptions the admin reworded, by key (see lib/page-text.ts on the site). Empty means the usual one.
+    pageText: dict[str, str] = Field(default_factory=dict, max_length=300)
+    # Pictures and videos under each written tab, by the tab's slug.
+    tabMedia: dict[str, list[TabMediaItem]] = Field(default_factory=dict)
     rankingBanners: dict[str, str] = Field(default_factory=dict, max_length=40)
     # A link to the brochure. Empty: the Brochure button opens the enquiry form.
     brochureUrl: str = Field(default="", max_length=300, pattern=r"^(/[^\s]*|https://[^\s]+)?$")
@@ -238,6 +306,32 @@ class CollegeDetail(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     _logo = field_validator("logo")(photo_path)
+
+    @field_validator("tabMedia")
+    @classmethod
+    def _tab_media(cls, value: dict) -> dict:
+        for slug, items in value.items():
+            if slug not in TAB_SLUGS:
+                raise ValueError(f"'{slug}' is not a written section of a college page")
+            if len(items) > 30:
+                raise ValueError(f"{slug}: at most 30 pictures and videos")
+        return value
+
+    @field_validator("pageText")
+    @classmethod
+    def _page_text(cls, value: dict) -> dict:
+        import re
+
+        out = {}
+        for key, text in value.items():
+            if not re.fullmatch(r"[a-zA-Z]+(\.[a-zA-Z]+){1,3}", str(key)):
+                raise ValueError(f"'{key}' is not a place on the college page that can be reworded")
+            text = " ".join(str(text).split())
+            if len(text) > 400:
+                raise ValueError(f"{key}: at most 400 characters")
+            if text:
+                out[str(key)] = text
+        return out
 
     @field_validator("rankingBanners")
     @classmethod

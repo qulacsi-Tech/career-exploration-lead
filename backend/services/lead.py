@@ -61,6 +61,10 @@ class LeadService:
                 label = "application"
             elif (data.source or "") == "college-courses-explore":
                 label = "course exploration"
+            elif (data.source or "") == "college-reviews-explore":
+                label = "review exploration"
+            elif (data.source or "") == "college-replies-explore":
+                label = "review replies exploration"
             college = None
             if lead.college_slug:
                 college = (await self.repo.db.execute(select(College.name).where(College.slug == lead.college_slug))).scalar_one_or_none()
