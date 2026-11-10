@@ -394,7 +394,7 @@ async def pools(_admin: AdminPayload, db: DbSession):
     specialisations = [r.name for r in spec_rows]
     specialisation_courses = {r.name: [slug_to_name[c] for c in (r.course_slugs or [r.course_slug]) if c in slug_to_name] for r in spec_rows}
     # Only colleges the site shows can be pinned as similar.
-    colleges = (await db.execute(select(College.slug, College.name).where(College.status == "published").order_by(College.name))).all()
+    colleges = (await db.execute(select(College.slug, College.name, College.streams, College.stream, College.institution_type, College.city).where(College.status == "published").order_by(College.name))).all()
     in_use = (await db.execute(select(College.approvals, College.tags))).all()
     approvals = sorted({a for row in in_use for a in (row[0] or [])})
     tags = sorted({t for row in in_use for t in (row[1] or [])})
@@ -409,7 +409,16 @@ async def pools(_admin: AdminPayload, db: DbSession):
             # The courses and specialisations that can be taught online, so the college editor can offer them.
             "onlineCourses": sorted({r.name for r in course_rows if r.delivery in ("online", "both")}),
             "onlineSpecialisations": sorted({r.name for r in spec_rows if r.delivery in ("online", "both")}),
-            "colleges": [{"slug": s, "name": n} for s, n in colleges],
+            "colleges": [
+                {
+                    "slug": r.slug,
+                    "name": r.name,
+                    "streams": list(r.streams or ([r.stream] if r.stream else [])),
+                    "institutionType": r.institution_type or "College",
+                    "city": r.city or "",
+                }
+                for r in colleges
+            ],
             "approvals": approvals,
             "tags": tags,
             "states": sorted(INDIA_DISTRICTS),

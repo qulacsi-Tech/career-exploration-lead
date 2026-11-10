@@ -836,17 +836,34 @@ export async function submitLead(
 }
 
 /** Subscribe to the newsletter. */
-export async function subscribeNewsletter(
-  email: string,
-  token: string
-): Promise<{ message: string }> {
+export async function subscribeNewsletter(email: string): Promise<{ message: string }> {
   const res = await fetch(`${API_BASE}/newsletter/subscribe`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
   const json = await res.json().catch(() => null);
   if (!json?.success) throw new Error(json?.error?.message ?? (Array.isArray(json?.detail) ? json.detail[0]?.msg : undefined) ?? "Subscription failed");
+  return json.data;
+}
+
+/** Whether the signed-in account's own email is subscribed. */
+export async function newsletterStatus(token: string): Promise<{ email: string; subscribed: boolean }> {
+  const res = await fetch(`${API_BASE}/newsletter/me`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = await res.json().catch(() => null);
+  if (!json?.success) throw new Error("Could not read the subscription");
+  return json.data;
+}
+
+/** Stop the weekly updates for an address. */
+export async function unsubscribeNewsletter(email: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/newsletter/unsubscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const json = await res.json().catch(() => null);
+  if (!json?.success) throw new Error(json?.error?.message ?? "Could not unsubscribe");
   return json.data;
 }
 
@@ -968,6 +985,56 @@ export type SharedLeadItem = {
 export type LeadSharing = { sponsored: boolean; shared: SharedLeadItem[] };
 export type ShareableLeads = { total: number; items: SharedLeadItem[]; options: { streams: string[]; cities: string[]; types: string[] } };
 export type ShareLeadsFilters = { stream?: string; city?: string; type?: string; q?: string };
+export type SponsoredCollege = { slug: string; name: string; city: string; state: string; stream: string; institutionType: string; sharedCount: number };
+
+export type Subscriber = { id: string; email: string; name: string; account: "registered" | "subscriber" | "none"; active: boolean; subscribedAt: string | null };
+
+export async function adminSubscribers(
+  token: string,
+  params: { page?: number; limit?: number; q?: string; status?: string } = {},
+): Promise<{ data: Subscriber[]; meta: PaginationMeta }> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.q) qs.set("q", params.q);
+  if (params.status) qs.set("status", params.status);
+  const res = await fetch(`${API_BASE}/admin/subscribers${qs.toString() ? `?${qs}` : ""}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: Subscriber[]; meta: PaginationMeta }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    throw new ApiError(res.status, (json && json.success === false ? json.error?.message : undefined) ?? `Subscribers API ${res.status}`);
+  }
+  return { data: json.data, meta: json.meta };
+}
+
+export async function adminSetSubscriber(token: string, id: string, active: boolean) {
+  return adminRequest<{ message: string }>(token, "PATCH", `/admin/subscribers/${encodeURIComponent(id)}`, { active });
+}
+
+export async function adminRemoveSubscriber(token: string, id: string) {
+  return adminRequest<{ message: string }>(token, "DELETE", `/admin/subscribers/${encodeURIComponent(id)}`);
+}
+
+export async function adminSponsoredColleges(
+  token: string,
+  params: { page?: number; limit?: number; q?: string } = {},
+): Promise<{ data: SponsoredCollege[]; meta: PaginationMeta }> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.q) qs.set("q", params.q);
+  const res = await fetch(`${API_BASE}/admin/sponsored-colleges${qs.toString() ? `?${qs}` : ""}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = (await res.json().catch(() => null)) as
+    | { success: true; data: SponsoredCollege[]; meta: PaginationMeta }
+    | { success: false; error?: { message?: string } }
+    | null;
+  if (!res.ok || !json || json.success !== true) {
+    throw new ApiError(res.status, (json && json.success === false ? json.error?.message : undefined) ?? `Sponsored colleges API ${res.status}`);
+  }
+  return { data: json.data, meta: json.meta };
+}
 
 export async function adminLeadSharing(token: string, slug: string) {
   return adminRequest<LeadSharing>(token, "GET", `/admin/colleges/${encodeURIComponent(slug)}/lead-sharing`);
@@ -978,7 +1045,7 @@ export async function adminShareableLeads(token: string, slug: string, filters: 
   return adminRequest<ShareableLeads>(token, "GET", `/admin/colleges/${encodeURIComponent(slug)}/shareable-leads${qs.toString() ? `?${qs}` : ""}`);
 }
 
-export async function adminShareLeads(token: string, slug: string, body: ShareLeadsFilters & { leadIds?: string[]; count?: number }) {
+export async function adminShareLeads(token: string, slug: string, body: ShareLeadsFilters & { leadIds?: string[]; count?: number; all?: boolean }) {
   return adminRequest<{ shared: number; skipped: number }>(token, "POST", `/admin/colleges/${encodeURIComponent(slug)}/share-leads`, body);
 }
 
@@ -2873,7 +2940,7 @@ export type CollegePools = {
   /** Courses and specialisations that can be taught online: the ones the editor offers an online option for. */
   onlineCourses?: string[];
   onlineSpecialisations?: string[];
-  colleges: { slug: string; name: string }[];
+  colleges: { slug: string; name: string; streams?: string[]; institutionType?: string; city?: string }[];
   approvals: string[];
   tags: string[];
   states: string[];

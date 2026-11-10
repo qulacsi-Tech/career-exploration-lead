@@ -72,6 +72,8 @@ import {
   adminShareableLeads,
   adminShareLeads,
   adminUnshareLead,
+  adminSetSubscriber,
+  adminRemoveSubscriber,
   type LeadSharing,
   type ShareableLeads,
   type ShareLeadsFilters,
@@ -1839,7 +1841,7 @@ export async function loadShareableLeads(slug: string, filters: ShareLeadsFilter
 }
 
 /** Shares leads with the sponsored college: the ones picked, or the newest N that match the filters. */
-export async function shareLeads(slug: string, body: ShareLeadsFilters & { leadIds?: string[]; count?: number }): Promise<{ shared: number; skipped: number } | { error: string }> {
+export async function shareLeads(slug: string, body: ShareLeadsFilters & { leadIds?: string[]; count?: number; all?: boolean }): Promise<{ shared: number; skipped: number } | { error: string }> {
   const token = await requireAdminToken();
   try {
     const result = await adminShareLeads(token, slug, body);
@@ -1849,6 +1851,16 @@ export async function shareLeads(slug: string, body: ShareLeadsFilters & { leadI
     if (err instanceof ApiError && err.status === 401) redirect("/login");
     return { error: err instanceof ApiError ? err.message : "Could not share the leads. Try again." };
   }
+}
+
+/** Unsubscribes a newsletter address, or subscribes it again. */
+export async function setSubscriberActive(id: string, active: boolean): Promise<AdminActionResult> {
+  return attempt("/admin/leads/subscribers", (token) => adminSetSubscriber(token, id, active));
+}
+
+/** Removes a newsletter address from the list. */
+export async function removeSubscriber(id: string): Promise<AdminActionResult> {
+  return attempt("/admin/leads/subscribers", (token) => adminRemoveSubscriber(token, id));
 }
 
 /** Takes a shared lead back from the college. */

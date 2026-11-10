@@ -43,6 +43,12 @@ function PriorityDialog({ links, onClose }: { links: PriorityLink[]; onClose: ()
   const [error, setError] = useState("");
   const [truncated, setTruncated] = useState(false);
   const [saving, startSave] = useTransition();
+  const [saved, setSaved] = useState(false);
+  // Any edit after a save clears the "Saved" note.
+  const editRows: typeof setRows = (next) => {
+    setSaved(false);
+    setRows(next);
+  };
 
   // Every filter on the left of the college listing, each with its values: a priority can be set for any of them.
   const [filters, setFilters] = useState<PriorityScopeGroup[]>([]);
@@ -75,6 +81,7 @@ function PriorityDialog({ links, onClose }: { links: PriorityLink[]; onClose: ()
     let current = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(null);
+    setSaved(false);
     setError("");
     const done = (list: Row[], cut = false) => {
       if (!current) return;
@@ -116,8 +123,9 @@ function PriorityDialog({ links, onClose }: { links: PriorityLink[]; onClose: ()
             ? await saveScopePriorities(scope.slice(FILTER.length), Object.fromEntries(rows.filter((r) => r.value).map((r) => [r.slug, Number(r.value)])))
             : await saveMenuPriorities(scope, Object.fromEntries(rows.filter((r) => r.value).map((r) => [r.slug, Number(r.value)])));
       if ("error" in result) return setError(result.error);
+      // The dialog stays open after saving; only the user closes it.
+      setSaved(true);
       router.refresh();
-      onClose();
     });
   };
 
@@ -130,7 +138,7 @@ function PriorityDialog({ links, onClose }: { links: PriorityLink[]; onClose: ()
       description="A priority is a place in the list: 1 is the first place, 2 the second. Several institutes can share a number: on every visit one of them takes that place and the others follow right after. A priority never goes below the places that exist, so 9 is ninth only if eight others fill the places before it. Institutes with no number fill the rest by NIRF rank."
       footer={
         <>
-          <button type="button" onClick={onClose} className={ghostButton}>Cancel</button>
+          <button type="button" onClick={onClose} className={ghostButton}>{saved ? "Close" : "Cancel"}</button>
           <button type="button" onClick={save} disabled={!rows || saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-50">
             {saving ? "Saving…" : "Save priorities"}
           </button>
@@ -165,18 +173,19 @@ function PriorityDialog({ links, onClose }: { links: PriorityLink[]; onClose: ()
           {scope === DEFAULT
             ? "The default priority of a college applies in every list that has no priority of its own."
             : isFilter
-              ? `These apply when a visitor filters the college list by “${filterLabel}”. They come before the default priority, and a more specific filter (course, specialisation, ranking) wins over a broader one.`
+              ? `These apply when a visitor filters the college list by “${filterLabel}”. They come first, and the colleges without a number here follow the order of the broader filters (category, then the default priority). A more specific filter (city, course, specialisation, ranking) is placed ahead of a broader one.`
               : `These apply when a visitor opens “${link?.label ?? ""}” from the header menu, and come before the default priority.`}
         </p>
 
         {error && <p role="alert" className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
+        {saved && !error && <p role="status" className="rounded-lg bg-green-50 px-4 py-2.5 text-sm text-green-800">Priorities saved. You can keep editing or close this window.</p>}
 
         {!rows && !error ? (
           <p className="text-sm text-ink-soft">Loading the institutes…</p>
         ) : rows && rows.length === 0 ? (
           <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">No published institute is under this link right now.</p>
         ) : rows ? (
-          <PriorityAssigner rows={rows} setRows={setRows} showRank={scope === DEFAULT || isFilter} truncated={truncated} />
+          <PriorityAssigner rows={rows} setRows={editRows} showRank={scope === DEFAULT || isFilter} truncated={truncated} />
         ) : null}
       </div>
     </AdminModal>

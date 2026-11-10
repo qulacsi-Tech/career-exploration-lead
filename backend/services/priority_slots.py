@@ -63,6 +63,45 @@ def arrange(order: list[str], priority: dict[str, int], seed: Optional[int] = No
     return out
 
 
+def compact(order: list[str], priority: dict[str, int], seed: Optional[int] = None) -> list[str]:
+    """Put the colleges that have a priority first, in priority order, with no gaps: priorities 3, 7 and 20 among
+    the colleges of this list become first, second and third. Colleges sharing a number are shuffled among
+    themselves. Everyone else follows in the order they already had."""
+    rng = random.Random(seed)
+    groups: dict[int, list[str]] = {}
+    for slug in order:
+        n = priority.get(slug)
+        if n is not None:
+            groups.setdefault(int(n), []).append(slug)
+    if not groups:
+        return list(order)
+    out: list[str] = []
+    for n in sorted(groups):
+        members = groups[n][:]
+        rng.shuffle(members)
+        out.extend(members)
+    promoted = set(out)
+    return out + [slug for slug in order if slug not in promoted]
+
+
+def arrange_layers(order: list[str], layers: list[tuple[dict[str, int], bool]], seed: Optional[int] = None) -> list[str]:
+    """Apply the priorities of every level, from the broadest to the most specific.
+
+    `layers` is [(slug -> number, is_slot_layer)], broadest first (the default priority, then the filters in use, then
+    a header-menu link). Each level reorders what the broader ones produced, so the order of a parent level (say the
+    category) is kept inside a narrower list (the same category in one city), and the numbers set for the narrower
+    level come first. The narrowest level keeps its numbers as places in the list (`arrange`); a broader level is
+    compacted (`compact`), because most of its colleges are not in the narrower list.
+    """
+    out = list(order)
+    for i, (priority, is_slot) in enumerate(layers):
+        if not priority:
+            continue
+        layer_seed = None if seed is None else seed + i
+        out = arrange(out, priority, layer_seed) if is_slot else compact(out, priority, layer_seed)
+    return out
+
+
 def scope_keys(params) -> list[str]:
     """The scopes (`<filter>=<value>`) a listing request falls under, most specific first."""
     keys: list[str] = []

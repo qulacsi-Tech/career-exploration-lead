@@ -80,6 +80,16 @@ class AuthService:
     async def register(self, data: RegisterSchema) -> AuthResponseSchema:
         email = str(data.email).lower()
         existing = await self.repo.find_by_email(email)
+        if existing and existing.auth_provider == "newsletter" and not existing.password_hash and not existing.google_sub:
+            # The account was made when this address subscribed to the newsletter. Registering completes it.
+            existing.name = data.name
+            existing.password_hash = hash_password(data.password)
+            existing.auth_provider = "password"
+            existing.phone = data.phone or existing.phone
+            existing.marketing_consent = existing.marketing_consent or data.marketingConsent
+            existing.last_login_at = datetime.now(timezone.utc)
+            await self.repo.save(existing)
+            return _auth_response(existing, is_new=True)
         if existing:
             raise ConflictError("EMAIL_ALREADY_EXISTS", "An account with this email already exists.")
 
@@ -105,6 +115,8 @@ class AuthService:
             minutes = max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
             raise AppException(429, "TOO_MANY_ATTEMPTS", f"Too many failed sign-in attempts. Try again in {minutes} minute{'s' if minutes != 1 else ''}.")
         if user and not user.password_hash:
+            if user.auth_provider == "newsletter":
+                raise UnauthorizedError("This account has no password yet. Use “Forgot password” to set one, or register with this email.")
             raise UnauthorizedError("This account uses Google sign-in. Choose “Continue with Google”.")
         if not user or not verify_password(data.password, user.password_hash):
             if user:

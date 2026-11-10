@@ -254,8 +254,9 @@ class CollegeFilterParams(BaseModel):
     exclude_slugs: Optional[List[str]] = None
     # A header-menu link's own priorities, slug -> 1, 2, 3...: those colleges come first, in that order.
     priority: Optional[dict[str, int]] = None
-    # Priority as a place in the list (see services/priority_slots.py): slug -> place, for the popularity order.
-    # When set, the list is arranged in code and the database does not order by priority.
-    slot_priority: Optional[dict[str, int]] = None
+    # Priority as a place in the list (see services/priority_slots.py), for the popularity order: one
+    # (slug -> number, is_slot_layer) per level, broadest first. When set, the list is arranged in code
+    # and the database does not order by priority.
+    slot_priority: Optional[list[tuple[dict[str, int], bool]]] = None
     # Decides who takes a place several colleges share; the same seed keeps the pages of one visit together.
     seed: Optional[int] = None

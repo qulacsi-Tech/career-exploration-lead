@@ -45,6 +45,7 @@ class UserRepository:
         google_sub: Optional[str] = None,
         avatar_url: Optional[str] = None,
         email_verified: bool = False,
+        auth_provider: Optional[str] = None,
     ) -> User:
         now = datetime.now(timezone.utc)
         user = User(
@@ -54,7 +55,7 @@ class UserRepository:
             password_hash=password_hash,
             phone=phone,
             role=UserRole.USER,
-            auth_provider="google" if google_sub else "password",
+            auth_provider=auth_provider or ("google" if google_sub else "password"),
             google_sub=google_sub,
             avatar_url=avatar_url,
             is_verified=email_verified,

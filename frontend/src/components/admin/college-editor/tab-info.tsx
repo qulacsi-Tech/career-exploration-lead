@@ -7,7 +7,6 @@ import { RangeField } from "@/components/admin/range-field";
 import { CategoryTicks } from "@/components/admin/college-editor/course-picker";
 import { Card, ChipInput, Labelled, NumberInput, SelectInput, TextArea, TextInput, inputCls } from "@/components/admin/college-editor/shared";
 import { TAG_MAX_CHARS, YEAR_MIN } from "@/lib/college-rules";
-import { ShareLeadsModal } from "@/components/admin/share-leads-modal";
 
 export type EditorProps = {
   record: CollegeRecord;
@@ -30,7 +29,6 @@ const BADGES = [
 /** College Info: who the college is, what the masthead shows, and its photos. */
 export function InfoTab({ record, update, pools, slug, mode = "full" }: EditorProps) {
   const set = <K extends keyof CollegeRecord>(key: K, value: CollegeRecord[K]) => update((r) => ({ ...r, [key]: value }));
-  const [sharing, setSharing] = useState(false);
   const detail = (patch: Partial<CollegeRecord["detail"]>) => update((r) => ({ ...r, detail: { ...r.detail, ...patch } }));
 
   return (
@@ -86,23 +84,14 @@ export function InfoTab({ record, update, pools, slug, mode = "full" }: EditorPr
           )}
 
           {mode === "full" && (
-            <Card title="Sponsorship" description="A sponsored college receives leads from the platform team, which you choose and share with it in bulk. Its admin sees them in their Leads inbox.">
+            <Card title="Sponsorship" description="A sponsored college receives leads from the platform team. Choose and share them from Leads, then Sponsored leads.">
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-bg-alt px-4 py-3 transition hover:border-brand">
                 <input type="checkbox" checked={!!record.isSponsored} onChange={(e) => set("isSponsored", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]" />
                 <span>
                   <span className="block text-sm font-semibold text-ink">Sponsored college</span>
-                  <span className="block text-xs text-ink-faint">Tick it and save the college, then share leads below.</span>
+                  <span className="block text-xs text-ink-faint">Tick it and save. The college then appears under Leads, Sponsored leads.</span>
                 </span>
               </label>
-              {record.isSponsored && (
-                <div className="flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={() => setSharing(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
-                    Share leads with this college
-                  </button>
-                  <span className="text-xs text-ink-faint">Pick leads one by one or share the newest few, filtered by stream, city or type.</span>
-                </div>
-              )}
-              {sharing && <ShareLeadsModal slug={slug} name={record.name} onClose={() => setSharing(false)} />}
             </Card>
           )}
 

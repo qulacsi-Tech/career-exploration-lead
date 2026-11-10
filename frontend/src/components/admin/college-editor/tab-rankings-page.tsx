@@ -95,7 +95,6 @@ function PartRow({
 export function RankingsPageCard({ record, update, pools, slug, entries, pinned }: EditorProps & { entries: CollegeRankingEntry[]; /** The slug of the pinned ranking list. */ pinned?: string }) {
   const cfg: RankingsPageConfig = { ...DEFAULT_RANKINGS_PAGE, ...(record.detail.rankingsPage ?? {}) };
   const set = (patch: Partial<RankingsPageConfig>) => update((r) => ({ ...r, detail: { ...r.detail, rankingsPage: { ...DEFAULT_RANKINGS_PAGE, ...(r.detail.rankingsPage ?? {}), ...patch } } }));
-  const [pick, setPick] = useState("");
 
   // The top row holds at most two rankings. With none chosen it shows the first two, the pinned one first.
   const defaults = [...entries].sort((a, b) => Number(b.slug === (pinned ?? "")) - Number(a.slug === (pinned ?? ""))).slice(0, MAX_TOP).map((e) => e.slug);
@@ -109,7 +108,19 @@ export function RankingsPageCard({ record, update, pools, slug, entries, pinned 
 
   const peers = cfg.comparePeers;
   const nameOf = (s: string) => pools.colleges.find((c) => c.slug === s)?.name ?? s;
-  const peerOptions = pools.colleges.filter((c) => c.slug !== slug && !peers.includes(c.slug));
+  // The picker starts on colleges of this college's own category and type; search and the two switches widen it.
+  const [query, setQuery] = useState("");
+  const [sameCategory, setSameCategory] = useState(true);
+  const [sameType, setSameType] = useState(true);
+  const myStreams = record.streams ?? [];
+  const myType = record.institutionType ?? "College";
+  const needle = query.trim().toLowerCase();
+  const shownOptions = pools.colleges.filter((c) => {
+    if (c.slug === slug || peers.includes(c.slug)) return false;
+    if (sameCategory && myStreams.length > 0 && !(c.streams ?? []).some((s) => myStreams.includes(s))) return false;
+    if (sameType && (c.institutionType ?? "College") !== myType) return false;
+    return !needle || `${c.name} ${c.city ?? ""}`.toLowerCase().includes(needle);
+  });
 
   const move = (key: RankingsSection, by: -1 | 1) => {
     const order = [...cfg.order];
@@ -160,34 +171,67 @@ export function RankingsPageCard({ record, update, pools, slug, entries, pinned 
         <div>
           <p className="text-sm font-semibold text-ink">Compare with <span className="font-normal text-ink-faint">(optional)</span></p>
           <p className="text-xs text-ink-faint">Choose colleges, or leave it empty and the nearest ones in its category are used. Only colleges with a rank are shown.</p>
-          {peers.length > 0 && (
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {peers.map((s) => (
-                <li key={s} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-bg-alt/60 py-1 pl-3 pr-1.5 text-sm text-ink">
-                  {nameOf(s)}
-                  <button type="button" onClick={() => set({ comparePeers: peers.filter((x) => x !== s) })} aria-label={`Remove ${nameOf(s)}`} className="rounded-full p-1 text-ink-faint transition hover:bg-line hover:text-red-700">
-                    <X className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {peers.length < 12 && (
-            <select
-              aria-label="Add a college to compare with"
-              value={pick}
-              onChange={(e) => {
-                if (e.target.value) set({ comparePeers: [...peers, e.target.value] });
-                setPick("");
-              }}
-              className="mt-2 w-full max-w-sm rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
-            >
-              <option value="">Add a college…</option>
-              {peerOptions.map((c) => (
-                <option key={c.slug} value={c.slug}>{c.name}</option>
-              ))}
-            </select>
-          )}
+          <div className="mt-3 grid gap-6 md:grid-cols-2">
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                <label className="flex cursor-pointer items-center gap-1.5 text-ink-soft">
+                  <input type="checkbox" checked={sameCategory} onChange={(e) => setSameCategory(e.target.checked)} className="h-3.5 w-3.5 shrink-0 accent-[var(--color-brand)]" />
+                  Same category{myStreams.length > 0 ? ` (${myStreams.join(", ")})` : ""}
+                </label>
+                <label className="flex cursor-pointer items-center gap-1.5 text-ink-soft">
+                  <input type="checkbox" checked={sameType} onChange={(e) => setSameType(e.target.checked)} className="h-3.5 w-3.5 shrink-0 accent-[var(--color-brand)]" />
+                  Only {myType === "University" ? "universities" : "colleges"}
+                </label>
+              </div>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name or city…"
+                aria-label="Search colleges to compare with"
+                className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
+              />
+              {peers.length >= 12 ? (
+                <p className="mt-1.5 rounded-lg border border-line bg-bg-alt/50 px-3 py-2 text-xs text-ink-faint">You can compare with up to 12 colleges. Remove one to add another.</p>
+              ) : (
+                <ul className="mt-1.5 max-h-72 overflow-y-auto rounded-lg border border-line bg-surface" role="listbox" aria-label="Colleges to compare with">
+                  {shownOptions.length === 0 ? (
+                    <li className="px-3 py-2 text-xs text-ink-faint">No college matches. Try clearing a filter.</li>
+                  ) : (
+                    shownOptions.map((c) => (
+                      <li key={c.slug}>
+                        <button
+                          type="button"
+                          onClick={() => set({ comparePeers: [...peers, c.slug] })}
+                          className="flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm text-ink transition hover:bg-brand-soft"
+                        >
+                          <span className="min-w-0 truncate">{c.name}</span>
+                          {c.city && <span className="shrink-0 text-xs text-ink-faint">{c.city}</span>}
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="mb-2 text-xs font-semibold text-ink-soft">Compared colleges ({peers.length}/12)</p>
+              {peers.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-line px-3 py-6 text-center text-xs text-ink-faint">None chosen yet. Pick colleges from the list on the left.</p>
+              ) : (
+                <ul className="max-h-80 space-y-1.5 overflow-y-auto">
+                  {peers.map((s) => (
+                    <li key={s} className="flex items-center justify-between gap-2 rounded-lg border border-line bg-bg-alt/60 py-1.5 pl-3 pr-1.5 text-sm text-ink">
+                      <span className="min-w-0 truncate">{nameOf(s)}</span>
+                      <button type="button" onClick={() => set({ comparePeers: peers.filter((x) => x !== s) })} aria-label={`Remove ${nameOf(s)}`} className="shrink-0 rounded-full p-1 text-ink-faint transition hover:bg-line hover:text-red-700">
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       </>
     ),

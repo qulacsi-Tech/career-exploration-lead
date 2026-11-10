@@ -4,8 +4,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import ConflictError
 from repositories.lead import LeadRepository, NewsletterRepository
+from repositories.user import UserRepository
 from schemas.lead import LeadCreateSchema, LeadResponseSchema, NewsletterResponseSchema
 
 THANKS = "Thank you! We will call you within 24 hours."
@@ -108,16 +108,48 @@ class LeadService:
 class NewsletterService:
     def __init__(self, db: AsyncSession):
         self.repo = NewsletterRepository(db)
+        self.users = UserRepository(db)
 
     async def subscribe(self, email: str) -> NewsletterResponseSchema:
+        """Adds the address to the weekly updates and makes sure it has an account.
+
+        Anyone can subscribe, signed in or not. An address with no account gets one, with no password: the owner
+        sets one with "Forgot password" or by registering with the same email (see AuthService.register).
+        """
+        email = email.strip().lower()
+        await self._ensure_account(email)
         existing = await self.repo.find_by_email(email)
         if existing:
             if existing.is_active:
-                raise ConflictError("ALREADY_SUBSCRIBED", "This email is already subscribed.")
-            # Reactivate silently
-            existing.is_active = True
-            from core.database import AsyncSessionLocal  # avoid circular at module level
+                return NewsletterResponseSchema(message="You are already subscribed.")
+            await self.repo.reactivate(existing)  # subscribed again after leaving
             return NewsletterResponseSchema(message="Subscribed successfully.")
 
         await self.repo.create(email=email)
         return NewsletterResponseSchema(message="Subscribed successfully.")
+
+    async def _ensure_account(self, email: str) -> None:
+        now = datetime.now(timezone.utc)
+        user = await self.users.find_by_email(email)
+        if user is None:
+            await self.users.create(
+                name=email.split("@")[0][:200] or "Subscriber",
+                email=email,
+                password_hash=None,
+                marketing_consent=True,
+                auth_provider="newsletter",
+            )
+            return
+        # An existing account that subscribes has agreed to hear from us.
+        if not user.marketing_consent:
+            user.marketing_consent = True
+            user.consent_at = now
+            await self.users.save(user)
+
+    async def unsubscribe(self, email: str) -> NewsletterResponseSchema:
+        """Stops the weekly updates for the address. The record stays, marked unsubscribed, so the team can see it."""
+        existing = await self.repo.find_by_email(email.strip().lower())
+        if existing and existing.is_active:
+            await self.repo.set_active(existing, False)
+        # Said the same whether or not the address was on the list, so the endpoint cannot be used to find out.
+        return NewsletterResponseSchema(message="You have been unsubscribed.")

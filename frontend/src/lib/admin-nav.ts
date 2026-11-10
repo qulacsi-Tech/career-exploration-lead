@@ -103,6 +103,10 @@ export const adminNav: AdminNavSection[] = [
     icon: "leads",
     items: [
       { label: "Inbox", href: "/admin/leads", phase: 1, badge: "leads" },
+      // Sponsored colleges, and which leads the team gives each of them.
+      { label: "Sponsored leads", href: "/admin/leads/sponsored", phase: 1 },
+      // Emails entered in the site footer's Subscribe box.
+      { label: "Subscribed emails", href: "/admin/leads/subscribers", phase: 1 },
       { label: "Visitor Analytics", href: "/admin/analytics", phase: 1 },
     ],
   },

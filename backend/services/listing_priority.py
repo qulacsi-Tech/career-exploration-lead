@@ -34,26 +34,26 @@ def params_of_scope(scope: str) -> dict:
     return {}
 
 
-async def resolve_priorities(db, params) -> dict[str, int]:
-    """slug -> the place that college is promoted to for this request. Empty when nothing is promoted."""
-    merged: dict[str, int] = {}
+async def resolve_priorities(db, params) -> list[tuple[dict[str, int], bool]]:
+    """The priority levels that apply to this request, broadest first: [(slug -> number, is_slot_layer)].
 
-    # 1. The header-menu link's own priorities.
-    for slug, n in (params.priority or {}).items():
-        merged.setdefault(slug, n)
-
-    # 2. The priorities set for the filters in use, the most specific filter first.
-    keys = scope_keys(params)
+    The default priority, then the priorities of the filters in use (the broadest filter first, the most specific
+    last), then the header-menu link's own. Each level reorders what the broader ones produced (see
+    `arrange_layers`). The narrowest level keeps its numbers as places in the list; broader ones are compacted.
+    Empty when nothing is promoted."""
+    keys = scope_keys(params)  # most specific first
+    by_scope: dict[str, dict[str, int]] = {}
     if keys:
         rows = (await db.execute(select(ListingPriority.scope, ListingPriority.college_slug, ListingPriority.priority).where(ListingPriority.scope.in_(keys)))).all()
-        by_scope: dict[str, dict[str, int]] = {}
         for scope, slug, n in rows:
             by_scope.setdefault(scope, {})[slug] = n
-        for key in keys:
-            for slug, n in by_scope.get(key, {}).items():
-                merged.setdefault(slug, n)
+    default = {slug: n for slug, n in (await db.execute(select(College.slug, College.priority).where(College.priority.is_not(None)))).all()}
 
-    # 3. The college's default priority.
-    for slug, n in (await db.execute(select(College.slug, College.priority).where(College.priority.is_not(None)))).all():
-        merged.setdefault(slug, n)
-    return merged
+    layers: list[tuple[dict[str, int], bool]] = [(default, False)]
+    layers += [(by_scope.get(key, {}), False) for key in reversed(keys)]
+    menu = dict(params.priority or {})
+    layers.append((menu, False))
+    # The narrowest level in play keeps its numbers as places: the menu link, else the most specific filter, else the default.
+    slot = len(layers) - 1 if params.priority else (len(layers) - 2 if keys else 0)
+    layers = [(p, i == slot) for i, (p, _) in enumerate(layers)]
+    return layers if any(p for p, _ in layers) else []

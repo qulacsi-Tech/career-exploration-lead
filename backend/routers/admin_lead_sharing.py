@@ -18,9 +18,11 @@ from core.dependencies import AdminPayload, DbSession
 from core.exceptions import ConflictError, NotFoundError, ValidationError
 from models.college import College
 from models.lead import Lead, LeadShare, LeadType
-from schemas.common import SuccessResponse
+from schemas.common import ListResponse, Meta, SuccessResponse
 
 router = APIRouter(prefix="/admin/colleges", tags=["admin"])
+# The list of sponsored colleges lives on its own path, so it never clashes with /admin/colleges/{slug}.
+list_router = APIRouter(prefix="/admin/sponsored-colleges", tags=["admin"])
 
 MAX_PER_SHARE = 500
 PAGE = 100
@@ -75,6 +77,38 @@ def _available(college: College, stream: str, city: str, kind: str, q: str):
         like = f"%{q.strip()}%"
         conditions.append(or_(Lead.name.ilike(like), Lead.phone.ilike(like), Lead.email.ilike(like), Lead.message.ilike(like)))
     return conditions
+
+
+@list_router.get("", response_model=ListResponse[dict])
+async def sponsored_colleges(
+    _admin: AdminPayload,
+    db: DbSession,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    q: str = Query("", max_length=100),
+):
+    """The sponsored colleges, a page at a time, with how many leads each has been given. `q` searches name, city, state and category."""
+    conditions = [College.is_sponsored.is_(True)]
+    if q.strip():
+        like = f"%{q.strip()}%"
+        conditions.append(or_(College.name.ilike(like), College.city.ilike(like), College.state.ilike(like), College.stream.ilike(like)))
+    total = (await db.execute(select(func.count()).select_from(College).where(*conditions))).scalar_one()
+    rows = (
+        await db.execute(
+            select(College.slug, College.name, College.city, College.state, College.stream, College.institution_type, func.count(LeadShare.lead_id))
+            .outerjoin(LeadShare, LeadShare.college_id == College.id)
+            .where(*conditions)
+            .group_by(College.id)
+            .order_by(College.name, College.id)
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
+    ).all()
+    data = [
+        {"slug": r[0], "name": r[1], "city": r[2] or "", "state": r[3] or "", "stream": r[4] or "", "institutionType": r[5] or "College", "sharedCount": int(r[6])}
+        for r in rows
+    ]
+    return ListResponse[dict](data=data, meta=Meta(total=int(total), page=page, limit=limit, pages=max(1, -(-int(total) // limit))))
 
 
 @router.get("/{slug}/lead-sharing", response_model=SuccessResponse[dict])
@@ -133,6 +167,8 @@ class ShareBody(BaseModel):
     city: str = Field(default="", max_length=100)
     type: Literal["", "callback", "counselling", "brochure", "enquiry"] = ""
     q: str = Field(default="", max_length=100)
+    # Every lead that matches the filters, not only the newest N.
+    all: bool = False
     model_config = ConfigDict(extra="forbid")
 
 
@@ -140,7 +176,7 @@ class ShareBody(BaseModel):
 async def share_leads(slug: str, data: ShareBody, admin: AdminPayload, db: DbSession):
     """Shares leads with the college in bulk, and tells its admin."""
     college = await _sponsored(db, slug)
-    if not data.leadIds and not data.count:
+    if not data.leadIds and not data.count and not data.all:
         raise ValidationError("Choose the leads to share, or how many.")
 
     base = _available(college, data.stream, data.city, data.type, data.q)
@@ -151,7 +187,8 @@ async def share_leads(slug: str, data: ShareBody, admin: AdminPayload, db: DbSes
             raise ValidationError("leadIds: not valid ids.") from exc
         picked = (await db.execute(select(Lead.id).where(*_available(college, "", "", "", ""), Lead.id.in_(wanted)))).scalars().all()
     else:
-        picked = (await db.execute(select(Lead.id).where(*base).order_by(Lead.created_at.desc()).limit(data.count))).scalars().all()
+        query = select(Lead.id).where(*base).order_by(Lead.created_at.desc())
+        picked = (await db.execute(query if data.all else query.limit(data.count))).scalars().all()
 
     sharer = uuid.UUID(admin["sub"]) if admin.get("sub") else None
     for lead_id in picked:

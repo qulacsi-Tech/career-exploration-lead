@@ -50,7 +50,7 @@ export function ShareLeadsModal({ slug, name, onClose }: { slug: string; name: s
 
         {sharing && !sharing.sponsored ? (
           <p className="rounded-xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-soft">
-            This college is not marked as sponsored yet. Tick <strong>Sponsored college</strong> on College Info, save, and then share leads.
+            This college is not marked as sponsored yet. Tick <strong>Sponsored college</strong> on the college’s Info tab and save it.
           </p>
         ) : tab === "share" ? (
           <ShareTab
@@ -118,7 +118,7 @@ function ShareTab({ slug, onShared, onError }: { slug: string; onShared: (count:
     return next;
   });
 
-  const run = (payload: { leadIds?: string[]; count?: number }) =>
+  const run = (payload: { leadIds?: string[]; count?: number; all?: boolean }) =>
     start(async () => {
       const result = await shareLeads(slug, { ...payload, ...filters });
       if ("error" in result) return onError(result.error);
@@ -158,6 +158,16 @@ function ShareTab({ slug, onShared, onError }: { slug: string; onShared: (count:
           <p className="mt-1 text-xs text-ink-soft">leads available to share{filters.stream || filters.city || filters.type || filters.q ? " (with these filters)" : ""}</p>
         </div>
         <div className="ml-auto flex flex-wrap items-end gap-2">
+          <button
+            type="button"
+            disabled={pending || loading || available === 0}
+            onClick={() => {
+              if (window.confirm(`Share all ${available} matching ${available === 1 ? "lead" : "leads"} with this college?`)) run({ all: true });
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand-soft disabled:opacity-50"
+          >
+            <Send className="h-4 w-4" /> Share all {available > 0 && !loading ? available : ""}
+          </button>
           <label className="text-xs font-semibold text-ink">
             Share the newest
             <input value={count} onChange={(e) => setCount(e.target.value.replace(/\D/g, "").slice(0, 3))} inputMode="numeric" placeholder="e.g. 50" className="ml-2 w-24 rounded-lg border border-line bg-bg px-3 py-2 text-sm font-normal text-ink focus:border-brand focus:outline-none" />

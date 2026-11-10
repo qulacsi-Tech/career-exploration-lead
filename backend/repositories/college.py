@@ -15,7 +15,7 @@ from models.cutoff import Cutoff
 from models.placement import Placement
 from models.ranking import RankingEntry, RankingList
 from models.review import Review
-from services.priority_slots import arrange
+from services.priority_slots import arrange_layers
 from schemas.college import CollegeFilterParams
 
 
@@ -219,7 +219,7 @@ class CollegeRepository:
         if params.slot_priority and params.sort == "popularity":
             # Priority is a place in the list, so the whole list is put in order first and then cut into pages.
             ordered = (await self.db.execute(_apply_filters(select(College.slug), params))).scalars().all()
-            arranged = arrange(list(ordered), params.slot_priority, params.seed)
+            arranged = arrange_layers(list(ordered), params.slot_priority, params.seed)
             offset = (params.page - 1) * params.limit
             wanted = arranged[offset : offset + params.limit]
             if not wanted:

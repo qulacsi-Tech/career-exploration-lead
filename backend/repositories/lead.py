@@ -108,6 +108,13 @@ class NewsletterRepository:
         )
         return result.scalar_one_or_none()
 
+    async def reactivate(self, sub: NewsletterSubscriber) -> None:
+        await self.set_active(sub, True)
+
+    async def set_active(self, sub: NewsletterSubscriber, active: bool) -> None:
+        sub.is_active = active
+        await self.db.commit()
+
     async def create(self, email: str) -> NewsletterSubscriber:
         sub = NewsletterSubscriber(id=uuid.uuid4(), email=email)
         self.db.add(sub)
