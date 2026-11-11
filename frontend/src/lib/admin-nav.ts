@@ -107,6 +107,10 @@ export const adminNav: AdminNavSection[] = [
       { label: "Sponsored leads", href: "/admin/leads/sponsored", phase: 1 },
       // Emails entered in the site footer's Subscribe box.
       { label: "Subscribed emails", href: "/admin/leads/subscribers", phase: 1 },
+      // Students who saved a college, and who.
+      { label: "Saved institutes", href: "/admin/leads/saved", phase: 1 },
+      // Students who sat practice tests, with their attempts and scores.
+      { label: "Exam leads", href: "/admin/leads/exams", phase: 1 },
       { label: "Visitor Analytics", href: "/admin/analytics", phase: 1 },
     ],
   },
@@ -159,7 +163,16 @@ export const collegeAdminNav: AdminNavSection[] = [
       { label: "Messages", href: "/admin/messages", phase: 1, badge: "messages" },
     ],
   },
-  { id: "leads", label: "Leads", icon: "leads", items: [{ label: "Inbox", href: "/admin/leads", phase: 1, badge: "leads" }] },
+  {
+    id: "leads",
+    label: "Leads",
+    icon: "leads",
+    items: [
+      { label: "Inbox", href: "/admin/leads", phase: 1, badge: "leads" },
+      // Students who saved this college.
+      { label: "Saved by students", href: "/admin/leads/saved", phase: 1 },
+    ],
+  },
 ];
 
 /**

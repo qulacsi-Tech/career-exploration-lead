@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
-import { ActionButton } from "@/components/college/college-actions";
+import { ActionButton, useCollegeActions } from "@/components/college/college-actions";
+import { loadSavedSlugs, setCollegeSaved } from "@/lib/saved-actions";
+import { SESSION_CHANGED_EVENT } from "@/lib/user-session-cookie";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
@@ -49,49 +51,50 @@ export type MastheadSection = { slug: string; label: string; href: string };
 const HEADER_OFFSET = 86;
 
 /*
-  Save: a per-browser shortlist in localStorage, read through an external
-  store so the server and first client render agree (nothing saved) and the
-  stored state arrives through the snapshot rather than a setState in an
-  effect. The snapshot is the raw string — a primitive, so it compares stable.
+  Save: kept on the student's own profile (under My account, Saved), so it needs an account. A visitor who is not
+  signed in is asked to sign in or register first, and the college is saved once they are in.
 */
-const SAVED_KEY = "tcp:saved-colleges";
-const savedListeners = new Set<() => void>();
+function useSavedCollege(slug: string) {
+  const actions = useCollegeActions();
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const writing = useRef(false);
 
-function subscribeSaved(listener: () => void) {
-  savedListeners.add(listener);
-  window.addEventListener("storage", listener);
-  return () => {
-    savedListeners.delete(listener);
-    window.removeEventListener("storage", listener);
+  // Whether this college is on the signed-in student's list. A read that comes back while a save is under way is
+  // ignored (it may be older than the save); the list is read again once the save is done.
+  const refresh = useCallback(() => {
+    void loadSavedSlugs().then((slugs) => {
+      if (!writing.current) setSaved(Boolean(slugs?.includes(slug)));
+    });
+  }, [slug]);
+
+  useEffect(() => {
+    refresh();
+    // Signing in or out changes whose list this is.
+    window.addEventListener(SESSION_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(SESSION_CHANGED_EVENT, refresh);
+  }, [refresh]);
+
+  const write = async (next: boolean) => {
+    writing.current = true;
+    setBusy(true);
+    setSaved(next); // at once; corrected below if the server refuses
+    const result = await setCollegeSaved(slug, next);
+    if (!result.ok) setSaved(!next);
+    writing.current = false;
+    setBusy(false);
+    refresh();
   };
-}
 
-function savedSnapshot(): string {
-  try {
-    return localStorage.getItem(SAVED_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
+  const toggle = () => {
+    if (busy) return;
+    const next = !saved;
+    // Removing needs no sign-in check: a college only shows as saved when signed in.
+    if (actions && next) void actions.ensureSignedIn("Sign in to save this college to your profile. It takes a minute.", () => void write(true));
+    else void write(next);
+  };
 
-function parseSaved(raw: string): string[] {
-  try {
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function toggleSavedSlug(slug: string) {
-  const list = parseSaved(savedSnapshot());
-  const next = list.includes(slug) ? list.filter((s) => s !== slug) : [...list, slug];
-  try {
-    localStorage.setItem(SAVED_KEY, JSON.stringify(next));
-  } catch {
-    /* Private mode: nothing to persist to, and nothing worth failing over. */
-  }
-  savedListeners.forEach((listener) => listener());
+  return { saved, busy, toggle };
 }
 
 /** More approvals than this are folded behind "+N more". */
@@ -184,9 +187,8 @@ export function CollegeMasthead({
     });
   }, [current, reduceMotion]);
 
-  /* ---- save: a per-browser shortlist ---- */
-  const savedRaw = useSyncExternalStore(subscribeSaved, savedSnapshot, () => "");
-  const saved = parseSaved(savedRaw).includes(slug);
+  /* ---- save: on the student's profile ---- */
+  const { saved, busy: saving, toggle: toggleSaved } = useSavedCollege(slug);
 
   /* ---- compare: the site-wide tray ---- */
   const { isSelected, isFull, toggle } = useCompare();
@@ -338,9 +340,10 @@ export function CollegeMasthead({
           >
             <button
               type="button"
-              onClick={() => toggleSavedSlug(slug)}
+              onClick={toggleSaved}
+              disabled={saving}
               aria-pressed={saved}
-              className={`${outline} ${saved ? "border-brand text-brand" : ""}`}
+              className={`${outline} disabled:opacity-60 ${saved ? "border-brand text-brand" : ""}`}
             >
               <Bookmark className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
               {saved ? "Saved" : "Save"}

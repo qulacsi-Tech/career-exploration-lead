@@ -1,6 +1,6 @@
 "use server";
 
-import { submitPractice } from "@/lib/api";
+import { getAttemptStatus, submitPractice } from "@/lib/api";
 
 type AttemptResult = Awaited<ReturnType<typeof submitPractice>>;
 import { getUserToken } from "@/lib/user-session";
@@ -19,5 +19,16 @@ export async function submitPracticeAttempt(
     return { ok: true, result: await submitPractice(slug, responses, token) };
   } catch (err) {
     return { ok: false, message: err instanceof Error && err.message ? err.message : "We could not submit your test just now." };
+  }
+}
+
+/** The signed-in student's attempts on a test: allowed, used, left. `null` when nobody is signed in. */
+export async function loadAttemptStatus(slug: string): Promise<{ allowed: number | null; used: number; left: number | null } | null> {
+  const token = await getUserToken();
+  if (!token) return null;
+  try {
+    return await getAttemptStatus(token, slug);
+  } catch {
+    return null;
   }
 }

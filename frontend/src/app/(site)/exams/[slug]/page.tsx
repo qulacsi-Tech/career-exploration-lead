@@ -1,3 +1,4 @@
+import { ArticleSections } from "@/components/article-sections";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -198,6 +199,7 @@ export default async function ExamDetailPage({
           { id: "practice", label: "Practice", show: practiceTests.length > 0 },
           { id: "pattern", label: "Pattern", show: !!exam.sections?.length },
           { id: "syllabus", label: "Syllabus", show: !!exam.syllabus },
+          { id: "more", label: "More", show: !!exam.contentSections?.length },
           { id: "cutoffs", label: "Cutoffs", show: cutoffRows.length > 0 },
           { id: "colleges", label: "Colleges", show: accepting.length > 0 },
           { id: "faqs", label: "FAQs", show: !!exam.faqs?.length },
@@ -293,6 +295,14 @@ export default async function ExamDetailPage({
               <h2 className={H2}>{shortName} syllabus</h2>
               <Paragraphs text={exam.syllabus} />
             </Section>
+          )}
+
+          {/* Extra content built in the admin with the news section editor */}
+          {exam.contentSections && exam.contentSections.length > 0 && (
+            // The sections are cards of their own, so they are not wrapped in another one.
+            <div id="more" className="scroll-mt-44 [&>div]:mt-0 [&>div]:max-w-none">
+              <ArticleSections sections={exam.contentSections} />
+            </div>
           )}
 
           {/* Cutoffs */}

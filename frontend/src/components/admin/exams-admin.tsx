@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/admin-fields";
 import { FormDateField } from "@/components/admin/date-field";
 import { ImageUploadField } from "@/components/admin/media-uploader";
+import { ExamContentTab, ExamPracticeTab } from "@/components/admin/exam-extra-tabs";
 
 export function ExamsAdmin({ exams }: { exams: Exam[] }) {
   return (
@@ -205,6 +206,16 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
               />
             </FieldGrid>
           ),
+        },
+        {
+          id: "content",
+          label: "Page content",
+          render: (exam) => <ExamContentTab exam={exam} />,
+        },
+        {
+          id: "practice",
+          label: "Practice tests",
+          render: (exam) => <ExamPracticeTab exam={exam} />,
         },
         {
           id: "seo",

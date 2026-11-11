@@ -11,9 +11,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
 from core.dependencies import CurrentUserId, DbSession
-from core.exceptions import ValidationError
+from core.exceptions import ConflictError, ValidationError
 from schemas.common import SuccessResponse
 from services.practice import load_content, published_tests, require_published, score
+from services.practice_attempts import attempts_status, record_attempt
 
 router = APIRouter(prefix="/practice", tags=["practice"])
 
@@ -51,7 +52,7 @@ async def get_test(slug: str, db: DbSession):
 
 
 @router.post("/tests/{slug}/submit", response_model=SuccessResponse[dict])
-async def submit_test(slug: str, db: DbSession, body: dict, _user: CurrentUserId):
+async def submit_test(slug: str, db: DbSession, body: dict, user_id: CurrentUserId):
     """Scores a finished paper. From a signed-in account only."""
     try:
         data = SubmitBody.model_validate(body)
@@ -64,5 +65,20 @@ async def submit_test(slug: str, db: DbSession, body: dict, _user: CurrentUserId
 
     content = await load_content(db)
     test = require_published(content, slug)
+    # The limit an admin set for this test is enforced here, so a second tab or an old link cannot get around it.
+    before = await attempts_status(db, user_id, test)
+    if before["left"] == 0:
+        raise ConflictError("NO_ATTEMPTS_LEFT", f"You have used all {before['allowed']} attempts allowed on this test.")
     responses = {qid: r.model_dump() for qid, r in data.responses.items()}
-    return SuccessResponse[dict](data=score(content, test, responses))
+    result = score(content, test, responses)
+    # Kept on the student's profile, and counted in the lead made for them and this exam.
+    result["attempts"] = await record_attempt(db, user_id, test, result)
+    return SuccessResponse[dict](data=result)
+
+
+@router.get("/tests/{slug}/attempts", response_model=SuccessResponse[dict])
+async def my_attempts_on_test(slug: str, db: DbSession, user_id: CurrentUserId):
+    """For the signed-in student: how many attempts this test allows, how many they have used, how many are left."""
+    content = await load_content(db)
+    test = require_published(content, slug)
+    return SuccessResponse[dict](data=await attempts_status(db, user_id, test))

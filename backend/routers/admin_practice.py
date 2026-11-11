@@ -153,6 +153,12 @@ class SectionBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class InstructionBody(BaseModel):
+    title: str = Field(default="", max_length=120)
+    text: str = Field(default="", max_length=800)
+    model_config = ConfigDict(extra="forbid")
+
+
 class TestBody(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     kind: Literal["full-mock", "sectional", "previous-year", "sample"] = "full-mock"
@@ -165,6 +171,11 @@ class TestBody(BaseModel):
     attemptsAllowed: Optional[int] = Field(default=None, ge=1, le=100)
     isFree: bool = False
     isPublished: bool = False
+    # What the instructions page says before the test starts. Empty: the standard instructions are shown.
+    # In an item's text, {marking} stands for the test's marking scheme, worked out from its questions.
+    instructionsTitle: str = Field(default="", max_length=100)
+    instructions: list[InstructionBody] = Field(default_factory=list, max_length=15)
+    startNote: str = Field(default="", max_length=300)
     sections: list[SectionBody] = Field(min_length=1, max_length=MAX_SECTIONS)
     model_config = ConfigDict(extra="forbid")
 
@@ -292,6 +303,9 @@ async def get_test(slug: str, _admin: AdminPayload, db: DbSession):
         "attemptsAllowed": test.get("attemptsAllowed"),
         "isFree": bool(test.get("isFree")),
         "isPublished": bool(test.get("isPublished")),
+        "instructionsTitle": test.get("instructionsTitle", ""),
+        "instructions": test.get("instructions") or [],
+        "startNote": test.get("startNote", ""),
         "sections": sections,
     })
 
@@ -450,6 +464,9 @@ async def save_test(slug: str, _admin: AdminPayload, db: DbSession, body: dict):
         "attemptsAllowed": data.attemptsAllowed,
         "isFree": data.isFree,
         "isPublished": data.isPublished,
+        "instructionsTitle": data.instructionsTitle.strip(),
+        "instructions": [i.model_dump() for i in data.instructions if i.title.strip() or i.text.strip()],
+        "startNote": data.startNote.strip(),
     }
     await db.commit()
     state = "published" if data.isPublished else "saved as a draft"

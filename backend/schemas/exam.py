@@ -1,6 +1,8 @@
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
+from schemas.article import ArticleSection
+
 
 class ExamFaqSchema(BaseModel):
     question: str
@@ -30,6 +32,8 @@ class ExamSchema(BaseModel):
     eligibility: str = ""
     syllabus: str = ""
     faqs: List[ExamFaqSchema] = []
+    # Extra page content built with the section editor (same blocks as a news article).
+    contentSections: List[ArticleSection] = []
     # Card photo. Empty: the card shows no photo.
     image: str = ""
     # The badge on the card: Upcoming, Live, Expired or any words. Empty: no badge.

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/account", label: "Profile" },
   { href: "/account/enquiries", label: "Enquiries" },
+  { href: "/account/saved", label: "Saved" },
   { href: "/account/questions", label: "Questions" },
   { href: "/account/reviews", label: "Reviews" },
   { href: "/account/replies", label: "Replies" },
@@ -14,7 +15,7 @@ const TABS = [
 ] as const;
 
 /** The tab row under the account header. The Profile tab matches only its own path. */
-export function AccountTabs({ enquiries, unreadReplies, questions = 0, reviews = 0 }: { enquiries: number; unreadReplies: number; questions?: number; reviews?: number }) {
+export function AccountTabs({ enquiries, unreadReplies, questions = 0, reviews = 0, saved = 0 }: { enquiries: number; unreadReplies: number; questions?: number; reviews?: number; saved?: number }) {
   const pathname = usePathname();
 
   return (
@@ -22,7 +23,7 @@ export function AccountTabs({ enquiries, unreadReplies, questions = 0, reviews =
       {TABS.map((tab) => {
         const active = tab.href === "/account" ? pathname === "/account" : pathname.startsWith(tab.href);
         const badge =
-          tab.label === "Enquiries" ? enquiries : tab.label === "Replies" ? unreadReplies : tab.label === "Questions" ? questions : tab.label === "Reviews" ? reviews : 0;
+          tab.label === "Enquiries" ? enquiries : tab.label === "Replies" ? unreadReplies : tab.label === "Questions" ? questions : tab.label === "Reviews" ? reviews : tab.label === "Saved" ? saved : 0;
         return (
           <Link
             key={tab.href}

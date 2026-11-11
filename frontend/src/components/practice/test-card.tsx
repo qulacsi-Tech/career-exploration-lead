@@ -37,6 +37,9 @@ export function TestCard({ test }: { test: TestSummary }) {
 
       <h3 className="mt-3 font-display text-base font-bold text-ink">{test.title}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{test.summary}</p>
+      <p className="mt-1 text-xs font-medium text-ink-faint">
+        {test.attemptsAllowed === null ? "Unlimited attempts" : `${test.attemptsAllowed} ${test.attemptsAllowed === 1 ? "attempt" : "attempts"} allowed`}
+      </p>
 
       <dl className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-soft">
         <div className="flex items-center gap-1.5">

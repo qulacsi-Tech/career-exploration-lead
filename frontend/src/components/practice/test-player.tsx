@@ -180,6 +180,7 @@ export function TestPlayer({
     in front of them and a retry. Nothing is thrown away on a failed submit.
   */
   const [submitState, setSubmitState] = useState<"idle" | "sending" | "failed">("idle");
+  const [submitError, setSubmitError] = useState("");
   const submittingRef = useRef(false);
   const sendSubmit = useCallback(async () => {
     if (submittingRef.current) return;
@@ -190,8 +191,9 @@ export function TestPlayer({
       if (!sent.ok) throw new Error(sent.message);
       storeResult(test.slug, sent.result);
       router.push(`/practice/result/${test.slug}`);
-    } catch {
+    } catch (err) {
       submittingRef.current = false;
+      setSubmitError(err instanceof Error ? err.message : "");
       setSubmitState("failed");
     }
   }, [attempt.responses, router, test.slug]);
@@ -294,15 +296,15 @@ export function TestPlayer({
           {submitState === "failed" ? (
             <>
               <span className="text-red-700">
-                We could not score your paper. Your answers are still here.
+                {submitError.includes("attempts allowed") ? submitError : "We could not score your paper. Your answers are still here."}
               </span>
-              <button
+              {!submitError.includes("attempts allowed") && <button
                 type="button"
                 onClick={() => void sendSubmit()}
                 className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"
               >
                 Try again
-              </button>
+              </button>}
             </>
           ) : (
             <span>Scoring your paper…</span>

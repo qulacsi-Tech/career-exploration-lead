@@ -13,6 +13,8 @@ class LeadType(str, enum.Enum):
     COUNSELLING = "counselling"
     BROCHURE = "brochure"
     ENQUIRY = "enquiry"
+    # A student who sat a practice test: one lead for each student and exam, kept current with their attempts.
+    PRACTICE = "practice"
 
 
 class LeadStatus(str, enum.Enum):

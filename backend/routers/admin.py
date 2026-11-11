@@ -345,6 +345,8 @@ class ExamUpdateBody(BaseModel):
     eligibility: Optional[str] = Field(default=None, max_length=5000)
     syllabus: Optional[str] = Field(default=None, max_length=8000)
     faqs: Optional[list[ExamFaqBody]] = Field(default=None, max_length=20)
+    # Page content built with the same section editor as news. None leaves it as it is; [] clears it.
+    contentSections: Optional[list[ArticleSection]] = Field(default=None, max_length=40)
     image: Optional[str] = Field(default=None, max_length=200)
     statusLabel: Optional[str] = Field(default=None, max_length=40)
     model_config = ConfigDict(populate_by_name=True)
@@ -372,6 +374,8 @@ class ExamCreateBody(BaseModel):
     eligibility: Optional[str] = Field(default=None, max_length=5000)
     syllabus: Optional[str] = Field(default=None, max_length=8000)
     faqs: Optional[list[ExamFaqBody]] = Field(default=None, max_length=20)
+    # Page content built with the same section editor as news. None leaves it as it is; [] clears it.
+    contentSections: Optional[list[ArticleSection]] = Field(default=None, max_length=40)
     image: Optional[str] = Field(default=None, max_length=200)
     statusLabel: Optional[str] = Field(default=None, max_length=40)
     model_config = ConfigDict(populate_by_name=True)
@@ -409,6 +413,7 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
         eligibility=body.eligibility or "",
         syllabus=body.syllabus or "",
         faqs=[f.model_dump() for f in body.faqs or []],
+        content_sections=[s.model_dump(mode="json") for s in body.contentSections or []],
         image=body.image or "",
         status_label=(body.statusLabel or "").strip(),
     ))
@@ -440,6 +445,7 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
     if body.eligibility is not None:         values["eligibility"] = body.eligibility
     if body.syllabus is not None:            values["syllabus"] = body.syllabus
     if body.faqs is not None:                values["faqs"] = [f.model_dump() for f in body.faqs]
+    if body.contentSections is not None:     values["content_sections"] = [s.model_dump(mode="json") for s in body.contentSections]
     if body.image is not None:               values["image"] = body.image
     if body.statusLabel is not None:         values["status_label"] = body.statusLabel.strip()
 

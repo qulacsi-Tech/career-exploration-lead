@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_INSTRUCTIONS_TITLE, DEFAULT_START_NOTE, defaultInstructions } from "@/lib/practice-instructions";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { deletePracticeTest, loadPracticeTest, savePracticeTest } from "@/lib/admin-actions";
 import type { AdminPracticeQuestion, AdminPracticeSection, AdminPracticeTest } from "@/lib/api";
@@ -82,6 +83,8 @@ export function PracticeTestEditor({
   const [importNote, setImportNote] = useState<{ added: number; problems: string[] } | null>(null);
   const [open, setOpen] = useState<{ s: number; q: number } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Settings, the instructions page and the questions each have a tab of their own.
+  const [tab, setTab] = useState<"settings" | "instructions" | "questions">("settings");
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -92,7 +95,12 @@ export function PracticeTestEditor({
       if ("error" in result) setLoadError(result.error);
       else {
         const { title, kind, summary, totalMinutes, sectionLock, languages, attemptsAllowed, isFree, isPublished, sections } = result;
-        setTest({ title, kind, summary, totalMinutes, sectionLock, languages, attemptsAllowed, isFree, isPublished, sections });
+        setTest({
+          title, kind, summary, totalMinutes, sectionLock, languages, attemptsAllowed, isFree, isPublished, sections,
+          instructionsTitle: result.instructionsTitle ?? "",
+          instructions: result.instructions ?? [],
+          startNote: result.startNote ?? "",
+        });
       }
     });
     return () => {
@@ -105,6 +113,16 @@ export function PracticeTestEditor({
     setError(null);
   };
   const set = <K extends keyof AdminPracticeTest>(key: K, value: AdminPracticeTest[K]) => edit((t) => ({ ...t, [key]: value }));
+  const setInstruction = (index: number, change: Partial<AdminPracticeTest["instructions"][number]>) =>
+    edit((t) => ({ ...t, instructions: t.instructions.map((item, i) => (i === index ? { ...item, ...change } : item)) }));
+  const moveInstruction = (index: number, by: -1 | 1) =>
+    edit((t) => {
+      const target = index + by;
+      if (target < 0 || target >= t.instructions.length) return t;
+      const next = [...t.instructions];
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...t, instructions: next };
+    });
   const setSection = (si: number, change: Partial<AdminPracticeSection>) =>
     edit((t) => ({ ...t, sections: t.sections.map((s, i) => (i === si ? { ...s, ...change } : s)) }));
   const setQuestion = (si: number, qi: number, change: Partial<AdminPracticeQuestion>) =>
@@ -297,7 +315,29 @@ export function PracticeTestEditor({
 
       {test && (
         <div className="space-y-5">
-          <section className={card} aria-labelledby="pt-settings">
+          <div role="tablist" aria-label="Practice test sections" className="-mt-1 flex gap-1 overflow-x-auto border-b border-line">
+            {([
+              ["settings", "Settings"],
+              ["instructions", "Instructions"],
+              ["questions", `Questions (${total})`],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={`pt-tab-${id}`}
+                aria-selected={tab === id}
+                aria-controls={`pt-panel-${id}`}
+                onClick={() => setTab(id)}
+                className={`-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition ${tab === id ? "border-brand text-brand" : "border-transparent text-ink-soft hover:text-ink"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {tab === "settings" && (
+          <section className={card} aria-labelledby="pt-settings" id="pt-panel-settings">
             <h3 id="pt-settings" className={heading}>Settings</h3>
             <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
               <div className="xl:col-span-2">
@@ -323,8 +363,9 @@ export function PracticeTestEditor({
                 <p className="mt-1 text-xs text-ink-faint">One or two lines on the card and the instructions screen. {test.summary.length}/400</p>
               </div>
               <div>
-                <label htmlFor="pt-attempts" className="block text-xs font-semibold text-ink">Attempts allowed</label>
-                <input id="pt-attempts" type="number" min={1} max={100} value={test.attemptsAllowed ?? ""} placeholder="Unlimited" onChange={(e) => set("attemptsAllowed", e.target.value === "" ? null : Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))))} className={input} />
+                <label htmlFor="pt-attempts" className="block text-xs font-semibold text-ink">Attempts allowed per student</label>
+                <input id="pt-attempts" type="number" min={1} max={100} value={test.attemptsAllowed ?? ""} placeholder="Unlimited" aria-describedby="pt-attempts-hint" onChange={(e) => set("attemptsAllowed", e.target.value === "" ? null : Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))))} className={input} />
+                <p id="pt-attempts-hint" className="mt-1 text-xs text-ink-faint">How many times each student may sit this test. Empty: no limit. Students are told how many are left after every attempt.</p>
               </div>
               <div className="md:col-span-2 xl:col-span-2">
                 <label htmlFor="pt-langs" className="block text-xs font-semibold text-ink">Languages</label>
@@ -347,7 +388,65 @@ export function PracticeTestEditor({
               </label>
             </div>
           </section>
+          )}
 
+          {tab === "instructions" && (
+          <section className={card} aria-labelledby="pt-instructions" id="pt-panel-instructions">
+            <h3 id="pt-instructions" className={heading}>Instructions page</h3>
+            <p className="mt-1 text-xs text-ink-faint">
+              What candidates read before they start. Leave the list empty to show the standard instructions. In a line of text, <code className="rounded bg-bg-alt px-1">{"{marking}"}</code> is replaced by this test&apos;s marking scheme.
+            </p>
+            <div className="mt-4 space-y-4">
+              <div className="max-w-md">
+                <label htmlFor="pt-instr-title" className="block text-xs font-semibold text-ink">Heading</label>
+                <input id="pt-instr-title" maxLength={100} value={test.instructionsTitle} placeholder={DEFAULT_INSTRUCTIONS_TITLE} onChange={(e) => set("instructionsTitle", e.target.value)} className={input} />
+              </div>
+              <ol className="space-y-3">
+                {test.instructions.map((item, i) => (
+                  <li key={i} className="rounded-xl border border-line bg-bg-alt/50 p-3">
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                      <div>
+                        <label htmlFor={`pt-instr-t-${i}`} className="block text-xs font-semibold text-ink">Bold lead-in</label>
+                        <input id={`pt-instr-t-${i}`} maxLength={120} value={item.title} placeholder="e.g. Marking." onChange={(e) => setInstruction(i, { title: e.target.value })} className={input} />
+                      </div>
+                      <div>
+                        <label htmlFor={`pt-instr-x-${i}`} className="block text-xs font-semibold text-ink">Text</label>
+                        <textarea id={`pt-instr-x-${i}`} rows={2} maxLength={800} value={item.text} onChange={(e) => setInstruction(i, { text: e.target.value })} className={input} />
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+                      <button type="button" onClick={() => moveInstruction(i, -1)} disabled={i === 0} className="rounded-md border border-line px-2.5 py-1 font-medium text-ink-soft hover:border-brand hover:text-brand disabled:opacity-40">Up</button>
+                      <button type="button" onClick={() => moveInstruction(i, 1)} disabled={i === test.instructions.length - 1} className="rounded-md border border-line px-2.5 py-1 font-medium text-ink-soft hover:border-brand hover:text-brand disabled:opacity-40">Down</button>
+                      <button type="button" onClick={() => set("instructions", test.instructions.filter((_, j) => j !== i))} className="rounded-md border border-line px-2.5 py-1 font-medium text-ink-soft hover:border-red-600 hover:text-red-700">Remove</button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => set("instructions", [...test.instructions, { title: "", text: "" }])} disabled={test.instructions.length >= 15} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-50">Add an instruction</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (test.instructions.length === 0 || window.confirm("Replace the instructions below with the standard ones?")) set("instructions", defaultInstructions(test.sectionLock));
+                  }}
+                  className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft hover:border-brand hover:text-brand"
+                >
+                  Use the standard instructions
+                </button>
+                {test.instructions.length > 0 && (
+                  <button type="button" onClick={() => set("instructions", [])} className="text-sm font-medium text-ink-faint hover:text-red-700">Clear all</button>
+                )}
+              </div>
+              <div className="max-w-xl">
+                <label htmlFor="pt-start-note" className="block text-xs font-semibold text-ink">Note under the Start button</label>
+                <input id="pt-start-note" maxLength={300} value={test.startNote} placeholder={test.totalMinutes > 0 ? DEFAULT_START_NOTE : "Optional"} onChange={(e) => set("startNote", e.target.value)} className={input} />
+              </div>
+            </div>
+          </section>
+          )}
+
+          {tab === "questions" && (
+          <div id="pt-panel-questions" className="space-y-5">
           <section className={card} aria-labelledby="pt-import">
             <h3 id="pt-import" className={heading}>Import questions from a spreadsheet</h3>
             <p className="mt-2 max-w-3xl text-xs text-ink-faint">
@@ -572,6 +671,8 @@ export function PracticeTestEditor({
           )}
 
           <p className="text-xs text-ink-faint">{total} question{total === 1 ? "" : "s"} in this test.</p>
+          </div>
+          )}
         </div>
       )}
     </AdminModal>

@@ -180,7 +180,7 @@ import {
 } from "@/lib/api";
 import { requireAdminToken } from "@/lib/admin-session";
 import { DEFAULT_HOME_COPY, type HomeCopy } from "@/lib/home-copy";
-import { cleanSections } from "@/lib/article-sections";
+import { cleanSections, type ArticleSection } from "@/lib/article-sections";
 
 /**
  * Admin writes, run as Server Actions so the session token stays on the server.
@@ -313,6 +313,15 @@ export async function saveExam(slug: string, form: FormData): Promise<AdminActio
   if (typeof payload.durationMinutes === "string") {
     const parsed = parseInt(payload.durationMinutes, 10);
     payload.durationMinutes = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+  // The page content built with the section editor travels as one JSON field; blank blocks are dropped.
+  const rawSections = form.get("contentSections");
+  if (typeof rawSections === "string" && rawSections !== "") {
+    try {
+      payload.contentSections = cleanSections(JSON.parse(rawSections) as ArticleSection[]);
+    } catch {
+      return { error: "The page content could not be read. Reload the page and try again." };
+    }
   }
   const result = await attempt("/admin/exams", (token) =>
     adminUpdateExam(token, slug, payload)
@@ -1337,6 +1346,8 @@ export async function savePracticeTest(slug: string, examSlug: string, body: Adm
   if (!("error" in result)) {
     revalidatePath(`/exams/${examSlug}`);
     revalidatePath(`/exams/${examSlug}/practice`);
+    // The instructions page of this test is built ahead of time, so it is rebuilt with the new words.
+    revalidatePath(`/exams/${examSlug}/practice/${slug}`);
   }
   return result;
 }

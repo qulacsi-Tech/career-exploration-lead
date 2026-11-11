@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCheck, Eye, HelpCircle, LogIn, MessageSquare, MousePointerClick, Send, Star, UserPlus, type LucideIcon } from "lucide-react";
-import { getMyActivity, type MyActivity } from "@/lib/api";
+import { getMyActivity, getMyPracticeAttempts, type MyActivity } from "@/lib/api";
+import { PracticeAttempts } from "@/components/account/practice-attempts";
 import { getUserToken } from "@/lib/user-session";
 import { formatFull } from "@/lib/lead-labels";
 
@@ -26,12 +27,16 @@ const ICON: Record<MyActivity["kind"], LucideIcon> = {
 export default async function ActivityPage() {
   const token = await getUserToken();
   const items = token ? await getMyActivity(token).catch(() => null) : [];
+  // A failure here only leaves the exam attempts out.
+  const attempts = token ? await getMyPracticeAttempts(token).catch(() => []) : [];
 
   if (items === null) {
     return <p className="text-sm text-red-700">We could not load your activity just now. Please refresh in a moment.</p>;
   }
 
   return (
+    <>
+    <PracticeAttempts attempts={attempts} />
     <ol className="relative space-y-5 border-l border-line pl-6">
       {items.map((item, index) => {
         const Icon = ICON[item.kind];
@@ -55,5 +60,6 @@ export default async function ActivityPage() {
         );
       })}
     </ol>
+    </>
   );
 }

@@ -116,6 +116,10 @@ export type MockTest = TestSummary & {
    * this wrong is worthless to a candidate who knows the real paper.
    */
   isPublished: boolean;
+  /** The instructions page as the editor wrote it. Absent or empty: the standard instructions. */
+  instructionsTitle?: string;
+  instructions?: { title: string; text: string }[];
+  startNote?: string;
   /** Every question in paper order, as served (no answers). */
   questions: Question[];
   /** The stimuli those questions use. */

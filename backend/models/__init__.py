@@ -29,3 +29,5 @@ from models.question import Question, QuestionHelpful  # noqa: F401
 from models.collab import ChangeRequest, MessageThread, ThreadMessage  # noqa: F401
 from models.password_reset import PasswordReset  # noqa: F401
 from models.listing_priority import ListingPriority  # noqa: F401
+from models.saved_college import SavedCollege  # noqa: F401
+from models.practice_attempt import PracticeAttempt  # noqa: F401

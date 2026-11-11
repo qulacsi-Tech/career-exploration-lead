@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { AccountTabs } from "@/components/account/account-tabs";
-import { getMyLeads, getMyQuestions, getMyReviews } from "@/lib/api";
+import { getMyLeads, getMyQuestions, getMyReviews, getMySavedSlugs } from "@/lib/api";
 import { getCurrentUser, getUserToken } from "@/lib/user-session";
 
 /**
@@ -17,9 +17,9 @@ export default async function AccountLayout({ children }: LayoutProps<"/account"
 
   // Counts for the tab badges. A failure here only hides the badges.
   const token = await getUserToken();
-  const [leads, questions, reviews] = token
-    ? await Promise.all([getMyLeads(token).catch(() => []), getMyQuestions(token).catch(() => []), getMyReviews(token).catch(() => [])])
-    : [[], [], []];
+  const [leads, questions, reviews, savedSlugs] = token
+    ? await Promise.all([getMyLeads(token).catch(() => []), getMyQuestions(token).catch(() => []), getMyReviews(token).catch(() => []), getMySavedSlugs(token).catch(() => [])])
+    : [[], [], [], []];
   const unreadReplies = leads.reduce((n, lead) => n + lead.replies.filter((r) => !r.read).length, 0);
 
   const memberId = `TCP-U-${user.id.slice(0, 8).toUpperCase()}`;
@@ -49,7 +49,7 @@ export default async function AccountLayout({ children }: LayoutProps<"/account"
         </div>
       </header>
 
-      <AccountTabs enquiries={leads.length} unreadReplies={unreadReplies} questions={questions.length} reviews={reviews.length} />
+      <AccountTabs enquiries={leads.length} unreadReplies={unreadReplies} questions={questions.length} reviews={reviews.length} saved={savedSlugs.length} />
 
       <div className="mt-6">{children}</div>
     </div>

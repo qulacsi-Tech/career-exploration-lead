@@ -38,6 +38,8 @@ class Exam(Base):
     eligibility = Column(Text, nullable=False, default="", server_default="")
     syllabus = Column(Text, nullable=False, default="", server_default="")
     faqs = Column(JSONB, nullable=False, default=list, server_default="[]")  # [{"question", "answer"}]
+    # Extra page content built in the admin with the same section editor as news: [{"heading", "blocks": [...]}].
+    content_sections = Column(JSONB, nullable=False, default=list, server_default="[]")
     # Card photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).
     image = Column(String(200), nullable=False, default="", server_default="")
     # The badge on the exam's card: Upcoming, Live, Expired or any words. Empty: no badge.

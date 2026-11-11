@@ -24,6 +24,7 @@ SOURCE_LABELS = {
     LeadType.COUNSELLING.value: "Counselling",
     LeadType.BROCHURE.value: "Brochure downloads",
     LeadType.ENQUIRY.value: "Enquiries",
+    LeadType.PRACTICE.value: "Practice tests",
 }
 
 

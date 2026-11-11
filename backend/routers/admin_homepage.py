@@ -138,6 +138,7 @@ def _exam_card(e, show: bool) -> dict:
         "eligibility": e.eligibility or "",
         "syllabus": e.syllabus or "",
         "faqs": list(e.faqs or []),
+        "contentSections": list(e.content_sections or []),
         "image": e.image or "",
         "statusLabel": e.status_label or "",
         "show": show,

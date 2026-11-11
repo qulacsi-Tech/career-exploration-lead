@@ -69,7 +69,8 @@ class LeadRepository:
     async def list_for_user(self, user_id: uuid.UUID) -> list[Lead]:
         result = await self.db.execute(
             select(Lead)
-            .where(Lead.user_id == user_id)
+            # The lead made from a student's practice attempts is the team's, not an enquiry the student sent.
+            .where(Lead.user_id == user_id, Lead.type != LeadType.PRACTICE)
             .options(selectinload(Lead.replies))
             .order_by(Lead.created_at.desc())
         )

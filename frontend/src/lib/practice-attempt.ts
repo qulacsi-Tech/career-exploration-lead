@@ -269,7 +269,12 @@ export type QuestionResult = {
   secondsSpent: number;
 };
 
+/** How many times the student may sit a test, how many they have, and how many are left. `null`: no limit. */
+export type AttemptsStatus = { allowed: number | null; used: number; left: number | null };
+
 export type AttemptResult = {
+  /** Set by the server on a submitted attempt: the student's attempts on this test after it. */
+  attempts?: AttemptsStatus;
   test: MockTest;
   results: QuestionResult[];
   score: number;

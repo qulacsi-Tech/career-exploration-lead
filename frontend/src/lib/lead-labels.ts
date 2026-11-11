@@ -22,6 +22,7 @@ export const LEAD_TYPE_LABEL: Record<string, string> = {
   counselling: "Counselling",
   brochure: "Brochure",
   enquiry: "Enquiry",
+  practice: "Practice test",
 };
 
 export function formatReceived(iso: string | null): string {

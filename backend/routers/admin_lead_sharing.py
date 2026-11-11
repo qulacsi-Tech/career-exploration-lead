@@ -165,7 +165,7 @@ class ShareBody(BaseModel):
     count: Optional[int] = Field(default=None, ge=1, le=MAX_PER_SHARE)
     stream: str = Field(default="", max_length=100)
     city: str = Field(default="", max_length=100)
-    type: Literal["", "callback", "counselling", "brochure", "enquiry"] = ""
+    type: Literal["", "callback", "counselling", "brochure", "enquiry", "practice"] = ""
     q: str = Field(default="", max_length=100)
     # Every lead that matches the filters, not only the newest N.
     all: bool = False

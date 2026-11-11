@@ -252,6 +252,8 @@ export type Exam = {
   eligibility?: string;
   syllabus?: string;
   faqs?: ExamFaq[];
+  /** Extra page content built in the admin with the same section editor as news. Empty or absent: none. */
+  contentSections?: import("@/lib/article-sections").ArticleSection[];
   /** Card photo: /images/... or /api/uploads/... Empty: no photo. */
   image?: string;
   /** The badge on the card: Upcoming, Live, Expired or any words. Empty or absent: no badge. */
@@ -2764,6 +2766,10 @@ export type AdminPracticeTest = {
   attemptsAllowed: number | null;
   isFree: boolean;
   isPublished: boolean;
+  /** The instructions page. Empty: the standard instructions are shown. `{marking}` is the test's marking scheme. */
+  instructionsTitle: string;
+  instructions: { title: string; text: string }[];
+  startNote: string;
   sections: AdminPracticeSection[];
 };
 
@@ -3494,3 +3500,133 @@ export const adminScopeInstitutes = (token: string, scope: string) =>
   adminRequest<{ truncated: boolean; colleges: { slug: string; name: string; city: string; rank: number | null; priority: number | null }[] }>(token, "GET", `/admin/priority/scope?scope=${encodeURIComponent(scope)}`);
 export const adminSetScopePriorities = (token: string, scope: string, priority: Record<string, number>) =>
   adminRequest<{ message: string }>(token, "PUT", "/admin/priority/scope", { scope, priority });
+
+// ── Saved colleges ──────────────────────────────────────────────────────────
+
+/** A college a student saved to their profile. */
+export type SavedCollegeItem = { slug: string; name: string; city: string; state: string; stream: string; image: string; rating: number; savedAt: string | null };
+/** A college with how many students saved it, for the platform team. */
+export type SavedCollegeRow = { slug: string; name: string; city: string; state: string; saveCount: number; lastSavedAt: string | null };
+/** A student who saved a college. */
+export type SavedStudent = { id: string; name: string; email: string; phone: string; city: string; contactOk: boolean; savedAt: string | null };
+export type CollegeSavedStudents = { items: SavedStudent[]; meta: PaginationMeta; totalSaved: number; notShared: number | null };
+
+async function savedRequest<T>(token: string, method: "GET" | "PUT" | "DELETE", path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { method, cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = (await res.json().catch(() => null)) as { success?: boolean; data?: T; error?: { message?: string } } | null;
+  if (!res.ok || !json || json.success !== true) throw new ApiError(res.status, json?.error?.message ?? `Saved colleges API ${res.status}`);
+  return json.data as T;
+}
+
+function pageQuery(params: { page?: number; limit?: number; q?: string }) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.q) qs.set("q", params.q);
+  return qs.toString() ? `?${qs}` : "";
+}
+
+async function savedList<T>(token: string, path: string): Promise<{ data: T[]; meta: PaginationMeta }> {
+  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  const json = (await res.json().catch(() => null)) as { success?: boolean; data?: T[]; meta?: PaginationMeta; error?: { message?: string } } | null;
+  if (!res.ok || !json || json.success !== true || !json.data || !json.meta) throw new ApiError(res.status, json?.error?.message ?? `Saved colleges API ${res.status}`);
+  return { data: json.data, meta: json.meta };
+}
+
+export const getMySavedColleges = (token: string) => savedRequest<SavedCollegeItem[]>(token, "GET", "/me/saved-colleges");
+export const getMySavedSlugs = (token: string) => savedRequest<string[]>(token, "GET", "/me/saved-colleges/slugs");
+export const putSavedCollege = (token: string, slug: string) => savedRequest<{ saved: boolean }>(token, "PUT", `/me/saved-colleges/${encodeURIComponent(slug)}`);
+export const deleteSavedCollege = (token: string, slug: string) => savedRequest<{ saved: boolean }>(token, "DELETE", `/me/saved-colleges/${encodeURIComponent(slug)}`);
+
+/** Platform team: the colleges that have been saved, most saved first. */
+export const adminSavedColleges = (token: string, params: { page?: number; limit?: number; q?: string } = {}) =>
+  savedList<SavedCollegeRow>(token, `/admin/saved-colleges${pageQuery(params)}`);
+/** Platform team: the students who saved one college. */
+export const adminSavedStudents = (token: string, slug: string, params: { page?: number; limit?: number; q?: string } = {}) =>
+  savedList<SavedStudent>(token, `/admin/saved-colleges/${encodeURIComponent(slug)}/students${pageQuery(params)}`);
+/** A college admin: the students who saved their own college and agreed to be contacted. */
+export const collegeSavedStudents = (token: string, params: { page?: number; limit?: number; q?: string } = {}) =>
+  savedRequest<CollegeSavedStudents>(token, "GET", `/college/saved-students${pageQuery(params)}`);
+
+// ── Practice-test attempts ──────────────────────────────────────────────────
+
+/** One finished sitting of a practice test, with its score. */
+export type MyPracticeAttempt = {
+  id: string;
+  testSlug: string;
+  examSlug: string;
+  testTitle: string;
+  examName: string;
+  score: number;
+  maxScore: number;
+  correct: number;
+  incorrect: number;
+  skipped: number;
+  accuracy: number;
+  totalSeconds: number;
+  sections: { label: string; score: number; maxScore: number; correct: number; incorrect: number; skipped: number }[];
+  submittedAt: string | null;
+  /** The limit the test has now. `null`: none. */
+  attemptsAllowed: number | null;
+};
+
+export const getMyPracticeAttempts = (token: string) => meGet<MyPracticeAttempt[]>(token, "/me/practice-attempts");
+
+/** For a signed-in student: the attempts a practice test allows, how many they used and how many are left. */
+export const getAttemptStatus = (token: string, slug: string) =>
+  meGet<{ allowed: number | null; used: number; left: number | null }>(token, `/practice/tests/${encodeURIComponent(slug)}/attempts`);
+
+// ── Exam leads (students who sat practice tests) ────────────────────────────
+
+/** One student and one exam: how many attempts, and the best and latest scores. */
+export type ExamLeadRow = {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  contactOk: boolean;
+  examSlug: string;
+  examName: string;
+  attempts: number;
+  tests: number;
+  bestScore: number;
+  bestMax: number;
+  lastScore: number;
+  lastMax: number;
+  lastTest: string;
+  lastAt: string | null;
+};
+export type ExamLeadsPage = { items: ExamLeadRow[]; meta: PaginationMeta; exams: { slug: string; name: string }[] };
+export type ExamLeadAttempt = {
+  id: string;
+  testSlug: string;
+  testTitle: string;
+  score: number;
+  maxScore: number;
+  correct: number;
+  incorrect: number;
+  skipped: number;
+  accuracy: number;
+  totalSeconds: number;
+  sections: { label: string; score: number; maxScore: number; correct: number; incorrect: number; skipped: number }[];
+  submittedAt: string | null;
+};
+export type ExamLeadDetail = {
+  student: { id: string; name: string; email: string; phone: string; city: string; state: string; contactOk: boolean };
+  examSlug: string;
+  examName: string;
+  attempts: ExamLeadAttempt[];
+};
+
+export async function adminExamLeads(token: string, params: { page?: number; limit?: number; q?: string; exam?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  if (params.q) qs.set("q", params.q);
+  if (params.exam) qs.set("exam", params.exam);
+  return savedRequest<ExamLeadsPage>(token, "GET", `/admin/exam-leads${qs.toString() ? `?${qs}` : ""}`);
+}
+
+export const adminExamLeadDetail = (token: string, userId: string, examSlug: string) =>
+  savedRequest<ExamLeadDetail>(token, "GET", `/admin/exam-leads/${encodeURIComponent(userId)}/${encodeURIComponent(examSlug)}`);

@@ -12,6 +12,7 @@ import {
   loadResult,
 } from "@/lib/practice-attempt";
 import { QuestionContent } from "@/components/practice/question-content";
+import { AttemptPopup } from "@/components/practice/attempt-popup";
 import { SectionScoresChart } from "@/components/practice/section-scores-chart";
 import { RouteMessage, RouteAction } from "@/components/ui/route-message";
 
@@ -47,6 +48,7 @@ export function ResultView({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <AttemptPopup testSlug={test.slug} examSlug={test.examSlug} attempts={result.attempts} />
       <Header test={test} result={result} />
       <ScoreTiles result={result} />
       <Percentile result={result} />
