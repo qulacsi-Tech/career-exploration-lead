@@ -35,10 +35,11 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           key: "name",
           label: "Exam",
           render: (exam) => (
-            <>
-              <p className="font-medium text-ink">{exam.name}</p>
-              <p className="text-xs text-ink-faint">{exam.conductingBody}</p>
-            </>
+            // One line each, cut with an ellipsis so a long name never widens the table; the full text shows on hover.
+            <div className="w-64 max-w-64">
+              <p className="truncate font-medium text-ink" title={exam.name}>{exam.name}</p>
+              <p className="truncate text-xs text-ink-faint" title={exam.conductingBody}>{exam.conductingBody}</p>
+            </div>
           ),
         },
         {
@@ -57,7 +58,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           render: (exam) => exam.registrationCloses,
         },
         { key: "date", label: "Exam date", render: (exam) => exam.examDate },
-        { key: "fee", label: "Fee", render: (exam) => exam.applicationFee ?? "—" },
+        { key: "fee", label: "Fee", render: (exam) => <span className="block max-w-32 truncate" title={exam.applicationFee ?? ""}>{exam.applicationFee ?? "—"}</span> },
         { key: "seo", label: "SEO available", render: (exam) => <SeoAvailability seo={(exam as { seo?: unknown }).seo} /> },
       ]}
       renderView={(exam) => (
@@ -72,7 +73,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
               <Field label="Application fee" value={exam.applicationFee ?? "Not set"} />
               <Field label="Official site" value={exam.officialSite ?? "Not set"} />
             </dl>
-            <p className="mt-3 text-sm leading-relaxed text-ink-soft">{exam.description}</p>
+            <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink-soft" title={exam.description}>{exam.description}</p>
           </AdminSubsection>
 
           <AdminSubsection title="Dates">
