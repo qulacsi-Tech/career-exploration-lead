@@ -296,9 +296,9 @@ export function TestPlayer({
           {submitState === "failed" ? (
             <>
               <span className="text-red-700">
-                {submitError.includes("attempts allowed") ? submitError : "We could not score your paper. Your answers are still here."}
+                {submitError.includes("attempts allowed") || submitError.includes("re-attempt") ? submitError : "We could not score your paper. Your answers are still here."}
               </span>
-              {!submitError.includes("attempts allowed") && <button
+              {!submitError.includes("attempts allowed") && !submitError.includes("re-attempt") && <button
                 type="button"
                 onClick={() => void sendSubmit()}
                 className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"

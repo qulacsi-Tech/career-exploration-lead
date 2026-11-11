@@ -101,6 +101,8 @@ export type TestSummary = {
   languages: string[];
   /** null means unlimited retakes. */
   attemptsAllowed: number | null;
+  /** Minutes a student waits after an attempt before the next one. Absent or null: no wait. */
+  retakeGapMinutes?: number | null;
   isFree: boolean;
   questionCount: number;
   sectionCount: number;

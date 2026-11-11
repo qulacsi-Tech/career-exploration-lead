@@ -14,7 +14,7 @@ from core.dependencies import CurrentUserId, DbSession
 from core.exceptions import ConflictError, ValidationError
 from schemas.common import SuccessResponse
 from services.practice import load_content, published_tests, require_published, score
-from services.practice_attempts import attempts_status, record_attempt
+from services.practice_attempts import attempts_status, human_wait, record_attempt
 
 router = APIRouter(prefix="/practice", tags=["practice"])
 
@@ -69,6 +69,9 @@ async def submit_test(slug: str, db: DbSession, body: dict, user_id: CurrentUser
     before = await attempts_status(db, user_id, test)
     if before["left"] == 0:
         raise ConflictError("NO_ATTEMPTS_LEFT", f"You have used all {before['allowed']} attempts allowed on this test.")
+    # The gap an admin set between attempts: a paper opened too early (an old tab) is not counted.
+    if before["waitSeconds"] > 0:
+        raise ConflictError("RETAKE_TOO_SOON", f"You can re-attempt this test after {human_wait(before['waitSeconds'])}.")
     responses = {qid: r.model_dump() for qid, r in data.responses.items()}
     result = score(content, test, responses)
     # Kept on the student's profile, and counted in the lead made for them and this exam.

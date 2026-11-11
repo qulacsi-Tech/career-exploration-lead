@@ -169,6 +169,8 @@ class TestBody(BaseModel):
     languages: list[str] = Field(default_factory=lambda: ["English"], min_length=1, max_length=10)
     # None: unlimited retakes.
     attemptsAllowed: Optional[int] = Field(default=None, ge=1, le=100)
+    # How long a student waits after an attempt before the next one, in minutes. None: no wait. At most a year.
+    retakeGapMinutes: Optional[int] = Field(default=None, ge=1, le=525600)
     isFree: bool = False
     isPublished: bool = False
     # What the instructions page says before the test starts. Empty: the standard instructions are shown.
@@ -301,6 +303,7 @@ async def get_test(slug: str, _admin: AdminPayload, db: DbSession):
         "sectionLock": bool(test.get("sectionLock")),
         "languages": test.get("languages") or ["English"],
         "attemptsAllowed": test.get("attemptsAllowed"),
+        "retakeGapMinutes": test.get("retakeGapMinutes"),
         "isFree": bool(test.get("isFree")),
         "isPublished": bool(test.get("isPublished")),
         "instructionsTitle": test.get("instructionsTitle", ""),
@@ -353,6 +356,7 @@ async def create_test(_admin: AdminPayload, db: DbSession, body: dict):
         "sections": [{"id": "section-1", "label": "Section 1", "questionIds": []}],
         "languages": ["English"],
         "attemptsAllowed": None,
+        "retakeGapMinutes": None,
         "isFree": False,
         "isPublished": False,
     }
@@ -462,6 +466,7 @@ async def save_test(slug: str, _admin: AdminPayload, db: DbSession, body: dict):
         "sections": section_rows,
         "languages": [l.strip() for l in data.languages if l.strip()] or ["English"],
         "attemptsAllowed": data.attemptsAllowed,
+        "retakeGapMinutes": data.retakeGapMinutes,
         "isFree": data.isFree,
         "isPublished": data.isPublished,
         "instructionsTitle": data.instructionsTitle.strip(),

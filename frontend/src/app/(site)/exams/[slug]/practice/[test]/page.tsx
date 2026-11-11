@@ -84,7 +84,7 @@ export default async function TestInstructionsPage({
         ))}
       </dl>
 
-      <AttemptsNote testSlug={test.slug} allowed={test.attemptsAllowed} />
+      <AttemptsNote testSlug={test.slug} allowed={test.attemptsAllowed} gapMinutes={test.retakeGapMinutes ?? null} />
 
       <section className="mt-8">
         <h2 className="font-display text-lg font-bold text-ink">{instructions.title}</h2>

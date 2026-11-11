@@ -30,6 +30,7 @@ async def my_attempts(user_id: CurrentUserId, db: DbSession):
         data=[
             {
                 "attemptsAllowed": (tests.get(a.test_slug) or {}).get("attemptsAllowed"),
+                "retakeGapMinutes": (tests.get(a.test_slug) or {}).get("retakeGapMinutes"),
                 "id": str(a.id),
                 "testSlug": a.test_slug,
                 "examSlug": a.exam_slug,

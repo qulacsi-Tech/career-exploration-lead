@@ -6,7 +6,7 @@ lead. The lead carries the student's contact details only as far as they agreed 
 when they did (see routers/admin_lead_sharing.py).
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -23,19 +23,62 @@ def _num(value: float) -> str:
     return str(int(value)) if float(value).is_integer() else f"{value:.1f}"
 
 
+def human_wait(seconds: int) -> str:
+    """"2 days 3 hours", "45 minutes", "under a minute": how long until the next attempt, in words."""
+    if seconds < 60:
+        return "under a minute"
+    minutes = -(-seconds // 60)  # rounded up, so it never says less than the real wait
+    days, rest = divmod(minutes, 24 * 60)
+    hours, mins = divmod(rest, 60)
+    parts = []
+    if days:
+        parts.append(f"{days} {'day' if days == 1 else 'days'}")
+    if hours:
+        parts.append(f"{hours} {'hour' if hours == 1 else 'hours'}")
+    if mins and not days:
+        parts.append(f"{mins} {'minute' if mins == 1 else 'minutes'}")
+    return " ".join(parts[:2])
+
+
 async def attempts_status(db: AsyncSession, user_id: UUID, test: dict) -> dict:
-    """How many times the student may sit this test, how many they have, and how many are left. `None`: no limit."""
+    """The student's attempts on this test: how many it allows and they have used, how many are left (`None`: no
+    limit), and when the next one may start when the test asks for a gap between attempts."""
     allowed = test.get("attemptsAllowed")
-    used = int((await db.execute(select(func.count()).select_from(PracticeAttempt).where(PracticeAttempt.user_id == user_id, PracticeAttempt.test_slug == test["slug"]))).scalar_one())
-    return {"allowed": allowed, "used": used, "left": None if allowed is None else max(0, int(allowed) - used)}
+    gap = test.get("retakeGapMinutes")
+    used, last = (
+        await db.execute(
+            select(func.count(), func.max(PracticeAttempt.submitted_at)).where(
+                PracticeAttempt.user_id == user_id, PracticeAttempt.test_slug == test["slug"]
+            )
+        )
+    ).one()
+    used = int(used)
+    next_at = None
+    wait = 0
+    if gap and last is not None:
+        next_at = last + timedelta(minutes=int(gap))
+        wait = max(0, int((next_at - datetime.now(timezone.utc)).total_seconds()))
+    return {
+        "allowed": allowed,
+        "used": used,
+        "left": None if allowed is None else max(0, int(allowed) - used),
+        "gapMinutes": gap,
+        # Set only while the student has to wait.
+        "nextAttemptAt": next_at.isoformat() if next_at is not None and wait > 0 else None,
+        "waitSeconds": wait,
+    }
 
 
 def _left_text(status: dict) -> str:
-    if status["left"] is None:
-        return "You can take this test as many times as you like."
     if status["left"] == 0:
         return "That was your last attempt. You have no attempts left on this test."
-    return f"You have {status['left']} {'attempt' if status['left'] == 1 else 'attempts'} left on this test."
+    if status["left"] is None:
+        text = "You can take this test as many times as you like."
+    else:
+        text = f"You have {status['left']} {'attempt' if status['left'] == 1 else 'attempts'} left on this test."
+    if status.get("waitSeconds"):
+        text += f" You can re-attempt after {human_wait(status['waitSeconds'])}."
+    return text
 
 
 async def record_attempt(db: AsyncSession, user_id: UUID, test: dict, result: dict) -> dict:

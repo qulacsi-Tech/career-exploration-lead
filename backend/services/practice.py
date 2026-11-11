@@ -92,6 +92,7 @@ def summary(content: PracticeContent, test: dict) -> dict:
         "sectionLock": test["sectionLock"],
         "languages": test["languages"],
         "attemptsAllowed": test.get("attemptsAllowed"),
+        "retakeGapMinutes": test.get("retakeGapMinutes"),
         "isFree": test["isFree"],
         "questionCount": sum(len(s["questionIds"]) for s in test["sections"]),
         "sectionCount": len(test["sections"]),

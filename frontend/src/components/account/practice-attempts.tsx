@@ -1,7 +1,7 @@
 "use client";
 
+import { TakeAgainOrWait } from "@/components/practice/retake-countdown";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { ClipboardCheck, X } from "lucide-react";
 import type { MyPracticeAttempt } from "@/lib/api";
 import { formatFull } from "@/lib/lead-labels";
@@ -10,7 +10,7 @@ type ExamGroup = {
   examSlug: string;
   examName: string;
   attempts: MyPracticeAttempt[];
-  tests: { testSlug: string; testTitle: string; attempts: MyPracticeAttempt[]; best: MyPracticeAttempt; allowed: number | null; left: number | null }[];
+  tests: { testSlug: string; testTitle: string; attempts: MyPracticeAttempt[]; best: MyPracticeAttempt; allowed: number | null; left: number | null; nextAt: string | null }[];
   best: MyPracticeAttempt;
 };
 
@@ -38,7 +38,10 @@ function groupByExam(attempts: MyPracticeAttempt[]): ExamGroup[] {
       tests: [...byTest.values()].map((rows) => {
         // The limit the test has now (the newest attempt carries it), and what that leaves.
         const allowed = rows[0].attemptsAllowed;
-        return { testSlug: rows[0].testSlug, testTitle: rows[0].testTitle, attempts: rows, best: best(rows), allowed, left: allowed === null ? null : Math.max(0, allowed - rows.length) };
+        // The gap the test asks for, counted from the newest attempt.
+        const gap = rows[0].retakeGapMinutes;
+        const nextAt = gap && rows[0].submittedAt ? new Date(Date.parse(rows[0].submittedAt) + gap * 60000).toISOString() : null;
+        return { testSlug: rows[0].testSlug, testTitle: rows[0].testTitle, attempts: rows, best: best(rows), allowed, left: allowed === null ? null : Math.max(0, allowed - rows.length), nextAt };
       }),
       best: best(list),
     };
@@ -148,9 +151,7 @@ export function PracticeAttempts({ attempts }: { attempts: MyPracticeAttempt[] }
                   {t.left === 0 ? (
                     <p className="mt-2 text-xs font-medium text-ink-faint">All attempts used.</p>
                   ) : (
-                    <Link href={`/exams/${current.examSlug}/practice/${t.testSlug}`} className="mt-2 inline-block text-xs font-semibold text-brand hover:underline">
-                      Take it again
-                    </Link>
+                    <TakeAgainOrWait nextAt={t.nextAt} href={`/exams/${current.examSlug}/practice/${t.testSlug}`} />
                   )}
                 </div>
               ))}

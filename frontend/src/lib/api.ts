@@ -2768,6 +2768,8 @@ export type AdminPracticeTest = {
   languages: string[];
   /** null: unlimited retakes. */
   attemptsAllowed: number | null;
+  /** Minutes a student waits after an attempt before the next one. null: no wait. */
+  retakeGapMinutes: number | null;
   isFree: boolean;
   isPublished: boolean;
   /** The instructions page. Empty: the standard instructions are shown. `{marking}` is the test's marking scheme. */
@@ -3572,13 +3574,15 @@ export type MyPracticeAttempt = {
   submittedAt: string | null;
   /** The limit the test has now. `null`: none. */
   attemptsAllowed: number | null;
+  /** Minutes between attempts the test asks for now. `null`: none. */
+  retakeGapMinutes: number | null;
 };
 
 export const getMyPracticeAttempts = (token: string) => meGet<MyPracticeAttempt[]>(token, "/me/practice-attempts");
 
 /** For a signed-in student: the attempts a practice test allows, how many they used and how many are left. */
 export const getAttemptStatus = (token: string, slug: string) =>
-  meGet<{ allowed: number | null; used: number; left: number | null }>(token, `/practice/tests/${encodeURIComponent(slug)}/attempts`);
+  meGet<import("@/lib/practice-attempt").AttemptsStatus>(token, `/practice/tests/${encodeURIComponent(slug)}/attempts`);
 
 // ── Exam leads (students who sat practice tests) ────────────────────────────
 

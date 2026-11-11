@@ -1,5 +1,7 @@
 "use client";
 
+import { RetakeCountdown } from "@/components/practice/retake-countdown";
+import { humanWait } from "@/lib/exam-insights";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
@@ -52,11 +54,19 @@ export function AttemptPopup({ testSlug, examSlug, attempts }: { testSlug: strin
         </span>
         <h2 id="attempt-popup-title" className="mt-3 font-display text-xl font-bold text-ink">{heading}</h2>
         <p id="attempt-popup-text" className="mt-2 text-sm leading-relaxed text-ink-soft">{detail}</p>
+        {!lastUsed && attempts.waitSeconds && attempts.nextAttemptAt ? (
+          <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            <p className="font-semibold">You can re-attempt after {humanWait(attempts.waitSeconds)}</p>
+            <div className="mt-1.5 flex justify-center">
+              <RetakeCountdown until={attempts.nextAttemptAt} />
+            </div>
+          </div>
+        ) : null}
         <div className="mt-5 flex flex-col gap-2">
           <button type="button" autoFocus onClick={() => setOpen(false)} className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark">
             See my result
           </button>
-          {!lastUsed && (
+          {!lastUsed && !attempts.waitSeconds && (
             <Link href={`/exams/${examSlug}/practice/${testSlug}`} className="text-sm font-semibold text-ink-soft hover:text-brand">
               Take it again
             </Link>

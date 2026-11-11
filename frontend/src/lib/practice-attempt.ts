@@ -270,7 +270,17 @@ export type QuestionResult = {
 };
 
 /** How many times the student may sit a test, how many they have, and how many are left. `null`: no limit. */
-export type AttemptsStatus = { allowed: number | null; used: number; left: number | null };
+export type AttemptsStatus = {
+  allowed: number | null;
+  used: number;
+  left: number | null;
+  /** The gap the test asks for between attempts, in minutes. null: none. */
+  gapMinutes?: number | null;
+  /** When the next attempt may start, while the student has to wait. */
+  nextAttemptAt?: string | null;
+  /** Seconds left to wait. 0: no wait. */
+  waitSeconds?: number;
+};
 
 export type AttemptResult = {
   /** Set by the server on a submitted attempt: the student's attempts on this test after it. */

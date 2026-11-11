@@ -23,7 +23,7 @@ export async function submitPracticeAttempt(
 }
 
 /** The signed-in student's attempts on a test: allowed, used, left. `null` when nobody is signed in. */
-export async function loadAttemptStatus(slug: string): Promise<{ allowed: number | null; used: number; left: number | null } | null> {
+export async function loadAttemptStatus(slug: string): Promise<import("@/lib/practice-attempt").AttemptsStatus | null> {
   const token = await getUserToken();
   if (!token) return null;
   try {

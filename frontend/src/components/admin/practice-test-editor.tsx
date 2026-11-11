@@ -1,5 +1,6 @@
 "use client";
 
+import { RetakeGapField } from "@/components/admin/retake-gap-field";
 import { confirmToast } from "@/components/ui/confirm-toast";
 import { DEFAULT_INSTRUCTIONS_TITLE, DEFAULT_START_NOTE, defaultInstructions } from "@/lib/practice-instructions";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -98,6 +99,7 @@ export function PracticeTestEditor({
         const { title, kind, summary, totalMinutes, sectionLock, languages, attemptsAllowed, isFree, isPublished, sections } = result;
         setTest({
           title, kind, summary, totalMinutes, sectionLock, languages, attemptsAllowed, isFree, isPublished, sections,
+          retakeGapMinutes: result.retakeGapMinutes ?? null,
           instructionsTitle: result.instructionsTitle ?? "",
           instructions: result.instructions ?? [],
           startNote: result.startNote ?? "",
@@ -368,6 +370,7 @@ export function PracticeTestEditor({
                 <input id="pt-attempts" type="number" min={1} max={100} value={test.attemptsAllowed ?? ""} placeholder="Unlimited" aria-describedby="pt-attempts-hint" onChange={(e) => set("attemptsAllowed", e.target.value === "" ? null : Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))))} className={input} />
                 <p id="pt-attempts-hint" className="mt-1 text-xs text-ink-faint">How many times each student may sit this test. Empty: no limit. Students are told how many are left after every attempt.</p>
               </div>
+              <RetakeGapField value={test.retakeGapMinutes} onChange={(v) => set("retakeGapMinutes", v)} />
               <div className="md:col-span-2 xl:col-span-2">
                 <label htmlFor="pt-langs" className="block text-xs font-semibold text-ink">Languages</label>
                 <input id="pt-langs" value={test.languages.join(", ")} onChange={(e) => set("languages", e.target.value.split(",").map((l) => l.trim()).filter(Boolean).length ? e.target.value.split(",").map((l) => l.trim()).filter(Boolean) : ["English"])} className={input} />

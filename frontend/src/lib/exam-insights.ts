@@ -55,3 +55,24 @@ export function compactCount(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "")}k`;
   return String(n);
 }
+
+/** "2 days 3 hours", "45 minutes", "under a minute": a wait in words. Mirrors the server's wording. */
+export function humanWait(seconds: number): string {
+  if (seconds < 60) return "under a minute";
+  const minutes = Math.ceil(seconds / 60);
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  const parts: string[] = [];
+  if (days) parts.push(`${days} ${days === 1 ? "day" : "days"}`);
+  if (hours) parts.push(`${hours} ${hours === 1 ? "hour" : "hours"}`);
+  if (mins && !days) parts.push(`${mins} ${mins === 1 ? "minute" : "minutes"}`);
+  return parts.slice(0, 2).join(" ");
+}
+
+/** The gap between attempts as the admin set it: "30 minutes", "6 hours", "2 days". */
+export function gapLabel(minutes: number): string {
+  if (minutes % 1440 === 0) return `${minutes / 1440} ${minutes === 1440 ? "day" : "days"}`;
+  if (minutes % 60 === 0) return `${minutes / 60} ${minutes === 60 ? "hour" : "hours"}`;
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
