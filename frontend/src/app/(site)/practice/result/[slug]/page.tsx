@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { getColleges, getExam, getPracticeTest } from "@/lib/api";
+import { getExam, getExamCutoffs, getPracticeTest } from "@/lib/api";
+import { examShortName } from "@/lib/exam-insights";
 import { ResultViewMount } from "@/components/practice/result-view-mount";
 
 export async function generateMetadata({
@@ -20,14 +21,11 @@ export async function generateMetadata({
 }
 
 /**
- * The result of a sitting.
+ * The result of a sitting, laid out like the exam pages: the score up top in big type, where it can take the student
+ * (the colleges whose cut-off it clears), the analysis, and on the right their standing and the leaderboard.
  *
- * Inside `(site)` rather than the bare `(exam)` group, unlike the player. The
- * clock has stopped, so the header and footer are no longer a distraction —
- * they are the way onward, which for this site means into college discovery.
- *
- * Colleges are matched here rather than in the client component so the join
- * runs once on the server and only the three that are shown cross the wire.
+ * The cut-offs are read here, on the server, once; the result itself is matched against them in the browser, where
+ * the scored attempt lives.
  */
 export default async function ResultPage({
   params,
@@ -38,24 +36,12 @@ export default async function ResultPage({
   const test = await getPracticeTest(slug);
   if (!test || !test.isPublished) notFound();
 
-  const exam = await getExam(test.examSlug).catch(() => null);
-
-  /*
-    Colleges list the exams they accept by short code — "CAT", "NMAT",
-    "MAH MBA CET" — while the exam record carries a full name with the code in
-    brackets. Matching on either the bracketed code or a code that appears
-    inside the name covers both spellings without a lookup table to maintain.
-  */
-  const code = exam?.name.match(/\(([^)]+)\)/)?.[1];
-  const accepting = code
-    ? await getColleges({ exam: code, limit: 12 })
-        .then((r) => r.data)
-        .catch(() => [])
-    : [];
+  const [exam, cutoffs] = await Promise.all([getExam(test.examSlug).catch(() => null), getExamCutoffs(test.examSlug)]);
+  const shortName = exam ? examShortName(exam) : test.examSlug.toUpperCase();
 
   return (
     <>
-      <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[88rem] px-5 pt-6 sm:px-8 lg:px-12">
         <Breadcrumbs
           items={[
             { label: "Home", href: "/" },
@@ -66,15 +52,7 @@ export default async function ResultPage({
         />
       </div>
 
-      <ResultViewMount
-        test={test}
-        acceptingColleges={accepting.map((college) => ({
-          slug: college.slug,
-          name: college.name,
-          city: college.city,
-          feesRange: college.feesRange,
-        }))}
-      />
+      <ResultViewMount test={test} cutoffs={cutoffs} shortName={shortName} />
     </>
   );
 }

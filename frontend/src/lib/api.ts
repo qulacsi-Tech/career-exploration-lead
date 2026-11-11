@@ -254,6 +254,10 @@ export type Exam = {
   faqs?: ExamFaq[];
   /** Extra page content built in the admin with the same section editor as news. Empty or absent: none. */
   contentSections?: import("@/lib/article-sections").ArticleSection[];
+  /** The page's headings and short lines set in the admin, by key (lib/exam-page-text). Missing: the usual wording. */
+  pageText?: Record<string, string>;
+  /** College slug -> place among the colleges listed on the exam's page (1 first). */
+  collegePriority?: Record<string, number>;
   /** Card photo: /images/... or /api/uploads/... Empty: no photo. */
   image?: string;
   /** The badge on the card: Upcoming, Live, Expired or any words. Empty or absent: no badge. */
@@ -3630,3 +3634,76 @@ export async function adminExamLeads(token: string, params: { page?: number; lim
 
 export const adminExamLeadDetail = (token: string, userId: string, examSlug: string) =>
   savedRequest<ExamLeadDetail>(token, "GET", `/admin/exam-leads/${encodeURIComponent(userId)}/${encodeURIComponent(examSlug)}`);
+
+// ── Exam practice statistics (public) ───────────────────────────────────────
+
+/** Where a signed-in student stands among everyone who practised for an exam. */
+export type ExamStanding = {
+  attempts: number;
+  bestPercent: number;
+  /** 1 is the top. */
+  rank: number;
+  /** The share of the other students this student scored above. */
+  percentile: number;
+  /** Which of the ten score bands (0–10%, … 90–100%) their best falls in. */
+  band: number;
+  latestScore: number;
+  latestMax: number;
+  latestTest: string;
+};
+
+/** The crowd on an exam's practice tests: each student counted once, by their best attempt. */
+export type ExamStats = {
+  students: number;
+  attempts: number;
+  averagePercent: number;
+  topPercent: number;
+  /** Students in each ten-point score band, lowest first. */
+  bands: number[];
+  you: ExamStanding | null;
+};
+
+/** The statistics of an exam's practice tests. With a token, `you` is filled in for that student. */
+export async function getExamStats(slug: string, token?: string | null): Promise<ExamStats> {
+  const res = await fetch(`${API_BASE}/practice/exams/${encodeURIComponent(slug)}/stats`, {
+    cache: "no-store",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const json = (await res.json().catch(() => null)) as { success?: boolean; data?: ExamStats } | null;
+  if (!res.ok || !json?.success || !json.data) throw new ApiError(res.status, `Exam stats API ${res.status}`);
+  return json.data;
+}
+
+/** For the exam listing: students and attempts on each exam's practice tests, by exam slug. */
+export async function getExamPracticeCounts(): Promise<Record<string, { students: number; attempts: number }>> {
+  try {
+    return await apiFetch<Record<string, { students: number; attempts: number }>>("/practice/exam-counts", 0);
+  } catch {
+    return {};
+  }
+}
+
+/** One row of an exam's practice leaderboard. Names are shortened ("Riya S."). */
+export type LeaderboardEntry = { rank: number; name: string; bestPercent: number; attempts: number; isYou: boolean };
+export type ExamLeaderboard = { total: number; top: LeaderboardEntry[]; you: LeaderboardEntry | null };
+
+export async function getExamLeaderboard(slug: string, token?: string | null): Promise<ExamLeaderboard> {
+  const res = await fetch(`${API_BASE}/practice/exams/${encodeURIComponent(slug)}/leaderboard`, {
+    cache: "no-store",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const json = (await res.json().catch(() => null)) as { success?: boolean; data?: ExamLeaderboard } | null;
+  if (!res.ok || !json?.success || !json.data) throw new ApiError(res.status, `Leaderboard API ${res.status}`);
+  return json.data;
+}
+
+/** A college's cut-off for an exam, with the number read out (`percentile` is null when it cannot be one). */
+export type ExamCutoffRow = { slug: string; name: string; city: string; image: string; category: string; course: string; score: string; percentile: number | null };
+
+export async function getExamCutoffs(slug: string): Promise<ExamCutoffRow[]> {
+  try {
+    return await apiFetch<ExamCutoffRow[]>(`/practice/exams/${encodeURIComponent(slug)}/cutoffs`, 0);
+  } catch {
+    return [];
+  }
+}

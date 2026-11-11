@@ -31,6 +31,8 @@ def _to_schema(exam: Exam) -> ExamSchema:
         syllabus=exam.syllabus or "",
         faqs=[f for f in (exam.faqs or []) if f.get("question") and f.get("answer")],
         contentSections=list(exam.content_sections or []),
+        pageText=dict(exam.page_text or {}),
+        collegePriority=dict(exam.college_priority or {}),
         image=exam.image or "",
         statusLabel=exam.status_label or "",
     )

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 
 from schemas.article import ArticleSection
@@ -34,6 +34,10 @@ class ExamSchema(BaseModel):
     faqs: List[ExamFaqSchema] = []
     # Extra page content built with the section editor (same blocks as a news article).
     contentSections: List[ArticleSection] = []
+    # The page's headings and short lines set in the admin, by key. Missing: the usual wording.
+    pageText: Dict[str, str] = {}
+    # College slug -> place among the colleges listed on the exam's page (1 first).
+    collegePriority: Dict[str, int] = {}
     # Card photo. Empty: the card shows no photo.
     image: str = ""
     # The badge on the card: Upcoming, Live, Expired or any words. Empty: no badge.

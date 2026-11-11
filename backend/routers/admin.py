@@ -325,6 +325,44 @@ class ExamFaqBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# The wording on an exam's page that the admin can change. Anything not set uses the usual wording.
+PAGE_TEXT_KEYS = {
+    "tagline", "aboutHeading", "aboutKicker", "glanceHeading", "glanceKicker", "warmupHeading", "warmupKicker",
+    "eligibilityHeading", "eligibilityKicker", "patternHeading", "patternKicker", "syllabusHeading", "syllabusKicker",
+    "practiceHeading", "practiceKicker", "guideTab", "cutoffsHeading", "cutoffsKicker", "collegesHeading",
+    "collegesKicker", "faqsHeading", "faqsKicker", "alertsButton", "mockButton", "keyDatesTitle", "predictTitle",
+    "predictText", "predictButton",
+}
+
+
+def _page_text(value):
+    if value is None:
+        return value
+    out = {}
+    for key, text in value.items():
+        if key not in PAGE_TEXT_KEYS:
+            raise ValueError(f"unknown page text '{key}'")
+        text = (text or "").strip()
+        if len(text) > 300:
+            raise ValueError(f"'{key}' is longer than 300 characters")
+        if text:
+            out[key] = text
+    return out
+
+
+def _college_priority(value):
+    if value is None:
+        return value
+    if len(value) > 200:
+        raise ValueError("at most 200 colleges can be given a place")
+    out = {}
+    for slug, place in value.items():
+        if not slug or len(slug) > 200 or not isinstance(place, int) or not 1 <= place <= 999:
+            raise ValueError("each college needs a place from 1 to 999")
+        out[slug] = place
+    return out
+
+
 class ExamUpdateBody(BaseModel):
     name: Optional[str] = None
     shortName: Optional[str] = Field(default=None, max_length=100)
@@ -347,11 +385,17 @@ class ExamUpdateBody(BaseModel):
     faqs: Optional[list[ExamFaqBody]] = Field(default=None, max_length=20)
     # Page content built with the same section editor as news. None leaves it as it is; [] clears it.
     contentSections: Optional[list[ArticleSection]] = Field(default=None, max_length=40)
+    # The page's headings and short lines by key; empty values use the usual wording.
+    pageText: Optional[dict[str, str]] = None
+    # College slug -> place among the colleges listed on the exam's page.
+    collegePriority: Optional[dict[str, int]] = None
     image: Optional[str] = Field(default=None, max_length=200)
     statusLabel: Optional[str] = Field(default=None, max_length=40)
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
+    _text = field_validator("pageText")(_page_text)
+    _order = field_validator("collegePriority")(_college_priority)
 
 
 class ExamCreateBody(BaseModel):
@@ -376,11 +420,17 @@ class ExamCreateBody(BaseModel):
     faqs: Optional[list[ExamFaqBody]] = Field(default=None, max_length=20)
     # Page content built with the same section editor as news. None leaves it as it is; [] clears it.
     contentSections: Optional[list[ArticleSection]] = Field(default=None, max_length=40)
+    # The page's headings and short lines by key; empty values use the usual wording.
+    pageText: Optional[dict[str, str]] = None
+    # College slug -> place among the colleges listed on the exam's page.
+    collegePriority: Optional[dict[str, int]] = None
     image: Optional[str] = Field(default=None, max_length=200)
     statusLabel: Optional[str] = Field(default=None, max_length=40)
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
+    _text = field_validator("pageText")(_page_text)
+    _order = field_validator("collegePriority")(_college_priority)
 
 
 @router.post("/exams", response_model=SuccessResponse[MessageResponse], status_code=201)
@@ -414,6 +464,8 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
         syllabus=body.syllabus or "",
         faqs=[f.model_dump() for f in body.faqs or []],
         content_sections=[s.model_dump(mode="json") for s in body.contentSections or []],
+        page_text=body.pageText or {},
+        college_priority=body.collegePriority or {},
         image=body.image or "",
         status_label=(body.statusLabel or "").strip(),
     ))
@@ -446,6 +498,8 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
     if body.syllabus is not None:            values["syllabus"] = body.syllabus
     if body.faqs is not None:                values["faqs"] = [f.model_dump() for f in body.faqs]
     if body.contentSections is not None:     values["content_sections"] = [s.model_dump(mode="json") for s in body.contentSections]
+    if body.pageText is not None:            values["page_text"] = body.pageText
+    if body.collegePriority is not None:     values["college_priority"] = body.collegePriority
     if body.image is not None:               values["image"] = body.image
     if body.statusLabel is not None:         values["status_label"] = body.statusLabel.strip()
 

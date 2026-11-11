@@ -323,6 +323,21 @@ export async function saveExam(slug: string, form: FormData): Promise<AdminActio
       return { error: "The page content could not be read. Reload the page and try again." };
     }
   }
+  // Fields that may be emptied on purpose (an empty eligibility hides its tab), so they are sent even when blank.
+  for (const key of ["eligibility", "stream", "statusLabel", "image"] as const) {
+    const value = form.get(key);
+    if (typeof value === "string") payload[key] = value.trim();
+  }
+  // The FAQs, the page wording and the college order travel as JSON from their tabs.
+  for (const key of ["faqs", "pageText", "collegePriority"] as const) {
+    const raw = form.get(key);
+    if (typeof raw !== "string" || raw === "") continue;
+    try {
+      payload[key] = JSON.parse(raw);
+    } catch {
+      return { error: "Part of the form could not be read. Reload the page and try again." };
+    }
+  }
   const result = await attempt("/admin/exams", (token) =>
     adminUpdateExam(token, slug, payload)
   );
@@ -1956,4 +1971,15 @@ export async function saveScopePriorities(scope: string, priority: Record<string
     revalidatePath("/", "layout");
   }
   return result;
+}
+
+/** The published colleges that list an exam as accepted, for the exam's College priority tab. */
+export async function loadExamColleges(examCode: string): Promise<{ slug: string; name: string; city: string; rank: number | null }[] | { error: string }> {
+  await requireAdminToken();
+  try {
+    const result = await getColleges({ exam: examCode, limit: 100 });
+    return result.data.map((c) => ({ slug: c.slug, name: c.name, city: c.city, rank: c.nirfRank ?? c.ranking?.rank ?? null }));
+  } catch {
+    return { error: "Could not load the colleges accepting this exam. Try again." };
+  }
 }

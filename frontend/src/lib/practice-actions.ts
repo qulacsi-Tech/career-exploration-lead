@@ -1,6 +1,6 @@
 "use server";
 
-import { getAttemptStatus, submitPractice } from "@/lib/api";
+import { getAttemptStatus, getExamLeaderboard, getExamStats, submitPractice, type ExamLeaderboard, type ExamStats } from "@/lib/api";
 
 type AttemptResult = Awaited<ReturnType<typeof submitPractice>>;
 import { getUserToken } from "@/lib/user-session";
@@ -28,6 +28,26 @@ export async function loadAttemptStatus(slug: string): Promise<{ allowed: number
   if (!token) return null;
   try {
     return await getAttemptStatus(token, slug);
+  } catch {
+    return null;
+  }
+}
+
+/** An exam's practice statistics, with where the signed-in student stands (when there is one). `null` when unavailable. */
+export async function loadExamStats(examSlug: string): Promise<ExamStats | null> {
+  const token = await getUserToken();
+  try {
+    return await getExamStats(examSlug, token);
+  } catch {
+    return null;
+  }
+}
+
+/** An exam's practice leaderboard, with the signed-in student's own row marked. `null` when unavailable. */
+export async function loadExamLeaderboard(examSlug: string): Promise<ExamLeaderboard | null> {
+  const token = await getUserToken();
+  try {
+    return await getExamLeaderboard(examSlug, token);
   } catch {
     return null;
   }

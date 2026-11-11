@@ -40,6 +40,10 @@ class Exam(Base):
     faqs = Column(JSONB, nullable=False, default=list, server_default="[]")  # [{"question", "answer"}]
     # Extra page content built in the admin with the same section editor as news: [{"heading", "blocks": [...]}].
     content_sections = Column(JSONB, nullable=False, default=list, server_default="[]")
+    # The headings and short lines on the exam's page, by key (see PAGE_TEXT_KEYS in routers/admin.py). Empty: usual wording.
+    page_text = Column(JSONB, nullable=False, default=dict, server_default="{}")
+    # Where each college accepting the exam is listed on its page: college slug -> place (1 first). Others follow.
+    college_priority = Column(JSONB, nullable=False, default=dict, server_default="{}")
     # Card photo: /images/... (shipped) or /api/uploads/... (uploaded in the admin).
     image = Column(String(200), nullable=False, default="", server_default="")
     # The badge on the exam's card: Upcoming, Live, Expired or any words. Empty: no badge.

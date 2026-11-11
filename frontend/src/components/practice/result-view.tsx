@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, CheckCircle2, CircleSlash, Clock, XCircle } from "lucide-react";
+import { CheckCircle2, CircleSlash, Clock, Gauge, Sparkles, Target, Timer, XCircle } from "lucide-react";
+import type { ExamCutoffRow } from "@/lib/api";
+import { ExamStatsCard } from "@/components/exams/exam-stats-card";
+import { ExamLeaderboard } from "@/components/exams/exam-leaderboard";
+import { EligibleColleges } from "@/components/practice/eligible-colleges";
 import type { MockTest } from "@/lib/practice-data";
 import {
   type AttemptResult,
@@ -26,10 +30,14 @@ import { RouteMessage, RouteAction } from "@/components/ui/route-message";
 
 export function ResultView({
   test,
-  acceptingColleges,
+  cutoffs,
+  shortName,
 }: {
   test: MockTest;
-  acceptingColleges: { slug: string; name: string; city: string; feesRange: string }[];
+  /** The cut-offs colleges list for this exam, to match the result against. */
+  cutoffs: ExamCutoffRow[];
+  /** The exam's short name ("CAT"). */
+  shortName: string;
 }) {
   // Scored by the server when the paper was submitted. Nothing is scored here.
   const result = useMemo(() => loadResult(test.slug), [test.slug]);
@@ -47,11 +55,16 @@ export function ResultView({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[88rem] px-5 pb-12 pt-4 sm:px-8 lg:px-12">
       <AttemptPopup testSlug={test.slug} examSlug={test.examSlug} attempts={result.attempts} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="min-w-0">
       <Header test={test} result={result} />
       <ScoreTiles result={result} />
       <Percentile result={result} />
+
+      {/* Where the score can take the student: the colleges whose cut-off it clears, or the nearest targets. */}
+      <EligibleColleges rows={cutoffs} percentile={indicativePercentile(result)} examSlug={test.examSlug} shortName={shortName} />
 
       <Section title="Section by section">
         <SectionScoresChart result={result} />
@@ -71,11 +84,17 @@ export function ResultView({
         <TopicTable result={result} />
       </Section>
 
-      <Section title="Solutions">
+      <Section title="Solutions" description="Every question, your answer and the right one, with the working.">
         <SolutionReview result={result} />
       </Section>
+      </div>
 
-      {acceptingColleges.length > 0 && <CollegesBand test={test} colleges={acceptingColleges} />}
+      {/* Where the student stands among everyone who practised for this exam, and the top of the board. */}
+      <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+        <ExamStatsCard examSlug={test.examSlug} shortName={shortName} hasTests />
+        <ExamLeaderboard examSlug={test.examSlug} />
+      </aside>
+      </div>
     </div>
   );
 }
@@ -94,62 +113,92 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-10">
-      <h2 className="font-display text-xl font-bold text-ink">{title}</h2>
-      {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
-      <div className="mt-4">{children}</div>
+    <section className="mt-6 rounded-2xl border border-line bg-surface p-5 sm:p-7">
+      <h2 className="relative pl-4 font-display text-xl font-bold text-ink before:absolute before:bottom-1 before:left-0 before:top-1 before:w-1.5 before:rounded-full before:bg-brand sm:text-2xl">{title}</h2>
+      {description && (
+        <p className="mt-1.5 flex items-center gap-1.5 pl-4 text-sm italic text-brand-ink/80">
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden="true" />
+          {description}
+        </p>
+      )}
+      <div className="mt-5">{children}</div>
     </section>
   );
 }
 
-function Header({ test, result }: { test: MockTest; result: AttemptResult }) {
-  return (
-    <div className="flex flex-col gap-3 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="text-xs font-semibold text-ink-faint">
-          Result · {test.title}
-        </p>
-        <h1 className="mt-1 font-display text-2xl font-bold text-ink sm:text-3xl">
-          {result.score} <span className="text-ink-faint">/ {result.maxScore}</span>
-        </h1>
-      </div>
+/** A cheer from the share of marks scored. */
+function scoreLine(share: number): string {
+  if (share >= 0.8) return "Outstanding! You're in topper territory.";
+  if (share >= 0.6) return "Strong showing. The top is within reach.";
+  if (share >= 0.4) return "Solid base. Tighten the weak spots and climb.";
+  if (share > 0) return "Every attempt teaches something. Review and go again!";
+  return "A tough one. The solutions below are your best teacher.";
+}
 
-      <div className="flex shrink-0 gap-2">
-        <Link
-          href={`/exams/${test.examSlug}/practice`}
-          className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink-soft transition hover:border-brand hover:text-brand"
-        >
-          All tests
-        </Link>
-        <Link
-          href={`/practice/attempt/${test.slug}`}
-          onClick={() => discardAttempt(test.slug)}
-          className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
-        >
-          Retake
-        </Link>
+function Header({ test, result }: { test: MockTest; result: AttemptResult }) {
+  const share = result.maxScore === 0 ? 0 : Math.max(0, result.score) / result.maxScore;
+  return (
+    <header className="relative overflow-hidden rounded-3xl border border-line bg-surface shadow-sm">
+      <div className="bg-gradient-to-br from-brand-soft via-bg-alt to-surface p-5 sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-brand">Your result</p>
+            <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{test.title}</h1>
+            <p className="mt-2 flex items-center gap-1.5 text-sm italic text-brand-ink/80">
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden="true" />
+              {scoreLine(share)}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={`/practice/attempt/${test.slug}`}
+                onClick={() => discardAttempt(test.slug)}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark"
+              >
+                Retake
+              </Link>
+              <Link
+                href={`/exams/${test.examSlug}/practice`}
+                className="rounded-lg border border-brand bg-surface px-4 py-2 text-sm font-bold text-brand transition hover:bg-brand-soft"
+              >
+                All tests
+              </Link>
+            </div>
+          </div>
+
+          {/* The score, the star of the page. */}
+          <div className="shrink-0 rounded-2xl bg-surface px-6 py-4 text-center shadow-sm ring-1 ring-line">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Score</p>
+            <p className="mt-1 flex items-baseline justify-center gap-1">
+              <span className="bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-6xl font-extrabold leading-none text-transparent">{result.score}</span>
+              <span className="font-display text-2xl font-extrabold text-ink-faint">/{result.maxScore}</span>
+            </p>
+            <p className="mt-1 text-sm font-bold text-brand">{Math.round(share * 100)}% of the marks</p>
+          </div>
+        </div>
       </div>
-    </div>
+    </header>
   );
 }
 
 function ScoreTiles({ result }: { result: AttemptResult }) {
   const tiles = [
-    { label: "Attempted", value: `${result.attempted}/${result.results.length}` },
-    { label: "Correct", value: String(result.correct) },
-    { label: "Incorrect", value: String(result.incorrect) },
-    { label: "Accuracy", value: `${Math.round(result.accuracy)}%` },
-    { label: "Time taken", value: formatDuration(result.totalSeconds) },
+    { icon: Target, label: "Attempted", value: `${result.attempted}/${result.results.length}`, tone: "text-ink", hint: result.attempted === result.results.length ? "Went for every one" : "Some left untouched" },
+    { icon: CheckCircle2, label: "Correct", value: String(result.correct), tone: "text-emerald-600", hint: "Nailed it" },
+    { icon: XCircle, label: "Incorrect", value: String(result.incorrect), tone: "text-red-600", hint: "Lessons in disguise" },
+    { icon: Gauge, label: "Accuracy", value: `${Math.round(result.accuracy)}%`, tone: "text-brand", hint: "Of those attempted" },
+    { icon: Timer, label: "Time taken", value: formatDuration(result.totalSeconds), tone: "text-ink", hint: "On the clock" },
   ];
 
   return (
-    <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {tiles.map((tile) => (
-        <div key={tile.label} className="rounded-xl border border-line bg-surface px-4 py-3">
-          <dt className="text-[11px] font-semibold text-ink-faint">
-            {tile.label}
+    <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      {tiles.map(({ icon: Icon, label, value, tone, hint }) => (
+        <div key={label} className="group rounded-2xl border border-line bg-surface px-4 py-3 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm">
+          <dt className="flex items-center gap-1.5 text-xs font-bold text-ink-faint">
+            <Icon className="h-4 w-4 text-brand transition group-hover:scale-110" aria-hidden="true" />
+            {label}
           </dt>
-          <dd className="mt-1 font-display text-xl font-bold text-ink">{tile.value}</dd>
+          <dd className={`mt-1 font-display text-3xl font-extrabold leading-tight ${tone}`}>{value}</dd>
+          <p className="text-xs italic text-brand-ink/70">{hint}</p>
         </div>
       ))}
     </dl>
@@ -168,19 +217,23 @@ function ScoreTiles({ result }: { result: AttemptResult }) {
  * Replaced by a real ranking once attempt volume supports it; the display does
  * not change, only the source.
  */
-function Percentile({ result }: { result: AttemptResult }) {
+function indicativePercentile(result: AttemptResult): number {
   const share = result.maxScore === 0 ? 0 : Math.max(0, result.score) / result.maxScore;
   // A gentle S-curve: most candidates cluster mid-range, so equal score steps
   // near the middle move the percentile more than steps at either extreme.
-  const percentile = Math.round(100 / (1 + Math.exp(-9 * (share - 0.45))));
+  return Math.round(100 / (1 + Math.exp(-9 * (share - 0.45))));
+}
+
+function Percentile({ result }: { result: AttemptResult }) {
+  const percentile = indicativePercentile(result);
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-gold/40 bg-gold-soft px-4 py-3">
-      <p className="font-display text-lg font-bold text-ink">
-        {percentile}
-        <span className="text-sm font-semibold text-ink-soft"> percentile</span>
+    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-gold/40 bg-gold-soft px-5 py-4">
+      <p className="flex items-baseline gap-1.5">
+        <span className="font-display text-5xl font-extrabold leading-none text-gold">{percentile}</span>
+        <span className="text-sm font-bold text-ink-soft">percentile</span>
       </p>
-      <p className="text-xs leading-relaxed text-ink-soft">
+      <p className="min-w-0 flex-1 text-xs leading-relaxed text-ink-soft">
         <strong className="font-semibold">Indicative.</strong> Modelled from the marking scheme,
         not ranked against other candidates — real percentiles begin once enough attempts exist to
         rank against.
@@ -427,62 +480,4 @@ function OutcomeGlyph({ outcome }: { outcome: QuestionResult["outcome"] }) {
 
 function outcomeLabel(outcome: QuestionResult["outcome"]): string {
   return outcome === "correct" ? "Correct" : outcome === "incorrect" ? "Incorrect" : "Skipped";
-}
-
-/* ------------------------------------------------------------------ *
-   Back into the platform
- * ------------------------------------------------------------------ */
-
-/**
- * Colleges that accept this exam.
- *
- * The reason the practice module earns its place. A candidate who has just been
- * shown what they are scoring is a candidate thinking about where that score
- * takes them, and this is the one moment on the site where that question is
- * already in their head.
- */
-function CollegesBand({
-  test,
-  colleges,
-}: {
-  test: MockTest;
-  colleges: { slug: string; name: string; city: string; feesRange: string }[];
-}) {
-  return (
-    <section className="mt-12 rounded-2xl border border-brand/30 bg-brand-soft/40 p-6">
-      <h2 className="font-display text-xl font-bold text-ink">
-        Colleges that accept this exam
-      </h2>
-      <p className="mt-1 text-sm text-ink-soft">
-        Shortlist now and a counsellor can talk you through where your score puts you.
-      </p>
-
-      <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {colleges.slice(0, 3).map((college) => (
-          <li key={college.slug}>
-            <Link
-              href={`/college/${college.slug}`}
-              className="group flex h-full flex-col rounded-xl border border-line bg-surface p-4 transition hover:border-brand hover:shadow-sm"
-            >
-              <span className="font-display text-sm font-bold text-ink group-hover:text-brand">
-                {college.name}
-              </span>
-              <span className="mt-1 text-xs text-ink-soft">{college.city}</span>
-              <span className="mt-auto pt-3 text-xs font-medium text-ink-soft">
-                {college.feesRange}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-
-      <Link
-        href={`/exams/${test.examSlug}`}
-        className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-dark"
-      >
-        All colleges accepting this exam
-        <ArrowUpRight className="h-4 w-4" />
-      </Link>
-    </section>
-  );
 }

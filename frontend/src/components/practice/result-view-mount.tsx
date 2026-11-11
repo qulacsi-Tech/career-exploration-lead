@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { MockTest } from "@/lib/practice-data";
+import type { ExamCutoffRow } from "@/lib/api";
 
 /**
  * Mounts the result on the client only — the same reasoning as
@@ -33,12 +34,6 @@ const ResultView = dynamic(
   },
 );
 
-export function ResultViewMount({
-  test,
-  acceptingColleges,
-}: {
-  test: MockTest;
-  acceptingColleges: { slug: string; name: string; city: string; feesRange: string }[];
-}) {
-  return <ResultView test={test} acceptingColleges={acceptingColleges} />;
+export function ResultViewMount({ test, cutoffs, shortName }: { test: MockTest; cutoffs: ExamCutoffRow[]; shortName: string }) {
+  return <ResultView test={test} cutoffs={cutoffs} shortName={shortName} />;
 }

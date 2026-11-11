@@ -139,6 +139,8 @@ def _exam_card(e, show: bool) -> dict:
         "syllabus": e.syllabus or "",
         "faqs": list(e.faqs or []),
         "contentSections": list(e.content_sections or []),
+        "pageText": dict(e.page_text or {}),
+        "collegePriority": dict(e.college_priority or {}),
         "image": e.image or "",
         "statusLabel": e.status_label or "",
         "show": show,

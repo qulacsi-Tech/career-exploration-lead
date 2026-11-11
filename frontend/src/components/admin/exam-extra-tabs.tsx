@@ -9,6 +9,8 @@ import type { ArticleSection } from "@/lib/article-sections";
 
 /** The saved sections of an exam. After a save the edit form holds them as the JSON text it posted, so both are read. */
 function sectionsOf(value: unknown): ArticleSection[] {
+  // After a save the table's row holds the posted JSON text, wrapped in a one-item list.
+  if (Array.isArray(value) && value.length === 1 && typeof value[0] === "string") return sectionsOf(value[0]);
   if (Array.isArray(value)) return value as ArticleSection[];
   if (typeof value === "string" && value) {
     try {

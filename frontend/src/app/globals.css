@@ -979,3 +979,14 @@ body {
 .tiptap-body .rich-video iframe { pointer-events: none; }
 .tiptap-body .ProseMirror-selectednode.rich-video,
 .tiptap-body .ProseMirror-selectednode.rich-figure { outline: 2px solid var(--color-brand); }
+
+/* The exam listing's alert bell: a small swing, paused for anyone who prefers less motion. */
+@keyframes wiggle {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(-14deg); }
+  20%, 40% { transform: rotate(14deg); }
+  50% { transform: rotate(-6deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[wiggle_1\.2s_ease-in-out_infinite\] { animation: none; }
+}

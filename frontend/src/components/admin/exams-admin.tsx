@@ -16,8 +16,11 @@ import {
 import { FormDateField } from "@/components/admin/date-field";
 import { ImageUploadField } from "@/components/admin/media-uploader";
 import { ExamContentTab, ExamPracticeTab } from "@/components/admin/exam-extra-tabs";
+import { ExamCardTab, ExamCollegePriorityTab, ExamEligibilityTab, ExamPageTextTab } from "@/components/admin/exam-page-tabs";
 
 export function ExamsAdmin({ exams }: { exams: Exam[] }) {
+  // The categories already in use, offered in the Card & status tab.
+  const streams = [...new Set(exams.map((e) => e.stream).filter((s): s is string => !!s))].sort();
   return (
     <ResourceAdmin<Exam>
       title="Exams"
@@ -157,6 +160,11 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           ),
         },
         {
+          id: "card",
+          label: "Card & status",
+          render: (exam) => <ExamCardTab exam={exam} streams={streams} />,
+        },
+        {
           id: "dates",
           label: "Dates & fees",
           render: (exam) => (
@@ -209,6 +217,11 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           ),
         },
         {
+          id: "eligibility",
+          label: "Eligibility & FAQs",
+          render: (exam) => <ExamEligibilityTab exam={exam} />,
+        },
+        {
           id: "content",
           label: "Page content",
           render: (exam) => <ExamContentTab exam={exam} />,
@@ -217,6 +230,16 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           id: "practice",
           label: "Practice tests",
           render: (exam) => <ExamPracticeTab exam={exam} />,
+        },
+        {
+          id: "colleges",
+          label: "College priority",
+          render: (exam) => <ExamCollegePriorityTab exam={exam} />,
+        },
+        {
+          id: "text",
+          label: "Page text",
+          render: (exam) => <ExamPageTextTab exam={exam} />,
         },
         {
           id: "seo",
