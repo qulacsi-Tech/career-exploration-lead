@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { DEFAULT_INSTRUCTIONS_TITLE, DEFAULT_START_NOTE, defaultInstructions } from "@/lib/practice-instructions";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { deletePracticeTest, loadPracticeTest, savePracticeTest } from "@/lib/admin-actions";
@@ -427,7 +428,10 @@ export function PracticeTestEditor({
                 <button
                   type="button"
                   onClick={() => {
-                    if (test.instructions.length === 0 || window.confirm("Replace the instructions below with the standard ones?")) set("instructions", defaultInstructions(test.sectionLock));
+                    if (test.instructions.length === 0) return set("instructions", defaultInstructions(test.sectionLock));
+                    void confirmToast("The instructions below will be replaced with the standard ones.", { title: "Replace the instructions?", confirmLabel: "Replace" }).then(
+                      (ok) => ok && set("instructions", defaultInstructions(test.sectionLock)),
+                    );
                   }}
                   className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft hover:border-brand hover:text-brand"
                 >

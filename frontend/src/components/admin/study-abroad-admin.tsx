@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useState, useTransition } from "react";
 import { StatusMessage, useFlash } from "@/components/admin/status-message";
 import { useRouter } from "next/navigation";
@@ -214,8 +215,8 @@ function SectionEditor({
     });
   };
 
-  const remove = (row: Row) => {
-    if (!window.confirm(`Delete this ${section.itemLabel}? This cannot be undone.`)) return;
+  const remove = async (row: Row) => {
+    if (!(await confirmToast("This cannot be undone.", { title: `Delete this ${section.itemLabel}?`, confirmLabel: "Delete", tone: "danger" }))) return;
     onMessage(null);
     startTransition(async () => {
       const result = await deleteStudyAbroadItem(section.kind, row.id);

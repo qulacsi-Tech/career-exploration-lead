@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpenCheck, Search } from "lucide-react";
@@ -56,9 +57,9 @@ function CourseInfoDialog({ courses, exams, onClose }: { courses: AdminCourse[];
   const q = query.trim().toLowerCase();
   const shown = useMemo(() => courses.filter((c) => !q || `${c.name} ${c.streams.join(" ")}`.toLowerCase().includes(q)), [courses, q]);
 
-  const pick = (next: string) => {
+  const pick = async (next: string) => {
     if (next === slug) return;
-    if (dirty && !window.confirm("Leave this course? What you changed has not been saved.")) return;
+    if (dirty && !(await confirmToast("What you changed has not been saved.", { title: "Leave this course?", confirmLabel: "Leave", tone: "danger" }))) return;
     setSlug(next);
     setDraft(saved[next]);
     setMessage(null);
@@ -83,7 +84,10 @@ function CourseInfoDialog({ courses, exams, onClose }: { courses: AdminCourse[];
   return (
     <AdminModal
       open
-      onClose={() => (!dirty || window.confirm("Close without saving the changes to this course?")) && onClose()}
+      onClose={() => {
+        if (!dirty) return onClose();
+        void confirmToast("The changes to this course will be lost.", { title: "Close without saving?", confirmLabel: "Close", tone: "danger" }).then((ok) => ok && onClose());
+      }}
       size="eighty"
       title="Manage course info"
       description="Pick a course, set its priority, and add what its card should say. Nothing is filled in for you: a field you leave empty is not shown."

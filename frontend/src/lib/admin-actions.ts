@@ -73,6 +73,7 @@ import {
   adminShareLeads,
   adminUnshareLead,
   adminSetSubscriber,
+  adminSendTeamMessage,
   adminRemoveSubscriber,
   type LeadSharing,
   type ShareableLeads,
@@ -1981,5 +1982,20 @@ export async function loadExamColleges(examCode: string): Promise<{ slug: string
     return result.data.map((c) => ({ slug: c.slug, name: c.name, city: c.city, rank: c.nirfRank ?? c.ranking?.rank ?? null }));
   } catch {
     return { error: "Could not load the colleges accepting this exam. Try again." };
+  }
+}
+
+/** Sends a message to every subscriber, or to the ones picked, into their Messages inbox (in-app only). */
+export async function sendTeamMessage(
+  body: { subject: string; body: string; audience: "all" | "selected"; subscriberIds?: string[] },
+): Promise<import("@/lib/api").TeamMessageResult | { error: string }> {
+  const token = await requireAdminToken();
+  try {
+    const result = await adminSendTeamMessage(token, body);
+    revalidatePath("/admin/leads/subscribers");
+    return result;
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) redirect("/login");
+    return { error: err instanceof ApiError ? err.message : "Could not send the message. Try again." };
   }
 }

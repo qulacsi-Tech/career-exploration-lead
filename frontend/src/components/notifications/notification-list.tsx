@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
 import type { NotificationCount, NotificationItem } from "@/lib/api";
@@ -59,7 +60,9 @@ export function NotificationList({
           type="button"
           onClick={() => {
             const waiting = count.pendingAck > 0 ? ` ${count.pendingAck} still ${count.pendingAck === 1 ? "needs" : "need"} acknowledging and will be acknowledged.` : "";
-            if (window.confirm(`Clear all notifications?${waiting}`)) void actions.clearEverything();
+            void confirmToast(`Every notification will be cleared from your list.${waiting}`, { title: "Clear all notifications?", confirmLabel: "Clear all", tone: "danger" }).then((ok) => {
+              if (ok) void actions.clearEverything();
+            });
           }}
           className="font-semibold text-ink-soft hover:text-red-700 hover:underline"
         >

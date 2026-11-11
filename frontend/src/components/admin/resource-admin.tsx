@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { ReactNode, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminActionResult } from "@/lib/admin-actions";
@@ -161,11 +162,11 @@ export function ResourceAdmin<T>({
       }
       return next;
     });
-  const deleteSelected = () => {
+  const deleteSelected = async () => {
     if (!onBulkDelete) return;
     const chosen = rows.filter((row) => selected.has(getKey(row)));
     if (chosen.length === 0) return;
-    if (!window.confirm(`Delete ${chosen.length} selected ${title.toLowerCase()}? This cannot be undone.`)) return;
+    if (!(await confirmToast("This cannot be undone.", { title: `Delete ${chosen.length} selected ${title.toLowerCase()}?`, confirmLabel: "Delete", tone: "danger" }))) return;
     clearFlash();
     startBulkDelete(async () => {
       const result = await onBulkDelete(chosen);
@@ -354,8 +355,8 @@ export function ResourceAdmin<T>({
               <button
                 type="button"
                 disabled={deleting}
-                onClick={() => {
-                  if (!window.confirm(`Delete “${searchIn(editing)[0]}”? This cannot be undone.`)) return;
+                onClick={async () => {
+                  if (!(await confirmToast("This cannot be undone.", { title: `Delete “${searchIn(editing)[0]}”?`, confirmLabel: "Delete", tone: "danger" }))) return;
                   clearFlash();
                   startDelete(async () => {
                     const result = await onDelete(editing);

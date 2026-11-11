@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { collegeWithdraw } from "@/lib/college-actions";
@@ -15,8 +16,8 @@ export function WithdrawButton({ id }: { id: string }) {
       <button
         type="button"
         disabled={pending}
-        onClick={() => {
-          if (!window.confirm("Withdraw this request? The team will no longer be asked to review it.")) return;
+        onClick={async () => {
+          if (!(await confirmToast("The team will no longer be asked to review it.", { title: "Withdraw this request?", confirmLabel: "Withdraw", tone: "danger" }))) return;
           setError(null);
           startTransition(async () => {
             const result = await collegeWithdraw(id);

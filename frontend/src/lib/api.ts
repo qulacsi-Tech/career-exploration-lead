@@ -3707,3 +3707,31 @@ export async function getExamCutoffs(slug: string): Promise<ExamCutoffRow[]> {
     return [];
   }
 }
+
+// ── Team messages (newsletter broadcasts and direct messages) ───────────────
+
+export type TeamMessageSent = { id: string; subject: string; body: string; audience: "all" | "selected"; alsoEmail: boolean; sentBy: string; recipients: number; read: number; sentAt: string | null };
+export type TeamMessageResult = { id: string; total: number; inApp: number; skipped: number };
+export type InboxMessage = { id: string; subject: string; body: string; from: string; sentAt: string | null; read: boolean };
+
+export async function adminSendTeamMessage(
+  token: string,
+  body: { subject: string; body: string; audience: "all" | "selected"; subscriberIds?: string[] },
+) {
+  return adminRequest<TeamMessageResult>(token, "POST", "/admin/team-messages", body);
+}
+
+export async function adminTeamMessages(token: string, page = 1, limit = 10): Promise<{ data: TeamMessageSent[]; meta: PaginationMeta }> {
+  return savedList<TeamMessageSent>(token, `/admin/team-messages?page=${page}&limit=${limit}`);
+}
+
+export const getMyMessages = (token: string) => meGet<{ items: InboxMessage[]; unread: number }>(token, "/me/messages");
+
+export async function markMyMessageRead(token: string, id: string): Promise<void> {
+  await fetch(`${API_BASE}/me/messages/${encodeURIComponent(id)}/read`, { method: "POST", cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+}
+
+export async function deleteMyMessage(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/me/messages/${encodeURIComponent(id)}`, { method: "DELETE", cache: "no-store", headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new ApiError(res.status, "Could not delete the message");
+}

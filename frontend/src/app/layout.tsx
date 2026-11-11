@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ConfirmToastHost } from "@/components/ui/confirm-toast";
 import localFont from "next/font/local";
 import "./globals.css";
 import { defaultTheme } from "@/lib/themes";
@@ -73,6 +74,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Both stay quiet until the visitor accepts analytics, and skip /admin. */}
         <AnalyticsProvider />
         <ConsentBanner />
+        {/* The site's "are you sure?" card, used everywhere in place of the browser's confirm box. */}
+        <ConfirmToastHost />
       </body>
     </html>
   );

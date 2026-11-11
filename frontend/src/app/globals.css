@@ -990,3 +990,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-\[wiggle_1\.2s_ease-in-out_infinite\] { animation: none; }
 }
+
+/* The confirm toast slides down into place. */
+@keyframes confirm-toast-in {
+  from { opacity: 0; transform: translateY(-14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

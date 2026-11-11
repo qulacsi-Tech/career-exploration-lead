@@ -1,10 +1,13 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
-import type { PaginationMeta, Subscriber } from "@/lib/api";
+import type { PaginationMeta, Subscriber, TeamMessageSent } from "@/lib/api";
+import { MessageComposer, SentMessages, type Audience } from "@/components/admin/team-messages";
+import { Megaphone, MessageSquare } from "lucide-react";
 import { removeSubscriber, setSubscriberActive } from "@/lib/admin-actions";
 
 type Status = "" | "active" | "unsubscribed";
@@ -41,12 +44,40 @@ function formatDate(iso: string | null) {
  * The emails entered in the site footer's Subscribe box, as a table a page at a time. The server does the search,
  * the status filter and the paging (the URL holds them). Each address shows whether it has an account.
  */
-export function SubscribersTable({ subscribers, meta, query, status }: { subscribers: Subscriber[]; meta: PaginationMeta; query: string; status: Status }) {
+export function SubscribersTable({
+  subscribers,
+  meta,
+  query,
+  status,
+  sent,
+  sentTotal,
+}: {
+  subscribers: Subscriber[];
+  meta: PaginationMeta;
+  query: string;
+  status: Status;
+  /** The latest messages the team sent, for the history under the table. */
+  sent: TeamMessageSent[];
+  sentTotal: number;
+}) {
   const router = useRouter();
   const [text, setText] = useState(query);
   const first = (meta.page - 1) * meta.limit;
   const [busy, start] = useTransition();
   const [error, setError] = useState("");
+  // Ticked rows (subscribed ones only: a message never goes to an address that left), and the message being written.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [composing, setComposing] = useState<Audience | null>(null);
+  const pickable = subscribers.filter((s) => s.active);
+  const allPicked = pickable.length > 0 && pickable.every((s) => picked.has(s.id));
+  const toggle = (id: string) =>
+    setPicked((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const recipientsOf = (ids: string[]) => subscribers.filter((s) => ids.includes(s.id)).map((s) => ({ id: s.id, email: s.email }));
 
   // Unsubscribe, subscribe again, or remove an address; the table is then read again from the server.
   const manage = (run: () => ReturnType<typeof removeSubscriber>) =>
@@ -113,6 +144,29 @@ export function SubscribersTable({ subscribers, meta, query, status }: { subscri
         <span className="ml-auto self-center text-sm text-ink-soft">{meta.total.toLocaleString("en-IN")} {meta.total === 1 ? "email" : "emails"}</span>
       </nav>
 
+      {/* Writing to subscribers: everyone at once, or the ones ticked below. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand/30 bg-brand-soft/40 px-4 py-3">
+        <p className="min-w-0 flex-1 text-sm text-ink-soft">
+          <span className="font-semibold text-ink">Message your subscribers.</span> It lands in their Messages inbox under My account, with a notification.
+        </p>
+        {picked.size > 0 && (
+          <button
+            type="button"
+            onClick={() => setComposing({ kind: "selected", recipients: recipientsOf([...picked]) })}
+            className="inline-flex items-center gap-2 rounded-lg border border-brand bg-surface px-4 py-2 text-sm font-bold text-brand transition hover:bg-brand-soft"
+          >
+            <MessageSquare className="h-4 w-4" aria-hidden="true" /> Message selected ({picked.size})
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setComposing({ kind: "all" })}
+          className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark"
+        >
+          <Megaphone className="h-4 w-4" aria-hidden="true" /> Broadcast to all
+        </button>
+      </div>
+
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
 
       {meta.total === 0 ? (
@@ -122,9 +176,19 @@ export function SubscribersTable({ subscribers, meta, query, status }: { subscri
       ) : (
         <div className="overflow-hidden rounded-2xl border border-line bg-surface">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-sm">
+            <table className="w-full min-w-[980px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line bg-bg-alt/60 text-left text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label="Select every subscribed address on this page"
+                      checked={allPicked}
+                      disabled={pickable.length === 0}
+                      onChange={() => setPicked(allPicked ? new Set() : new Set(pickable.map((s) => s.id)))}
+                      className="h-4 w-4 accent-[var(--color-brand)]"
+                    />
+                  </th>
                   <th className="w-14 px-4 py-3">#</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Account</th>
@@ -137,7 +201,18 @@ export function SubscribersTable({ subscribers, meta, query, status }: { subscri
                 {subscribers.map((s, i) => {
                   const account = ACCOUNT[s.account];
                   return (
-                    <tr key={s.id} className="border-b border-line last:border-0 hover:bg-bg-alt/40">
+                    <tr key={s.id} className={`border-b border-line last:border-0 hover:bg-bg-alt/40 ${picked.has(s.id) ? "bg-brand-soft/30" : ""}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${s.email}`}
+                          checked={picked.has(s.id)}
+                          disabled={!s.active}
+                          title={s.active ? undefined : "Unsubscribed addresses cannot be messaged"}
+                          onChange={() => toggle(s.id)}
+                          className="h-4 w-4 accent-[var(--color-brand)] disabled:opacity-40"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-ink-faint">{first + i + 1}</td>
                       <td className="px-4 py-3 font-semibold text-ink">{s.email}</td>
                       <td className="px-4 py-3">
@@ -149,6 +224,15 @@ export function SubscribersTable({ subscribers, meta, query, status }: { subscri
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
+                          {s.active && (
+                            <button
+                              type="button"
+                              onClick={() => setComposing({ kind: "selected", recipients: [{ id: s.id, email: s.email }] })}
+                              className="inline-flex items-center gap-1 rounded-lg border border-brand px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-brand-soft"
+                            >
+                              <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" /> Message
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={busy}
@@ -161,7 +245,7 @@ export function SubscribersTable({ subscribers, meta, query, status }: { subscri
                             type="button"
                             disabled={busy}
                             onClick={() => {
-                              if (window.confirm(`Remove ${s.email} from the list? Its account, if any, is kept.`)) manage(() => removeSubscriber(s.id));
+                              void confirmToast("Its account, if any, is kept.", { title: `Remove ${s.email}?`, confirmLabel: "Remove", tone: "danger" }).then((ok) => ok && manage(() => removeSubscriber(s.id)));
                             }}
                             className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-red-600 hover:text-red-700 disabled:opacity-50"
                           >
@@ -204,6 +288,17 @@ export function SubscribersTable({ subscribers, meta, query, status }: { subscri
             )}
           </div>
         </div>
+      )}
+      <SentMessages messages={sent} total={sentTotal} />
+
+      {composing && (
+        <MessageComposer
+          audience={composing}
+          onClose={() => {
+            setComposing(null);
+            setPicked(new Set());
+          }}
+        />
       )}
     </div>
   );

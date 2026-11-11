@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import { MessageSquareText } from "lucide-react";
@@ -95,8 +96,8 @@ export function RatingsTable({ items: initial, paged = false, initialCollege }: 
       setItems((current) => current.map((r) => (r.id === id ? { ...r, checked: true } : r)));
     });
 
-  const remove = (r: AdminRating) => {
-    if (!window.confirm(`Remove ${r.author}'s review of ${r.collegeName} for good? This cannot be undone.`)) return;
+  const remove = async (r: AdminRating) => {
+    if (!(await confirmToast(`${r.author}'s review of ${r.collegeName} will be removed for good. This cannot be undone.`, { title: "Remove this review?", confirmLabel: "Remove", tone: "danger" }))) return;
     start(async () => {
       setMessage(null);
       const result = await deleteRating(r.id);

@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ChevronDown, Eye, EyeOff, FolderPlus, Search, Trash2, Users, X } from "lucide-react";
@@ -236,7 +237,7 @@ export function NavMenuAdmin({ menu, source: builtIn, links, initial, actions }:
                   <>
                     <button
                       type="button"
-                      onClick={() => window.confirm(`Delete the “${custom.label}” category from the menu? The ${noun}s themselves are not deleted.`) && deleteCustom(custom.id)}
+                      onClick={() => void confirmToast(`The ${noun}s themselves are not deleted.`, { title: `Delete the “${custom.label}” category?`, confirmLabel: "Delete", tone: "danger" }).then((ok) => ok && deleteCustom(custom.id))}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft transition hover:border-red-700 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" /> Delete

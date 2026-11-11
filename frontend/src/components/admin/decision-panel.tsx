@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { approveChangeRequest, rejectChangeRequest } from "@/lib/admin-actions";
@@ -19,14 +20,14 @@ export function DecisionPanel({ id, kind, stale }: { id: string; kind: "edit" | 
   const [needsConfirm, setNeedsConfirm] = useState(stale);
   const [pending, startTransition] = useTransition();
 
-  const approve = () => {
+  const approve = async () => {
     const warning =
       kind === "delete"
         ? "Approve and permanently remove this college and everything on it?"
         : needsConfirm
           ? "The college was changed after this edit was written. Approving will overwrite those changes. Continue?"
           : null;
-    if (warning && !window.confirm(warning)) return;
+    if (warning && !(await confirmToast(warning, { title: kind === "delete" ? "Approve the removal?" : "Overwrite the newer changes?", confirmLabel: "Approve", tone: "danger" }))) return;
     setError(null);
     startTransition(async () => {
       const result = await approveChangeRequest(id, needsConfirm);

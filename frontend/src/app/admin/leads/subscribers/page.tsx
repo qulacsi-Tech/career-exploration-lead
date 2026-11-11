@@ -1,4 +1,4 @@
-import { adminSubscribers } from "@/lib/api";
+import { adminSubscribers, adminTeamMessages } from "@/lib/api";
 import { withAdminToken } from "@/lib/admin-session";
 import { SubscribersTable } from "@/components/admin/subscribers-table";
 
@@ -15,6 +15,12 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
   const query = (q ?? "").trim().slice(0, 100);
   const filter = status === "active" || status === "unsubscribed" ? status : "";
   const pageNumber = Math.max(1, Number.parseInt(page ?? "1", 10) || 1);
-  const result = await withAdminToken((token) => adminSubscribers(token, { page: pageNumber, limit: PAGE_SIZE, q: query, status: filter }));
-  return <SubscribersTable subscribers={result.data} meta={result.meta} query={query} status={filter} />;
+  const [result, sent] = await withAdminToken((token) =>
+    Promise.all([
+      adminSubscribers(token, { page: pageNumber, limit: PAGE_SIZE, q: query, status: filter }),
+      // The history under the table; a failure here only leaves it empty.
+      adminTeamMessages(token, 1, 10).catch(() => ({ data: [], meta: { total: 0, page: 1, limit: 10, pages: 1 } })),
+    ]),
+  );
+  return <SubscribersTable subscribers={result.data} meta={result.meta} query={query} status={filter} sent={sent.data} sentTotal={sent.meta.total} />;
 }

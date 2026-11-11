@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Check, Loader2, Search, Send, Undo2 } from "lucide-react";
 import { AdminModal } from "@/components/admin/admin-modal";
@@ -162,7 +163,7 @@ function ShareTab({ slug, onShared, onError }: { slug: string; onShared: (count:
             type="button"
             disabled={pending || loading || available === 0}
             onClick={() => {
-              if (window.confirm(`Share all ${available} matching ${available === 1 ? "lead" : "leads"} with this college?`)) run({ all: true });
+              void confirmToast("Its admin sees them in their Leads inbox.", { title: `Share all ${available} matching ${available === 1 ? "lead" : "leads"}?`, confirmLabel: "Share all" }).then((ok) => ok && run({ all: true }));
             }}
             className="inline-flex items-center gap-2 rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand-soft disabled:opacity-50"
           >

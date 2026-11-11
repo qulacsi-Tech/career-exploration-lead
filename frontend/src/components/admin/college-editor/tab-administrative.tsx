@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useEffect, useState, useTransition } from "react";
 import {
   createCollegeAdmin,
@@ -195,8 +196,8 @@ export function AdministrativeTab({ slug, institutionType }: { slug: string; ins
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => {
-                  if (admin.isActive && !window.confirm(`Disable ${admin.name}? They will not be able to sign in.`)) return;
+                onClick={async () => {
+                  if (admin.isActive && !(await confirmToast("They will not be able to sign in until the account is enabled again.", { title: `Disable ${admin.name}?`, confirmLabel: "Disable", tone: "danger" }))) return;
                   apply(() => setCollegeAdminActive(slug, !admin.isActive), admin.isActive ? "The account is disabled." : "The account is enabled.");
                 }}
                 className={`rounded-lg border px-3 py-1.5 text-sm font-medium disabled:opacity-60 ${
@@ -208,8 +209,8 @@ export function AdministrativeTab({ slug, institutionType }: { slug: string; ins
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => {
-                  if (!window.confirm(`Remove ${admin.name}'s account? This cannot be undone. You can then create a new admin for this ${noun.toLowerCase()}.`)) return;
+                onClick={async () => {
+                  if (!(await confirmToast(`This cannot be undone. You can then create a new admin for this ${noun.toLowerCase()}.`, { title: `Remove ${admin.name}'s account?`, confirmLabel: "Remove", tone: "danger" }))) return;
                   apply(() => removeCollegeAdmin(slug), "The account is removed.");
                 }}
                 className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-red-300 hover:text-red-700 disabled:opacity-60"

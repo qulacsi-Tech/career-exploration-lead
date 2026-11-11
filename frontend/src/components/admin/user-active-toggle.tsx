@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmToast } from "@/components/ui/confirm-toast";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setUserActive } from "@/lib/admin-actions";
@@ -29,8 +30,8 @@ export function UserActiveToggle({
       <button
         type="button"
         disabled={pending}
-        onClick={() => {
-          if (isActive && !window.confirm(`Disable ${name}? They will not be able to sign in.`)) return;
+        onClick={async () => {
+          if (isActive && !(await confirmToast("They will not be able to sign in until the account is enabled again.", { title: `Disable ${name}?`, confirmLabel: "Disable", tone: "danger" }))) return;
           setError(null);
           startTransition(async () => {
             const result = await setUserActive(id, !isActive);
