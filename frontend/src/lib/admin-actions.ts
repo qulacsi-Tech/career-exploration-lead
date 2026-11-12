@@ -309,17 +309,57 @@ export async function createCollege(
   return result;
 }
 
+/**
+ * The duration as the API wants it. A wrong value is reported, never quietly dropped:
+ * "-5" used to be saved as "Not set" with no message.
+ */
+function durationFrom(payload: Record<string, unknown>): string | null {
+  if (typeof payload.durationMinutes !== "string") return null;
+  const raw = payload.durationMinutes.trim();
+  if (!/^-?\d+$/.test(raw)) return "Duration must be a whole number of minutes.";
+  const minutes = parseInt(raw, 10);
+  if (minutes < 1 || minutes > 1440) return "Duration must be between 1 and 1440 minutes.";
+  payload.durationMinutes = minutes;
+  return null;
+}
+
+/** Fields an editor may empty on purpose, so they are sent even when blank (the API treats missing as "leave as is"). */
+const EXAM_CLEARABLE = ["registrationCloses", "examDate", "applicationFee", "officialSite", "frequency"] as const;
+
+/** The SEO tab's fields, gathered into the one object the API stores. */
+function seoFrom(form: FormData): Record<string, string> | undefined {
+  if (form.get("metaTitle") === null && form.get("canonical") === null) return undefined;
+  const get = (key: string) => String(form.get(key) ?? "").trim();
+  return {
+    metaTitle: get("metaTitle"),
+    canonical: get("canonical"),
+    metaDescription: get("metaDescription"),
+    ogImage: get("ogImage"),
+    // The tab's defaults are not worth storing: they are what an exam with no SEO gets anyway.
+    schemaType: get("schemaType") === "Event" ? "" : get("schemaType"),
+    robots: get("robots") === "Index, follow" ? "" : get("robots"),
+  };
+}
+
 export async function saveExam(slug: string, form: FormData): Promise<AdminActionResult> {
   const payload = body(form, EXAM_EDIT_FIELDS);
-  if (typeof payload.durationMinutes === "string") {
-    const parsed = parseInt(payload.durationMinutes, 10);
-    payload.durationMinutes = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  const durationError = durationFrom(payload);
+  if (durationError) return { error: durationError };
+  for (const key of EXAM_CLEARABLE) {
+    const value = form.get(key);
+    if (typeof value === "string") payload[key] = value.trim();
   }
+  const seo = seoFrom(form);
+  if (seo) payload.seo = seo;
   // The page content built with the section editor travels as one JSON field; blank blocks are dropped.
   const rawSections = form.get("contentSections");
   if (typeof rawSections === "string" && rawSections !== "") {
     try {
-      payload.contentSections = cleanSections(JSON.parse(rawSections) as ArticleSection[]);
+      const cleaned = cleanSections(JSON.parse(rawSections) as ArticleSection[]);
+      // A heading with nothing under it would show as an empty section on the public page.
+      const empty = cleaned.find((section) => section.heading && section.blocks.length === 0);
+      if (empty) return { error: `The page content section “${empty.heading}” has a heading but no content. Add text under it, or remove the section.` };
+      payload.contentSections = cleaned;
     } catch {
       return { error: "The page content could not be read. Reload the page and try again." };
     }
@@ -349,15 +389,24 @@ export async function saveExam(slug: string, form: FormData): Promise<AdminActio
   return result;
 }
 
+/** Hides an exam from the public site, or brings it back. Nothing is deleted. */
+export async function setExamArchived(slug: string, archived: boolean): Promise<AdminActionResult> {
+  const result = await attempt("/admin/exams", (token) => adminUpdateExam(token, slug, { isArchived: archived }));
+  if ("ok" in result) {
+    revalidatePath("/exams");
+    revalidatePath(`/exams/${slug}`);
+    revalidatePath("/", "layout");
+  }
+  return result;
+}
+
 export async function createExam(
   _prev: AdminActionResult | undefined,
   form: FormData
 ): Promise<AdminActionResult> {
   const payload = body(form, EXAM_EDIT_FIELDS);
-  if (typeof payload.durationMinutes === "string") {
-    const parsed = parseInt(payload.durationMinutes, 10);
-    payload.durationMinutes = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-  }
+  const durationError = durationFrom(payload);
+  if (durationError) return { error: durationError };
   const result = await attempt("/admin/exams", (token) =>
     adminCreateExam(token, {
       ...payload,
@@ -1201,7 +1250,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "recruiter_logo" && kind !== "gallery" && kind !== "ranking_banner" && kind !== "award" && kind !== "faculty_photo") {
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "recruiter_logo" && kind !== "gallery" && kind !== "ranking_banner" && kind !== "award" && kind !== "faculty_photo" && kind !== "og") {
     return { error: "Unknown image slot." };
   }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };

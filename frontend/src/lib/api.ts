@@ -262,6 +262,12 @@ export type Exam = {
   image?: string;
   /** The badge on the card: Upcoming, Live, Expired or any words. Empty or absent: no badge. */
   statusLabel?: string;
+  /** SEO set in the admin: metaTitle, canonical, metaDescription, ogImage, schemaType, robots. Empty or absent: site defaults. */
+  seo?: Record<string, string>;
+  /** True for an archived exam: hidden from the public site, shown (and restorable) in the admin. */
+  archived?: boolean;
+  /** Problems found in the saved dates and fee, flagged in the admin list. Empty or absent: none. */
+  dataIssues?: string[];
 };
 
 export type ExamFaq = { question: string; answer: string };
@@ -2129,7 +2135,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery" | "ranking_banner" | "award" | "faculty_photo", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery" | "ranking_banner" | "award" | "faculty_photo" | "og", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);
@@ -2367,6 +2373,11 @@ export async function adminUpdateCollege(token: string, slug: string, body: Reco
 /** Admin: create an exam. The slug must be new. */
 export async function adminCreateExam(token: string, body: Record<string, unknown>) {
   return adminRequest<{ message: string }>(token, "POST", "/admin/exams", body);
+}
+
+/** Admin: every exam, archived ones included. */
+export async function adminGetExams(token: string): Promise<Exam[]> {
+  return adminRequest<Exam[]>(token, "GET", "/admin/exams");
 }
 
 /** Admin: partial update of an exam. Only the keys present are changed. */

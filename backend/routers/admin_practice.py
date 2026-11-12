@@ -378,7 +378,7 @@ async def save_test(slug: str, _admin: AdminPayload, db: DbSession, body: dict):
     if total > MAX_QUESTIONS:
         raise ValidationError(f"sections: a test holds at most {MAX_QUESTIONS} questions.")
     if data.isPublished and total == 0:
-        raise ValidationError("isPublished: add at least one question before publishing.")
+        raise ValidationError("Add at least one question before publishing the test.")
     if data.sectionLock and any(s.durationMinutes is None for s in data.sections):
         raise ValidationError("sectionLock: give every section its own time when sections are locked.")
 

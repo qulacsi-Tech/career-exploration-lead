@@ -42,5 +42,11 @@ class ExamSchema(BaseModel):
     image: str = ""
     # The badge on the card: Upcoming, Live, Expired or any words. Empty: no badge.
     statusLabel: str = ""
+    # SEO set in the admin (metaTitle, canonical, metaDescription, ogImage, schemaType, robots). Empty: site defaults.
+    seo: Dict[str, str] = {}
+    # True when archived: hidden from the public site (only the admin list returns these).
+    archived: bool = False
+    # Problems found in the saved dates and fee, so the admin list can flag them. Empty: none.
+    dataIssues: List[str] = []
 
     model_config = ConfigDict(populate_by_name=True)

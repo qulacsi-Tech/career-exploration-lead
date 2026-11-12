@@ -1,7 +1,7 @@
 "use client";
 
 import { confirmToast } from "@/components/ui/confirm-toast";
-import { ReactNode, useMemo, useState, useTransition } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminActionResult } from "@/lib/admin-actions";
 import { AdminPageHeader, AdminSection } from "@/components/admin/admin-section";
@@ -33,6 +33,37 @@ export function humanizeError(raw: string): string {
   }
   return msg;
 }
+
+/** A form's values as one string, so "has anything changed since it opened?" is a comparison. */
+function snapshot(form: HTMLFormElement): string {
+  return JSON.stringify(
+    Array.from(new FormData(form).entries()).map(([key, value]) => [key, typeof value === "string" ? value : value.name])
+  );
+}
+
+/**
+ * Remembers a form's values shortly after it opens and answers whether they have changed since.
+ * Compared by value, so hidden fields set by custom editors (images, page content) count too.
+ */
+function useDirtyCheck(formId: string, targetRef: { current: () => boolean }) {
+  useEffect(() => {
+    let initial: string | null = null;
+    const timer = setTimeout(() => {
+      const form = document.getElementById(formId);
+      if (form instanceof HTMLFormElement) initial = snapshot(form);
+    }, 80);
+    targetRef.current = () => {
+      const form = document.getElementById(formId);
+      return initial !== null && form instanceof HTMLFormElement && snapshot(form) !== initial;
+    };
+    return () => {
+      clearTimeout(timer);
+      targetRef.current = () => false;
+    };
+  }, [formId, targetRef]);
+}
+
+const DISCARD_PROMPT = { title: "Discard unsaved changes?", confirmLabel: "Discard", cancelLabel: "Keep editing", tone: "danger" } as const;
 
 /**
  * The shared shell for a CMS module: header, search, table, and the add / view /
@@ -80,6 +111,8 @@ export function ResourceAdmin<T>({
   onAdd,
   onDelete,
   onBulkDelete,
+  onArchive,
+  isArchived,
   headerActions,
 }: {
   title: string;
@@ -105,6 +138,10 @@ export function ResourceAdmin<T>({
   onDelete?: (row: T) => Promise<AdminActionResult>;
   /** Deletes several records at once. Adds a checkbox column and a "Delete selected" bar. */
   onBulkDelete?: (rows: T[]) => Promise<AdminActionResult>;
+  /** Hides a record instead of deleting it (or brings it back). Adds an Archive / Restore button to the edit form. */
+  onArchive?: (row: T, archived: boolean) => Promise<AdminActionResult>;
+  /** Whether a row is archived now, so the button reads Restore. */
+  isArchived?: (row: T) => boolean;
   /** Persists a new record. Without it the add form closes without saving. */
   onAdd?: (data: FormData) => Promise<AdminActionResult>;
   /** Extra buttons beside the Add button in the page header. */
@@ -114,6 +151,10 @@ export function ResourceAdmin<T>({
   const [viewing, setViewing] = useState<T | null>(null);
   const [editing, setEditing] = useState<T | null>(null);
   const [adding, setAdding] = useState(false);
+  // Each dialog's "has it changed?" check, set by the form inside it.
+  const editDirty = useRef<() => boolean>(() => false);
+  const addDirty = useRef<() => boolean>(() => false);
+  const [archiving, startArchive] = useTransition();
   const [prevRows, setPrevRows] = useState<T[]>(rows);
   const [localRows, setLocalRows] = useState<T[]>(rows);
 
@@ -180,6 +221,16 @@ export function ResourceAdmin<T>({
     });
   };
 
+  /** Closes a dialog, asking first when something typed in it would be lost. */
+  const closeEdit = async () => {
+    if (editDirty.current() && !(await confirmToast("What you changed has not been saved.", DISCARD_PROMPT))) return;
+    setEditing(null);
+  };
+  const closeAdd = async () => {
+    if (addDirty.current() && !(await confirmToast("What you entered has not been saved.", DISCARD_PROMPT))) return;
+    setAdding(false);
+  };
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
@@ -199,7 +250,8 @@ export function ResourceAdmin<T>({
         }
       />
 
-      <StatusMessage flash={flash} />
+      {/* Floating, so it appearing and fading never moves the table under the cursor. */}
+      <StatusMessage flash={flash} floating />
       <AdminSection
         title={`All ${title.toLowerCase()}`}
         description={`${filtered.length} of ${rows.length} shown`}
@@ -346,7 +398,7 @@ export function ResourceAdmin<T>({
 
       <AdminModal
         open={editing !== null}
-        onClose={() => setEditing(null)}
+        onClose={closeEdit}
         size={editSize}
         title={editing ? `Edit — ${searchIn(editing)[0]}` : ""}
         footer={
@@ -374,9 +426,38 @@ export function ResourceAdmin<T>({
                 {deleting ? "Deleting…" : "Delete"}
               </button>
             )}
+            {onArchive && editing && (
+              <button
+                type="button"
+                disabled={archiving}
+                onClick={async () => {
+                  const archive = !(isArchived?.(editing) ?? false);
+                  const name = searchIn(editing)[0];
+                  const ok = await confirmToast(
+                    archive ? "It disappears from the public site. You can restore it here at any time." : "It goes back on the public site.",
+                    { title: `${archive ? "Archive" : "Restore"} “${name}”?`, confirmLabel: archive ? "Archive" : "Restore", tone: archive ? "danger" : "default" }
+                  );
+                  if (!ok) return;
+                  clearFlash();
+                  startArchive(async () => {
+                    const result = await onArchive(editing, archive);
+                    if ("error" in result) {
+                      showFlash("error", result.error);
+                    } else {
+                      showFlash("ok", `${name} ${archive ? "archived" : "restored"}.`);
+                      setEditing(null);
+                      router.refresh();
+                    }
+                  });
+                }}
+                className={`${onDelete ? "" : "mr-auto "}rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-red-700 hover:text-red-700 disabled:opacity-50`}
+              >
+                {archiving ? "Working…" : isArchived?.(editing) ? "Restore" : "Archive"}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setEditing(null)}
+              onClick={closeEdit}
               className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand"
             >
               Cancel
@@ -398,7 +479,9 @@ export function ResourceAdmin<T>({
             row={editing}
             onDone={(saved, data) => {
               if (saved) {
-                showFlash("ok", `${searchIn(editing)[0]} saved.`);
+                // The name just saved, not the one the row had when the dialog opened.
+                const savedName = String(data?.get("name") ?? "").trim() || searchIn(editing)[0];
+                showFlash("ok", `${savedName} saved.`);
                 if (data) {
                   setLocalRows((prev) =>
                     prev.map((r) => {
@@ -432,13 +515,14 @@ export function ResourceAdmin<T>({
               setEditing(null);
             }}
             onSave={onSave ? (data) => onSave(editing, data) : undefined}
+            dirtyRef={editDirty}
           />
         )}
       </AdminModal>
 
       <AdminModal
         open={adding}
-        onClose={() => setAdding(false)}
+        onClose={closeAdd}
         size={addSize}
         title={addLabel}
         description={addDescription}
@@ -446,7 +530,7 @@ export function ResourceAdmin<T>({
           <>
             <button
               type="button"
-              onClick={() => setAdding(false)}
+              onClick={closeAdd}
               className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand"
             >
               Cancel
@@ -464,6 +548,7 @@ export function ResourceAdmin<T>({
         <AddForm
           renderAddForm={renderAddForm}
           onAdd={onAdd}
+          dirtyRef={addDirty}
           onDone={(saved) => {
             if (saved) showFlash("ok", `Added to ${title.toLowerCase()}.`);
             setAdding(false);
@@ -478,7 +563,9 @@ function AddForm({
   renderAddForm,
   onAdd,
   onDone,
+  dirtyRef,
 }: {
+  dirtyRef: { current: () => boolean };
   renderAddForm: () => ReactNode;
   onAdd?: (data: FormData) => Promise<AdminActionResult>;
   /** `saved` is false when the form closed without a save handler. */
@@ -486,6 +573,7 @@ function AddForm({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  useDirtyCheck("resource-add-form", dirtyRef);
 
   return (
     <form
@@ -523,7 +611,9 @@ function TabbedForm<T>({
   row,
   onDone,
   onSave,
+  dirtyRef,
 }: {
+  dirtyRef: { current: () => boolean };
   id: string;
   tabs: ResourceEditTab<T>[];
   row: T;
@@ -534,10 +624,13 @@ function TabbedForm<T>({
   const [active, setActive] = useState(tabs[0].id);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  useDirtyCheck(id, dirtyRef);
 
   return (
     <form
       id={id}
+      // Checked by hand below: the browser cannot point at a required field on a tab that is not showing.
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
         if (!onSave) {
@@ -545,7 +638,32 @@ function TabbedForm<T>({
           return;
         }
         setError(null);
-        const data = new FormData(e.currentTarget);
+        const form = e.currentTarget;
+        const invalid = Array.from(form.elements).find(
+          (el): el is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement =>
+            (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) &&
+            el.willValidate &&
+            !el.checkValidity()
+        );
+        if (invalid) {
+          const panel = invalid.closest('[role="tabpanel"]');
+          const tabId = panel?.id.replace(/^panel-/, "");
+          const tab = tabs.find((t) => t.id === tabId);
+          if (tab) setActive(tab.id);
+          const labelText = (invalid.id && form.querySelector(`label[for="${CSS.escape(invalid.id)}"]`)?.textContent) || "";
+          const fieldName = labelText.replace(/\s*\*\s*$/, "").trim() || "A field";
+          setError(`${fieldName}${tab ? ` (on the ${tab.label} tab)` : ""}: ${invalid.validationMessage}`);
+          // Tell assistive technology which field failed, and clear the flag as soon as it is edited.
+          invalid.setAttribute("aria-invalid", "true");
+          invalid.addEventListener("input", () => invalid.removeAttribute("aria-invalid"), { once: true });
+          // Wait for the tab to show before focusing, or the browser has nothing visible to point at.
+          requestAnimationFrame(() => {
+            invalid.focus();
+            invalid.reportValidity();
+          });
+          return;
+        }
+        const data = new FormData(form);
         startTransition(async () => {
           const result = await onSave(data);
           if ("error" in result) setError(humanizeError(result.error));

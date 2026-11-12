@@ -69,30 +69,66 @@ async def app_exception_handler(request: Request, exc: AppException):
     )
 
 
+def _where(loc) -> str:
+    """"Section 2, question 4" for a location inside a practice test; empty elsewhere."""
+    parts = [str(p) for p in loc]
+    out = []
+    if "sections" in parts:
+        i = parts.index("sections")
+        if i + 1 < len(parts) and parts[i + 1].isdigit():
+            out.append(f"Section {int(parts[i + 1]) + 1}")
+    if "questions" in parts:
+        i = parts.index("questions")
+        if i + 1 < len(parts) and parts[i + 1].isdigit():
+            out.append(f"question {int(parts[i + 1]) + 1}")
+    return ", ".join(out)
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """One plain sentence for the first problem. Field names, patterns and paths stay out of it."""
+    from core.validation import SLUG_HINT, label
+
     errors = exc.errors()
-    # Build a readable message from the first error
     first = errors[0] if errors else {}
-    field = " → ".join(str(loc) for loc in first.get("loc", []))
-    msg = first.get("msg", "Validation error")
-    # A rule written for editors (core/college_rules.py) is already a whole sentence: show it as it is.
+    loc = first.get("loc", [])
     kind, ctx = first.get("type", ""), first.get("ctx") or {}
-    name = str(first.get("loc", ["This"])[-1]).replace("_", " ").capitalize()
+    raw_msg = first.get("msg", "Validation error")
+    last = str(loc[-1]) if loc else "This"
+    name = label(last)
+    where = _where(loc)
+    prefix = f"{where}: " if where else ""
+
     if kind == "value_error":
-        field, msg = "", msg.removeprefix("Value error, ")
-    elif kind in ("greater_than_equal", "less_than_equal"):
-        low = kind == "greater_than_equal"
-        field, msg = "", f"{name} must be {'at least' if low else 'at most'} {ctx.get('ge' if low else 'le')}."
+        # A rule written for editors (core/college_rules.py, core/exam_rules.py) is already a whole sentence.
+        message = raw_msg.removeprefix("Value error, ")
+        message = message[:1].upper() + message[1:]
+    elif kind in ("greater_than_equal", "less_than_equal", "greater_than", "less_than"):
+        bound = {"greater_than_equal": ("at least", "ge"), "less_than_equal": ("at most", "le"),
+                 "greater_than": ("more than", "gt"), "less_than": ("less than", "lt")}[kind]
+        message = f"{prefix}{name} must be {bound[0]} {ctx.get(bound[1])}."
     elif kind == "missing":
-        field, msg = "", f"{name} is required."
+        message = f"{prefix}{name} is required."
+    elif kind == "string_too_short":
+        n = ctx.get("min_length", 1)
+        message = f"{prefix}{name} is required." if n <= 1 else f"{prefix}{name} must be at least {n} characters."
+    elif kind == "string_too_long":
+        message = f"{prefix}{name} must be at most {ctx.get('max_length')} characters."
+    elif kind == "string_pattern_mismatch":
+        message = f"{name}: {SLUG_HINT}." if last.lower().endswith("slug") else f"{prefix}{name} is not in the expected format."
+    elif kind in ("int_parsing", "int_type", "float_parsing", "float_type"):
+        message = f"{prefix}{name} must be a number."
+    elif kind in ("literal_error", "enum"):
+        message = f"{prefix}{name}: choose one of the listed options."
+    else:
+        message = f"{prefix}{name} is not valid."
     return JSONResponse(
         status_code=422,
         content={
             "success": False,
             "error": {
                 "code": "VALIDATION_ERROR",
-                "message": f"{field}: {msg}" if field else msg,
+                "message": message,
                 # A validator's own exception sits in the error context; it is not JSON, so send its text.
                 "details": jsonable_encoder(errors, custom_encoder={Exception: str}),
             },

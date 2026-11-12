@@ -15,6 +15,7 @@ from fastapi import APIRouter, Body, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core import college_rules as rules
+from core import exam_rules
 from core.dependencies import AdminPayload, DbSession
 from data.india_districts import INDIA_DISTRICTS
 from core.exceptions import ConflictError, NotFoundError, ValidationError
@@ -25,6 +26,7 @@ from models.exam import ExamLevel
 from schemas.common import ListResponse, Meta, SuccessResponse
 from services.college import CollegeService
 from services.exam import ExamService
+from schemas.exam import ExamSchema
 from services.article import ArticleService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -363,6 +365,34 @@ def _college_priority(value):
     return out
 
 
+SEO_KEYS = {"metaTitle", "canonical", "metaDescription", "ogImage", "schemaType", "robots"}
+SEO_LIMITS = {"metaTitle": 70, "canonical": 300, "metaDescription": 320, "ogImage": 300, "schemaType": 100, "robots": 30}
+
+
+def _no_html(value, info):
+    """Plain-text exam fields hold no markup; the message names the field."""
+    from core.validation import label
+
+    return exam_rules.plain_text(value, label(info.field_name))
+
+
+def _seo(value):
+    if value is None:
+        return value
+    out = {}
+    for key, text in value.items():
+        if key not in SEO_KEYS:
+            raise ValueError(f"unknown SEO field '{key}'")
+        text = (text or "").strip()
+        if len(text) > SEO_LIMITS[key]:
+            raise ValueError(f"SEO {key} is longer than {SEO_LIMITS[key]} characters")
+        if key == "canonical" and text and not (text.startswith("/") or text.lower().startswith(("http://", "https://"))):
+            raise ValueError("Canonical URL must start with / or http(s)://")
+        if text:
+            out[key] = text
+    return out
+
+
 class ExamUpdateBody(BaseModel):
     name: Optional[str] = None
     shortName: Optional[str] = Field(default=None, max_length=100)
@@ -376,7 +406,7 @@ class ExamUpdateBody(BaseModel):
     officialSite: Optional[str] = None
     isFeatured: Optional[bool] = None
     level: Optional[ExamLevel] = None
-    durationMinutes: Optional[int] = Field(default=None, ge=0, le=1440)
+    durationMinutes: Optional[int] = Field(default=None, ge=1, le=1440)
     sections: Optional[list[str]] = Field(default=None, max_length=30)
     # The category (stream) the exam is listed under, e.g. Management. Matches a name in the Fields list.
     stream: Optional[str] = Field(default=None, max_length=100)
@@ -391,11 +421,24 @@ class ExamUpdateBody(BaseModel):
     collegePriority: Optional[dict[str, int]] = None
     image: Optional[str] = Field(default=None, max_length=200)
     statusLabel: Optional[str] = Field(default=None, max_length=40)
+    seo: Optional[dict[str, str]] = None
+    isArchived: Optional[bool] = None
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
     _text = field_validator("pageText")(_page_text)
     _order = field_validator("collegePriority")(_college_priority)
+    _seo_check = field_validator("seo")(_seo)
+    _reg = field_validator("registrationCloses")(lambda v: exam_rules.check_date(v, "Registration closes"))
+    _date = field_validator("examDate")(lambda v: exam_rules.check_date(v, "Exam date"))
+    _fee = field_validator("applicationFee")(exam_rules.check_fee)
+    _site = field_validator("officialSite")(exam_rules.check_url)
+    _plain = field_validator("name", "shortName", "conductingBody", "frequency", "stream", "statusLabel")(_no_html)
+
+    @model_validator(mode="after")
+    def _dates_in_order(self):
+        exam_rules.check_order(self.registrationCloses, self.examDate)
+        return self
 
 
 class ExamCreateBody(BaseModel):
@@ -411,7 +454,7 @@ class ExamCreateBody(BaseModel):
     frequency: Optional[str] = Field(default=None, max_length=100)
     applicationFee: Optional[str] = Field(default=None, max_length=100)
     officialSite: Optional[str] = Field(default=None, max_length=300)
-    durationMinutes: Optional[int] = Field(default=None, ge=0, le=1440)
+    durationMinutes: Optional[int] = Field(default=None, ge=1, le=1440)
     sections: Optional[list[str]] = Field(default=None, max_length=30)
     # The category (stream) the exam is listed under, e.g. Management. Matches a name in the Fields list.
     stream: Optional[str] = Field(default=None, max_length=100)
@@ -426,11 +469,30 @@ class ExamCreateBody(BaseModel):
     collegePriority: Optional[dict[str, int]] = None
     image: Optional[str] = Field(default=None, max_length=200)
     statusLabel: Optional[str] = Field(default=None, max_length=40)
+    seo: Optional[dict[str, str]] = None
     model_config = ConfigDict(populate_by_name=True)
 
     _image = field_validator("image")(_card_photo)
     _text = field_validator("pageText")(_page_text)
     _order = field_validator("collegePriority")(_college_priority)
+    _seo_check = field_validator("seo")(_seo)
+    _reg = field_validator("registrationCloses")(lambda v: exam_rules.check_date(v, "Registration closes"))
+    _date = field_validator("examDate")(lambda v: exam_rules.check_date(v, "Exam date"))
+    _fee = field_validator("applicationFee")(exam_rules.check_fee)
+    _site = field_validator("officialSite")(exam_rules.check_url)
+    _plain = field_validator("name", "shortName", "conductingBody", "frequency", "stream", "statusLabel")(_no_html)
+
+    @model_validator(mode="after")
+    def _dates_in_order(self):
+        exam_rules.check_order(self.registrationCloses, self.examDate)
+        return self
+
+
+@router.get("/exams", response_model=ListResponse[ExamSchema])
+async def admin_list_exams(_admin: AdminPayload, db: DbSession):
+    """Every exam, archived ones included, for the admin list."""
+    exams = await ExamService(db).list_all()
+    return ListResponse[ExamSchema](data=exams, meta=Meta(total=len(exams), page=1, limit=len(exams) or 1, pages=1))
 
 
 @router.post("/exams", response_model=SuccessResponse[MessageResponse], status_code=201)
@@ -468,6 +530,7 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
         college_priority=body.collegePriority or {},
         image=body.image or "",
         status_label=(body.statusLabel or "").strip(),
+        seo=body.seo or {},
     ))
     await db.commit()
     return SuccessResponse[MessageResponse](data=MessageResponse(message=f"Exam '{body.slug}' created."))
@@ -502,6 +565,22 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
     if body.collegePriority is not None:     values["college_priority"] = body.collegePriority
     if body.image is not None:               values["image"] = body.image
     if body.statusLabel is not None:         values["status_label"] = body.statusLabel.strip()
+    if body.seo is not None:                 values["seo"] = body.seo
+    if body.isArchived is not None:          values["archived"] = body.isArchived
+
+    if body.registrationCloses is not None or body.examDate is not None:
+        # One date may be sent without the other: check it against the one already saved.
+        from sqlalchemy import select as sql_select
+        saved = (await db.execute(sql_select(Exam.registration_closes, Exam.exam_date).where(Exam.slug == slug))).first()
+        if saved is None:
+            raise NotFoundError("Exam")
+        try:
+            exam_rules.check_order(
+                body.registrationCloses if body.registrationCloses is not None else saved[0],
+                body.examDate if body.examDate is not None else saved[1],
+            )
+        except ValueError as err:
+            raise ValidationError(str(err))
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))

@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
+from core.exam_rules import data_issues
 from models.exam import Exam
 from repositories.exam import ExamRepository
 from schemas.common import Meta
@@ -35,6 +36,9 @@ def _to_schema(exam: Exam) -> ExamSchema:
         collegePriority=dict(exam.college_priority or {}),
         image=exam.image or "",
         statusLabel=exam.status_label or "",
+        seo=dict(exam.seo or {}),
+        archived=bool(exam.archived),
+        dataIssues=data_issues(exam.registration_closes, exam.exam_date, exam.application_fee),
     )
 
 
@@ -55,6 +59,9 @@ class ExamService:
         pages = math.ceil(total / limit) if limit else 1
         return [_to_schema(e) for e in exams], Meta(total=total, page=page, limit=limit, pages=pages)
 
+    async def list_all(self) -> List[ExamSchema]:
+        return [_to_schema(e) for e in await self.repo.list_all()]
+
     async def get_exam(self, slug: str) -> ExamSchema:
         exam = await self.repo.get_by_slug(slug)
         if not exam:
@@ -68,7 +75,7 @@ class ExamService:
 
         if not slugs:
             return []
-        rows = (await self.repo.db.execute(select(Exam).where(Exam.slug.in_(slugs)))).scalars().all()
+        rows = (await self.repo.db.execute(select(Exam).where(Exam.slug.in_(slugs), Exam.archived == False))).scalars().all()
         by_slug = {e.slug: e for e in rows}
         return [_to_schema(by_slug[s]) for s in slugs if s in by_slug]
 

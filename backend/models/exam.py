@@ -48,6 +48,10 @@ class Exam(Base):
     image = Column(String(200), nullable=False, default="", server_default="")
     # The badge on the exam's card: Upcoming, Live, Expired or any words. Empty: no badge.
     status_label = Column(String(40), nullable=False, default="", server_default="")
+    # SEO set in the admin: metaTitle, canonical, metaDescription, ogImage, schemaType, robots. Empty: site defaults.
+    seo = Column(JSONB, nullable=False, default=dict, server_default="{}")
+    # Archived exams are hidden from the public site; the admin can restore them.
+    archived = Column(Boolean, nullable=False, default=False, server_default="false", index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()

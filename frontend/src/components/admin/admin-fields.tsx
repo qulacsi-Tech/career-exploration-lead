@@ -160,12 +160,14 @@ export function TextAreaField({
     <div className={className}>
       <label htmlFor={name} className="block text-xs font-semibold text-ink">
         {label}
+        {required && <span className="text-brand"> *</span>}
       </label>
       <textarea
         id={name}
         name={name}
         rows={rows}
         required={required}
+        aria-required={required || undefined}
         maxLength={maxLength}
         defaultValue={defaultValue}
         placeholder={placeholder}

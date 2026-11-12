@@ -19,7 +19,7 @@ class ExamRepository:
         featured: Optional[bool] = None,
         q: Optional[str] = None,
     ) -> Tuple[List[Exam], int]:
-        stmt = select(Exam)
+        stmt = select(Exam).where(Exam.archived == False)  # noqa: E712
         if stream:
             stmt = stmt.where(Exam.stream.ilike(f"%{stream}%"))
         if level:
@@ -38,13 +38,17 @@ class ExamRepository:
         return list(result.scalars()), total
 
     async def get_by_slug(self, slug: str) -> Optional[Exam]:
-        result = await self.db.execute(select(Exam).where(Exam.slug == slug))
+        result = await self.db.execute(select(Exam).where(Exam.slug == slug, Exam.archived == False))  # noqa: E712
         return result.scalar_one_or_none()
+
+    async def list_all(self) -> List[Exam]:
+        result = await self.db.execute(select(Exam).order_by(Exam.name))
+        return list(result.scalars())
 
     async def get_featured(self, limit: int = 6) -> List[Exam]:
         stmt = (
             select(Exam)
-            .where(Exam.is_featured == True)  # noqa: E712
+            .where(Exam.is_featured == True, Exam.archived == False)  # noqa: E712
             .limit(limit)
         )
         result = await self.db.execute(stmt)

@@ -37,6 +37,7 @@ export function DateField({
   value,
   onChange,
   hint,
+  min,
   max,
 }: {
   id: string;
@@ -45,7 +46,9 @@ export function DateField({
   value: string;
   onChange: (next: string) => void;
   hint?: string;
-  /** The latest date the picker allows, as "YYYY-MM-DD". */
+  /** The earliest date the picker allows, as "YYYY-MM-DD". Default: 1 Jan 2000. */
+  min?: string;
+  /** The latest date the picker allows, as "YYYY-MM-DD". Default: 31 Dec 2100. */
   max?: string;
 }) {
   const iso = toIso(value);
@@ -59,7 +62,9 @@ export function DateField({
       <input
         id={id}
         type="date"
-        max={max}
+        // The year is held to four digits and a sensible range, so "12-01-202700" cannot be typed.
+        min={min ?? "2000-01-01"}
+        max={max ?? "2100-12-31"}
         value={iso}
         onChange={(e) => onChange(fromIso(e.target.value))}
         className="mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"

@@ -1,22 +1,59 @@
 "use client";
 
+import { useState } from "react";
 import type { Exam } from "@/lib/api";
 import { SeoAvailability } from "@/components/admin/seo-availability";
+import { ExamSeoTab } from "@/components/admin/exam-seo-tab";
 import { AdminSubsection } from "@/components/admin/admin-section";
-import { createExam, saveExam } from "@/lib/admin-actions";
+import { createExam, saveExam, setExamArchived } from "@/lib/admin-actions";
 import { ResourceAdmin, FieldGrid } from "@/components/admin/resource-admin";
 import {
   TextField,
   SelectField,
-  SelectWithOtherField,
   TextAreaField,
   Field,
   NameSlugFields,
 } from "@/components/admin/admin-fields";
 import { FormDateField } from "@/components/admin/date-field";
-import { ImageUploadField } from "@/components/admin/media-uploader";
 import { ExamContentTab, ExamPracticeTab } from "@/components/admin/exam-extra-tabs";
 import { ExamCardTab, ExamCollegePriorityTab, ExamEligibilityTab, ExamPageTextTab } from "@/components/admin/exam-page-tabs";
+
+const squash = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
+/** An existing exam that reads like the one being added ("MHT CET" and "Maharashtra Common Entrance Test (MHT CET)"). */
+function similarExam(exams: Exam[], name: string, shortName: string): Exam | null {
+  const wanted = [squash(name), squash(shortName)].filter((n) => n.length >= 3);
+  if (wanted.length === 0) return null;
+  return (
+    exams.find((e) => {
+      const have = [squash(e.name), squash(e.shortName ?? "")].filter((n) => n.length >= 3);
+      return wanted.some((w) => have.some((h) => h === w || (Math.min(h.length, w.length) >= 4 && (h.includes(w) || w.includes(h)))));
+    }) ?? null
+  );
+}
+
+/** Wraps the Add form's name fields and warns, without blocking, when a similar exam is already listed. */
+function SimilarExamWarning({ exams, children }: { exams: Exam[]; children: React.ReactNode }) {
+  const [match, setMatch] = useState<Exam | null>(null);
+  return (
+    <div
+      className="contents"
+      onBlur={(e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.name !== "name" && target.name !== "shortName") return;
+        const form = target.form;
+        setMatch(similarExam(exams, String(form?.elements.namedItem("name") && (form.elements.namedItem("name") as HTMLInputElement).value), String(form?.elements.namedItem("shortName") && (form.elements.namedItem("shortName") as HTMLInputElement).value)));
+      }}
+    >
+      {children}
+      {match && (
+        <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:col-span-2">
+          A similar exam is already listed: <strong>{match.name}</strong>. Two pages for the same exam split its search ranking. Edit that one instead, unless this is a different exam.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function ExamsAdmin({ exams }: { exams: Exam[] }) {
   // The categories already in use, offered in the Card & status tab.
@@ -30,6 +67,8 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
       rows={exams}
       onSave={(exam, data) => saveExam(exam.slug, data)}
       onAdd={(data) => createExam(undefined, data)}
+      isArchived={(exam) => !!exam.archived}
+      onArchive={(exam, archived) => setExamArchived(exam.slug, archived)}
       getKey={(exam) => exam.slug}
       searchIn={(exam) => [exam.name, exam.conductingBody, exam.level, exam.mode ?? "", exam.slug]}
       searchPlaceholder="Search name, body, level, mode"
@@ -40,7 +79,10 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           render: (exam) => (
             // One line each, cut with an ellipsis so a long name never widens the table; the full text shows on hover.
             <div className="w-64 max-w-64">
-              <p className="truncate font-medium text-ink" title={exam.name}>{exam.name}</p>
+              <p className="truncate font-medium text-ink" title={exam.name}>
+                {exam.name}
+                {exam.archived && <span className="ml-2 rounded bg-bg-alt px-1.5 py-0.5 text-[10px] font-semibold uppercase text-ink-faint">Archived</span>}
+              </p>
               <p className="truncate text-xs text-ink-faint" title={exam.conductingBody}>{exam.conductingBody}</p>
             </div>
           ),
@@ -58,17 +100,46 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
         {
           key: "registration",
           label: "Registration closes",
-          render: (exam) => exam.registrationCloses,
+          render: (exam) => exam.registrationCloses || "—",
         },
-        { key: "date", label: "Exam date", render: (exam) => exam.examDate },
-        { key: "fee", label: "Fee", render: (exam) => <span className="block max-w-32 truncate" title={exam.applicationFee ?? ""}>{exam.applicationFee ?? "—"}</span> },
-        { key: "seo", label: "SEO available", render: (exam) => <SeoAvailability seo={(exam as { seo?: unknown }).seo} /> },
+        { key: "date", label: "Exam date", render: (exam) => exam.examDate || "—" },
+        { key: "fee", label: "Fee", render: (exam) => <span className="block max-w-32 truncate" title={exam.applicationFee ?? ""}>{exam.applicationFee || "—"}</span> },
+        {
+          key: "seo",
+          label: "SEO available",
+          // Indexing and schema type have defaults, so only the text and the image decide Yes or No.
+          render: (exam) => (
+            <SeoAvailability
+              seo={{
+                metaTitle: exam.seo?.metaTitle,
+                metaDescription: exam.seo?.metaDescription,
+                canonical: exam.seo?.canonical,
+                ogImage: exam.seo?.ogImage,
+              }}
+            />
+          ),
+        },
+        {
+          key: "issues",
+          label: "Data check",
+          render: (exam) =>
+            exam.dataIssues && exam.dataIssues.length > 0 ? (
+              <span
+                className="inline-flex cursor-help items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900"
+                title={exam.dataIssues.join("\n")}
+              >
+                ⚠ {exam.dataIssues.length} to fix
+              </span>
+            ) : (
+              <span className="text-xs text-ink-faint">OK</span>
+            ),
+        },
       ]}
       renderView={(exam) => (
         <div className="space-y-6">
           <AdminSubsection title="Basic details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
-              <Field label="Short name" value={exam.shortName || "—"} />
+              <Field label="Short name" value={exam.shortName || "Not set"} />
               <Field label="Conducting body" value={exam.conductingBody} />
               <Field label="Level" value={exam.level} />
               <Field label="Mode" value={exam.mode ?? "Not set"} />
@@ -81,8 +152,8 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
 
           <AdminSubsection title="Dates">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
-              <Field label="Registration closes" value={exam.registrationCloses} />
-              <Field label="Exam date" value={exam.examDate} />
+              <Field label="Registration closes" value={exam.registrationCloses || "Not set"} />
+              <Field label="Exam date" value={exam.examDate || "Not set"} />
             </dl>
           </AdminSubsection>
 
@@ -145,7 +216,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
                 defaultValue={exam.mode ?? "Online"}
                 options={["Online", "Offline", "Hybrid"]}
               />
-              <TextField label="Official site" name="officialSite" defaultValue={exam.officialSite ?? ""} />
+              <TextField label="Official site" name="officialSite" type="url" maxLength={300} placeholder="https://" defaultValue={exam.officialSite ?? ""} />
               <TextAreaField
                 label="Description"
                 name="description"
@@ -181,7 +252,9 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
               <TextField
                 label="Application fee"
                 name="applicationFee"
-                placeholder="e.g. ₹2,000"
+                placeholder="e.g. ₹2,000, or Free"
+                hint="Start with the amount. Anything about categories can follow in brackets."
+                maxLength={100}
                 defaultValue={exam.applicationFee ?? ""}
               />
             </FieldGrid>
@@ -196,6 +269,10 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
                 label="Duration (minutes)"
                 name="durationMinutes"
                 type="number"
+                min={1}
+                max={1440}
+                step={1}
+                hint="1 to 1440 minutes."
                 defaultValue={exam.durationMinutes ? String(exam.durationMinutes) : ""}
               />
               <TextField
@@ -244,44 +321,11 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
         {
           id: "seo",
           label: "SEO",
-          render: (exam) => (
-            <FieldGrid>
-              <TextField
-                label="Meta title"
-                name="metaTitle"
-                placeholder={`${exam.name} — Dates, Pattern & Results`}
-                className="sm:col-span-2"
-                hint="Around 60 characters."
-                maxLength={60}
-              />
-              <TextField label="Canonical URL" name="canonical" placeholder={`/exams/${exam.slug}`} />
-              <TextAreaField
-                label="Meta description"
-                name="metaDescription"
-                rows={3}
-                placeholder="Around 155 characters, shown in search results."
-                className="sm:col-span-2 lg:col-span-3"
-              />
-              <ImageUploadField
-                label="Open Graph image"
-                name="ogImage"
-                altLabel="og:image:alt"
-                hint="Shown when the page is shared. 1200x630 renders best."
-              />
-              <SelectWithOtherField
-                label="Schema type"
-                name="schemaType"
-                defaultValue="Event"
-                options={["Event", "EducationalOccupationalProgram", "WebPage"]}
-                customPlaceholder="Any schema.org type"
-              />
-              <SelectField label="Indexing" name="robots" options={["Index, follow", "No index"]} />
-            </FieldGrid>
-          ),
+          render: (exam) => <ExamSeoTab exam={exam} />,
         },
       ]}
       renderAddForm={() => (
-        <>
+        <SimilarExamWarning exams={exams}>
           <NameSlugFields
             nameLabel="Exam name"
             namePlaceholder="Common Admission Test (CAT)"
@@ -302,7 +346,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
             required
             maxLength={4000}
           />
-        </>
+        </SimilarExamWarning>
       )}
     />
   );

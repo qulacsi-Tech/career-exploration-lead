@@ -61,6 +61,28 @@ const typeLabel = (t: AdminPracticeQuestion["type"]) =>
   t === "mcq-single" ? "Single answer" : t === "mcq-multi" ? "Multiple answers" : "Type-in answer";
 
 /** What is missing from a question, or null when it is complete. Mirrors the server's checks. */
+/**
+ * Numbers outside what the server accepts, named so the editor can fix them. The inputs no longer
+ * adjust a value behind the editor's back (601 minutes used to become 600 without a word).
+ */
+function limitProblems(t: { totalMinutes: number; attemptsAllowed: number | null; sections: { label: string; durationMinutes: number | null; questions: AdminPracticeQuestion[] }[] }): string[] {
+  const out: string[] = [];
+  const whole = (n: number) => Number.isInteger(n);
+  if (!whole(t.totalMinutes) || t.totalMinutes < 0 || t.totalMinutes > 600) out.push("Total time must be a whole number from 0 to 600 minutes.");
+  if (t.attemptsAllowed !== null && (!whole(t.attemptsAllowed) || t.attemptsAllowed < 1 || t.attemptsAllowed > 100)) out.push("Attempts allowed must be from 1 to 100, or empty for unlimited.");
+  t.sections.forEach((s, si) => {
+    const name = s.label.trim() || `Section ${si + 1}`;
+    if (s.durationMinutes !== null && (!whole(s.durationMinutes) || s.durationMinutes < 1 || s.durationMinutes > 600)) out.push(`${name}: time must be from 1 to 600 minutes.`);
+    s.questions.forEach((q, qi) => {
+      const at = `${name}, question ${qi + 1}`;
+      if (!whole(q.expectedSeconds) || q.expectedSeconds < 10 || q.expectedSeconds > 3600) out.push(`${at}: expected time must be from 10 to 3600 seconds.`);
+      if (!Number.isFinite(q.marks) || q.marks < 0 || q.marks > 100) out.push(`${at}: marks must be from 0 to 100.`);
+      if (!Number.isFinite(q.negativeMarks) || q.negativeMarks < 0 || q.negativeMarks > 100) out.push(`${at}: negative marks must be from 0 to 100.`);
+    });
+  });
+  return out;
+}
+
 function problemWith(q: AdminPracticeQuestion): string | null {
   if (!q.stem.trim()) return "Question text is empty";
   if (q.type === "tita") return q.answerValue === null ? "No correct number" : null;
@@ -238,7 +260,8 @@ export function PracticeTestEditor({
 
   const total = test?.sections.reduce((n, s) => n + s.questions.length, 0) ?? 0;
   const incomplete = test ? test.sections.flatMap((s) => s.questions).filter((q) => problemWith(q) !== null).length : 0;
-  const canSave = !!test && test.title.trim().length >= 2 && test.sections.every((s) => s.label.trim() !== "");
+  const limits = test ? limitProblems(test) : [];
+  const canSave = !!test && test.title.trim().length >= 2 && test.sections.every((s) => s.label.trim() !== "") && limits.length === 0;
 
   const save = () => {
     if (!test) return;
@@ -267,6 +290,14 @@ export function PracticeTestEditor({
         <p role="alert" className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
           {error}
         </p>
+      )}
+      {limits.length > 0 && (
+        <ul role="alert" className="w-full list-disc rounded-lg border border-amber-300 bg-amber-50 py-2.5 pl-8 pr-4 text-sm text-amber-900">
+          {limits.slice(0, 5).map((m) => (
+            <li key={m}>{m}</li>
+          ))}
+          {limits.length > 5 && <li>…and {limits.length - 5} more.</li>}
+        </ul>
       )}
       <div className="flex items-center gap-2">
         {confirmingDelete ? (
@@ -357,7 +388,7 @@ export function PracticeTestEditor({
               </div>
               <div>
                 <label htmlFor="pt-minutes" className="block text-xs font-semibold text-ink">Total time (minutes)</label>
-                <input id="pt-minutes" type="number" min={0} max={600} value={test.totalMinutes} onChange={(e) => set("totalMinutes", Math.max(0, Math.min(600, Math.floor(Number(e.target.value) || 0))))} className={input} />
+                <input id="pt-minutes" type="number" min={0} max={600} value={test.totalMinutes} onChange={(e) => set("totalMinutes", e.target.value === "" ? 0 : Math.floor(Number(e.target.value)))} className={input} />
                 <p className="mt-1 text-xs text-ink-faint">0 means untimed.</p>
               </div>
               <div className="md:col-span-2 xl:col-span-3">
@@ -367,7 +398,7 @@ export function PracticeTestEditor({
               </div>
               <div>
                 <label htmlFor="pt-attempts" className="block text-xs font-semibold text-ink">Attempts allowed per student</label>
-                <input id="pt-attempts" type="number" min={1} max={100} value={test.attemptsAllowed ?? ""} placeholder="Unlimited" aria-describedby="pt-attempts-hint" onChange={(e) => set("attemptsAllowed", e.target.value === "" ? null : Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))))} className={input} />
+                <input id="pt-attempts" type="number" min={1} max={100} value={test.attemptsAllowed ?? ""} placeholder="Unlimited" aria-describedby="pt-attempts-hint" onChange={(e) => set("attemptsAllowed", e.target.value === "" ? null : Math.floor(Number(e.target.value)))} className={input} />
                 <p id="pt-attempts-hint" className="mt-1 text-xs text-ink-faint">How many times each student may sit this test. Empty: no limit. Students are told how many are left after every attempt.</p>
               </div>
               <RetakeGapField value={test.retakeGapMinutes} onChange={(v) => set("retakeGapMinutes", v)} />
@@ -495,7 +526,7 @@ export function PracticeTestEditor({
                 {test.sectionLock && (
                   <div className="w-40">
                     <label htmlFor={`pt-sm-${si}`} className="block text-xs font-semibold text-ink">Section time (min)</label>
-                    <input id={`pt-sm-${si}`} type="number" min={1} max={600} value={section.durationMinutes ?? ""} onChange={(e) => setSection(si, { durationMinutes: e.target.value === "" ? null : Math.max(1, Math.min(600, Math.floor(Number(e.target.value) || 1))) })} className={input} />
+                    <input id={`pt-sm-${si}`} type="number" min={1} max={600} value={section.durationMinutes ?? ""} onChange={(e) => setSection(si, { durationMinutes: e.target.value === "" ? null : Math.floor(Number(e.target.value)) })} className={input} />
                   </div>
                 )}
                 <p className="pb-2 text-xs text-ink-soft">{section.questions.length} question{section.questions.length === 1 ? "" : "s"}</p>
@@ -556,15 +587,15 @@ export function PracticeTestEditor({
                             </div>
                             <div>
                               <label htmlFor={`q-time-${si}-${qi}`} className="block text-xs font-semibold text-ink">Expected seconds</label>
-                              <input id={`q-time-${si}-${qi}`} type="number" min={10} max={3600} value={q.expectedSeconds} onChange={(e) => setQuestion(si, qi, { expectedSeconds: Math.max(10, Math.min(3600, Math.floor(Number(e.target.value) || 120))) })} className={input} />
+                              <input id={`q-time-${si}-${qi}`} type="number" min={10} max={3600} value={q.expectedSeconds} onChange={(e) => setQuestion(si, qi, { expectedSeconds: e.target.value === "" ? 0 : Math.floor(Number(e.target.value)) })} className={input} />
                             </div>
                             <div>
                               <label htmlFor={`q-marks-${si}-${qi}`} className="block text-xs font-semibold text-ink">Marks</label>
-                              <input id={`q-marks-${si}-${qi}`} type="number" min={0} max={100} step="0.25" value={q.marks} onChange={(e) => setQuestion(si, qi, { marks: Math.max(0, Number(e.target.value) || 0) })} className={input} />
+                              <input id={`q-marks-${si}-${qi}`} type="number" min={0} max={100} step="0.25" value={q.marks} onChange={(e) => setQuestion(si, qi, { marks: Number(e.target.value) })} className={input} />
                             </div>
                             <div>
                               <label htmlFor={`q-neg-${si}-${qi}`} className="block text-xs font-semibold text-ink">Marks lost if wrong</label>
-                              <input id={`q-neg-${si}-${qi}`} type="number" min={0} max={100} step="0.25" value={q.negativeMarks} onChange={(e) => setQuestion(si, qi, { negativeMarks: Math.max(0, Number(e.target.value) || 0) })} className={input} />
+                              <input id={`q-neg-${si}-${qi}`} type="number" min={0} max={100} step="0.25" value={q.negativeMarks} onChange={(e) => setQuestion(si, qi, { negativeMarks: Number(e.target.value) })} className={input} />
                             </div>
                           </div>
 

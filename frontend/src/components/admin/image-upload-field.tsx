@@ -18,7 +18,7 @@ import { mediaUrl } from "@/lib/media";
 */
 
 type Slot = {
-  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery" | "ranking_banner" | "award" | "faculty_photo";
+  kind: "hero" | "banner" | "location" | "college" | "exam" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery" | "ranking_banner" | "award" | "faculty_photo" | "og";
   label: string;
   recommended: [number, number];
   minimum: [number, number];
@@ -118,6 +118,17 @@ const SLOTS: Record<Slot["kind"], Slot> = {
     notes: [
       "A square photo, shown as a circle: about 56 px across on the Faculty list and larger on the member's card. Anything outside the circle is cropped, so keep the face in the middle with some space around it.",
       "Recommended 600 × 600 px, at least 200 × 200 px. Without a photo the member's initials are shown in the circle.",
+    ],
+  },
+  og: {
+    kind: "og",
+    label: "Open Graph image",
+    recommended: [1200, 630],
+    minimum: [600, 315],
+    previewClass: "aspect-[1200/630]",
+    notes: [
+      "Shown when the exam page is shared on WhatsApp, Facebook, LinkedIn or X. 1200 × 630 px (about 1.9:1) renders best.",
+      "Keep any text well inside the picture: some apps crop the edges.",
     ],
   },
   award: {

@@ -17,6 +17,10 @@
  *   expected_seconds   default 120
  *   solution       the worked solution shown in the results
  *
+ * A row with any problem is skipped whole and reported by row number: nothing in it is guessed
+ * or replaced with a default, so a typo never becomes a wrong answer key in a published test.
+ * Blank optional columns take their defaults.
+ *
  * Nothing is saved by importing: the questions land in the editor, where they can be
  * checked and changed, and are stored when the test is saved.
  */
@@ -68,10 +72,24 @@ function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c.trim() !== ""));
 }
 
-const toNumber = (text: string, fallback: number) => {
+/** A blank optional number takes its default; anything else must be a number in range, or the row is reported. */
+function numberColumn(
+  text: string,
+  column: string,
+  fallback: number,
+  min: number,
+  max: number,
+  problems: string[]
+): number {
+  if (text.trim() === "") return fallback;
   const n = Number(text.trim());
-  return text.trim() !== "" && Number.isFinite(n) ? n : fallback;
-};
+  if (!Number.isFinite(n)) {
+    problems.push(`"${column}" is "${text}", which is not a number`);
+    return fallback;
+  }
+  if (n < min || n > max) problems.push(`"${column}" must be between ${min} and ${max}`);
+  return n;
+}
 
 export type CsvImport = { sections: AdminPracticeSection[]; problems: string[] };
 
@@ -93,16 +111,26 @@ export function importQuestionsFromCsv(text: string, defaultSection = "Section 1
 
     const stem = get("question");
     if (!stem) {
-      problems.push(`Row ${line}: the question is empty, so it was skipped.`);
+      problems.push(`Row ${line}: the question is empty, so the row was skipped.`);
       return;
     }
+    // What is wrong with this row; any entry means the whole row is skipped.
+    const rowProblems: string[] = [];
 
     const options = OPTION_COLUMNS.map((name) => get(name));
     while (options.length > 0 && options[options.length - 1] === "") options.pop();
     const correctText = get("correct");
 
     let type = get("type").toLowerCase() as AdminPracticeQuestion["type"] | "";
-    if (type !== "mcq-single" && type !== "mcq-multi" && type !== "tita") {
+    if (type !== "" && type !== "mcq-single" && type !== "mcq-multi" && type !== "tita") {
+      rowProblems.push(`"type" is "${get("type")}": use mcq-single, mcq-multi or tita`);
+      type = "";
+    }
+    const difficultyText = get("difficulty").toLowerCase();
+    if (difficultyText !== "" && !["easy", "medium", "hard"].includes(difficultyText)) {
+      rowProblems.push(`"difficulty" is "${get("difficulty")}": use easy, medium or hard`);
+    }
+    if (type === "") {
       if (options.length === 0) type = "tita";
       else type = /^[a-f](\s*[;,&]\s*[a-f])+$/i.test(correctText) ? "mcq-multi" : "mcq-single";
     }
@@ -116,24 +144,29 @@ export function importQuestionsFromCsv(text: string, defaultSection = "Section 1
       options: type === "tita" ? [] : options,
       correctOptions: [],
       answerValue: null,
-      tolerance: toNumber(get("tolerance"), 0),
-      marks: toNumber(get("marks"), 1),
-      negativeMarks: toNumber(get("negative_marks"), 0),
-      expectedSeconds: Math.round(toNumber(get("expected_seconds"), 120)),
+      tolerance: numberColumn(get("tolerance"), "tolerance", 0, 0, 1000000, rowProblems),
+      marks: numberColumn(get("marks"), "marks", 1, 0, 100, rowProblems),
+      negativeMarks: numberColumn(get("negative_marks"), "negative_marks", 0, 0, 100, rowProblems),
+      expectedSeconds: Math.round(numberColumn(get("expected_seconds"), "expected_seconds", 120, 10, 3600, rowProblems)),
       solution: get("solution"),
     };
 
     if (type === "tita") {
       const value = Number(correctText);
-      if (correctText === "" || !Number.isFinite(value)) problems.push(`Row ${line}: a type-in question needs the correct number in "correct".`);
+      if (correctText === "" || !Number.isFinite(value)) rowProblems.push('a type-in question needs the correct number in "correct"');
       else question.answerValue = value;
     } else {
       const letters = correctText.toLowerCase().split(/[\s;,&]+/).filter(Boolean);
       const indexes = letters.map((l) => "abcdef".indexOf(l));
       if (letters.length === 0 || indexes.some((i) => i < 0 || i >= options.length)) {
-        problems.push(`Row ${line}: "correct" must name the correct option letters, such as B or A;C.`);
+        rowProblems.push('"correct" must name option letters that exist, such as B or A;C');
       } else question.correctOptions = [...new Set(indexes)].sort((a, b) => a - b);
-      if (options.length < 2) problems.push(`Row ${line}: a multiple-choice question needs at least two options.`);
+      if (options.length < 2) rowProblems.push("a multiple-choice question needs at least two options");
+    }
+
+    if (rowProblems.length > 0) {
+      problems.push(`Row ${line} was skipped: ${rowProblems.join("; ")}.`);
+      return;
     }
 
     const label = get("section") || defaultSection;
