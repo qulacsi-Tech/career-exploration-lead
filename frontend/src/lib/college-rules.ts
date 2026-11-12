@@ -101,6 +101,24 @@ export function dateProblem(value: string, label: string, earliestYear?: number)
   return null;
 }
 
+/**
+ * A soft check, never a reason to refuse Save: a batch such as "2002-2006" against a programme that runs "2 Years".
+ * Returns a note to show, or null when the lengths agree (one year of slack covers lateral entry and a gap year) or
+ * either text cannot be read.
+ */
+export function batchLengthNote(batch: string, duration: string): string | null {
+  const b = /^(\d{4})\s*[-–—]\s*(\d{4}|\d{2})$/.exec(batch.trim());
+  const d = DURATION.exec(duration.trim().replace(/\s+/g, " "));
+  if (!b || !d) return null;
+  const start = Number(b[1]);
+  const endRaw = Number(b[2]);
+  const end = b[2].length === 2 ? Math.floor(start / 100) * 100 + endRaw : endRaw;
+  const span = end - start;
+  const years = /^year/i.test(d[2]) ? Number(d[1]) : Number(d[1]) / 12;
+  if (span <= 0 || Math.abs(span - years) <= 1) return null;
+  return `This batch spans ${span} years but the programme runs ${years % 1 === 0 ? years : years.toFixed(1)}. Check the batch.`;
+}
+
 export function ratioProblem(value: string): string | null {
   return RATIO.test(value.trim()) ? null : "Write the ratio as 15:1, both numbers above zero.";
 }

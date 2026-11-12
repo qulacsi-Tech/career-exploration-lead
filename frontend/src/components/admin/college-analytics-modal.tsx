@@ -180,11 +180,7 @@ function Leads({ data }: { data: CollegeAnalytics }) {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-semibold text-ink">{l.name}</p>
-                <p className="text-xs text-ink-soft">
-                  {l.phone}
-                  {l.email ? ` · ${l.email}` : ""}
-                  {l.city ? ` · ${l.city}` : ""}
-                </p>
+                <LeadContact phone={l.phone} email={l.email} city={l.city} />
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <Chip tone="brand">{LEAD_TYPE_LABEL[l.type] ?? l.type}</Chip>
@@ -232,6 +228,36 @@ function Questions({ data }: { data: CollegeAnalytics }) {
  * The like or dislike count on a review. Pointing at it (or focusing it, or tapping it) opens the list of who
  * reacted that way, with their email, so the team can see the names behind the number.
  */
+/** 9876543210 -> 98••••3210; a@mail.com -> a•••@mail.com. Enough to recognise a lead without exposing it on screen. */
+export function maskPhone(phone: string): string {
+  const digits = phone.replace(/\s/g, "");
+  return digits.length <= 6 ? "••••" : `${digits.slice(0, 2)}${"•".repeat(Math.max(2, digits.length - 6))}${digits.slice(-4)}`;
+}
+export function maskEmail(email: string): string {
+  const [name, domain] = email.split("@");
+  return domain ? `${name.slice(0, 1)}•••@${domain}` : "••••";
+}
+
+/** A lead's contact line. The phone and email stay masked until Reveal is pressed, so they are not on screen by default. */
+function LeadContact({ phone, email, city }: { phone: string; email?: string | null; city?: string | null }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <p className="text-xs text-ink-soft">
+      {shown ? phone : maskPhone(phone)}
+      {email ? ` · ${shown ? email : maskEmail(email)}` : ""}
+      {city ? ` · ${city}` : ""}{" "}
+      <button
+        type="button"
+        onClick={() => setShown((s) => !s)}
+        aria-pressed={shown}
+        className="ml-1 font-semibold text-brand hover:underline"
+      >
+        {shown ? "Hide" : "Reveal"}
+      </button>
+    </p>
+  );
+}
+
 function Reaction({ kind, count, people }: { kind: "like" | "dislike"; count: number; people: { name: string; email: string }[] }) {
   const [pinned, setPinned] = useState(false);
   const [hover, setHover] = useState(false);

@@ -164,7 +164,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
               className="w-56 rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
             />
 
-            <select value={stream} onChange={(e) => selectStream(e.target.value)} aria-label="Filter by category" className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
+            <select value={stream} onChange={(e) => selectStream(e.target.value)} aria-label="Filter by category" title="Shows colleges in this category, and colleges in other categories that offer a course in it" className="rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
               <option value="">All categories</option>
               {streams.map((name) => (
                 <option key={name} value={name}>
@@ -205,6 +205,11 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
           </div>
         }
       >
+        {stream && (
+          <p className="mb-3 text-xs text-ink-faint">
+            Showing colleges whose own category is {stream}, plus colleges in another category that offer a {stream} course.
+          </p>
+        )}
         {/* Wide table on a narrow screen: scroll it rather than wrap the cells. */}
         <div className="-mx-5 overflow-x-auto px-5">
           <table className="w-full min-w-[720px] border-collapse text-sm">
@@ -548,6 +553,9 @@ function SortHeader({ label, k, sort, onSort }: { label: string; k: SortKey; sor
 
 /** The NIRF rank, when the college's ranking is NIRF's; null otherwise, and the review rating is shown instead. */
 function nirfRank(c: College): number | null {
+  // The API works this out from the stored authority. `ranking.authority` is not used: it reads "NIRF" for a
+  // college with no authority set, which showed another list's rank (Outlook #3) as "NIRF (3)".
+  if (c.nirfRank !== undefined) return c.nirfRank && c.nirfRank > 0 ? c.nirfRank : null;
   return /nirf/i.test(c.ranking?.authority ?? "") && c.ranking.rank > 0 ? c.ranking.rank : null;
 }
 

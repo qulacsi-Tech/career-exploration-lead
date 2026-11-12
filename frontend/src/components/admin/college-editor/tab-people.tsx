@@ -5,7 +5,7 @@ import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { loadGeneratedFaqs } from "@/lib/admin-actions";
 import type { FacultyMember, RecordReview } from "@/lib/api";
 import type { EditorProps } from "@/components/admin/college-editor/tab-info";
-import { REVIEW_MIN_CHARS } from "@/lib/college-rules";
+import { REVIEW_MIN_CHARS, batchLengthNote } from "@/lib/college-rules";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { AddButton, Card, EmptyNote, IsoDate, NumberInput, Row, SelectInput, TextArea, TextInput, move, today } from "@/components/admin/college-editor/shared";
 
@@ -144,7 +144,7 @@ export function ReviewsTab({ record, update }: EditorProps) {
                           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                             <TextInput id={`rv-${i}-author`} label="Reviewer" required max={200} value={r.author} onChange={(v) => patch(i, { author: v })} />
                             <SelectInput id={`rv-${i}-course`} label="Programme" required value={r.course} onChange={(v) => patch(i, { course: v })} options={courseNames} placeholder="Select a programme" hint={courseNames.length === 0 ? "Add programmes on the Courses tab first." : undefined} />
-                            <TextInput id={`rv-${i}-batch`} label="Batch" required max={50} value={r.batch} onChange={(v) => patch(i, { batch: v })} placeholder="e.g. 2023-25" />
+                            <TextInput id={`rv-${i}-batch`} label="Batch" required max={50} value={r.batch} onChange={(v) => patch(i, { batch: v })} placeholder="e.g. 2023-25" hint={batchLengthNote(r.batch, record.courses.find((c) => c.name === r.course)?.duration ?? "") ?? undefined} />
                             <IsoDate id={`rv-${i}-date`} label="Review date" value={r.date} onChange={(v) => patch(i, { date: v })} notFuture />
                           </div>
                           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
