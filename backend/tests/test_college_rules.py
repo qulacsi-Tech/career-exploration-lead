@@ -69,8 +69,10 @@ def test_duration_batch_ratio_score():
     assert r.check_score("98 percentile")
     with pytest.raises(ValueError, match="between 0 and 100"):
         r.check_score("150 percentile")
-    # A score may be any text: it is not required to hold a number.
-    assert r.check_score("high") == "high"
+    # A score is a number with its unit, or one of a few words ("Closed"): free text such as "high" or "abc" is refused.
+    for bad in ("high", "abc", "-5"):
+        with pytest.raises(ValueError):
+            r.check_score(bad)
     assert r.check_score("To be announced") == "To be announced"
     assert r.check_score("Rank 1,200")
     assert r.check_score("172/300 marks")

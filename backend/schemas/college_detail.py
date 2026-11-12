@@ -129,6 +129,15 @@ class AwardItem(BaseModel):
 
     _image = field_validator("image")(photo_path)
 
+    @field_validator("year")
+    @classmethod
+    def _year_not_future(cls, value: str) -> str:
+        from datetime import date
+
+        if value and int(value[:4]) > date.today().year:
+            raise ValueError(f"The award year cannot be after {date.today().year}.")
+        return value
+
 
 RANKING_SECTIONS = ("summary", "all", "awards", "compare")
 

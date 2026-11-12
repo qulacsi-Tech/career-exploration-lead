@@ -35,6 +35,8 @@ export function AdminModal({
   useEffect(() => {
     if (!open) return;
 
+    // Whatever had focus when the dialog opened gets it back on close, so a keyboard user is not sent to the top of the page.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKeyDown);
 
@@ -44,6 +46,7 @@ export function AdminModal({
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previous;
+      if (opener && opener.isConnected) opener.focus();
     };
   }, [open, onClose]);
 

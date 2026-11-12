@@ -96,7 +96,14 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
     const inSpecialisation = specialisation
       ? inCourse.filter((c) => c.courses.some((k) => k.name === course && k.specialisation === specialisation))
       : inCourse;
-    const matching = q ? inSpecialisation.filter((c) => [c.name, c.city, c.state, c.stream].some((field) => field.toLowerCase().includes(q))) : inSpecialisation;
+    // Every word typed must appear somewhere in the name, city, state, stream or slug ("Bengaluru Karnataka" finds both).
+    const terms = q.split(/\s+/).filter(Boolean);
+    const matching = terms.length
+      ? inSpecialisation.filter((c) => {
+          const haystack = [c.name, c.city, c.state, c.stream, c.slug].join(" ").toLowerCase();
+          return terms.every((term) => haystack.includes(term));
+        })
+      : inSpecialisation;
     if (!sort) return matching; // the order the server sent: newest first
     const value = (c: College) =>
       ({ name: c.name, location: `${c.city}, ${c.state}`, ownership: c.ownership, stream: c.stream, courses: c.coursesOffered, rating: nirfRank(c) ?? Number.MAX_SAFE_INTEGER, priority: c.priority ?? Number.MAX_SAFE_INTEGER })[sort.key];
@@ -107,6 +114,15 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
       return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * sign || a.name.localeCompare(b.name);
     });
   }, [rows, pools, query, stream, course, specialisation, statusFilter, sort]);
+
+  // Paging: a long directory is shown a page at a time. A new search, filter or sort goes back to page 1.
+  const pageKey = [query, stream, course, specialisation, statusFilter, sort?.key, sort?.dir].join("|");
+  const [pager, setPager] = useState({ key: pageKey, page: 1, size: 25 });
+  if (pager.key !== pageKey) setPager({ key: pageKey, page: 1, size: pager.size });
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pager.size));
+  const page = Math.min(pager.page, pageCount);
+  const from = (page - 1) * pager.size;
+  const shown = filtered.slice(from, from + pager.size);
 
   const toggleSort = (key: SortKey) =>
     setSort((s) => (s?.key !== key ? { key, dir: "asc" } : s.dir === "asc" ? { key, dir: "desc" } : null));
@@ -143,7 +159,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, city, stream"
+              placeholder="Search name, city, state, stream, slug"
               aria-label="Search colleges"
               className="w-56 rounded-lg border border-line bg-bg px-3 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
             />
@@ -206,7 +222,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
               </tr>
             </thead>
             <tbody>
-              {filtered.map((college) => (
+              {shown.map((college) => (
                 <tr key={college.slug} className="border-b border-line-soft last:border-b-0">
                   <td className="py-3 pr-3">
                     <div className="flex items-center gap-3">
@@ -279,7 +295,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
                 <tr>
                   <td colSpan={9} className="py-10 text-center text-sm text-ink-soft">
                     {query
-                      ? `No colleges match “${query}”.`
+                      ? `No colleges match “${query.length > 40 ? `${query.slice(0, 40)}…` : query}”.`
                       : "No colleges match the selected filters."}
                   </td>
                 </tr>
@@ -287,6 +303,44 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
             </tbody>
           </table>
         </div>
+
+        {filtered.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-ink-soft">
+            <p aria-live="polite">
+              Showing {from + 1}–{Math.min(from + pager.size, filtered.length)} of {filtered.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <label htmlFor="college-page-size" className="text-ink-faint">Per page</label>
+              <select
+                id="college-page-size"
+                value={pager.size}
+                onChange={(e) => setPager({ key: pageKey, page: 1, size: Number(e.target.value) })}
+                className="rounded-lg border border-line bg-bg px-2 py-1 text-xs text-ink focus:border-brand focus:outline-none"
+              >
+                {[25, 50, 100].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setPager({ ...pager, key: pageKey, page: page - 1 })}
+                disabled={page <= 1}
+                className="rounded-lg border border-line px-3 py-1 font-medium transition hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="tabular-nums">Page {page} of {pageCount}</span>
+              <button
+                type="button"
+                onClick={() => setPager({ ...pager, key: pageKey, page: page + 1 })}
+                disabled={page >= pageCount}
+                className="rounded-lg border border-line px-3 py-1 font-medium transition hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </AdminSection>
 
       <ViewCollegeModal

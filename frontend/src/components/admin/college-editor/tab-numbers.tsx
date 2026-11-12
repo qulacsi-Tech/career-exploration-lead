@@ -592,7 +592,7 @@ export function RankingsTab({ slug, record, update, pools, mode }: EditorProps) 
 
   return (
     <div className="space-y-5">
-    <Card title="Rankings" description="Where this college stands in each ranking list on the Rankings page. The rank on its cards is taken from these, with NIRF first. Pin the one to show as the big figure on its Rankings page (the others move beside it as small badges). Add it to another list below; changes here are saved straight away.">
+    <Card title="Rankings" description="Saved straight away: changes here go live at once and are not held for Save changes. Shows where this college stands in each ranking list on the Rankings page. The rank on its cards is taken from these, with NIRF first. Pin the one to show as the big figure on its Rankings page (the others move beside it as small badges). Add it to another list below.">
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
       {!data && !error && <p className="text-sm text-ink-soft">Loading the rankings…</p>}
 

@@ -24,6 +24,12 @@ _DURATION = re.compile(r"^(\d{1,3}(?:\.\d)?)\s*(years?|months?)$", re.IGNORECASE
 _BATCH = re.compile(r"^\d{4}(?:\s*[-–—]\s*(?:\d{4}|\d{2}))?$")
 _NUMBER = re.compile(r"(-?\d+(?:\.\d+)?)\s*(cr|crore|lpa|lakh|l|k)?", re.IGNORECASE)
 _RATIO = re.compile(r"^(?:[1-9]\d{0,2}\s*:\s*[1-9]\d{0,2})?$")
+# No single fee or package is above this, in lakh (₹5 crore): a larger figure is nearly always a wrong unit.
+MAX_AMOUNT_LAKH = 500
+# The longest programme the directory lists (an integrated or medical degree runs about six years).
+MAX_DURATION_YEARS = 8
+# A cut-off with no number in it may only be one of these.
+_SCORE_WORDS = re.compile(r"^(closed|open|na|n/a|nil|not (available|declared|applicable)|to be announced|tbd)$", re.IGNORECASE)
 _UNIT_LAKH = {"": 1.0, "l": 1.0, "lpa": 1.0, "lakh": 1.0, "cr": 100.0, "crore": 100.0, "k": 0.01}
 
 
@@ -67,6 +73,8 @@ def check_fee_range(value: str, label: str = "The fee range") -> str:
         raise ValueError("Enter both the 'From' and the 'To' fee, or clear them.")
     if len(amounts) >= 2 and amounts[0] > amounts[1]:
         raise ValueError("The 'From' fee must be less than or equal to the 'To' fee.")
+    if any(a > MAX_AMOUNT_LAKH for a in amounts):
+        raise ValueError(f"{label} looks too high (more than ₹5 crore). Check the amount and its unit: L is lakh, Cr is crore.")
     return value
 
 
@@ -75,6 +83,8 @@ def check_amount(value: str, label: str) -> str:
     value = (value or "").strip()
     if value and any(a < 0 for a in money_in_lakh(value)):
         raise ValueError(f"{label} must be 0 or more.")
+    if value and any(a > MAX_AMOUNT_LAKH for a in money_in_lakh(value)):
+        raise ValueError(f"{label} looks too high (more than ₹5 crore). Check the amount and its unit: L is lakh, Cr is crore.")
     return value
 
 
@@ -82,6 +92,9 @@ def check_duration(value: str, label: str = "The duration") -> str:
     value = " ".join((value or "").split())
     if not _DURATION.match(value):
         raise ValueError(f"{label} must be a number of years or months, such as 2 Years or 18 Months.")
+    amount, unit = float(_DURATION.match(value).group(1)), _DURATION.match(value).group(2).lower()
+    if (amount if unit.startswith("year") else amount / 12) > MAX_DURATION_YEARS:
+        raise ValueError(f"{label} looks too long: a programme runs {MAX_DURATION_YEARS} years or less.")
     return value
 
 
@@ -132,6 +145,10 @@ def check_score(value: str) -> str:
     if not value:
         raise ValueError("A cut-off needs a score.")
     numbers = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", value.replace(",", ""))]
+    if re.search(r"(?:^|[(\s:=])-\d", value):
+        raise ValueError("A cut-off score cannot be negative.")
+    if not numbers and not _SCORE_WORDS.match(value):
+        raise ValueError("A cut-off score needs a number, such as 98 percentile, Rank 1200 or 172/300 marks.")
     if numbers and re.search(r"percentile|%ile|\bpct\b|%", value, re.IGNORECASE) and numbers[0] > 100:
         raise ValueError("A percentile or percentage must be between 0 and 100.")
     return value

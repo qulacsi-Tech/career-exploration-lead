@@ -92,8 +92,11 @@ export function AdminShell({ children, user, logo }: { children: ReactNode; user
             <NotificationBell viewAllHref="/admin/notifications" live />
             <Link
               href="/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-dark"
             >
+              <span className="sr-only">Opens in a new tab: </span>
               View site
               <ExternalLinkIcon />
             </Link>

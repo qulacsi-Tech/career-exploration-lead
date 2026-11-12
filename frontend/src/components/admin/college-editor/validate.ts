@@ -14,6 +14,7 @@ import {
   packageProblem,
   ratioProblem,
   scoreProblem,
+  awardYearProblem,
   yearProblem,
 } from "@/lib/college-rules";
 
@@ -131,7 +132,8 @@ export function problemsByTab(record: CollegeRecord): Record<TabId, string[]> {
   (d.awards ?? []).forEach((a, i) => {
     const label = a.title.trim() || `Award ${i + 1}`;
     if (a.title.trim().length < 2) out.awards.push(`${label}: the award's name is required.`);
-    if (a.year && !/^\d{4}(-\d{2,4})?$/.test(a.year)) out.awards.push(`${label}: write the year as 2025 or 2024-25.`);
+    const yearIssue = awardYearProblem(a.year);
+    if (yearIssue) out.awards.push(`${label}: ${yearIssue}`);
   });
 
   // Courses

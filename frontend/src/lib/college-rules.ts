@@ -17,6 +17,12 @@ const LETTER_MARK_NUMBER = /^[\p{L}\p{M}\p{N}]$/u;
 const DURATION = /^(\d{1,3}(?:\.\d)?)\s*(years?|months?)$/i;
 const BATCH = /^\d{4}(?:\s*[-–—]\s*(?:\d{4}|\d{2}))?$/;
 const RATIO = /^(?:[1-9]\d{0,2}\s*:\s*[1-9]\d{0,2})?$/;
+/** No single fee or package is above this, in lakh (₹5 crore): a larger figure is nearly always a wrong unit. */
+export const MAX_AMOUNT_LAKH = 500;
+/** The longest programme the directory lists. */
+export const MAX_DURATION_YEARS = 8;
+const SCORE_WORDS = /^(closed|open|na|n\/a|nil|not (available|declared|applicable)|to be announced|tbd)$/i;
+const tooHigh = (label: string) => `${label} looks too high (more than ₹5 crore). Check the amount and its unit: L is lakh, Cr is crore.`;
 const NUMBER = /(-?\d+(?:\.\d+)?)\s*(cr|crore|lpa|lakh|l|k)?/gi;
 const LAKH: Record<string, number> = { "": 1, l: 1, lpa: 1, lakh: 1, cr: 100, crore: 100, k: 0.01 };
 
@@ -25,6 +31,14 @@ export function nameProblem(value: string, label = "The name"): string | null {
   if (text.length < 2) return `${label} is required.`;
   for (const ch of text) if (!NAME_PUNCT.has(ch) && !LETTER_MARK_NUMBER.test(ch)) return `${label} can use letters, numbers, spaces and . , & ' ( ) / - : only.`;
   return null;
+}
+
+/** An award's year ("2025" or "2024-25"): its first year cannot be after this one. */
+export function awardYearProblem(value: string): string | null {
+  const text = value.trim();
+  if (!text) return null;
+  if (!/^\d{4}(-\d{2,4})?$/.test(text)) return "write the year as 2025 or 2024-25.";
+  return Number(text.slice(0, 4)) > thisYear() ? `the year cannot be after ${thisYear()}.` : null;
 }
 
 export function yearProblem(value: number | null): string | null {
@@ -45,15 +59,22 @@ export function feeRangeProblem(value: string, label = "The fee range"): string 
   if (amounts.some((a) => a < 0)) return `${label} cannot be negative.`;
   if (amounts.length === 1 && /[-–—](\s|$)/.test(value)) return "Enter both the 'From' and the 'To' fee, or clear them.";
   if (amounts.length >= 2 && amounts[0] > amounts[1]) return "The 'From' fee must be less than or equal to the 'To' fee.";
+  if (amounts.some((a) => a > MAX_AMOUNT_LAKH)) return tooHigh(label);
   return null;
 }
 
 export function amountProblem(value: string, label: string): string | null {
-  return value.trim() && moneyInLakh(value).some((a) => a < 0) ? `${label} must be 0 or more.` : null;
+  if (!value.trim()) return null;
+  const amounts = moneyInLakh(value);
+  if (amounts.some((a) => a < 0)) return `${label} must be 0 or more.`;
+  return amounts.some((a) => a > MAX_AMOUNT_LAKH) ? tooHigh(label) : null;
 }
 
 export function durationProblem(value: string): string | null {
-  return DURATION.test(value.trim().replace(/\s+/g, " ")) ? null : "The duration must be a number of years or months, such as 2 Years or 18 Months.";
+  const m = DURATION.exec(value.trim().replace(/\s+/g, " "));
+  if (!m) return "The duration must be a number of years or months, such as 2 Years or 18 Months.";
+  const years = /^year/i.test(m[2]) ? Number(m[1]) : Number(m[1]) / 12;
+  return years > MAX_DURATION_YEARS ? `The duration looks too long: a programme runs ${MAX_DURATION_YEARS} years or less.` : null;
 }
 
 /** "highest below average" and the like, compared in one unit. */
@@ -87,6 +108,8 @@ export function ratioProblem(value: string): string | null {
 /** A score may be any text. One that says percentile or percentage has its first number capped at 100. */
 export function scoreProblem(value: string): string | null {
   const numbers = [...value.replace(/,/g, "").matchAll(/\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
+  if (/(?:^|[(\s:=])-\d/.test(value)) return "A cut-off score cannot be negative.";
+  if (numbers.length === 0 && value.trim() && !SCORE_WORDS.test(value.trim())) return "A cut-off score needs a number, such as 98 percentile, Rank 1200 or 172/300 marks.";
   if (numbers.length > 0 && /percentile|%ile|\bpct\b|%/i.test(value) && numbers[0] > 100) return "A percentile or percentage must be between 0 and 100.";
   return null;
 }
