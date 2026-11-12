@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { signUp } from "@/lib/auth-actions";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import type { AuthPageCopy } from "@/lib/api";
@@ -60,7 +61,6 @@ export function RegisterForm({ next, copy, prefill, notice }: { next?: string; c
   const [state, formAction, busy] = useActionState(signUp, undefined);
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
   const [password, setPassword] = useState("");
-  const [revealed, setRevealed] = useState(false);
 
   const meter = strength(password);
   // What the server rejected shows until the visitor submits again; what the
@@ -83,7 +83,9 @@ export function RegisterForm({ next, copy, prefill, notice }: { next?: string; c
     const password = passwordProblem(pass);
     if (password) next.password = password;
 
-    if (String(data.confirm ?? "") !== pass) next.confirm = "Both passwords must match.";
+    const confirmed = String(data.confirm ?? "");
+    if (confirmed === "") next.confirm = "Confirm your password.";
+    else if (confirmed !== pass) next.confirm = "Both passwords must match.";
     if (data.terms == null) next.terms = "Accept the terms to create an account.";
 
     return next;
@@ -196,27 +198,17 @@ export function RegisterForm({ next, copy, prefill, notice }: { next?: string; c
           <label htmlFor="reg-password" className="block text-xs font-semibold text-ink">
             Password
           </label>
-          <div className="relative">
-            <input
-              id="reg-password"
-              name="password"
-              type={revealed ? "text" : "password"}
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={!!errors.password}
-              aria-describedby={`reg-password-hint${errors.password ? " reg-password-error" : ""}`}
-              className={fieldClass(errors.password, "pr-11")}
-            />
-            <button
-              type="button"
-              onClick={() => setRevealed((r) => !r)}
-              aria-label={revealed ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 mt-0.5 -translate-y-1/2 text-ink-faint transition hover:text-brand"
-            >
-              {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
+          <PasswordInput
+            id="reg-password"
+            name="password"
+            autoComplete="new-password"
+            maxLength={64}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={!!errors.password}
+            aria-describedby={`reg-password-hint${errors.password ? " reg-password-error" : ""}`}
+            className={fieldClass(errors.password)}
+          />
 
           {password && (
             <div className="mt-2 flex items-center gap-2">
@@ -250,11 +242,11 @@ export function RegisterForm({ next, copy, prefill, notice }: { next?: string; c
           <label htmlFor="reg-confirm" className="block text-xs font-semibold text-ink">
             Confirm password
           </label>
-          <input
+          <PasswordInput
             id="reg-confirm"
             name="confirm"
-            type={revealed ? "text" : "password"}
             autoComplete="new-password"
+            maxLength={64}
             aria-invalid={!!errors.confirm}
             aria-describedby={errors.confirm ? "reg-confirm-error" : undefined}
             className={fieldClass(errors.confirm)}
@@ -278,11 +270,11 @@ export function RegisterForm({ next, copy, prefill, notice }: { next?: string; c
             />
             <span>
               I agree to the{" "}
-              <Link href="/terms" className="font-medium text-brand hover:underline">
+              <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-brand hover:underline">
                 terms of use
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="font-medium text-brand hover:underline">
+              <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand hover:underline">
                 privacy policy
               </Link>
               .

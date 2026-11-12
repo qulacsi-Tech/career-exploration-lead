@@ -43,13 +43,27 @@ export function PasswordResetFlow({ initialIdentifier = "", onDone, doneLabel = 
     });
   };
 
+  /** Sends another code to the same account without leaving the code step. */
+  const resend = () => {
+    setErrors({});
+    setFormError(null);
+    setCode("");
+    start(async () => {
+      const result = await requestPasswordReset(identifier);
+      if (!result.ok) return setFormError(result.error);
+      setNotice(`A new code has been sent. ${result.message}`);
+      setTestCode(result.devCode ?? null);
+    });
+  };
+
   const change = (e: React.FormEvent) => {
     e.preventDefault();
     const found: Record<string, string> = {};
     if (!/^\d{6}$/.test(code.trim())) found.code = "Enter the six-digit code from the email.";
     const pw = passwordProblem(password);
     if (pw) found.password = pw;
-    if (confirm !== password) found.confirm = "Both passwords must match.";
+    if (confirm === "") found.confirm = "Confirm your new password.";
+    else if (confirm !== password) found.confirm = "Both passwords must match.";
     setErrors(found);
     setFormError(null);
     if (Object.keys(found).length > 0) return;
@@ -84,7 +98,7 @@ export function PasswordResetFlow({ initialIdentifier = "", onDone, doneLabel = 
         {error}
         <div>
           <label htmlFor="pr-identifier" className="block text-xs font-semibold text-ink">Email or mobile number</label>
-          <input id="pr-identifier" value={identifier} onChange={(e) => { setIdentifier(e.target.value); setErrors({}); }} autoComplete="username" placeholder="you@example.com or 9876543210" aria-invalid={!!errors.identifier} className={field(errors.identifier)} />
+          <input id="pr-identifier" name="email" value={identifier} onChange={(e) => { setIdentifier(e.target.value); setErrors({}); }} autoComplete="username" placeholder="you@example.com or 9876543210" aria-invalid={!!errors.identifier} className={field(errors.identifier)} />
           {errors.identifier && <p className="mt-1 text-xs text-red-700">{errors.identifier}</p>}
         </div>
         <button type="submit" disabled={pending} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:opacity-70">
@@ -119,7 +133,7 @@ export function PasswordResetFlow({ initialIdentifier = "", onDone, doneLabel = 
       </button>
       <p className="text-center text-xs text-ink-soft">
         Did not get it?{" "}
-        <button type="button" onClick={() => { setStep("ask"); setErrors({}); setFormError(null); setCode(""); }} className="font-semibold text-brand hover:underline">Send a new code</button>
+        <button type="button" onClick={resend} disabled={pending} className="font-semibold text-brand hover:underline disabled:opacity-60">Send a new code</button>
       </p>
     </form>
   );

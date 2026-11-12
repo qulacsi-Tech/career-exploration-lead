@@ -27,6 +27,9 @@ const PILL = "mt-1 w-full rounded-xl border border-line bg-bg px-3.5 py-2.5 text
 export function LoginForm({ next, copy, signupCopy }: { next?: string; copy: AuthPageCopy; /** The sign up page's words, for when no account is found and the form grows into sign up. */ signupCopy?: AuthPageCopy }) {
   const [state, formAction, pending] = useActionState(signIn, undefined);
   const [typedError, setTypedError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  // Controlled: React 19 empties an uncontrolled field once a form action returns, which wiped the email after a failed log in.
+  const [identifier, setIdentifier] = useState("");
 
   // No account has what was typed: the form becomes sign up, with it already filled in.
   if (state?.notFound && signupCopy && state.identifier) {
@@ -54,9 +57,16 @@ export function LoginForm({ next, copy, signupCopy }: { next?: string; copy: Aut
         action={formAction}
         noValidate
         onSubmit={(e) => {
-          const problem = identifierProblem(String(new FormData(e.currentTarget).get("email") ?? ""));
+          const data = new FormData(e.currentTarget);
+          const problem = identifierProblem(String(data.get("email") ?? ""));
+          const missing = String(data.get("password") ?? "") === "" ? "Enter your password." : null;
           setTypedError(problem);
-          if (problem) e.preventDefault();
+          setPasswordError(missing);
+          if (problem || missing) {
+            // Both problems show at once; focus goes to the first field with one.
+            e.preventDefault();
+            e.currentTarget.querySelector<HTMLElement>(problem ? "#email" : "#password")?.focus();
+          }
         }}
       >
         {next && <input type="hidden" name="next" value={next} />}
@@ -72,11 +82,16 @@ export function LoginForm({ next, copy, signupCopy }: { next?: string; copy: Aut
             required
             maxLength={254}
             placeholder={`${copy.emailPlaceholder} or 9876543210`}
+            value={identifier}
             aria-invalid={!!typedError}
+            aria-describedby={typedError ? "email-error" : undefined}
             className={PILL}
-            onChange={() => typedError && setTypedError(null)}
+            onChange={(e) => {
+              setIdentifier(e.target.value);
+              if (typedError) setTypedError(null);
+            }}
           />
-          {typedError && <p className="mt-1 text-xs text-red-700">{typedError}</p>}
+          {typedError && <p id="email-error" className="mt-1 text-xs text-red-700">{typedError}</p>}
         </div>
 
         <div>
@@ -93,8 +108,12 @@ export function LoginForm({ next, copy, signupCopy }: { next?: string; copy: Aut
             name="password"
             autoComplete="current-password"
             required
+            aria-invalid={!!passwordError}
+            aria-describedby={passwordError ? "password-error" : undefined}
             className={PILL}
+            onChange={() => passwordError && setPasswordError(null)}
           />
+          {passwordError && <p id="password-error" className="mt-1 text-xs text-red-700">{passwordError}</p>}
         </div>
 
         {state?.error && (

@@ -14,7 +14,8 @@ export const stripPhone = (value: string) => value.replace(/[\s\-()]/g, "");
 
 export function nameProblem(value: string): string | null {
   const name = value.trim();
-  if (name.length < 2) return "Enter your full name.";
+  if (name.length === 0) return "Enter your full name.";
+  if (name.length < 2) return "Name must be at least 2 characters.";
   if (name.length > 80) return "Keep the name under 80 characters.";
   if (!NAME_RE.test(name)) return "Use letters only in the name.";
   return null;
