@@ -220,7 +220,7 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
                 <SortHeader label="Ownership" k="ownership" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Stream" k="stream" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Courses" k="courses" sort={sort} onSort={toggleSort} />
-                <SortHeader label="NIRF" k="rating" sort={sort} onSort={toggleSort} />
+                <SortHeader label="NIRF / rating" k="rating" sort={sort} onSort={toggleSort} />
                 <SortHeader label="Priority" k="priority" sort={sort} onSort={toggleSort} />
                 <th scope="col" className="py-2 pr-3 font-semibold">SEO available</th>
                 <th scope="col" className="sticky right-0 bg-surface py-2 pl-3 text-right font-semibold shadow-[-10px_0_10px_-10px_rgba(0,0,0,0.15)]">Actions</th>
@@ -256,10 +256,11 @@ export function CollegesAdmin({ colleges, geo = {}, streams = [], pools = null, 
                     {nirfRank(college) !== null ? (
                       `NIRF (${nirfRank(college)})`
                     ) : (
-                      <>
-                        {college.rating}
-                        <span className="text-ink-faint"> ({college.reviewCount})</span>
-                      </>
+                      // No NIRF rank: the student rating and how many reviews it rests on, written out so it is not mistaken for a rank.
+                      <span title={`Student rating ${college.rating} from ${college.reviewCount} ${college.reviewCount === 1 ? "review" : "reviews"}. This college has no NIRF rank.`}>
+                        ★ {college.rating}
+                        <span className="text-ink-faint"> · {college.reviewCount} {college.reviewCount === 1 ? "review" : "reviews"}</span>
+                      </span>
                     )}
                   </td>
                   <td className="py-3 pr-3 tabular-nums text-ink-soft">{college.priority ?? <span className="text-ink-faint">—</span>}</td>
