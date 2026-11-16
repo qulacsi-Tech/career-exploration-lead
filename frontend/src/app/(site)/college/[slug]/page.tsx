@@ -40,6 +40,8 @@ import { CollegeEnquiryModal } from "@/components/college/college-enquiry-modal"
 import { PageSearch } from "@/components/college/page-search";
 import { ActionButton } from "@/components/college/college-actions";
 import { RecruiterMarquee } from "@/components/college/recruiter-marquee";
+import { collegeHref, collegeKey } from "@/lib/entity-url";
+import { findByKey, resolveByKey } from "@/lib/entity-resolve";
 
 export async function generateStaticParams() {
   try {
@@ -56,13 +58,14 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: key } = await params;
   try {
-    const college = await getCollege(slug);
+    const college = await findByKey(key, getCollege);
+    if (!college) return { title: "College not found" };
     return {
       title: college.seo.metaTitle || `${college.name}: Courses, Fees, Placements & Reviews`,
       description: college.seo.metaDescription || college.about,
-      alternates: { canonical: `/college/${college.slug}` },
+      alternates: { canonical: `/college/${collegeKey(college)}` },
     };
   } catch {
     return { title: "College not found" };
@@ -74,18 +77,14 @@ export default async function CollegeOverviewPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const { slug: key } = await params;
 
-  let college: CollegeDetail;
-  try {
-    college = await getCollege(slug);
-  } catch {
-    notFound();
-  }
+  const college: CollegeDetail = await resolveByKey(key, getCollege, collegeHref);
+  const slug = college.slug;
 
   // college-insights helpers accept the same College shape (structural compat)
   const short = shortNameOf(college);
-  const href  = (section: string) => sectionHref(college.slug, section);
+  const href  = (section: string) => sectionHref(collegeKey(college), section);
 
   const alerts = [...college.alerts].sort(
     (a, b) => Number(b.isUrgent) - Number(a.isUrgent) || b.date.localeCompare(a.date),

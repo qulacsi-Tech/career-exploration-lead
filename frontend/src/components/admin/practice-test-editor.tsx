@@ -276,7 +276,7 @@ export function PracticeTestEditor({
   const remove = () => {
     setError(null);
     startTransition(async () => {
-      const result = await deletePracticeTest(slug, examSlug);
+      const result = await deletePracticeTest(slug);
       if ("error" in result) {
         setConfirmingDelete(false);
         setError(result.error);

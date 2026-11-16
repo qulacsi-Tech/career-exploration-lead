@@ -20,6 +20,7 @@ import { STATIC_LOCATIONS } from "@/lib/sample-locations";
 import { getHighlightsByLocation } from "@/lib/location-colleges";
 import { getCategoryPriority, getCollectionBands, getHomeData, NO_CATEGORY_PRIORITY, type HomeLocation } from "@/lib/api";
 import { ordered } from "@/components/colleges-menu-data";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * The photos of a programme card. A programme added in the admin has no photo shipped
@@ -232,7 +233,7 @@ export default async function Home() {
             images: universityPhotos(university.slug, university.image),
             imageAlt: `${university.name} campus`,
             facts: copy.universities.itemSubline ? [{ label: "", value: copy.universities.itemSubline }] : [],
-            href: `/college/${university.slug}`,
+            href: `/college/${collegeKey(university)}`,
             cta: copy.universities.buttonLabel,
           }))}
         />

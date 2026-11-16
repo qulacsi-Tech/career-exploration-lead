@@ -2,7 +2,7 @@ import uuid
 import enum
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Enum, Float, Integer, String, Text, func
+    Boolean, Column, DateTime, Enum, Float, Integer, Sequence, String, Text, func
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
@@ -25,6 +25,8 @@ class College(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String(200), nullable=False, unique=True, index=True)
+    # The short number in the page's address (/x/<slug>-<public_id>). The UUID stays the key.
+    public_id = Column(Integer, Sequence("colleges_public_id_seq"), nullable=False, unique=True, index=True)
     name = Column(String(500), nullable=False)
     city = Column(String(200), nullable=False, index=True)
     state = Column(String(200), nullable=False, index=True)

@@ -14,6 +14,8 @@ class TeamMessage(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     subject = Column(String(200), nullable=False)
     body = Column(Text, nullable=False)
+    # An optional banner or picture shown above the text: /api/uploads/... Empty: none.
+    image = Column(String(200), nullable=False, default="", server_default="")
     # "all": every subscribed address at the time it was sent; "selected": the addresses the team picked.
     audience = Column(String(20), nullable=False, default="selected")
     also_email = Column(Boolean, nullable=False, default=False, server_default="false")

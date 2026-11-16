@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, Rocket, Target } from "lucide-react";
 import type { ExamCutoffRow } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
+import { collegeKey } from "@/lib/entity-url";
 
 type Match = { slug: string; name: string; city: string; image: string; needed: number; score: string; category: string; course: string };
 
@@ -30,7 +31,7 @@ function CollegeTile({ m, percentile, eligible }: { m: Match; percentile: number
   return (
     <li>
       <Link
-        href={`/college/${m.slug}`}
+        href={`/college/${collegeKey(m)}`}
         className={`group flex h-full items-center gap-3 rounded-2xl border bg-surface p-3 transition hover:-translate-y-0.5 hover:shadow-md ${eligible ? "border-emerald-200 hover:border-emerald-400" : "border-line hover:border-brand/40"}`}
       >
         {m.image ? (

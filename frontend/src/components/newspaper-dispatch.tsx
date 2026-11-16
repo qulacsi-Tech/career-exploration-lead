@@ -7,6 +7,7 @@ import Image from "next/image";
 import { DEFAULT_HOME_COPY, type SectionCopy } from "@/lib/home-copy";
 import { motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowUpRight, Pause, Play } from "lucide-react";
+import { articleKey } from "@/lib/entity-url";
 
 type Article = { slug: string; title: string; excerpt: string; date: string; image?: string; category?: string };
 
@@ -364,7 +365,7 @@ function LeadPage({ lead }: { lead: Article }) {
       </span>
 
       <h4 className="mt-2 font-display text-2xl font-bold leading-[1.15] tracking-tight text-ink sm:text-[2rem] lg:text-[2.4rem]">
-        <Link href={`/articles/${lead.slug}`} className="hover:text-brand">
+        <Link href={`/articles/${articleKey(lead)}`} className="hover:text-brand">
           {lead.title}
         </Link>
       </h4>
@@ -388,7 +389,7 @@ function LeadPage({ lead }: { lead: Article }) {
       </p>
 
       <Link
-        href={`/articles/${lead.slug}`}
+        href={`/articles/${articleKey(lead)}`}
         className="mt-5 inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline"
       >
         Continue reading <ArrowUpRight className="h-3.5 w-3.5" />
@@ -416,7 +417,7 @@ function BriefsPage({
       <ul className="mt-3 flex-1 divide-y divide-ink/12">
         {briefs.map((brief) => (
           <li key={brief.slug} className="py-4">
-            <Link href={`/articles/${brief.slug}`} className="group block">
+            <Link href={`/articles/${articleKey(brief)}`} className="group block">
               <p className="text-[10px] font-semibold text-ink-faint">
                 {brief.date}
               </p>

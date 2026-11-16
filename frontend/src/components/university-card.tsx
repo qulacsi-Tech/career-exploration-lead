@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * Compact on phones, roomier from `sm` up: at full column width a 16:10 image
@@ -25,7 +26,7 @@ export function UniversityCard({
 
       <div className="p-4 text-center sm:p-5">
         <Link
-          href={`/college/${university.slug}`}
+          href={`/college/${collegeKey(university)}`}
           className="font-display text-base font-semibold text-ink hover:text-brand"
         >
           {university.name}
@@ -35,7 +36,7 @@ export function UniversityCard({
           {university.city}, {university.state}
         </p>
         <Link
-          href={`/college/${university.slug}`}
+          href={`/college/${collegeKey(university)}`}
           className="mt-4 block rounded-md bg-brand px-4 py-2 text-xs font-semibold text-white transition hover:bg-brand-dark sm:mt-5"
         >
           Know More

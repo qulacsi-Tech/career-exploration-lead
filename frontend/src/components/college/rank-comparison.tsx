@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Trophy } from "lucide-react";
+import { collegeKey } from "@/lib/entity-url";
 
 export type RankPeer = { slug: string; name: string; rank: number };
 
@@ -63,7 +64,7 @@ export function RankComparison({ peers, currentSlug }: { peers: RankPeer[]; curr
               </div>
             </div>
           );
-          return <li key={p.slug}>{me ? row : <Link href={`/college/${p.slug}/rankings`} className="block">{row}</Link>}</li>;
+          return <li key={p.slug}>{me ? row : <Link href={`/college/${collegeKey(p)}/rankings`} className="block">{row}</Link>}</li>;
         })}
       </ol>
     </div>

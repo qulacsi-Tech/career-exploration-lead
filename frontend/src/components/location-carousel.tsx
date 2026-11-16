@@ -6,6 +6,7 @@ import { DEFAULT_HOME_COPY, type LocationCardCopy, type SectionCopy } from "@/li
 import type { HomeLocation } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import type { LocationHighlights } from "@/lib/location-colleges";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * Destination hubs, as a stack of cards that cover each other as the page scrolls.
@@ -148,7 +149,7 @@ function DestinationCard({
   const photoAlt = caption ? `${caption} campus` : `${location.name} campus destination`;
   const href = `/location/${location.slug}`;
   // On a highlighted card the photo opens that college; the heading and buttons still open the location.
-  const photoHref = highlight ? `/college/${highlight.slug}` : href;
+  const photoHref = highlight ? `/college/${collegeKey(highlight)}` : href;
   return (
     <div
       className={`hub-stack-card group relative grid h-full w-full grid-cols-1 gap-4 overflow-hidden rounded-[32px] border border-line bg-surface p-3 shadow-[0_30px_70px_-30px_rgba(28,33,40,0.4)] md:grid-cols-2 md:gap-8 md:p-4 lg:gap-12`}
@@ -312,7 +313,7 @@ function CollegeTicker({ colleges }: { colleges: { slug: string; name: string }[
       {colleges.map((college) => (
         <li key={college.slug}>
           <Link
-            href={`/college/${college.slug}`}
+            href={`/college/${collegeKey(college)}`}
             tabIndex={hidden ? -1 : undefined}
             className="flex min-w-0 items-center gap-2 text-sm text-ink-soft transition-colors hover:text-brand"
           >

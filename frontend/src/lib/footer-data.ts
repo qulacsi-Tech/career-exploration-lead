@@ -1,3 +1,4 @@
+import { examKey } from "@/lib/entity-url";
 import { getExams, getFooterColumns } from "@/lib/api";
 import type { FooterColumn } from "@/lib/chrome-order";
 
@@ -30,7 +31,7 @@ export async function getFooterSource(): Promise<FooterColumn[]> {
     links: exams.map((exam) => ({
       // The short form: "Common Admission Test (CAT)" does not fit a footer column.
       label: exam.name.replace(/^.*\(([^)]+)\)$/, "$1"),
-      href: `/exams/${exam.slug}`,
+      href: `/exams/${examKey(exam)}`,
     })),
   };
   return [...dynamicColumns.map((c) => ({ title: c.title, links: c.links.map((l) => ({ label: l.label, href: l.href })) })), ...(examColumn.links.length > 0 ? [examColumn] : []), COMPANY_COLUMN];

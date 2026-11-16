@@ -26,6 +26,7 @@ import { ActionButton } from "@/components/college/college-actions";
 import { CountUp, Reveal, RevealGroup, RevealItem } from "@/components/college/reveal";
 import { TAB_ICONS } from "@/lib/tab-icons";
 import { mediaUrl } from "@/lib/media";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * The livelier bodies for the Infrastructure, Scholarships, Faculty, Compare,
@@ -306,7 +307,7 @@ export function VsDuel({ colleges }: { colleges: DuelCollege[] }) {
               {initials(c.name)}
             </span>
             <Link
-              href={`/college/${c.slug}`}
+              href={`/college/${collegeKey(c)}`}
               className="mt-3 block font-display text-lg font-bold leading-snug text-ink hover:text-brand"
             >
               {c.name}

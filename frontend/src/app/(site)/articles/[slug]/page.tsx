@@ -16,6 +16,8 @@ import { sidebarSlots, slotsAt, slotsForStory, withSidebarSlots } from "@/lib/sl
 import { articleImage } from "@/lib/article-images";
 import { mediaUrl } from "@/lib/media";
 import { ActionButton } from "@/components/college/college-actions";
+import { articleHref, articleKey } from "@/lib/entity-url";
+import { findByKey, resolveByKey } from "@/lib/entity-resolve";
 
 export async function generateStaticParams() {
   try {
@@ -31,13 +33,14 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: key } = await params;
   try {
-    const article = await getArticle(slug);
+    const article = await findByKey(key, getArticle);
+    if (!article) return { title: "Article not found" };
     return {
       title: article.title,
       description: article.excerpt,
-      alternates: { canonical: `/articles/${article.slug}` },
+      alternates: { canonical: `/articles/${articleKey(article)}` },
       openGraph: {
         type: "article",
         title: article.title,
@@ -55,14 +58,10 @@ export default async function ArticlePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const { slug: key } = await params;
 
-  let article: Awaited<ReturnType<typeof getArticle>>;
-  try {
-    article = await getArticle(slug);
-  } catch {
-    notFound();
-  }
+  const article = await resolveByKey(key, getArticle, articleHref);
+  const slug = article.slug;
 
   // Fetch related colleges by slug (parallel, ignore individual failures)
   const relatedSlugs = article.relatedCollegeSlugs ?? [];
@@ -184,7 +183,7 @@ export default async function ArticlePage({
 
           {next && (
             <Link
-              href={`/articles/${next.slug}`}
+              href={`/articles/${articleKey(next)}`}
               className="group mt-12 flex max-w-3xl items-center justify-between gap-4 rounded-2xl border border-line bg-gradient-to-r from-brand-soft via-bg-alt to-surface p-5 transition hover:border-brand/50 hover:shadow-md sm:p-6"
             >
               <div className="min-w-0">
@@ -242,7 +241,7 @@ export default async function ArticlePage({
                 {more.map((other) => (
                   <li key={other.slug}>
                     <Link
-                      href={`/articles/${other.slug}`}
+                      href={`/articles/${articleKey(other)}`}
                       className="text-sm font-medium text-ink hover:text-brand"
                     >
                       {other.title}

@@ -5,6 +5,7 @@ import { RatingPill } from "@/components/ui/rating";
 import { mediaUrl } from "@/lib/media";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { CompareToggle } from "@/components/compare-tray";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * A college in a listing.
@@ -58,7 +59,7 @@ export function CollegeCard({ college }: { college: College }) {
                 that does not exist there. */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <Link
-                href={`/college/${college.slug}`}
+                href={`/college/${collegeKey(college)}`}
                 className="font-display text-base font-semibold text-ink hover:text-brand"
               >
                 {college.name}
@@ -118,7 +119,7 @@ export function CollegeCard({ college }: { college: College }) {
           <CompareToggle slug={college.slug} name={college.name} className="@2xl:order-last" />
 
           <Link
-            href={`/college/${college.slug}`}
+            href={`/college/${collegeKey(college)}`}
             className="shrink-0 rounded-full border border-brand px-4 py-1.5 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white"
           >
             View Details

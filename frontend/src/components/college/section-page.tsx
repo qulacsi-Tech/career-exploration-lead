@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import type { CollegeDetail as College } from "@/lib/api";
 import { collegeSections, sectionHref } from "@/lib/college-sections";
 import { PageSearch } from "@/components/college/page-search";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * The frame every college section page shares: breadcrumb, heading, a column
@@ -45,7 +46,7 @@ export function CollegeSectionPage({
         items={[
           { label: "Home", href: "/" },
           { label: "Colleges", href: "/colleges" },
-          { label: college.name, href: `/college/${college.slug}` },
+          { label: college.name, href: `/college/${collegeKey(college)}` },
           { label: section?.label ?? "" },
         ]}
       />
@@ -65,7 +66,7 @@ export function CollegeSectionPage({
 
       {next && (
         <Link
-          href={sectionHref(college.slug, next.slug)}
+          href={sectionHref(collegeKey(college), next.slug)}
           className="group mt-10 flex items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-6 shadow-[0_1px_3px_rgba(28,33,40,0.06)] transition hover:border-brand/50 sm:p-8"
         >
           <span>

@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select, update
 
 from core.dependencies import AdminPayload, CurrentUserId, DbSession
@@ -33,7 +33,19 @@ class SendBody(BaseModel):
     audience: Literal["all", "selected"]
     # The subscriber rows picked on the page, for "selected".
     subscriberIds: list[str] = Field(default_factory=list, max_length=MAX_SELECTED)
+    # A banner or picture uploaded in the admin (/api/uploads/message-...). Empty: none.
+    image: str = Field(default="", max_length=200)
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("image")
+    @classmethod
+    def _image(cls, value: str) -> str:
+        value = value.strip()
+        # Only a picture uploaded through the admin's message slot: never a link to another site.
+        name = value.removeprefix("/api/uploads/")
+        if value and (not value.startswith("/api/uploads/message-") or "/" in name or ".." in name):
+            raise ValueError("Upload the picture again.")
+        return value
 
 
 @admin_router.post("", response_model=SuccessResponse[dict], status_code=201)
@@ -63,6 +75,7 @@ async def send_message(data: SendBody, admin: AdminPayload, db: DbSession):
     message = TeamMessage(
         subject=data.subject.strip(),
         body=data.body.strip(),
+        image=data.image,
         audience=data.audience,
         also_email=False,
         sent_by=sender,
@@ -102,6 +115,7 @@ async def sent_messages(_admin: AdminPayload, db: DbSession, page: int = Query(1
             "id": str(m.id),
             "subject": m.subject,
             "body": m.body,
+            "image": m.image or "",
             "audience": m.audience,
             "alsoEmail": bool(m.also_email),
             "sentBy": m.sent_by_name,
@@ -133,6 +147,7 @@ async def my_messages(user_id: CurrentUserId, db: DbSession):
             "id": str(r.id),
             "subject": m.subject,
             "body": m.body,
+            "image": m.image or "",
             "from": "TopCollegePath team",
             "sentAt": m.sent_at.isoformat() if m.sent_at else None,
             "read": r.read_at is not None,

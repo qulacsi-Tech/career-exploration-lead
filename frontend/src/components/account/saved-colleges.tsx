@@ -9,6 +9,7 @@ import type { SavedCollegeItem } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { setCollegeSaved } from "@/lib/saved-actions";
 import { formatFull } from "@/lib/lead-labels";
+import { collegeKey } from "@/lib/entity-url";
 
 /** The student's saved institutes. Each card opens the college; the bookmark takes it off the list. */
 export function SavedColleges({ items }: { items: SavedCollegeItem[] }) {
@@ -30,11 +31,11 @@ export function SavedColleges({ items }: { items: SavedCollegeItem[] }) {
       <ul className="grid gap-4 sm:grid-cols-2">
         {items.map((c) => (
           <li key={c.slug} className="flex gap-4 rounded-2xl border border-line bg-surface p-4">
-            <Link href={`/college/${c.slug}`} className="relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-bg-alt">
+            <Link href={`/college/${collegeKey(c)}`} className="relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-bg-alt">
               {c.image && <Image src={mediaUrl(c.image)} alt="" fill sizes="96px" className="object-cover" />}
             </Link>
             <div className="min-w-0 flex-1">
-              <Link href={`/college/${c.slug}`} className="block truncate font-display text-base font-bold text-ink hover:text-brand">{c.name}</Link>
+              <Link href={`/college/${collegeKey(c)}`} className="block truncate font-display text-base font-bold text-ink hover:text-brand">{c.name}</Link>
               <p className="mt-0.5 flex items-center gap-1 text-xs text-ink-soft">
                 <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 <span className="truncate">{[c.city, c.state].filter(Boolean).join(", ") || "Location not set"}</span>

@@ -12,6 +12,7 @@ import { FeaturedStories } from "@/components/colleges/featured-stories";
 import { ListingSlotView } from "@/components/colleges/listing-slot";
 import { inlineSlots, sidebarSlots, slotsAfter, slotsAt, withSidebarSlots } from "@/lib/slot-layout";
 import { ActionButton } from "@/components/college/college-actions";
+import { articleKey } from "@/lib/entity-url";
 
 export const metadata: Metadata = {
   title: "News & Admission Guides",
@@ -238,7 +239,7 @@ export default async function ArticlesIndexPage({
               <ul className="mt-4 space-y-3 text-sm text-brand-ink/80">
                 {latest.map((a) => (
                   <li key={a.slug}>
-                    <Link href={`/articles/${a.slug}`} className="line-clamp-2 font-medium hover:text-brand">
+                    <Link href={`/articles/${articleKey(a)}`} className="line-clamp-2 font-medium hover:text-brand">
                       {a.title}
                     </Link>
                     <span className="text-xs text-brand-ink/60">{a.date}</span>

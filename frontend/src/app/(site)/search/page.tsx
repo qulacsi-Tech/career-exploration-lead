@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { TrackOnMount } from "@/components/analytics/track-on-mount";
 import { EVENTS } from "@/lib/analytics";
 import { search, type SearchKind, type SearchResults } from "@/lib/api";
+import { collegeKey, examKey } from "@/lib/entity-url";
 
 type SearchParams = Promise<{ q?: string; type?: string }>;
 
@@ -66,7 +67,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
             {results.colleges.map((college) => (
               <li key={college.slug}>
-                <Link href={`/college/${college.slug}`} className="block px-5 py-3 transition hover:bg-bg">
+                <Link href={`/college/${collegeKey(college)}`} className="block px-5 py-3 transition hover:bg-bg">
                   <p className="font-medium text-ink">{college.name}</p>
                   <p className="text-xs text-ink-faint">
                     {college.city} · {college.stream}
@@ -117,7 +118,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             {results.exams.map((exam) => (
               <li key={exam.slug}>
                 <Link
-                  href={`/exams/${exam.slug}`}
+                  href={`/exams/${examKey(exam)}`}
                   className="inline-block rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition hover:border-brand hover:text-brand"
                 >
                   {exam.name}

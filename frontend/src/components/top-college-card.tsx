@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { College } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { GraduationCap, Tag } from "lucide-react";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * Travel-card format: a portrait tile whose photo grows on hover.
@@ -65,7 +66,7 @@ export function TopCollegeCard({ college, buttonLabel }: { college: College; but
       {/* Copy block: the photo grows behind it, so nothing here moves */}
       <div className="relative z-10 flex flex-1 flex-col px-4 pb-2 pt-4">
         <Link
-          href={`/college/${college.slug}`}
+          href={`/college/${collegeKey(college)}`}
           className="line-clamp-2 font-display text-lg font-bold leading-snug text-ink transition-colors duration-500 group-hover:text-white group-focus-within:text-white"
         >
           {college.name}
@@ -97,7 +98,7 @@ export function TopCollegeCard({ college, buttonLabel }: { college: College; but
         </dl>
 
         <Link
-          href={`/college/${college.slug}`}
+          href={`/college/${collegeKey(college)}`}
           className="mt-auto block rounded-full bg-ink px-5 py-3 text-center text-sm font-semibold text-white transition-colors duration-500 hover:bg-brand group-hover:bg-white group-hover:text-ink group-hover:hover:bg-brand group-hover:hover:text-white group-focus-within:bg-white group-focus-within:text-ink"
         >
           {buttonLabel}

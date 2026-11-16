@@ -8,6 +8,7 @@ import { compareRows, compareUrl, MAX_COMPARE } from "@/lib/comparison-data";
 import { useCompare, type CompareEntry } from "@/components/compare-tray";
 import { Chip } from "@/components/ui/chip";
 import { Plus, X } from "lucide-react";
+import { collegeKey } from "@/lib/entity-url";
 
 /** What the empty slot's picker needs — not a whole College per option. */
 export type CollegeOption = {
@@ -104,7 +105,7 @@ export function ComparisonBoard({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <Link
-                        href={`/college/${college.slug}`}
+                        href={`/college/${collegeKey(college)}`}
                         className="font-display text-base font-bold text-ink hover:text-brand"
                       >
                         {college.name}

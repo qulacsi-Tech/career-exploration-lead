@@ -1,17 +1,9 @@
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { getExam, getExamSlugs, getPracticeTests, type Exam } from "@/lib/api";
+import { getExam, getExamSlugs, getPracticeTests } from "@/lib/api";
+import { examHref } from "@/lib/entity-url";
+import { findByKey, resolveByKey } from "@/lib/entity-resolve";
 import { TestCard } from "@/components/practice/test-card";
-
-/** The exam, or null when there is none by that slug (or the API cannot be reached). */
-async function loadExam(slug: string): Promise<Exam | null> {
-  try {
-    return await getExam(slug);
-  } catch {
-    return null;
-  }
-}
 
 export async function generateStaticParams() {
   try {
@@ -26,8 +18,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const exam = await loadExam(slug);
+  const { slug: key } = await params;
+  const exam = await findByKey(key, getExam).catch(() => null);
   if (!exam) return { title: "Exam not found" };
 
   const short = exam.name.match(/\(([^)]+)\)/)?.[1] ?? exam.name;
@@ -50,9 +42,9 @@ export default async function ExamPracticePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
-  const exam = await loadExam(slug);
-  if (!exam) notFound();
+  const { slug: key } = await params;
+  const exam = await resolveByKey(key, getExam, (e) => `${examHref(e)}/practice`);
+  const slug = exam.slug;
 
   const tests = await getPracticeTests(slug);
   const short = exam.name.match(/\(([^)]+)\)/)?.[1] ?? exam.name;
@@ -63,7 +55,7 @@ export default async function ExamPracticePage({
         items={[
           { label: "Home", href: "/" },
           { label: "Exams", href: "/exams" },
-          { label: short, href: `/exams/${slug}` },
+          { label: short, href: examHref(exam) },
           { label: "Practice" },
         ]}
       />

@@ -1,7 +1,7 @@
 import uuid
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, Sequence, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from core.database import Base
@@ -17,6 +17,8 @@ class Exam(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String(200), nullable=False, unique=True, index=True)
+    # The short number in the page's address (/x/<slug>-<public_id>). The UUID stays the key.
+    public_id = Column(Integer, Sequence("exams_public_id_seq"), nullable=False, unique=True, index=True)
     name = Column(String(500), nullable=False)
     # Used where space is tight (menus, headings). Empty: the full name.
     short_name = Column(String(100), nullable=False, default="", server_default="")

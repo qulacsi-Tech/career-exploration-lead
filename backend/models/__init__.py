@@ -32,3 +32,4 @@ from models.listing_priority import ListingPriority  # noqa: F401
 from models.saved_college import SavedCollege  # noqa: F401
 from models.practice_attempt import PracticeAttempt  # noqa: F401
 from models.team_message import TeamMessage, TeamMessageRecipient  # noqa: F401
+from models.community import Community, CommunityMember, CommunityPost, CommunityReaction, CommunityReply, CommunityUserStatus  # noqa: F401

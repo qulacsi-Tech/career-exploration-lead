@@ -107,7 +107,7 @@ export default async function LocationStreamPage({
           />
           <SidebarLinks
             title={`${stream.name} colleges elsewhere`}
-            items={[{ label: `All ${stream.name} Colleges`, href: `/${stream.slug}/colleges` }]}
+            items={[{ label: `All ${stream.name} Colleges`, href: `/colleges?stream=${encodeURIComponent(stream.name)}` }]}
           />
         </>
       }

@@ -11,6 +11,8 @@ class ExamFaqSchema(BaseModel):
 
 class ExamSchema(BaseModel):
     slug: str
+    # The number after the slug in the page's address.
+    publicId: int = 0
     name: str
     # Where space is tight. Empty: the full name.
     shortName: str = ""

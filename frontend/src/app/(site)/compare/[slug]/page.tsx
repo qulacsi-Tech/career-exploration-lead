@@ -7,6 +7,7 @@ import { CollegeCard } from "@/components/college-card";
 import { getColleges } from "@/lib/api";
 import { curatedComparisons, compareUrl } from "@/lib/comparison-data";
 import { resolveComparison, similarColleges } from "@/lib/comparison-resolve";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * A comparison page.
@@ -116,7 +117,7 @@ export default async function ComparePage({
         {colleges.map((college) => (
           <Link
             key={college.slug}
-            href={`/college/${college.slug}`}
+            href={`/college/${collegeKey(college)}`}
             className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-brand hover:text-brand"
           >
             Full profile: {college.name}

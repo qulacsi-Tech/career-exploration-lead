@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { College } from "@/lib/api";
 import { compareRows } from "@/lib/comparison-data";
 import { Chip } from "@/components/ui/chip";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * The side-by-side comparison table.
@@ -41,7 +42,7 @@ export function ComparisonTable({ colleges }: { colleges: College[] }) {
                 className="border-b border-line px-4 py-3 text-left align-bottom"
               >
                 <Link
-                  href={`/college/${college.slug}`}
+                  href={`/college/${collegeKey(college)}`}
                   className="font-display text-base font-bold text-ink hover:text-brand"
                 >
                   {college.name}

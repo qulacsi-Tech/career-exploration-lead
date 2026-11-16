@@ -257,23 +257,23 @@ export async function saveCollege(slug: string, form: FormData): Promise<AdminAc
 }
 
 /** What a college's pages and lists show changes with its status, so refresh them all. */
-function refreshCollegePages(slug: string) {
+function refreshCollegePages() {
   revalidatePath("/admin/colleges");
   revalidatePath("/colleges");
-  revalidatePath(`/college/${slug}`, "layout");
+  revalidatePath("/college/[slug]", "layout");
   revalidatePath("/rankings", "layout");
   revalidatePath("/", "layout");
 }
 
 export async function setCollegeStatus(slug: string, status: CollegeStatus): Promise<AdminActionResult> {
   const result = await attempt("/admin/colleges", (token) => adminSetCollegeStatus(token, slug, status));
-  if ("ok" in result) refreshCollegePages(slug);
+  if ("ok" in result) refreshCollegePages();
   return result;
 }
 
 export async function deleteCollegeForever(slug: string): Promise<AdminActionResult> {
   const result = await attempt("/admin/colleges", (token) => adminDeleteCollege(token, slug));
-  if ("ok" in result) refreshCollegePages(slug);
+  if ("ok" in result) refreshCollegePages();
   return result;
 }
 
@@ -384,7 +384,7 @@ export async function saveExam(slug: string, form: FormData): Promise<AdminActio
   );
   if ("ok" in result) {
     revalidatePath("/exams");
-    revalidatePath(`/exams/${slug}`);
+    revalidatePath("/exams/[slug]", "page");
   }
   return result;
 }
@@ -394,7 +394,7 @@ export async function setExamArchived(slug: string, archived: boolean): Promise<
   const result = await attempt("/admin/exams", (token) => adminUpdateExam(token, slug, { isArchived: archived }));
   if ("ok" in result) {
     revalidatePath("/exams");
-    revalidatePath(`/exams/${slug}`);
+    revalidatePath("/exams/[slug]", "page");
     revalidatePath("/", "layout");
   }
   return result;
@@ -1250,7 +1250,7 @@ export type UploadResult = { url: string; width: number; height: number } | { er
 export async function uploadHomeImage(form: FormData): Promise<UploadResult> {
   const kind = form.get("kind");
   const file = form.get("file");
-  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "recruiter_logo" && kind !== "gallery" && kind !== "ranking_banner" && kind !== "award" && kind !== "faculty_photo" && kind !== "og") {
+  if (kind !== "hero" && kind !== "banner" && kind !== "location" && kind !== "college" && kind !== "exam" && kind !== "practice" && kind !== "program" && kind !== "article" && kind !== "article_figure" && kind !== "logo" && kind !== "site_logo" && kind !== "recruiter_logo" && kind !== "gallery" && kind !== "ranking_banner" && kind !== "award" && kind !== "faculty_photo" && kind !== "og" && kind !== "message") {
     return { error: "Unknown image slot." };
   }
   if (!(file instanceof File) || file.size === 0) return { error: "Choose an image first." };
@@ -1402,26 +1402,26 @@ export async function loadPracticeTest(slug: string) {
 
 export async function createPracticeTest(examSlug: string, title: string): Promise<{ slug: string; message: string } | { error: string }> {
   const result = await practiceCall((token) => adminCreatePracticeTest(token, { examSlug, title: title.trim() }), "Could not create the test. Try again.");
-  if (!("error" in result)) revalidatePath(`/exams/${examSlug}`);
+  if (!("error" in result)) revalidatePath("/exams/[slug]", "page");
   return result;
 }
 
 export async function savePracticeTest(slug: string, examSlug: string, body: AdminPracticeTest): Promise<{ message: string } | { error: string }> {
   const result = await practiceCall((token) => adminSavePracticeTest(token, slug, body), "Could not save the test. Try again.");
   if (!("error" in result)) {
-    revalidatePath(`/exams/${examSlug}`);
-    revalidatePath(`/exams/${examSlug}/practice`);
+    revalidatePath("/exams/[slug]", "page");
+    revalidatePath("/exams/[slug]/practice", "page");
     // The instructions page of this test is built ahead of time, so it is rebuilt with the new words.
-    revalidatePath(`/exams/${examSlug}/practice/${slug}`);
+    revalidatePath("/exams/[slug]/practice/[test]", "page");
   }
   return result;
 }
 
-export async function deletePracticeTest(slug: string, examSlug: string): Promise<{ message: string } | { error: string }> {
+export async function deletePracticeTest(slug: string): Promise<{ message: string } | { error: string }> {
   const result = await practiceCall((token) => adminDeletePracticeTest(token, slug), "Could not delete the test. Try again.");
   if (!("error" in result)) {
-    revalidatePath(`/exams/${examSlug}`);
-    revalidatePath(`/exams/${examSlug}/practice`);
+    revalidatePath("/exams/[slug]", "page");
+    revalidatePath("/exams/[slug]/practice", "page");
   }
   return result;
 }
@@ -1563,7 +1563,7 @@ export async function saveCollegeRecord(slug: string, record: CollegeRecord): Pr
   const token = await requireAdminToken();
   try {
     const saved = await adminSaveCollegeRecord(token, slug, record);
-    revalidatePath(`/college/${slug}`, "layout");
+    revalidatePath("/college/[slug]", "layout");
     revalidatePath("/colleges");
     revalidatePath("/", "layout");
     return saved;
@@ -1662,10 +1662,10 @@ export async function resetListingSlots(page: SlotPage, scope: string): Promise<
 
 // ── A college's rankings, edited from its editor. Each change is saved at once. ──
 
-function refreshRankings(collegeSlug: string) {
+function refreshRankings() {
   revalidatePath("/rankings", "layout");
   revalidatePath("/colleges");
-  revalidatePath(`/college/${collegeSlug}`, "layout");
+  revalidatePath("/college/[slug]", "layout");
   revalidatePath("/", "layout");
 }
 
@@ -1684,19 +1684,19 @@ export async function setCollegeRanking(listSlug: string, collegeSlug: string, r
   const result = await attempt("/admin/colleges", (token) =>
     adminSetCollegeRanking(token, listSlug, collegeSlug, { rank, score: score.trim() || null }),
   );
-  if ("ok" in result) refreshRankings(collegeSlug);
+  if ("ok" in result) refreshRankings();
   return result;
 }
 
 export async function pinCollegeRanking(collegeSlug: string, rankingSlug: string | null): Promise<AdminActionResult> {
   const result = await attempt("/admin/colleges", (token) => adminPinCollegeRanking(token, collegeSlug, rankingSlug));
-  if ("ok" in result) refreshRankings(collegeSlug);
+  if ("ok" in result) refreshRankings();
   return result;
 }
 
 export async function removeCollegeRanking(listSlug: string, collegeSlug: string): Promise<AdminActionResult> {
   const result = await attempt("/admin/colleges", (token) => adminRemoveCollegeRanking(token, listSlug, collegeSlug));
-  if ("ok" in result) refreshRankings(collegeSlug);
+  if ("ok" in result) refreshRankings();
   return result;
 }
 
@@ -1710,7 +1710,7 @@ export async function approveChangeRequest(
   const token = await requireAdminToken();
   try {
     const result = await adminApproveRequest(token, id, acknowledgeStale);
-    revalidatePath(`/college/${result.collegeSlug}`, "layout");
+    revalidatePath("/college/[slug]", "layout");
     revalidatePath("/colleges");
     revalidatePath("/", "layout");
     revalidatePath("/admin/approvals");
@@ -2036,7 +2036,7 @@ export async function loadExamColleges(examCode: string): Promise<{ slug: string
 
 /** Sends a message to every subscriber, or to the ones picked, into their Messages inbox (in-app only). */
 export async function sendTeamMessage(
-  body: { subject: string; body: string; audience: "all" | "selected"; subscriberIds?: string[] },
+  body: { subject: string; body: string; image?: string; audience: "all" | "selected"; subscriberIds?: string[] },
 ): Promise<import("@/lib/api").TeamMessageResult | { error: string }> {
   const token = await requireAdminToken();
   try {

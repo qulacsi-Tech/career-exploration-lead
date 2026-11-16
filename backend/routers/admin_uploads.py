@@ -58,13 +58,15 @@ MIN_SIZE = {
     "faculty_photo": (200, 200),
     # The picture shown when an exam page is shared (Open Graph), ideally 1200 x 630.
     "og": (600, 315),
+    # A banner or picture sent with a message to subscribers, shown up to the width of a chat bubble.
+    "message": (300, 150),
 }
 
 
 @router.post("", response_model=SuccessResponse[dict], status_code=201)
 async def upload_image(
     _admin: AdminPayload,
-    kind: Literal["hero", "banner", "location", "college", "exam", "practice", "program", "article", "article_figure", "logo", "site_logo", "recruiter_logo", "gallery", "ranking_banner", "award", "faculty_photo", "og"] = Form(...),
+    kind: Literal["hero", "banner", "location", "college", "exam", "practice", "program", "article", "article_figure", "logo", "site_logo", "recruiter_logo", "gallery", "ranking_banner", "award", "faculty_photo", "og", "message"] = Form(...),
     file: UploadFile = File(...),
 ):
     raw = await file.read(MAX_BYTES + 1)
