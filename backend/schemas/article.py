@@ -106,6 +106,8 @@ StepsBlock.model_rebuild()
 
 class ArticleListSchema(BaseModel):
     slug: str
+    # The number after the slug in the page's address.
+    publicId: int = 0
     title: str
     excerpt: str
     date: str          # formatted "D Mon YYYY"

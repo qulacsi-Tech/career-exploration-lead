@@ -37,6 +37,7 @@ import { SESSION_CHANGED_EVENT } from "@/lib/user-session-cookie";
 import type { MyReview, ReviewVotes as ReviewVoteState } from "@/lib/api";
 import { scoreTone } from "@/lib/college-insights";
 import { plural } from "@/lib/college-rules";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * The building blocks of the college detail page.
@@ -463,7 +464,7 @@ export function PeerGrid({ peers, visible = 4 }: { peers: PeerItem[]; visible?: 
             <ScoreBadge score={peer.score} size="md" />
             <div className="min-w-0">
               <Link
-                href={`/college/${peer.slug}`}
+                href={`/college/${collegeKey(peer)}`}
                 className="font-display text-lg font-semibold leading-snug text-brand hover:underline"
               >
                 {peer.name}

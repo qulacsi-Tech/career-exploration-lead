@@ -1,5 +1,4 @@
 import { ArticleSections } from "@/components/article-sections";
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
@@ -15,6 +14,7 @@ import {
   Monitor,
   Repeat,
   Sparkles,
+  MessagesSquare,
 } from "lucide-react";
 import { ListingCard } from "@/components/colleges/listing-card";
 import { ExamStatusBadge } from "@/components/exam-status-badge";
@@ -27,6 +27,8 @@ import { ExamTabs, type ExamTab } from "@/components/exams/exam-tabs";
 import { ExamStatsCard } from "@/components/exams/exam-stats-card";
 import { examShortName } from "@/lib/exam-insights";
 import { pageTextReader } from "@/lib/exam-page-text";
+import { collegeKey, examHref, examKey } from "@/lib/entity-url";
+import { findByKey, resolveByKey } from "@/lib/entity-resolve";
 
 /** Plain text from the admin: a blank line starts a new paragraph. */
 function Paragraphs({ text }: { text: string }) {
@@ -78,13 +80,14 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: key } = await params;
   try {
-    const exam = await getExam(slug);
+    const exam = await findByKey(key, getExam);
+    if (!exam) return { title: "Exam not found" };
     return {
       title: `${exam.name}: Dates, Registration, Pattern & Cutoffs`,
       description: exam.description,
-      alternates: { canonical: `/exams/${exam.slug}` },
+      alternates: { canonical: `/exams/${examKey(exam)}` },
     };
   } catch {
     return { title: "Exam not found" };
@@ -100,14 +103,11 @@ export default async function ExamDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const { slug: key } = await params;
 
-  let exam: Awaited<ReturnType<typeof getExam>>;
-  try {
-    exam = await getExam(slug);
-  } catch {
-    notFound();
-  }
+  // A missing record is a 404; an address without the id (or with a stale slug) goes to the current one.
+  const exam = await resolveByKey(key, getExam, examHref);
+  const slug = exam.slug;
 
   const shortName = examShortName(exam);
   // Every heading, line and button below: the admin's words (Exams, Edit, Page text) or the usual ones.
@@ -184,7 +184,7 @@ export default async function ExamDetailPage({
               <h2 className={H2}>{text("warmupHeading")}</h2>
               <Kicker>{text("warmupKicker")}</Kicker>
             </div>
-            <Link href={`/exams/${slug}/practice`} className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-brand hover:text-brand-dark">
+            <Link href={`${examHref(exam)}/practice`} className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-brand hover:text-brand-dark">
               All {practiceTests.length} mock tests <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
@@ -272,7 +272,7 @@ export default async function ExamDetailPage({
               <h2 className={H2}>{text("practiceHeading")}</h2>
               <Kicker>{text("practiceKicker")}</Kicker>
             </div>
-            <Link href={`/exams/${slug}/practice`} className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-brand hover:text-brand-dark">
+            <Link href={`${examHref(exam)}/practice`} className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-brand hover:text-brand-dark">
               Open the practice room <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
@@ -321,7 +321,7 @@ export default async function ExamDetailPage({
                 {cutoffRows.map(({ college, cutoff }) => (
                   <tr key={`${college.slug}-${cutoff.category}`} className="border-b border-line-soft last:border-b-0">
                     <td className="px-3 py-3">
-                      <Link href={`/college/${college.slug}`} className="font-medium text-ink hover:text-brand">
+                      <Link href={`/college/${collegeKey(college)}`} className="font-medium text-ink hover:text-brand">
                         {college.name}
                       </Link>
                     </td>
@@ -446,12 +446,19 @@ export default async function ExamDetailPage({
                 </ActionButton>
                 {practiceTests.length > 0 && (
                   <Link
-                    href={`/exams/${slug}/practice`}
+                    href={`${examHref(exam)}/practice`}
                     className="inline-flex items-center justify-center rounded-lg border border-brand bg-surface px-4 py-2.5 text-sm font-bold text-brand transition hover:bg-brand-soft"
                   >
                     {text("mockButton")}
                   </Link>
                 )}
+                <Link
+                  href={`${examHref(exam)}/community`}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold text-brand-ink transition hover:bg-brand-soft"
+                >
+                  <MessagesSquare className="h-4 w-4" aria-hidden="true" />
+                  Community
+                </Link>
               </div>
             </div>
           </div>

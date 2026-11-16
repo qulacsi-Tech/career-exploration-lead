@@ -7,6 +7,7 @@ import { CompareButton } from "@/components/colleges/compare-button";
 import { ActionButton } from "@/components/college/college-actions";
 import { plural } from "@/lib/college-rules";
 import { programmeTitle } from "@/lib/college-insights";
+import { collegeKey } from "@/lib/entity-url";
 
 /**
  * A row on the /colleges listing, in the Shiksha mould the client asked for: the rank up front, a
@@ -80,7 +81,7 @@ export function ListingCard({
   const exams = college.examsAccepted;
   const extra = Math.max(0, exams.length - 2);
   const courses = college.courses ?? [];
-  const href = `/college/${college.slug}`;
+  const href = `/college/${collegeKey(college)}`;
   const rank = college.ranking?.rank;
   const stars = Math.round(college.rating);
   const money = packages(college);

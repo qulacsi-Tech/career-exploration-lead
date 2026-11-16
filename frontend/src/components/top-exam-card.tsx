@@ -5,6 +5,7 @@ import type { ExamCardCopy } from "@/lib/home-copy";
 import { mediaUrl } from "@/lib/media";
 import { KeyRound, Target } from "lucide-react";
 import { ExamStatusBadge } from "@/components/exam-status-badge";
+import { examKey } from "@/lib/entity-url";
 
 /**
  * Same travel-card format as TopCollegeCard: the photo occupies the top 228px
@@ -58,7 +59,7 @@ export function TopExamCard({ exam, labels }: { exam: Exam; labels: ExamCardCopy
       {/* Copy block: the photo grows behind it, so nothing here moves */}
       <div className="relative z-10 flex flex-1 flex-col px-4 pb-2 pt-4">
         <Link
-          href={`/exams/${exam.slug}`}
+          href={`/exams/${examKey(exam)}`}
           className="line-clamp-2 font-display text-lg font-bold leading-snug text-ink transition-colors duration-500 group-hover:text-white group-focus-within:text-white"
         >
           {exam.name}
@@ -70,14 +71,14 @@ export function TopExamCard({ exam, labels }: { exam: Exam; labels: ExamCardCopy
 
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
           <Link
-            href={`/exams/${exam.slug}/cutoff`}
+            href={`/exams/${examKey(exam)}/cutoff`}
             className="flex items-center gap-1.5 font-semibold text-ink transition-colors duration-500 hover:text-brand group-hover:text-white group-hover:hover:text-brand group-focus-within:text-white"
           >
             <Target className="h-4 w-4 shrink-0 text-brand" />
             {labels.cutoffLabel}
           </Link>
           <Link
-            href={`/exams/${exam.slug}/answer-key`}
+            href={`/exams/${examKey(exam)}/answer-key`}
             className="flex items-center gap-1.5 font-semibold text-ink transition-colors duration-500 hover:text-brand group-hover:text-white group-hover:hover:text-brand group-focus-within:text-white"
           >
             <KeyRound className="h-4 w-4 shrink-0 text-brand" />
@@ -86,7 +87,7 @@ export function TopExamCard({ exam, labels }: { exam: Exam; labels: ExamCardCopy
         </div>
 
         <Link
-          href={`/exams/${exam.slug}`}
+          href={`/exams/${examKey(exam)}`}
           className="mt-auto block rounded-full bg-ink px-5 py-3 text-center text-sm font-semibold text-white transition-colors duration-500 hover:bg-brand group-hover:bg-white group-hover:text-ink group-hover:hover:bg-brand group-hover:hover:text-white group-focus-within:bg-white group-focus-within:text-ink"
         >
           {labels.buttonLabel}

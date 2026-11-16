@@ -21,7 +21,6 @@ import { ViewAllButton } from "@/components/ui/view-all-button";
 */
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
-const streamSlug = (name: string) => name.toLowerCase().replace(/ /g, "-");
 
 type Loaded = { colleges: College[]; page: number; loading: boolean; failed: boolean };
 
@@ -99,7 +98,7 @@ export function TopCollegesRow({
   const shown = state?.colleges ?? [];
   const slides = total > 3;
   const viewAll = (
-    <ViewAllButton href={current && tabs.length > 1 ? `/${streamSlug(current)}/colleges` : viewAllHref}>{viewAllLabel}</ViewAllButton>
+    <ViewAllButton href={current && tabs.length > 1 ? `/colleges?stream=${encodeURIComponent(current)}` : viewAllHref}>{viewAllLabel}</ViewAllButton>
   );
 
   return (

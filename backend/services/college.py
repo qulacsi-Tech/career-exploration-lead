@@ -44,6 +44,7 @@ def _to_list_schema(college: College) -> CollegeListSchema:
     page_record = college.detail if isinstance(college.detail, dict) else {}
     placement = _latest_placement(college)
     return CollegeListSchema(
+        publicId=college.public_id or 0,
         pinnedRanking=college.pinned_ranking or "",
         nirfRank=(college.ranking_rank or None) if "nirf" in (college.ranking_authority or "").lower() and (college.ranking_rank or 0) > 0 else None,
         placementAverage=(placement.average_package or "") if placement else "",

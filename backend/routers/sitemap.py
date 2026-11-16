@@ -17,11 +17,11 @@ router = APIRouter(prefix="/sitemap", tags=["sitemap"])
 
 @router.get("/colleges", response_model=SuccessResponse[list])
 async def sitemap_colleges(db: DbSession):
-    """All published college slugs for sitemap generation."""
+    """All published colleges as `<slug>-<public id>`, the way their pages are addressed."""
     from sqlalchemy import select
     from models.college import College
-    result = await db.execute(select(College.slug).where(College.status == "published"))
-    return SuccessResponse[list](data=list(result.scalars()))
+    result = await db.execute(select(College.slug, College.public_id).where(College.status == "published"))
+    return SuccessResponse[list](data=[f"{s}-{i}" for s, i in result.all()])
 
 
 @router.get("/exams", response_model=SuccessResponse[list])
@@ -29,8 +29,8 @@ async def sitemap_exams(db: DbSession):
     """All exam slugs for sitemap generation."""
     from sqlalchemy import select
     from models.exam import Exam
-    result = await db.execute(select(Exam.slug))
-    return SuccessResponse[list](data=list(result.scalars()))
+    result = await db.execute(select(Exam.slug, Exam.public_id))
+    return SuccessResponse[list](data=[f"{s}-{i}" for s, i in result.all()])
 
 
 @router.get("/articles", response_model=SuccessResponse[list])
@@ -39,9 +39,9 @@ async def sitemap_articles(db: DbSession):
     from sqlalchemy import select
     from models.article import Article
     result = await db.execute(
-        select(Article.slug).where(Article.is_published == True)  # noqa: E712
+        select(Article.slug, Article.public_id).where(Article.is_published == True)  # noqa: E712
     )
-    return SuccessResponse[list](data=list(result.scalars()))
+    return SuccessResponse[list](data=[f"{s}-{i}" for s, i in result.all()])
 
 
 @router.get("/courses", response_model=SuccessResponse[list])

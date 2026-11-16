@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { BookOpen, ClipboardList, GraduationCap, Layers, Loader2, MapPin, Search } from "lucide-react";
 import { liveSearch } from "@/lib/search-actions";
 import type { SearchKind, SearchResults } from "@/lib/api";
+import { collegeKey, examKey } from "@/lib/entity-url";
 
 type Item = { key: string; kind: "College" | "Course" | "Specialisation" | "Exam" | "City"; title: string; note: string; href: string };
 
@@ -38,10 +39,10 @@ function Match({ text, query }: { text: string; query: string }) {
 function itemsOf(results: SearchResults | null): Item[] {
   if (!results) return [];
   return [
-    ...results.colleges.map((c) => ({ key: `c-${c.slug}`, kind: "College" as const, title: c.name, note: [c.city, c.stream].filter(Boolean).join(" · "), href: `/college/${c.slug}` })),
+    ...results.colleges.map((c) => ({ key: `c-${c.slug}`, kind: "College" as const, title: c.name, note: [c.city, c.stream].filter(Boolean).join(" · "), href: `/college/${collegeKey(c)}` })),
     ...(results.courses ?? []).map((c) => ({ key: `k-${c.slug}`, kind: "Course" as const, title: c.name, note: c.fullName && c.fullName !== c.name ? c.fullName : (c.stream ?? ""), href: `/courses/${c.slug}` })),
     ...(results.specialisations ?? []).map((sp) => ({ key: `s-${sp.slug}`, kind: "Specialisation" as const, title: sp.name, note: [sp.courseName, sp.stream].filter(Boolean).join(" · "), href: `/colleges?specialisation=${encodeURIComponent(sp.name)}` })),
-    ...results.exams.map((e) => ({ key: `e-${e.slug}`, kind: "Exam" as const, title: e.name, note: "Entrance exam", href: `/exams/${e.slug}` })),
+    ...results.exams.map((e) => ({ key: `e-${e.slug}`, kind: "Exam" as const, title: e.name, note: "Entrance exam", href: `/exams/${examKey(e)}` })),
     ...results.locations.map((l) => ({ key: `l-${l.slug}`, kind: "City" as const, title: l.name, note: "Colleges in this city", href: `/location/${l.slug}` })),
   ];
 }

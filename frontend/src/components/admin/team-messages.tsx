@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Bold, Check, CheckCheck, Code, Italic, List, ListOrdered, Megaphone, Quote, Send, Smile, Strikethrough } from "lucide-react";
+import { Bold, Check, CheckCheck, Code, ImagePlus, Italic, List, ListOrdered, Loader2, Megaphone, Quote, Send, Smile, Strikethrough, X } from "lucide-react";
 import { AdminModal } from "@/components/admin/admin-modal";
 import { ChatText } from "@/components/chat-text";
 import { confirmToast } from "@/components/ui/confirm-toast";
-import { sendTeamMessage } from "@/lib/admin-actions";
+import { sendTeamMessage, uploadHomeImage } from "@/lib/admin-actions";
+import { mediaUrl } from "@/lib/media";
 import type { TeamMessageSent } from "@/lib/api";
 
 const field = "mt-1.5 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
@@ -49,10 +50,31 @@ export function MessageComposer({ audience, onClose }: { audience: Audience; onC
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiSet, setEmojiSet] = useState(0);
   const [pending, start] = useTransition();
+  // An optional banner or picture shown above the text: its stored path once uploaded.
+  const [image, setImage] = useState("");
+  const [uploading, setUploading] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const toAll = audience.kind === "all";
   const count = toAll ? null : audience.recipients.length;
-  const ready = subject.trim().length >= 3 && body.trim().length > 0 && !done;
+  const ready = subject.trim().length >= 3 && body.trim().length > 0 && !done && !uploading;
+
+  /** Uploads the chosen picture at once, so the preview shows exactly what will be sent. */
+  const upload = async (file: File | undefined) => {
+    if (picker.current) picker.current.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return setError("Use a JPG, PNG or WebP picture.");
+    if (file.size > 4 * 1024 * 1024) return setError("The picture is larger than 4 MB. Compress it and try again.");
+    setError("");
+    setUploading(true);
+    const form = new FormData();
+    form.set("kind", "message");
+    form.set("file", file);
+    const result = await uploadHomeImage(form);
+    setUploading(false);
+    if ("error" in result) return setError(result.error);
+    setImage(result.url);
+  };
 
   /** Puts `before`/`after` around the selection (or at the cursor), and keeps the selection on the same text. */
   const wrap = (before: string, after = before) => {
@@ -116,6 +138,7 @@ export function MessageComposer({ audience, onClose }: { audience: Audience; onC
       const result = await sendTeamMessage({
         subject: subject.trim(),
         body: body.trim(),
+        image: image || undefined,
         audience: audience.kind,
         subscriberIds: toAll ? undefined : audience.recipients.map((r) => r.id),
       });
@@ -264,6 +287,35 @@ export function MessageComposer({ audience, onClose }: { audience: Audience; onC
                   <span>{body.length}/8000</span>
                 </p>
               </div>
+              <div>
+                <p className="block text-xs font-semibold text-ink">
+                  Banner or picture <span className="font-normal text-ink-faint">(optional)</span>
+                </p>
+                {image ? (
+                  <div className="relative mt-1.5 inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={mediaUrl(image)} alt="The picture to be sent" className="max-h-40 rounded-xl border border-line" />
+                    <button
+                      type="button"
+                      onClick={() => setImage("")}
+                      aria-label="Remove picture"
+                      className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-ink/70 text-white transition hover:bg-ink"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    className={`mt-1.5 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-bg px-4 py-4 text-sm font-medium text-ink-soft transition hover:border-brand hover:text-brand ${uploading ? "pointer-events-none opacity-70" : ""}`}
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ImagePlus className="h-4 w-4" aria-hidden="true" />}
+                    {uploading ? "Uploading…" : "Add a banner or picture"}
+                    <input ref={picker} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={uploading} onChange={(e) => upload(e.target.files?.[0])} />
+                  </label>
+                )}
+                <p className="mt-1 text-xs text-ink-faint">JPG, PNG or WebP, up to 4 MB, at least 300 × 150 px. Shown above the message.</p>
+              </div>
+
               {error && <p role="alert" className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>}
             </div>
 
@@ -273,6 +325,10 @@ export function MessageComposer({ audience, onClose }: { audience: Audience; onC
               <div className="mt-1.5 flex min-h-[18rem] flex-col justify-end rounded-xl bg-[#efe7dd] bg-[radial-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] p-4 [background-size:14px_14px]">
                 <div className="relative max-w-[92%] self-start rounded-2xl rounded-tl-sm bg-white px-3.5 py-2.5 text-ink shadow-sm">
                   <p className="text-xs font-bold text-emerald-700">TopCollegePath team</p>
+                  {image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mediaUrl(image)} alt="" className="mt-1.5 w-full rounded-lg" />
+                  )}
                   {subject.trim() && <p className="mt-0.5 text-sm font-bold">{subject}</p>}
                   {body.trim() ? <ChatText text={body} className="mt-1" /> : <p className="mt-1 text-sm italic text-ink-faint">Your message will appear here.</p>}
                   <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-ink-faint">
@@ -324,6 +380,10 @@ export function SentMessages({ messages, total }: { messages: TeamMessageSent[];
               {open === m.id && (
                 <div className="mt-2 rounded-xl bg-[#efe7dd] p-3">
                   <div className="max-w-xl rounded-2xl rounded-tl-sm bg-white px-3.5 py-2.5 shadow-sm">
+                    {m.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={mediaUrl(m.image)} alt="" loading="lazy" className="mb-2 w-full rounded-lg" />
+                    )}
                     <ChatText text={m.body} />
                     <p className="mt-1 text-right text-[10px] text-ink-faint">Sent by {m.sentBy || "the team"}</p>
                   </div>

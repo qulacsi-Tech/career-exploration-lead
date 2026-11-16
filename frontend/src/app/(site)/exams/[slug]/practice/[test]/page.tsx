@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { AttemptsNote } from "@/components/practice/attempts-note";
 import { getExam, getPracticeTest, getPracticeTests } from "@/lib/api";
+import { examHref } from "@/lib/entity-url";
+import { resolveByKey } from "@/lib/entity-resolve";
 import { markingSummary, questionCount } from "@/lib/practice-data";
 import { resolveInstructions, withMarking } from "@/lib/practice-instructions";
 
@@ -44,12 +46,12 @@ export default async function TestInstructionsPage({
 }: {
   params: Promise<{ slug: string; test: string }>;
 }) {
-  const { slug, test: testSlug } = await params;
+  const { slug: key, test: testSlug } = await params;
   const test = await getPracticeTest(testSlug);
-  if (!test || !test.isPublished || test.examSlug !== slug) notFound();
+  const exam = await resolveByKey(key, getExam, (e) => `${examHref(e)}/practice/${testSlug}`);
+  if (!test || !test.isPublished || test.examSlug !== exam.slug) notFound();
 
-  const exam = await getExam(slug).catch(() => null);
-  const short = exam?.name.match(/\(([^)]+)\)/)?.[1] ?? exam?.name ?? slug;
+  const short = exam.name.match(/\(([^)]+)\)/)?.[1] ?? exam.name;
   const count = questionCount(test);
   const instructions = resolveInstructions(test);
 
@@ -59,8 +61,8 @@ export default async function TestInstructionsPage({
         items={[
           { label: "Home", href: "/" },
           { label: "Exams", href: "/exams" },
-          { label: short, href: `/exams/${slug}` },
-          { label: "Practice", href: `/exams/${slug}/practice` },
+          { label: short, href: examHref(exam) },
+          { label: "Practice", href: `${examHref(exam)}/practice` },
           { label: test.title },
         ]}
       />
@@ -108,7 +110,7 @@ export default async function TestInstructionsPage({
           {test.totalMinutes > 0 ? "Start test" : "Begin"}
         </SignInLink>
         <Link
-          href={`/exams/${slug}/practice`}
+          href={`${examHref(exam)}/practice`}
           className="text-sm font-semibold text-ink-soft transition hover:text-brand"
         >
           Back to all tests

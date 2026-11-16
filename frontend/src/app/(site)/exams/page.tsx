@@ -10,6 +10,8 @@ import { compactCount, daysUntil, examShortName } from "@/lib/exam-insights";
 import { examBadgeTone } from "@/components/exam-status-badge";
 import { ExamInfoPanel } from "@/components/exams/info-panel";
 import { ActionButton } from "@/components/college/college-actions";
+import { examKey } from "@/lib/entity-url";
+import { getCommunities } from "@/lib/community-api";
 
 export const metadata: Metadata = {
   title: "Entrance Exams: Dates, Registration & Cutoffs",
@@ -69,11 +71,13 @@ export default async function ExamsIndexPage({
   };
 
   // The exams, their practice tests and how many students practised for each, read together.
-  const [all, tests, practised] = await Promise.all([
+  const [all, tests, practised, communities] = await Promise.all([
     getExams({ limit: 100 }).then((r) => r.data).catch((): Exam[] => []),
     getPracticeTests().catch(() => []),
     getExamPracticeCounts(),
+    getCommunities(),
   ]);
+  const communityByExam = Object.fromEntries(communities.map((c) => [c.examSlug, c]));
   const testsByExam = tests.reduce<Record<string, number>>((acc, t) => ({ ...acc, [t.examSlug]: (acc[t.examSlug] ?? 0) + 1 }), {});
   const now = pageTime();
 
@@ -254,7 +258,7 @@ export default async function ExamsIndexPage({
                   const d = daysUntil(e.registrationCloses, now) ?? 0;
                   return (
                     <li key={e.slug} className="flex items-center justify-between gap-3">
-                      <Link href={`/exams/${e.slug}`} className="min-w-0 truncate font-medium text-brand-ink hover:text-brand" title={e.name}>
+                      <Link href={`/exams/${examKey(e)}`} className="min-w-0 truncate font-medium text-brand-ink hover:text-brand" title={e.name}>
                         {examShortName(e)}
                       </Link>
                       <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${d <= 7 ? "bg-red-600 text-white" : "bg-white text-brand"}`} title={e.registrationCloses}>
@@ -305,7 +309,7 @@ export default async function ExamsIndexPage({
 
         <div className="min-w-0 space-y-4">
           {exams.map((exam) => (
-            <ExamCard key={exam.slug} exam={exam} tests={testsByExam[exam.slug] ?? 0} students={practised[exam.slug]?.students ?? 0} now={now} />
+            <ExamCard key={exam.slug} exam={exam} tests={testsByExam[exam.slug] ?? 0} students={practised[exam.slug]?.students ?? 0} now={now} community={communityByExam[exam.slug]} />
           ))}
           {exams.length === 0 && (
             <div className="rounded-2xl border border-dashed border-line bg-bg-alt px-6 py-14 text-center">

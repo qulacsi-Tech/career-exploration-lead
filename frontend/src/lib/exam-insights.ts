@@ -31,7 +31,7 @@ export function daysUntil(text: string | undefined | null, now: number): number 
 
 /** What a deadline countdown reads as, in words and as the number to make big. */
 export function countdown(days: number | null): { value: string; unit: string; tone: "urgent" | "soon" | "calm" | "closed" | "unknown" } {
-  if (days === null) return { value: "TBA", unit: "Dates soon", tone: "unknown" };
+  if (days === null) return { value: "Upcoming", unit: "Dates soon", tone: "unknown" };
   if (days < 0) return { value: "Closed", unit: "Registration over", tone: "closed" };
   if (days === 0) return { value: "Today", unit: "Last day to apply", tone: "urgent" };
   if (days <= 7) return { value: String(days), unit: days === 1 ? "day left" : "days left", tone: "urgent" };

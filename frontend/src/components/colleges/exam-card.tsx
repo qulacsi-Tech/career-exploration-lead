@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, CalendarClock, CalendarDays, ClipboardList, IndianRupee, Monitor, Sparkles, Users } from "lucide-react";
+import { ArrowRight, CalendarClock, CalendarDays, ClipboardList, IndianRupee, MessagesSquare, Monitor, Sparkles, Users } from "lucide-react";
 import type { Exam } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { ExamStatusBadge } from "@/components/exam-status-badge";
 import { DeadlineCountdown } from "@/components/exams/deadline-countdown";
 import { compactCount, daysUntil, examShortName, examVibe } from "@/lib/exam-insights";
+import { examKey } from "@/lib/entity-url";
 
 /** Where a shortcut at the foot of the card goes: a tab of the exam's page. */
 const SHORTCUTS = [
@@ -24,8 +25,11 @@ export function ExamCard({
   tests = 0,
   students = 0,
   now,
+  community,
 }: {
   exam: Exam;
+  /** The exam's community, when someone has started it. Absent: the card offers to start one. */
+  community?: { members: number; posts: number };
   /** How many published practice tests the exam has. */
   tests?: number;
   /** How many students have practised for it. */
@@ -33,7 +37,7 @@ export function ExamCard({
   /** The time the page was read, for the friendly line. */
   now: number;
 }) {
-  const href = `/exams/${exam.slug}`;
+  const href = `/exams/${examKey(exam)}`;
   const short = examShortName(exam);
   const days = daysUntil(exam.registrationCloses, now);
 
@@ -103,10 +107,10 @@ export function ExamCard({
           <div className="mt-5 flex flex-col gap-4 @2xl:flex-row @2xl:items-stretch @2xl:justify-between">
             <dl className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 @md:grid-cols-2 @3xl:grid-cols-4">
               <Fact icon={CalendarClock} label="Registration closes" hint="Mark your calendar" accent>
-                {exam.registrationCloses || "To be announced"}
+                {exam.registrationCloses || "Upcoming"}
               </Fact>
               <Fact icon={CalendarDays} label="Exam date" hint="The big day">
-                {exam.examDate || "To be announced"}
+                {exam.examDate || "Upcoming"}
               </Fact>
               <Fact icon={IndianRupee} label="Application fee" hint="Your entry ticket">
                 {exam.applicationFee || "—"}
@@ -135,6 +139,31 @@ export function ExamCard({
               </Link>
             </div>
           </div>
+
+          <Link
+            href={`${href}/community`}
+            className="group/comm mt-4 flex items-center gap-3 rounded-xl border border-dashed border-brand/30 bg-brand-soft/40 px-3.5 py-2.5 text-sm transition hover:border-brand hover:bg-brand-soft"
+          >
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface text-brand shadow-sm">
+              <MessagesSquare className="h-4 w-4" aria-hidden="true" />
+            </span>
+            {community ? (
+              <span className="min-w-0 flex-1 text-ink-soft">
+                <strong className="font-semibold text-ink">{short} Community</strong>
+                <span className="ml-2">
+                  {compactCount(community.members)} {community.members === 1 ? "member" : "members"} · {compactCount(community.posts)} {community.posts === 1 ? "post" : "posts"}
+                </span>
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 text-ink-soft">
+                <strong className="font-semibold text-ink">No {short} community yet.</strong> <span>Be the first to start one.</span>
+              </span>
+            )}
+            <span className="inline-flex shrink-0 items-center gap-1 font-bold text-brand">
+              {community ? "Join" : "Start"}
+              <ArrowRight className="h-4 w-4 transition group-hover/comm:translate-x-0.5" aria-hidden="true" />
+            </span>
+          </Link>
 
           <nav aria-label={`More about ${short}`} className="mt-4 flex flex-wrap items-center gap-x-1 gap-y-1 border-t border-line-soft pt-3 text-sm">
             <span className="mr-1 text-ink-faint">Peek inside:</span>

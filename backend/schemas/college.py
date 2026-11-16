@@ -128,6 +128,8 @@ class CollegeListSchema(BaseModel):
     """Lightweight college representation — fields consumed by CollegeCard and TopCollegeCard."""
 
     slug: str
+    # The number after the slug in the page's address.
+    publicId: int = 0
     name: str
     city: str
     state: str

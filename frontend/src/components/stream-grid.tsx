@@ -90,7 +90,7 @@ export function StreamGrid({
             return (
               <li key={stream.slug} className="flex flex-col items-center">
                 <Link
-                  href={`/${stream.slug}/colleges`}
+                  href={`/colleges?stream=${encodeURIComponent(stream.name)}`}
                   aria-label={[stream.name, stream.tagline, stream.avgCtc && `Average CTC ${stream.avgCtc}`].filter(Boolean).join(". ")}
                   className="stream-coin block w-full max-w-[150px] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg-alt"
                 >

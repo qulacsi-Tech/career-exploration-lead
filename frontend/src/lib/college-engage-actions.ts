@@ -26,7 +26,7 @@ export async function submitReview(slug: string, input: ReviewInput): Promise<En
   try {
     const result = await postReview(slug, input, token);
     updateTag(`college:${slug}`);
-    revalidatePath(`/college/${slug}`, "layout");
+    revalidatePath("/college/[slug]", "layout");
     return { ok: true, message: result.message };
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) return SIGN_IN;
@@ -41,7 +41,7 @@ export async function updateReview(id: string, slug: string, input: ReviewInput)
   try {
     const result = await putReview(id, input, token);
     updateTag(`college:${slug}`);
-    revalidatePath(`/college/${slug}`, "layout");
+    revalidatePath("/college/[slug]", "layout");
     return { ok: true, message: result.message };
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) return SIGN_IN;

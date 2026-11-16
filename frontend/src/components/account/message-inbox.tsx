@@ -7,6 +7,7 @@ import { Mail, MailOpen, Trash2 } from "lucide-react";
 import type { InboxMessage } from "@/lib/api";
 import { markMessageRead, removeMessage } from "@/lib/message-actions";
 import { ChatText } from "@/components/chat-text";
+import { mediaUrl } from "@/lib/media";
 
 function when(iso: string | null) {
   if (!iso) return "";
@@ -65,6 +66,10 @@ export function MessageInbox({ messages }: { messages: InboxMessage[] }) {
                 {/* The message as a chat bubble from the team, formatted as it was written. */}
                 <div className="max-w-2xl rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-ink shadow-sm">
                   <p className="text-xs font-bold text-emerald-700">{m.from}</p>
+                  {m.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mediaUrl(m.image)} alt={m.subject} loading="lazy" className="mt-2 w-full rounded-lg" />
+                  )}
                   <ChatText text={m.body} className="mt-1" />
                   <p className="mt-1 text-right text-[10px] text-ink-faint">{when(m.sentAt)}</p>
                 </div>

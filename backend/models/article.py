@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, Column, Date, DateTime, Integer, Sequence, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -12,6 +12,8 @@ class Article(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String(200), nullable=False, unique=True, index=True)
+    # The short number in the page's address (/x/<slug>-<public_id>). The UUID stays the key.
+    public_id = Column(Integer, Sequence("articles_public_id_seq"), nullable=False, unique=True, index=True)
     title = Column(String(500), nullable=False)
     excerpt = Column(Text, nullable=False)
     body = Column(Text, nullable=True)

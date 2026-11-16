@@ -120,6 +120,8 @@ export const adminNav: AdminNavSection[] = [
     icon: "community",
     items: [
       { label: "Questions", href: "/admin/questions", phase: 1, badge: "questions" },
+      // Exam communities: posts, replies, and who is flagged or blocked.
+      { label: "Community", href: "/admin/community", phase: 1 },
       { label: "Ratings", href: "/admin/ratings", phase: 1, badge: "ratings" },
       { label: "Approvals", href: "/admin/approvals", phase: 1, badge: "approvals" },
       { label: "Messages", href: "/admin/messages", phase: 1, badge: "messages" },

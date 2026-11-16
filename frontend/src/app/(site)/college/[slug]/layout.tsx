@@ -3,7 +3,9 @@ import { CollegeActions } from "@/components/college/college-actions";
 import { CollegeMasthead } from "@/components/college/college-masthead";
 import { collegePhoto } from "@/lib/college-images";
 import { faqsOf, monogram, packageHeadline, shortNameOf, taglineOf } from "@/lib/college-insights";
-import { getCollegeOrNull } from "@/lib/api";
+import { getCollege } from "@/lib/api";
+import { collegeKey } from "@/lib/entity-url";
+import { findByKey } from "@/lib/entity-resolve";
 import { collegeSections, sectionHref } from "@/lib/college-sections";
 
 /**
@@ -27,15 +29,16 @@ export default async function CollegeLayout({
   children,
   params,
 }: LayoutProps<"/college/[slug]">) {
-  const { slug } = await params;
-  const college = await getCollegeOrNull(slug);
+  const { slug: key } = await params;
+  // Only looked up here: the page under it owns the redirect to the address with the id.
+  const college = await findByKey(key, getCollege);
   if (!college) notFound();
 
   /* The same fixed rail on every college — see lib/college-sections. */
   const sections = collegeSections.map((section) => ({
     slug: section.slug,
     label: section.label,
-    href: sectionHref(college.slug, section.slug),
+    href: sectionHref(collegeKey(college), section.slug),
   }));
 
   /*

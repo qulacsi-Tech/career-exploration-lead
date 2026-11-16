@@ -13,6 +13,7 @@ from schemas.exam import ExamSchema
 
 def _to_schema(exam: Exam) -> ExamSchema:
     return ExamSchema(
+        publicId=exam.public_id or 0,
         slug=exam.slug,
         name=exam.name,
         shortName=exam.short_name or "",

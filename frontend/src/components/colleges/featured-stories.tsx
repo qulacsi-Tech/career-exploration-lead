@@ -3,6 +3,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { articleImage } from "@/lib/article-images";
 import { mediaUrl } from "@/lib/media";
 import type { Article } from "@/lib/api";
+import { articleKey } from "@/lib/entity-url";
 
 /**
  * A banner of the stories the team has highlighted (the ones pinned for the homepage news): a large first story
@@ -19,7 +20,7 @@ export function FeaturedStories({ stories }: { stories: Article[] }) {
       <p className="flex items-center gap-1.5 px-5 pt-4 text-xs font-bold uppercase tracking-wide text-white/80">
         <Sparkles className="h-3.5 w-3.5 text-gold" aria-hidden="true" /> Featured stories
       </p>
-      <Link href={`/articles/${lead.slug}`} className="group mt-3 block">
+      <Link href={`/articles/${articleKey(lead)}`} className="group mt-3 block">
         {picture && (
           // Plain img: an uploaded picture comes from the API's origin, and its height is not known.
           // eslint-disable-next-line @next/next/no-img-element
@@ -35,7 +36,7 @@ export function FeaturedStories({ stories }: { stories: Article[] }) {
         <ul className="mt-4 divide-y divide-white/15 border-t border-white/15">
           {rest.map((other) => (
             <li key={other.slug}>
-              <Link href={`/articles/${other.slug}`} className="block px-5 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10">
+              <Link href={`/articles/${articleKey(other)}`} className="block px-5 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10">
                 {other.title}
               </Link>
             </li>

@@ -7,12 +7,13 @@
  * and build-time failures that occur when Server Components call Route Handlers.)
  */
 
+import { entityKey } from "@/lib/entity-url";
 import type { RichTextDoc } from "@/lib/rich-text";
 import type { HomeCopy } from "@/lib/home-copy";
 import type { MockTest, TestSummary } from "@/lib/practice-data";
 import type { AttemptResult } from "@/lib/practice-attempt";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 // ── Fetch primitives ───────────────────────────────────────────────────────
 
@@ -183,6 +184,8 @@ export type CollegeStatus = "draft" | "published" | "archived";
 
 export type College = {
   slug: string;
+  /** The number after the slug in its address: /college/<slug>-<publicId>. */
+  publicId?: number;
   name: string;
   /** The default priority set in the admin: 1 is shown first. Absent: after those that have one, by NIRF rank. */
   priority?: number | null;
@@ -231,6 +234,8 @@ export type College = {
 
 export type Exam = {
   slug: string;
+  /** The number after the slug in its address: /exams/<slug>-<publicId>. */
+  publicId?: number;
   name: string;
   /** Where space is tight. Empty or absent: the full name. */
   shortName?: string;
@@ -350,6 +355,8 @@ export type Article = {
   /** The article's picture: /images/... or /api/uploads/... Empty or absent: none. */
   image?: string;
   slug: string;
+  /** The number after the slug in its address: /articles/<slug>-<publicId>. */
+  publicId?: number;
   title: string;
   excerpt: string;
   date: string;
@@ -768,7 +775,7 @@ export async function getExam(slug: string): Promise<Exam> {
 /** All exam slugs — used by generateStaticParams. */
 export async function getExamSlugs(): Promise<string[]> {
   const res = await getExams({ limit: 100 });
-  return res.data.map((e) => e.slug);
+  return res.data.map((e) => entityKey(e.slug, e.publicId));
 }
 
 // ── Locations ─────────────────────────────────────────────────────────────
@@ -804,7 +811,7 @@ export async function getArticleSlugs(): Promise<string[]> {
   // The API gives at most 50 a page, so read the pages in turn.
   for (let page = 1; page <= 40; page++) {
     const res = await getArticles({ page, limit: 50 });
-    slugs.push(...res.data.map((a) => a.slug));
+    slugs.push(...res.data.map((a) => entityKey(a.slug, a.publicId)));
     if (page >= res.meta.pages) break;
   }
   return slugs;
@@ -945,7 +952,7 @@ export type AdminQuestion = MyQuestion & {
   helpful: number;
 };
 
-async function apiJson<T>(res: Response): Promise<T> {
+export async function apiJson<T>(res: Response): Promise<T> {
   const json = await res.json().catch(() => null);
   if (!json?.success) {
     const message = json?.error?.message ?? (Array.isArray(json?.detail) ? json.detail[0]?.msg : undefined) ?? "That did not work";
@@ -2135,7 +2142,7 @@ export async function adminDeleteLocation(token: string, slug: string) {
  * Admin: upload one image for a homepage slot. The API checks the file's real
  * type, size and pixel dimensions and returns the relative path to store.
  */
-export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery" | "ranking_banner" | "award" | "faculty_photo" | "og", file: File) {
+export async function adminUploadImage(token: string, kind: "hero" | "banner" | "location" | "college" | "exam" | "practice" | "program" | "article" | "article_figure" | "logo" | "site_logo" | "recruiter_logo" | "gallery" | "ranking_banner" | "award" | "faculty_photo" | "og" | "message", file: File) {
   const form = new FormData();
   form.append("kind", kind);
   form.append("file", file);
@@ -2311,7 +2318,7 @@ export async function getSitemapSlugs(
  * One admin write. The API's error message is passed through; a body that is
  * not JSON, or a failure with no message, falls back to the status alone.
  */
-async function adminRequest<T>(
+export async function adminRequest<T>(
   token: string,
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
@@ -3725,13 +3732,13 @@ export async function getExamCutoffs(slug: string): Promise<ExamCutoffRow[]> {
 
 // ── Team messages (newsletter broadcasts and direct messages) ───────────────
 
-export type TeamMessageSent = { id: string; subject: string; body: string; audience: "all" | "selected"; alsoEmail: boolean; sentBy: string; recipients: number; read: number; sentAt: string | null };
+export type TeamMessageSent = { id: string; subject: string; body: string; /** A banner or picture above the text. Empty: none. */ image?: string; audience: "all" | "selected"; alsoEmail: boolean; sentBy: string; recipients: number; read: number; sentAt: string | null };
 export type TeamMessageResult = { id: string; total: number; inApp: number; skipped: number };
-export type InboxMessage = { id: string; subject: string; body: string; from: string; sentAt: string | null; read: boolean };
+export type InboxMessage = { id: string; subject: string; body: string; image?: string; from: string; sentAt: string | null; read: boolean };
 
 export async function adminSendTeamMessage(
   token: string,
-  body: { subject: string; body: string; audience: "all" | "selected"; subscriberIds?: string[] },
+  body: { subject: string; body: string; image?: string; audience: "all" | "selected"; subscriberIds?: string[] },
 ) {
   return adminRequest<TeamMessageResult>(token, "POST", "/admin/team-messages", body);
 }

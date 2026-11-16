@@ -61,6 +61,7 @@ import {
   getCollegeOrNull,
   getColleges,
   getArticles,
+  getCollege,
   getCollegeSlugs,
   getHomeData,
   getLocations,
@@ -70,6 +71,8 @@ import {
   type CollegeDetail as College,
 } from "@/lib/api";
 import { emptyDoc, isRichTextEmpty, richTextToHtml } from "@/lib/rich-text";
+import { articleKey, collegeHref, collegeKey } from "@/lib/entity-url";
+import { findByKey, resolveByKey } from "@/lib/entity-resolve";
 
 /**
  * Every college section that is not the overview, on its own URL.
@@ -101,8 +104,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string; section: string }>;
 }): Promise<Metadata> {
-  const { slug, section: sectionSlug } = await params;
-  const college = await getCollegeOrNull(slug);
+  const { slug: key, section: sectionSlug } = await params;
+  const college = await findByKey(key, getCollege);
   const section = sectionBySlug(sectionSlug);
   if (!college || !section) return { title: "Page not found" };
 
@@ -110,7 +113,7 @@ export async function generateMetadata({
     title: `${college.name} ${section.label}: Details & Updates`,
     description: section.blurb(college),
     /* Each section owns its own URL, so each is its own canonical. */
-    alternates: { canonical: `/college/${college.slug}/${section.slug}` },
+    alternates: { canonical: `/college/${collegeKey(college)}/${section.slug}` },
   };
 }
 
@@ -119,14 +122,13 @@ export default async function CollegeSectionRoute({
 }: {
   params: Promise<{ slug: string; section: string }>;
 }) {
-  const { slug, section: sectionSlug } = await params;
+  const { slug: key, section: sectionSlug } = await params;
 
-  const college = await getCollegeOrNull(slug);
-  if (!college) notFound();
+  const college = await resolveByKey(key, getCollege, (c) => `${collegeHref(c)}/${sectionSlug}`);
 
   /* Videos used to be a tab of its own; it now shares the Gallery page. The
      old URL is linked from outside, so it forwards rather than 404s. */
-  if (sectionSlug === "videos") permanentRedirect(`/college/${college.slug}/gallery`);
+  if (sectionSlug === "videos") permanentRedirect(`/college/${collegeKey(college)}/gallery`);
 
   const section = sectionBySlug(sectionSlug);
   /* Only a segment that is not a section at all 404s. A section this college
@@ -225,7 +227,7 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
           >
             {(college.cutoffs ?? []).length > 0 && (
               <div id="cutoff-snapshot" className="scroll-mt-48">
-                <AdmissionCutoffs cutoffs={college.cutoffs ?? []} href={`/college/${college.slug}/cutoffs`} />
+                <AdmissionCutoffs cutoffs={college.cutoffs ?? []} href={`/college/${collegeKey(college)}/cutoffs`} />
               </div>
             )}
           </AdmissionOverview>
@@ -261,7 +263,7 @@ function SectionBody({ college, sectionSlug }: { college: College; sectionSlug: 
           </DetailCard>
           <TabMediaCard items={college.tabMedia?.[tabSlug] ?? []} title={pageText(college, "written.media")} college={college.name} />
           {/* What score it takes, without leaving the page. */}
-          {admission && (college.cutoffs ?? []).length > 0 && <AdmissionCutoffs cutoffs={college.cutoffs ?? []} href={`/college/${college.slug}/cutoffs`} />}
+          {admission && (college.cutoffs ?? []).length > 0 && <AdmissionCutoffs cutoffs={college.cutoffs ?? []} href={`/college/${collegeKey(college)}/cutoffs`} />}
           <CounsellorBand label={label} collegeName={college.name} />
         </>
       );
@@ -903,7 +905,7 @@ async function News({ college }: { college: College }) {
               <ul className="mt-3 divide-y divide-line-soft rounded-2xl border border-line bg-surface">
                 {linked.slice(1).map((article) => (
                   <li key={article.slug}>
-                    <Link href={`/articles/${article.slug}`} className="group flex items-center gap-4 px-4 py-3.5 transition hover:bg-brand-soft/30">
+                    <Link href={`/articles/${articleKey(article)}`} className="group flex items-center gap-4 px-4 py-3.5 transition hover:bg-brand-soft/30">
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-display text-[15px] font-bold text-ink transition group-hover:text-brand">{article.title}</span>
                         <span className="mt-0.5 block truncate text-xs text-ink-soft">

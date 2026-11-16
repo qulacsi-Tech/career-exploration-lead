@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ListingCard } from "@/components/colleges/listing-card";
 import { ApiError, getColleges, getCourse, getCourseSlugs, getCourses, getExams } from "@/lib/api";
 import { ActionButton } from "@/components/college/college-actions";
+import { examKey } from "@/lib/entity-url";
 
 export async function generateStaticParams() {
   const slugs = await getCourseSlugs();
@@ -207,7 +208,7 @@ export default async function CourseDetailPage({
                 {acceptedExams.map((exam) => (
                   <Link
                     key={exam.slug}
-                    href={`/exams/${exam.slug}`}
+                    href={`/exams/${examKey(exam)}`}
                     className="group rounded-xl border border-line bg-surface p-4 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-[0_8px_24px_-12px_rgba(177,36,62,0.35)]"
                   >
                     <p className="font-semibold text-ink group-hover:text-brand">{exam.name}</p>

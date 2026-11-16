@@ -3,13 +3,14 @@ import { ArrowRight, CalendarDays, Clock, Newspaper } from "lucide-react";
 import type { Article } from "@/lib/api";
 import { articleImage } from "@/lib/article-images";
 import { mediaUrl } from "@/lib/media";
+import { articleKey } from "@/lib/entity-url";
 
 /**
  * A story on the news listing, styled to match the college, course and exam cards. The picture is 20:9
  * when stacked (a fifth less tall than the 16:9 it was); beside the text it simply fills the card.
  */
 export function NewsCard({ article, lead = false }: { article: Article; lead?: boolean }) {
-  const href = `/articles/${article.slug}`;
+  const href = `/articles/${articleKey(article)}`;
   const image = articleImage(article.slug, article.image);
 
   return (

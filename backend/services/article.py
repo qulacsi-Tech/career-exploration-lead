@@ -27,6 +27,7 @@ def _related_slugs(article: Article) -> List[str]:
 
 def _to_list_schema(article: Article) -> ArticleListSchema:
     return ArticleListSchema(
+        publicId=article.public_id or 0,
         slug=article.slug,
         title=article.title,
         excerpt=article.excerpt,
@@ -41,6 +42,7 @@ def _to_list_schema(article: Article) -> ArticleListSchema:
 
 def _to_detail_schema(article: Article) -> ArticleDetailSchema:
     return ArticleDetailSchema(
+        publicId=article.public_id or 0,
         slug=article.slug,
         title=article.title,
         excerpt=article.excerpt,
