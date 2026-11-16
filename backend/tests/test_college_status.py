@@ -29,13 +29,15 @@ async def test_draft_publish_archive_delete(client, world):
         r = await client.get(f"{API}/admin/colleges?q={slug[-6:]}&limit=50", headers=h)
         assert [c["status"] for c in r.json()["data"] if c["slug"] == slug] == ["draft"]
         assert (await client.get(f"{API}/colleges/{slug}")).status_code == 404
-        assert slug not in (await client.get(f"{API}/sitemap/colleges")).json()["data"]
+        # The sitemap lists colleges by their address, "<slug>-<public id>".
+        assert not [k for k in (await client.get(f"{API}/sitemap/colleges")).json()["data"] if k.startswith(f"{slug}-")]
         assert slug not in {c["slug"] for c in (await client.get(f"{API}/colleges?limit=50")).json()["data"]}
 
         r = await client.patch(f"{API}/admin/colleges/{slug}/status", json={"status": "published"}, headers=h)
         assert r.status_code == 200
-        assert (await client.get(f"{API}/colleges/{slug}")).status_code == 200
-        assert slug in (await client.get(f"{API}/sitemap/colleges")).json()["data"]
+        r = await client.get(f"{API}/colleges/{slug}")
+        assert r.status_code == 200
+        assert f"{slug}-{r.json()['data']['publicId']}" in (await client.get(f"{API}/sitemap/colleges")).json()["data"]
 
         # a published college cannot be deleted in one click
         r = await client.delete(f"{API}/admin/colleges/{slug}", headers=h)
