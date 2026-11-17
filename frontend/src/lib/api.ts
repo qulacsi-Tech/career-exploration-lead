@@ -184,7 +184,7 @@ export type CollegeStatus = "draft" | "published" | "archived";
 
 export type College = {
   slug: string;
-  /** The number after the slug in its address: /college/<slug>-<publicId>. */
+  /** The number at the start of its address: /college/<publicId>-<slug>. */
   publicId?: number;
   name: string;
   /** The default priority set in the admin: 1 is shown first. Absent: after those that have one, by NIRF rank. */
@@ -234,7 +234,7 @@ export type College = {
 
 export type Exam = {
   slug: string;
-  /** The number after the slug in its address: /exams/<slug>-<publicId>. */
+  /** The number at the start of its address: /exams/<publicId>-<slug>. */
   publicId?: number;
   name: string;
   /** Where space is tight. Empty or absent: the full name. */
@@ -253,6 +253,8 @@ export type Exam = {
   sections?: string[];
   /** The category the exam is listed under (a name from the Fields list). Empty or absent: none. */
   stream?: string;
+  /** Its place on the exams listing, set in the admin: 1 is first. Null or absent: the usual order. */
+  listingPriority?: number | null;
   /** Detail page content, written in the admin. Empty or absent: the page leaves the section out. */
   eligibility?: string;
   syllabus?: string;
@@ -355,7 +357,7 @@ export type Article = {
   /** The article's picture: /images/... or /api/uploads/... Empty or absent: none. */
   image?: string;
   slug: string;
-  /** The number after the slug in its address: /articles/<slug>-<publicId>. */
+  /** The number at the start of its address: /articles/<publicId>-<slug>. */
   publicId?: number;
   title: string;
   excerpt: string;
@@ -739,6 +741,13 @@ export async function getSimilarColleges(
 }
 
 /** All college slugs — used by generateStaticParams at build time. */
+export type PublicIdKind = "college" | "exam" | "article";
+
+/** The slug a page's number belongs to (/college/29-iit-bombay is college 29). A 404 when there is none. */
+export async function getSlugForPublicId(kind: PublicIdKind, publicId: number): Promise<string> {
+  return (await apiFetch<{ slug: string }>(`/public-ids/${kind}/${publicId}`, 0)).slug;
+}
+
 export async function getCollegeSlugs(): Promise<string[]> {
   return apiFetch<string[]>("/colleges/slugs");
 }
@@ -2385,6 +2394,11 @@ export async function adminCreateExam(token: string, body: Record<string, unknow
 /** Admin: every exam, archived ones included. */
 export async function adminGetExams(token: string): Promise<Exam[]> {
   return adminRequest<Exam[]>(token, "GET", "/admin/exams");
+}
+
+/** Sets the exams' places on the listing in one go: slug -> place (1 is first), or null to take it off. */
+export async function adminSetExamPriorities(token: string, priorities: Record<string, number | null>) {
+  return adminRequest<{ message: string }>(token, "PUT", "/admin/exam-priorities", { priorities });
 }
 
 /** Admin: partial update of an exam. Only the keys present are changed. */

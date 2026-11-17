@@ -452,7 +452,7 @@ function CommunitiesView({ overview, act, pending }: { overview: AdminCommunityO
     return (
       <p className="rounded-xl border border-dashed border-line bg-bg-alt px-6 py-10 text-center text-sm text-ink-soft">
         <MessagesSquare className="mx-auto mb-2 h-6 w-6 text-ink-faint" />
-        No communities yet. The first student to open an exam&apos;s community page can start one.
+        No communities yet. Each exam gets one when it is added.
       </p>
     );
   }
@@ -462,7 +462,6 @@ function CommunitiesView({ overview, act, pending }: { overview: AdminCommunityO
         <thead className="bg-bg-alt text-left text-xs font-semibold text-ink-soft">
           <tr>
             <th className="px-4 py-2.5">Exam</th>
-            <th className="px-3 py-2.5">Started by</th>
             <th className="px-3 py-2.5 text-right">Members</th>
             <th className="px-3 py-2.5 text-right">Posts</th>
             <th className="px-3 py-2.5 text-right">Hidden</th>
@@ -477,7 +476,6 @@ function CommunitiesView({ overview, act, pending }: { overview: AdminCommunityO
                 <p className="font-semibold text-ink">{c.examName}</p>
                 <p className="text-xs text-ink-faint">Since {when(c.createdAt)}</p>
               </td>
-              <td className="px-3 py-3 text-ink-soft">{c.startedBy || "—"}</td>
               <td className="px-3 py-3 text-right">{c.members}</td>
               <td className="px-3 py-3 text-right">
                 <Link href={hrefFor("posts", { page: 1 }, { community: c.id })} className="font-semibold text-brand hover:underline">
@@ -520,11 +518,11 @@ function CommunitiesView({ overview, act, pending }: { overview: AdminCommunityO
                   <button
                     type="button"
                     disabled={pending}
-                    onClick={() => act(() => deleteCommunity(c.id), `Delete the ${c.examName} community with every post, reply and membership? This cannot be undone.`)}
+                    onClick={() => act(() => deleteCommunity(c.id), `Clear the ${c.examName} community? Every post, reply and membership goes; the exam keeps an empty community. This cannot be undone.`)}
                     className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-ink-soft hover:border-red-400 hover:text-red-700"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete
+                    Clear
                   </button>
                 </span>
               </td>

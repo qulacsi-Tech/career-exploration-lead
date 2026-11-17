@@ -1,14 +1,15 @@
-"""Exam communities: starting one, joining, posting, replying, reacting, and the platform team's moderation.
+"""Exam communities: joining, posting, replying, reacting, and the platform team's moderation.
 
 The rules:
-  - One community per exam. The first signed-in student who asks for it starts it and is its first member.
+  - One community per exam, made by the platform when the exam is added (see ensure_community). Students do not
+    start communities; any signed-in student joins one directly.
   - Members post: a discussion, a question, a suggestion, a banner (with an image) or an achievement.
   - Any signed-in student can reply and react. A student who has not joined can still read and reply.
   - A visitor who is not signed in sees the first GUEST_POSTS posts (and a few replies on each); the rest needs an
     account. The cut is made here, so the page cannot be asked for more.
   - The platform team sees everything in the admin. It can hide or delete a post or reply, restrict a whole
     community (hidden from the site, kept in the admin), and flag or block a student. A blocked student can read
-    but cannot start a community, join, post, reply or react.
+    but cannot join, post, reply or react.
   - Admin accounts do not take part on the site; they moderate from the admin.
 """
 
@@ -22,10 +23,11 @@ from fastapi import APIRouter, File, Query, UploadFile
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.exc import IntegrityError
 
 from core.config import settings
 from core.dependencies import AdminPayload, CurrentUserId, DbSession, OptionalUserId
-from core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
+from core.exceptions import ForbiddenError, NotFoundError, ValidationError
 from models.community import (
     Community,
     CommunityMember,
@@ -143,6 +145,22 @@ async def _within_limit(db, model, user_id, limit: int, what: str) -> None:
         raise ValidationError(f"You have reached today's limit of {limit} {what}. Please try again tomorrow.")
 
 
+async def ensure_community(db, exam: Exam) -> Community:
+    """The exam's community, made now if it has none. Called when an exam is added, and as a safety net when a
+    community page is opened (an exam inserted some other way, such as by the seed script). Does not commit."""
+    community = (await db.execute(select(Community).where(Community.exam_id == exam.id))).scalar_one_or_none()
+    if community is not None:
+        return community
+    community = Community(exam_id=exam.id, description="", created_by=None)
+    try:
+        async with db.begin_nested():
+            db.add(community)
+    except IntegrityError:
+        # Made a moment ago by another request: the unique index on exam_id keeps one.
+        community = (await db.execute(select(Community).where(Community.exam_id == exam.id))).scalar_one()
+    return community
+
+
 # ── Reading ─────────────────────────────────────────────────────────────────
 
 
@@ -174,9 +192,12 @@ async def list_communities(db: DbSession):
 
 @router.get("/exams/{slug}/community", response_model=SuccessResponse[dict])
 async def exam_community(slug: str, db: DbSession, user_id: OptionalUserId):
-    """The exam's community (null when nobody has started it yet), and what the caller can do there."""
+    """The exam's community, and what the caller can do there. Every exam has one (made with the exam)."""
     exam = await _exam_by_slug(db, slug)
     community = (await db.execute(select(Community).where(Community.exam_id == exam.id))).scalar_one_or_none()
+    if community is None:
+        community = await ensure_community(db, exam)
+        await db.commit()
     status = await _status_of(db, user_id)
     blocked = bool(status and status.is_blocked)
     admin = False
@@ -185,8 +206,6 @@ async def exam_community(slug: str, db: DbSession, user_id: OptionalUserId):
         admin = bool(user and user.role in PANEL_ROLES)
     viewer = {"signedIn": bool(user_id), "blocked": blocked, "adminAccount": admin, "member": False}
 
-    if community is None:
-        return SuccessResponse[dict](data={"exam": {"slug": exam.slug, "name": exam.name}, "community": None, "restricted": False, "viewer": viewer})
     if community.is_restricted:
         return SuccessResponse[dict](data={"exam": {"slug": exam.slug, "name": exam.name}, "community": None, "restricted": True, "viewer": viewer})
 
@@ -314,31 +333,6 @@ async def community_posts(
 
 
 # ── Taking part ─────────────────────────────────────────────────────────────
-
-
-class StartBody(BaseModel):
-    description: str = Field(default="", max_length=600)
-    model_config = ConfigDict(extra="forbid")
-
-
-@router.post("/exams/{slug}/community", response_model=SuccessResponse[dict], status_code=201)
-async def start_community(slug: str, data: StartBody, user_id: CurrentUserId, db: DbSession):
-    """Starts the exam's community. Only the first ask succeeds; after that it exists and the student joins it instead."""
-    await _participant(db, user_id)
-    exam = await _exam_by_slug(db, slug)
-    existing = (await db.execute(select(Community).where(Community.exam_id == exam.id))).scalar_one_or_none()
-    if existing is not None:
-        raise ConflictError("COMMUNITY_EXISTS", "This exam already has a community. Join it instead.")
-    community = Community(exam_id=exam.id, description=data.description.strip(), created_by=user_id)
-    db.add(community)
-    try:
-        await db.flush()
-    except Exception:  # noqa: BLE001  Two students at the same moment: the unique index keeps one.
-        await db.rollback()
-        raise ConflictError("COMMUNITY_EXISTS", "This exam already has a community. Join it instead.")
-    db.add(CommunityMember(community_id=community.id, user_id=user_id))
-    await db.commit()
-    return SuccessResponse[dict](data={"id": str(community.id), "message": f"The {exam.name} community is open. You are its first member."})
 
 
 @router.post("/communities/{community_id}/join", response_model=SuccessResponse[dict])
@@ -714,13 +708,20 @@ async def admin_restrict_community(community_id: str, data: RestrictBody, _admin
 
 @router.delete("/admin/community/communities/{community_id}", response_model=SuccessResponse[dict])
 async def admin_delete_community(community_id: str, _admin: AdminPayload, db: DbSession):
-    """Deletes the community with every post, reply, reaction and membership. The next student can start it afresh."""
+    """Clears the community: every post, reply, reaction and membership goes. The exam keeps a community, so a fresh,
+    empty one takes its place (restricted if this one was)."""
     community = await db.get(Community, _uuid(community_id, "Community"))
     if community is None:
         raise NotFoundError("Community")
+    exam = await db.get(Exam, community.exam_id)
+    restricted = bool(community.is_restricted)
     await db.delete(community)
+    await db.flush()
+    if exam is not None:
+        fresh = await ensure_community(db, exam)
+        fresh.is_restricted = restricted
     await db.commit()
-    return SuccessResponse[dict](data={"message": "Community deleted."})
+    return SuccessResponse[dict](data={"message": "Community cleared: its posts, replies and members are gone."})
 
 
 @router.get("/admin/community/users", response_model=SuccessResponse[dict])

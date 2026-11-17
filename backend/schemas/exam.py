@@ -44,6 +44,8 @@ class ExamSchema(BaseModel):
     image: str = ""
     # The badge on the card: Upcoming, Live, Expired or any words. Empty: no badge.
     statusLabel: str = ""
+    # Place on the exams listing: 1 is first. None: the usual order.
+    listingPriority: Optional[int] = None
     # SEO set in the admin (metaTitle, canonical, metaDescription, ogImage, schemaType, robots). Empty: site defaults.
     seo: Dict[str, str] = {}
     # True when archived: hidden from the public site (only the admin list returns these).

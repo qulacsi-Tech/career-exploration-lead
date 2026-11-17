@@ -6,6 +6,25 @@ import { useTableTools } from "@/components/admin/table-tools";
 
 export type PriorityRow = { slug: string; name: string; city: string; rank: number | null; value: string };
 
+/** The words for what is being ordered. Colleges are the default; the exams page passes its own. */
+export type PriorityWords = {
+  /** "institute": in "Take the priority off …", "No institute matches". */
+  one: string;
+  /** "Institutes": the picker's label and the table's column. */
+  many: string;
+  /** "City": the line under each name and its column. */
+  detail: string;
+  /** Under the picker: what happens when several share a number. */
+  sharedNote: string;
+};
+
+export const INSTITUTE_WORDS: PriorityWords = {
+  one: "institute",
+  many: "Institutes",
+  detail: "City",
+  sharedNote: "Several institutes can hold the same priority: on every visit one of them takes that place and the rest follow right after.",
+};
+
 const selectCls = "rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none";
 
 /**
@@ -22,12 +41,15 @@ export function PriorityAssigner({
   setRows,
   showRank,
   truncated,
+  words = INSTITUTE_WORDS,
 }: {
   rows: PriorityRow[];
   setRows: Dispatch<SetStateAction<PriorityRow[] | null>>;
   showRank: boolean;
   truncated: boolean;
+  words?: PriorityWords;
 }) {
+  const many = words.many.toLowerCase();
   const [place, setPlace] = useState("1");
   const [open, setOpen] = useState(false);
   const [find, setFind] = useState("");
@@ -60,7 +82,7 @@ export function PriorityAssigner({
   const table = useTableTools<PriorityRow>({
     rows: assigned,
     search: (r) => `${r.name} ${r.city}`,
-    placeholder: "Search the assigned institutes",
+    placeholder: `Search the assigned ${many}`,
     initialSort: { key: "priority", dir: "asc" },
     sorts: {
       priority: (r) => Number(r.value),
@@ -93,32 +115,32 @@ export function PriorityAssigner({
           </div>
 
           <div ref={box} className="relative">
-            <span className="block text-xs font-semibold text-ink">Institutes for priority {place}</span>
+            <span className="block text-xs font-semibold text-ink">{words.many} for priority {place}</span>
             <button
               type="button"
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
               className={`mt-1.5 flex w-full items-center justify-between gap-2 ${selectCls} text-left`}
             >
-              <span className="truncate">{here === 0 ? "Choose institutes…" : `${here} chosen for priority ${place}`}</span>
+              <span className="truncate">{here === 0 ? `Choose ${many}…` : `${here} chosen for priority ${place}`}</span>
               <ChevronDown className={`h-4 w-4 shrink-0 text-ink-faint transition ${open ? "rotate-180" : ""}`} aria-hidden="true" />
             </button>
 
             {open && (
               <div className="absolute z-30 mt-1 w-full rounded-xl border border-line bg-surface shadow-xl">
                 <label className="relative block border-b border-line p-2">
-                  <span className="sr-only">Search institutes</span>
+                  <span className="sr-only">Search {many}</span>
                   <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" aria-hidden="true" />
                   <input
                     value={find}
                     onChange={(e) => setFind(e.target.value)}
-                    placeholder="Search by name or city"
+                    placeholder={`Search by name or ${words.detail.toLowerCase()}`}
                     autoFocus
                     className="w-full rounded-lg border border-line bg-bg py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
                   />
                 </label>
                 <ul role="listbox" aria-multiselectable className="max-h-64 overflow-y-auto py-1">
-                  {pickable.length === 0 && <li className="px-4 py-3 text-sm text-ink-soft">No institute matches.</li>}
+                  {pickable.length === 0 && <li className="px-4 py-3 text-sm text-ink-soft">No {words.one} matches.</li>}
                   {pickable.map((r) => {
                     const on = r.value === place;
                     return (
@@ -138,14 +160,14 @@ export function PriorityAssigner({
                   })}
                 </ul>
                 <div className="flex items-center justify-between border-t border-line px-4 py-2 text-xs text-ink-faint">
-                  <span>Tick to give the institute priority {place}; tick again to take it off.</span>
+                  <span>Tick to give the {words.one} priority {place}; tick again to take it off.</span>
                   <button type="button" onClick={() => setOpen(false)} className="font-semibold text-brand hover:underline">Done</button>
                 </div>
               </div>
             )}
           </div>
         </div>
-        <p className="mt-2 text-xs text-ink-faint">Several institutes can hold the same priority: on every visit one of them takes that place and the rest follow right after.</p>
+        <p className="mt-2 text-xs text-ink-faint">{words.sharedNote}</p>
       </div>
 
       <div className="space-y-2">
@@ -161,7 +183,7 @@ export function PriorityAssigner({
         </div>
 
         {assigned.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">No priority is set here yet. Choose a priority above, then tick the institutes that should hold it.</p>
+          <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-ink-soft">No priority is set here yet. Choose a priority above, then tick the {many} that should hold it.</p>
         ) : (
           <>
             {table.toolbar}
@@ -170,15 +192,15 @@ export function PriorityAssigner({
                 <thead className="sticky top-0 bg-surface text-xs">
                   <tr className="border-b border-line">
                     {table.th("priority", "Priority", "w-40 px-3 py-2")}
-                    {table.th("institute", "Institute", "px-3 py-2")}
-                    {table.th("city", "City", "px-3 py-2")}
+                    {table.th("institute", words.one[0].toUpperCase() + words.one.slice(1), "px-3 py-2")}
+                    {table.th("city", words.detail, "px-3 py-2")}
                     {showRank && table.th("rank", "NIRF", "px-3 py-2")}
                     <th scope="col" className="w-12 px-3 py-2"><span className="sr-only">Remove</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   {table.rows.length === 0 && (
-                    <tr><td colSpan={5} className="px-3 py-6 text-center text-sm text-ink-soft">No assigned institute matches.</td></tr>
+                    <tr><td colSpan={5} className="px-3 py-6 text-center text-sm text-ink-soft">No assigned {words.one} matches.</td></tr>
                   )}
                   {table.rows.map((r) => (
                     <tr key={r.slug} className="border-b border-line-soft last:border-b-0">

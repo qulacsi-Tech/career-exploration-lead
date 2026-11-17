@@ -37,6 +37,7 @@ def _to_schema(exam: Exam) -> ExamSchema:
         collegePriority=dict(exam.college_priority or {}),
         image=exam.image or "",
         statusLabel=exam.status_label or "",
+        listingPriority=exam.listing_priority,
         seo=dict(exam.seo or {}),
         archived=bool(exam.archived),
         dataIssues=data_issues(exam.registration_closes, exam.exam_date, exam.application_fee),

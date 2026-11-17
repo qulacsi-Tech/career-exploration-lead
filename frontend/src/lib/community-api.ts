@@ -17,8 +17,8 @@ export type CommunityViewer = { signedIn: boolean; blocked: boolean; adminAccoun
 
 export type ExamCommunity = {
   exam: { slug: string; name: string };
-  /** Null: nobody has started it yet (or the team restricted it: `restricted`). */
-  community: { id: string; description: string; members: number; posts: number; startedBy: string | null; createdAt: string | null } | null;
+  /** Null only when the team has restricted it (`restricted`): every exam has a community, made with the exam. */
+  community: { id: string; description: string; members: number; posts: number; createdAt: string | null } | null;
   restricted: boolean;
   viewer: CommunityViewer;
 };
@@ -58,7 +58,9 @@ async function send<T>(method: string, path: string, token: string | null, body?
 /** Every open community, for the exams listing. A failure is an empty list: the listing still renders. */
 export async function getCommunities(): Promise<CommunitySummary[]> {
   try {
-    return await send<CommunitySummary[]>("GET", "/communities", null);
+    // Cached for a minute (and refreshed at once when a student posts), so the exam pages that show the count stay static.
+    const res = await fetch(`${API_BASE}/communities`, { next: { revalidate: 60, tags: ["communities"] } });
+    return await apiJson<CommunitySummary[]>(res);
   } catch {
     return [];
   }
@@ -75,9 +77,6 @@ export function getCommunityPosts(communityId: string, token: string | null, opt
   const query = qs.toString() ? `?${qs}` : "";
   return send<CommunityPostsPage>("GET", `/communities/${encodeURIComponent(communityId)}/posts${query}`, token);
 }
-
-export const postStartCommunity = (examSlug: string, description: string, token: string) =>
-  send<{ id: string; message: string }>("POST", `/exams/${encodeURIComponent(examSlug)}/community`, token, { description });
 
 export const postJoin = (communityId: string, token: string) => send<{ member: boolean }>("POST", `/communities/${encodeURIComponent(communityId)}/join`, token);
 export const deleteJoin = (communityId: string, token: string) => send<{ member: boolean }>("DELETE", `/communities/${encodeURIComponent(communityId)}/join`, token);

@@ -1,8 +1,8 @@
 """Exam communities, through the real app against the real database.
 
-What they protect: one community per exam; only members post; a visitor who is not signed in reads only the first
-few posts; hidden content and restricted communities leave the site; a blocked student can still read but cannot
-take part; only the platform team moderates.
+What they protect: every exam gets its community when it is added (students do not start them); only members post;
+a visitor who is not signed in reads only the first few posts; hidden content and restricted communities leave the
+site; a blocked student can still read but cannot take part; only the platform team moderates.
 """
 
 import uuid
@@ -16,18 +16,16 @@ from models.community import Community, CommunityUserStatus
 from models.exam import Exam
 from models.user import User, UserRole
 from routers.community import GUEST_POSTS
-from tests.conftest import PASSWORD, _person, bearer
+from tests.conftest import PASSWORD, _person
 
 V1 = "/api/v1"
 
 
 @pytest_asyncio.fixture(scope="module")
 async def cast():
-    """Two students and a platform admin, and an exam that has no community yet. All removed afterwards."""
+    """Two students and a platform admin, and the slug for an exam the test adds. All removed afterwards."""
     tag = uuid.uuid4().hex[:8]
     async with AsyncSessionLocal() as db:
-        taken = select(Community.exam_id)
-        exam = (await db.execute(select(Exam).where(Exam.archived.is_(False), Exam.id.not_in(taken)).limit(1))).scalar_one()
 
         def make(role: UserRole, label: str) -> User:
             return User(
@@ -38,12 +36,13 @@ async def cast():
         first, second, admin = make(UserRole.USER, "first"), make(UserRole.USER, "second"), make(UserRole.ADMIN, "admin")
         db.add_all([first, second, admin])
         await db.commit()
-        people = {"exam": exam.slug, "exam_id": exam.id, "first": _person(first), "second": _person(second), "admin": _person(admin)}
+        people = {"exam": f"comm-exam-{tag}", "tag": tag, "first": _person(first), "second": _person(second), "admin": _person(admin)}
 
     yield people
 
     async with AsyncSessionLocal() as db:
-        await db.execute(delete(Community).where(Community.exam_id == people["exam_id"]))
+        # Deleting the exam takes its community, posts and memberships with it.
+        await db.execute(delete(Exam).where(Exam.slug == people["exam"]))
         ids = [people[k].id for k in ("first", "second", "admin")]
         await db.execute(delete(CommunityUserStatus).where(CommunityUserStatus.user_id.in_(ids)))
         await db.execute(delete(User).where(User.id.in_(ids)))
@@ -54,24 +53,29 @@ async def test_community_lifecycle(client, cast):
     exam = cast["exam"]
     first, second, admin = cast["first"], cast["second"], cast["admin"]
 
-    # Nobody has started it yet.
+    # Adding the exam makes its community: nobody has to start it.
+    body = {"slug": exam, "name": f"Community Check Exam {cast['tag']}", "conductingBody": "Test Board", "level": "National", "description": "Test."}
+    assert (await client.post(f"{V1}/admin/exams", json=body, headers=admin.h)).status_code == 201
+    async with AsyncSessionLocal() as db:
+        exam_id = (await db.execute(select(Exam.id).where(Exam.slug == exam))).scalar_one()
+        assert (await db.execute(select(Community).where(Community.exam_id == exam_id))).scalar_one_or_none() is not None
     r = await client.get(f"{V1}/exams/{exam}/community")
-    assert r.status_code == 200 and r.json()["data"]["community"] is None
+    assert r.status_code == 200, r.text
+    community = r.json()["data"]["community"]
+    assert community is not None and community["members"] == 0 and community["startedBy"] is None
+    cid = community["id"]
+    assert cid in [c["id"] for c in (await client.get(f"{V1}/communities")).json()["data"]]
 
-    # Starting one needs an account; an admin account cannot.
-    assert (await client.post(f"{V1}/exams/{exam}/community", json={})).status_code == 401
-    assert (await client.post(f"{V1}/exams/{exam}/community", json={}, headers=admin.h)).status_code == 403
+    # Students cannot make one themselves any more.
+    assert (await client.post(f"{V1}/exams/{exam}/community", json={}, headers=first.h)).status_code == 405
 
-    # The first student starts it; the second cannot start another.
-    r = await client.post(f"{V1}/exams/{exam}/community", json={"description": "Help each other"}, headers=first.h)
-    assert r.status_code == 201, r.text
-    cid = r.json()["data"]["id"]
-    assert (await client.post(f"{V1}/exams/{exam}/community", json={}, headers=second.h)).status_code == 409
-
-    # Only members post. The founder is one already.
+    # Any student joins directly; only members post; an admin account cannot join.
     post = {"kind": "discussion", "title": "", "body": "Which mock series is worth it?", "image": ""}
     assert (await client.post(f"{V1}/communities/{cid}/posts", json=post, headers=second.h)).status_code == 403
-    assert (await client.post(f"{V1}/communities/{cid}/join", headers=second.h)).status_code == 200
+    assert (await client.post(f"{V1}/communities/{cid}/join")).status_code == 401
+    assert (await client.post(f"{V1}/communities/{cid}/join", headers=admin.h)).status_code == 403
+    for who in (first, second):
+        assert (await client.post(f"{V1}/communities/{cid}/join", headers=who.h)).status_code == 200
     r = await client.get(f"{V1}/exams/{exam}/community", headers=second.h)
     assert r.json()["data"]["viewer"]["member"] is True and r.json()["data"]["community"]["members"] == 2
 
@@ -147,3 +151,10 @@ async def test_community_lifecycle(client, cast):
     assert cid not in [c["id"] for c in (await client.get(f"{V1}/communities")).json()["data"]]
     overview = (await client.get(f"{V1}/admin/community/overview", headers=admin.h)).json()["data"]
     assert any(c["id"] == cid and c["restricted"] for c in overview["communities"])
+
+    # Clearing it empties it; the exam keeps a community (still restricted), so it never goes missing.
+    r = await client.delete(f"{V1}/admin/community/communities/{cid}", headers=admin.h)
+    assert r.status_code == 200, r.text
+    overview = (await client.get(f"{V1}/admin/community/overview", headers=admin.h)).json()["data"]
+    fresh = [c for c in overview["communities"] if c["examSlug"] == exam]
+    assert len(fresh) == 1 and fresh[0]["id"] != cid and fresh[0]["restricted"] and fresh[0]["posts"] == 0 and fresh[0]["members"] == 0

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { requireAdminToken } from "@/lib/admin-session";
@@ -22,7 +22,9 @@ async function moderate(call: (token: string) => Promise<{ message: string }>): 
   try {
     const { message } = await call(token);
     revalidatePath("/admin/community");
+    updateTag("communities");
     revalidatePath("/exams/[slug]/community", "page");
+    revalidatePath("/exams/[slug]", "page");
     revalidatePath("/exams");
     return { ok: true, message };
   } catch (err) {

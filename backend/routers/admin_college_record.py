@@ -563,6 +563,12 @@ async def save_record(slug: str, _admin: AdminPayload, db: DbSession, body: dict
 
     await _resolve_exams(db, data, row)
 
+    # A new name or city may not make it a second college of the same name in the same city.
+    from core.duplicates import ensure_unique_college, same
+
+    if (same(data.name), same(data.city)) != (same(row.name), same(row.city)):
+        await ensure_unique_college(db, data.name, data.city, exclude=row.id)
+
     row.name = data.name.strip()
     row.city = data.city.strip()
     row.state = data.state.strip()

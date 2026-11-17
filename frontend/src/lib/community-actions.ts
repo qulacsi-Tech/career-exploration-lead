@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { ApiError } from "@/lib/api";
 import { getUserToken } from "@/lib/user-session";
 import {
@@ -11,7 +11,6 @@ import {
   postCommunityPost,
   postCommunityReply,
   postJoin,
-  postStartCommunity,
   putReaction,
   uploadCommunityImage,
   type CommunityPostsPage,
@@ -41,7 +40,10 @@ async function run<T extends object>(call: (token: string) => Promise<T>, fallba
 }
 
 const refresh = () => {
+  // The post and member counts are on the exam pages (the Community tab) and the exams listing.
+  updateTag("communities");
   revalidatePath("/exams/[slug]/community", "page");
+  revalidatePath("/exams/[slug]", "page");
   revalidatePath("/exams");
 };
 
@@ -53,12 +55,6 @@ export async function loadCommunityPosts(communityId: string, offset: number, ki
   } catch (err) {
     return { ok: false, message: err instanceof ApiError ? err.message : "Could not load posts. Please try again." };
   }
-}
-
-export async function startCommunity(examSlug: string, description: string) {
-  const result = await run((t) => postStartCommunity(examSlug, description.trim().slice(0, 600), t), "Could not start the community. Please try again.");
-  if (result.ok) refresh();
-  return result;
 }
 
 export async function joinCommunity(communityId: string, join: boolean) {

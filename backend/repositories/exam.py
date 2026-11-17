@@ -42,7 +42,8 @@ class ExamRepository:
         return result.scalar_one_or_none()
 
     async def list_all(self) -> List[Exam]:
-        result = await self.db.execute(select(Exam).order_by(Exam.name))
+        # Newest first, so an exam just added is at the top of the admin table. The public id breaks ties (seeded rows share a time).
+        result = await self.db.execute(select(Exam).order_by(Exam.created_at.desc(), Exam.public_id.desc()))
         return list(result.scalars())
 
     async def get_featured(self, limit: int = 6) -> List[Exam]:

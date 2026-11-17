@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 };
 
 const SORTS = [
+  { key: "recommended", label: "Recommended" },
   { key: "deadline", label: "Registration deadline" },
   { key: "date", label: "Exam date" },
   { key: "name", label: "Name (A–Z)" },
@@ -34,12 +35,36 @@ const when = (text: string) => {
   return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
 };
 
-function sortExams(list: Exam[], sort: string) {
+/**
+ * Where an exam stands, by its dates: still open with a date (0), no registration date yet, shown as Upcoming (1),
+ * or registration over (2). Closed exams go to the bottom of every order except A–Z.
+ */
+function stage(exam: Exam, now: number): 0 | 1 | 2 {
+  const days = daysUntil(exam.registrationCloses, now);
+  if (days === null) return 1;
+  return days < 0 ? 2 : 0;
+}
+
+/** The exam's own date, or its registration deadline when the exam date is not set yet. */
+const happening = (exam: Exam) => Math.min(when(exam.examDate), when(exam.registrationCloses));
+
+function sortExams(list: Exam[], sort: string, now: number) {
   const out = [...list];
-  if (sort === "name") out.sort((a, b) => a.name.localeCompare(b.name));
-  else if (sort === "date") out.sort((a, b) => when(a.examDate) - when(b.examDate));
-  else out.sort((a, b) => when(a.registrationCloses) - when(b.registrationCloses));
-  return out;
+  if (sort === "name") return out.sort((a, b) => a.name.localeCompare(b.name));
+  const closedLast = (a: Exam, b: Exam) => Number(stage(a, now) === 2) - Number(stage(b, now) === 2);
+  if (sort === "date") return out.sort((a, b) => closedLast(a, b) || when(a.examDate) - when(b.examDate));
+  if (sort === "deadline") return out.sort((a, b) => closedLast(a, b) || when(a.registrationCloses) - when(b.registrationCloses));
+  // Recommended, the default: the admin's priority first (1 is first); then the soonest exam, then the ones with no
+  // date yet, then the closed ones, most recently closed first.
+  const rank = (e: Exam) => (e.listingPriority && e.listingPriority > 0 ? e.listingPriority : Number.POSITIVE_INFINITY);
+  return out.sort((a, b) => {
+    const byPriority = rank(a) - rank(b);
+    if (byPriority) return byPriority;
+    const byStage = stage(a, now) - stage(b, now);
+    if (byStage) return byStage;
+    if (stage(a, now) === 2) return happening(b) - happening(a);
+    return happening(a) - happening(b) || a.name.localeCompare(b.name);
+  });
 }
 
 /** When the page is read: the listing is rendered per request, so this is the visitor's moment. */
@@ -92,7 +117,7 @@ export default async function ExamsIndexPage({
   const level = str("level");
   const mode = str("mode");
   const status = str("status");
-  const sort = str("sort") ?? "deadline";
+  const sort = SORTS.some((s) => s.key === str("sort")) ? (str("sort") as string) : "recommended";
 
   const q = str("q")?.slice(0, 100);
   const needle = q?.toLowerCase();
@@ -106,6 +131,7 @@ export default async function ExamsIndexPage({
         (!needle || `${e.name} ${e.shortName ?? ""} ${e.conductingBody} ${e.stream ?? ""}`.toLowerCase().includes(needle)),
     ),
     sort,
+    now,
   );
 
   const search = new URLSearchParams();
