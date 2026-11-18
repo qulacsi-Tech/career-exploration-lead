@@ -814,20 +814,17 @@ function AddCollegeForm({ onDone, onDirty, geo, streams, pools }: { onDone: (for
   const [categories, setCategories] = useState<string[]>([]);
   const [picked, setPicked] = useState<CoursePick[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [duplicate, setDuplicate] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; established?: string; feesRange?: string }>({});
   const [pending, startTransition] = useTransition();
-  const lastForm = useRef<FormData | null>(null);
 
-  const send = (form: FormData, confirmDuplicate: boolean) => {
-    if (confirmDuplicate) form.set("confirmDuplicate", "1");
+  const send = (form: FormData) => {
     setError(null);
-    setDuplicate(false);
     startTransition(async () => {
       const result = await createCollege(undefined, form);
       if ("ok" in result) return onDone(form);
       setError(result.error);
-      setDuplicate("duplicate" in result);
+      // The same name already exists in this city: point at the name.
+      if (/^A college named/.test(result.error)) setFieldErrors((f) => ({ ...f, name: "This name is already used in this city." }));
     });
   };
 
@@ -846,8 +843,7 @@ function AddCollegeForm({ onDone, onDirty, geo, streams, pools }: { onDone: (for
     setFieldErrors(problems);
     if (Object.values(problems).some(Boolean)) return setError("Fix the highlighted fields and try again.");
 
-    lastForm.current = form;
-    send(form, false);
+    send(form);
   };
 
   return (
@@ -860,16 +856,6 @@ function AddCollegeForm({ onDone, onDirty, geo, streams, pools }: { onDone: (for
       {error && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:col-span-2">
           {error}
-          {duplicate && (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => lastForm.current && send(lastForm.current, true)}
-              className="ml-3 rounded-lg border border-red-700 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-700 hover:text-white disabled:opacity-50"
-            >
-              Add anyway
-            </button>
-          )}
         </div>
       )}
       {pending && <p className="text-xs text-ink-soft sm:col-span-2">Saving…</p>}

@@ -304,9 +304,9 @@ class CollegeRepository:
         }
 
     async def get_all_slugs(self) -> List[str]:
-        """Every published college as `<slug>-<public id>` (its page address) — used by Next.js generateStaticParams."""
+        """Every published college as `<public id>-<slug>` (its page address) — used by Next.js generateStaticParams."""
         result = await self.db.execute(select(College.slug, College.public_id).where(College.status == "published"))
-        return [f"{s}-{i}" for s, i in result.all()]
+        return [f"{i}-{s}" for s, i in result.all()]
 
     async def get_featured(self, limit: int = 6) -> List[College]:
         """Return featured colleges ordered by rating."""

@@ -17,7 +17,7 @@ class Exam(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String(200), nullable=False, unique=True, index=True)
-    # The short number in the page's address (/x/<slug>-<public_id>). The UUID stays the key.
+    # The short number in the page's address (/x/<public_id>-<slug>). The UUID stays the key.
     public_id = Column(Integer, Sequence("exams_public_id_seq"), nullable=False, unique=True, index=True)
     name = Column(String(500), nullable=False)
     # Used where space is tight (menus, headings). Empty: the full name.
@@ -50,6 +50,8 @@ class Exam(Base):
     image = Column(String(200), nullable=False, default="", server_default="")
     # The badge on the exam's card: Upcoming, Live, Expired or any words. Empty: no badge.
     status_label = Column(String(40), nullable=False, default="", server_default="")
+    # Place on the exams listing set in the admin: 1 is first. Null: the usual order (soonest exam first).
+    listing_priority = Column(Integer, nullable=True)
     # SEO set in the admin: metaTitle, canonical, metaDescription, ogImage, schemaType, robots. Empty: site defaults.
     seo = Column(JSONB, nullable=False, default=dict, server_default="{}")
     # Archived exams are hidden from the public site; the admin can restore them.

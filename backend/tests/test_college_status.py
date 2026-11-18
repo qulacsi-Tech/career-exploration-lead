@@ -29,15 +29,15 @@ async def test_draft_publish_archive_delete(client, world):
         r = await client.get(f"{API}/admin/colleges?q={slug[-6:]}&limit=50", headers=h)
         assert [c["status"] for c in r.json()["data"] if c["slug"] == slug] == ["draft"]
         assert (await client.get(f"{API}/colleges/{slug}")).status_code == 404
-        # The sitemap lists colleges by their address, "<slug>-<public id>".
-        assert not [k for k in (await client.get(f"{API}/sitemap/colleges")).json()["data"] if k.startswith(f"{slug}-")]
+        # The sitemap lists colleges by their address, "<public id>-<slug>".
+        assert not [k for k in (await client.get(f"{API}/sitemap/colleges")).json()["data"] if k.endswith(f"-{slug}")]
         assert slug not in {c["slug"] for c in (await client.get(f"{API}/colleges?limit=50")).json()["data"]}
 
         r = await client.patch(f"{API}/admin/colleges/{slug}/status", json={"status": "published"}, headers=h)
         assert r.status_code == 200
         r = await client.get(f"{API}/colleges/{slug}")
         assert r.status_code == 200
-        assert f"{slug}-{r.json()['data']['publicId']}" in (await client.get(f"{API}/sitemap/colleges")).json()["data"]
+        assert f"{r.json()['data']['publicId']}-{slug}" in (await client.get(f"{API}/sitemap/colleges")).json()["data"]
 
         # a published college cannot be deleted in one click
         r = await client.delete(f"{API}/admin/colleges/{slug}", headers=h)
@@ -54,9 +54,10 @@ async def test_draft_publish_archive_delete(client, world):
             await db.commit()
 
 
-async def test_add_college_refuses_bad_input_and_warns_about_a_duplicate(client, world):
+async def test_add_college_refuses_bad_input_and_a_duplicate(client, world):
     slug = f"status-dup-{uuid.uuid4().hex[:6]}"
     other = f"status-dup2-{uuid.uuid4().hex[:6]}"
+    elsewhere = f"status-dup3-{uuid.uuid4().hex[:6]}"
     h = world.admin.h
     try:
         for bad in ({"name": "<script>alert(1)</script>"}, {"established": 2999}, {"established": 1000}, {"feesRange": "₹20L - 5L"}):
@@ -65,14 +66,26 @@ async def test_add_college_refuses_bad_input_and_warns_about_a_duplicate(client,
 
         r = await client.post(f"{API}/admin/colleges", json=_body(slug), headers=h)
         assert r.status_code == 201
+        name = _body(slug)["name"]
 
-        # same name in the same city: asked once, then allowed on request
-        twin = _body(other, name=_body(slug)["name"])
+        # Same name in the same city, whatever the case or spacing: refused, even when asked to go ahead.
+        twin = _body(other, name="  " + name.upper().replace(" ", "   ") + " ", city=" pune ")
         r = await client.post(f"{API}/admin/colleges", json=twin, headers=h)
-        assert r.status_code == 409 and "Possible duplicate" in r.json()["error"]["message"]
+        assert r.status_code == 409 and r.json()["error"]["code"] == "COLLEGE_NAME_TAKEN", r.text
         r = await client.post(f"{API}/admin/colleges", json={**twin, "confirmDuplicate": True}, headers=h)
-        assert r.status_code == 201
+        assert r.status_code == 409
+
+        # The same name in another city is another campus: allowed.
+        r = await client.post(f"{API}/admin/colleges", json=_body(elsewhere, name=name, city="Mumbai"), headers=h)
+        assert r.status_code == 201, r.text
+
+        # Moving it into the first one's city, or renaming another college to that name there, is refused.
+        r = await client.patch(f"{API}/admin/colleges/{elsewhere}", json={"city": "Pune"}, headers=h)
+        assert r.status_code == 409 and r.json()["error"]["code"] == "COLLEGE_NAME_TAKEN"
+        # Saving it with its own name unchanged is fine.
+        r = await client.patch(f"{API}/admin/colleges/{slug}", json={"name": name}, headers=h)
+        assert r.status_code == 200
     finally:
         async with AsyncSessionLocal() as db:
-            await db.execute(delete(College).where(College.slug.in_([slug, other])))
+            await db.execute(delete(College).where(College.slug.in_([slug, other, elsewhere])))
             await db.commit()

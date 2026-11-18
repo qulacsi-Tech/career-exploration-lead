@@ -49,6 +49,7 @@ import {
   type CollegeCourseRow,
   type CourseCollegesData,
   adminSetDefaultPriorities,
+  adminSetExamPriorities,
   adminSetMenuPriorities,
   adminRankHolder,
   type PriorityRow,
@@ -277,8 +278,8 @@ export async function deleteCollegeForever(slug: string): Promise<AdminActionRes
   return result;
 }
 
-/** The result of adding a college: `duplicate` is set when the same name already exists in the city and the editor has not yet said to go ahead. */
-export type CreateCollegeResult = AdminActionResult | { error: string; duplicate: true };
+/** The result of adding a college. A college with the same name in the same city is refused (the API's message says which). */
+export type CreateCollegeResult = AdminActionResult;
 
 function parseCourses(raw: FormDataEntryValue | null): { name: string; specialisation: string }[] {
   try {
@@ -302,10 +303,8 @@ export async function createCollege(
       streams: form.getAll("streams").map((v) => String(v).trim()).filter(Boolean),
       courses: parseCourses(form.get("courses")),
       slug: text(form, "slug"),
-      confirmDuplicate: form.get("confirmDuplicate") === "1",
     })
   );
-  if ("error" in result && result.error.startsWith("Possible duplicate")) return { error: result.error, duplicate: true };
   return result;
 }
 
@@ -363,6 +362,14 @@ export async function saveExam(slug: string, form: FormData): Promise<AdminActio
     } catch {
       return { error: "The page content could not be read. Reload the page and try again." };
     }
+  }
+  // The place on the exams listing: blank clears it (sent as 0), otherwise a whole number from 1 to 999.
+  const priority = form.get("listingPriority");
+  if (typeof priority === "string") {
+    const raw = priority.trim();
+    if (raw === "") payload.listingPriority = 0;
+    else if (!/^\d{1,3}$/.test(raw) || Number(raw) < 1) return { error: "Listing priority must be a whole number from 1 to 999, or blank." };
+    else payload.listingPriority = Number(raw);
   }
   // Fields that may be emptied on purpose (an empty eligibility hides its tab), so they are sent even when blank.
   for (const key of ["eligibility", "stream", "statusLabel", "image"] as const) {
@@ -1136,6 +1143,13 @@ function revalidateListings() {
 export async function saveDefaultPriorities(priorities: Record<string, number | null>): Promise<AdminActionResult> {
   const result = await attempt("/admin/colleges", (token) => adminSetDefaultPriorities(token, priorities));
   if ("ok" in result) revalidateListings();
+  return result;
+}
+
+/** Saves the exams' places on the exams listing, from the Exams page's priority dialog. */
+export async function saveExamPriorities(priorities: Record<string, number | null>): Promise<AdminActionResult> {
+  const result = await attempt("/admin/exams", (token) => adminSetExamPriorities(token, priorities));
+  if ("ok" in result) revalidatePath("/exams");
   return result;
 }
 

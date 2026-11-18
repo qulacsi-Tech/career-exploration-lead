@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarClock, CalendarDays, ClipboardList, IndianRupee, MessagesSquare, Monitor, Sparkles, Users } from "lucide-react";
 import type { Exam } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
-import { ExamStatusBadge } from "@/components/exam-status-badge";
+import { ExamStatusBadge, examBadgeTone } from "@/components/exam-status-badge";
 import { DeadlineCountdown } from "@/components/exams/deadline-countdown";
 import { compactCount, daysUntil, examShortName, examVibe } from "@/lib/exam-insights";
 import { examKey } from "@/lib/entity-url";
@@ -40,20 +40,32 @@ export function ExamCard({
   const href = `/exams/${examKey(exam)}`;
   const short = examShortName(exam);
   const days = daysUntil(exam.registrationCloses, now);
+  // No registration date yet: no countdown to show. The card says "Upcoming" in its corner instead, and the level
+  // it usually shows there moves beside the name.
+  const upcoming = days === null;
 
   return (
     <article className="@container group relative overflow-hidden rounded-2xl border border-line bg-surface transition duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_14px_32px_-14px_rgba(177,36,62,0.4)]">
       <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 origin-top scale-y-[0.35] bg-brand transition duration-300 group-hover:scale-y-100" />
-      <span className="absolute right-0 top-0 rounded-bl-xl bg-brand-ink px-3 py-1 text-[11px] font-bold tracking-wide text-white">{exam.level}</span>
+      {upcoming ? (
+        <span className="absolute right-0 top-0 inline-flex items-center gap-1 rounded-bl-xl bg-amber-500 px-3 py-1 text-[11px] font-bold tracking-wide text-white">
+          <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+          Upcoming
+        </span>
+      ) : (
+        <span className="absolute right-0 top-0 rounded-bl-xl bg-brand-ink px-3 py-1 text-[11px] font-bold tracking-wide text-white">{exam.level}</span>
+      )}
 
       <div className="flex gap-4 p-5 pl-6 @2xl:gap-5">
-        {/* The countdown to the registration deadline: the number a student cares about most. */}
-        <div className="hidden w-[6.5rem] shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-brand-soft to-bg-alt px-2 py-3 @lg:flex">
-          <CalendarClock className="mb-1 h-5 w-5 text-gold transition group-hover:-rotate-12" aria-hidden="true" />
-          <span className="transition duration-300 group-hover:scale-110">
-            <DeadlineCountdown date={exam.registrationCloses} />
-          </span>
-        </div>
+        {/* The countdown to the registration deadline: the number a student cares about most. Left out until there is a date. */}
+        {!upcoming && (
+          <div className="hidden w-[6.5rem] shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-brand-soft to-bg-alt px-2 py-3 @lg:flex">
+            <CalendarClock className="mb-1 h-5 w-5 text-gold transition group-hover:-rotate-12" aria-hidden="true" />
+            <span className="transition duration-300 group-hover:scale-110">
+              <DeadlineCountdown date={exam.registrationCloses} />
+            </span>
+          </div>
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-4 pr-16">
@@ -75,7 +87,9 @@ export function ExamCard({
                 <Link href={href} className="font-display text-lg font-bold leading-snug text-ink transition hover:text-brand @2xl:text-xl">
                   {exam.name}
                 </Link>
-                <ExamStatusBadge label={exam.statusLabel} />
+                {/* The corner already says Upcoming; the admin's own "Upcoming" badge would only repeat it. */}
+                {!(upcoming && examBadgeTone(exam.statusLabel ?? "") === "upcoming") && <ExamStatusBadge label={exam.statusLabel} />}
+                {upcoming && <span className="rounded-full bg-brand-ink px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-white">{exam.level}</span>}
               </div>
               <p className="mt-0.5 text-sm text-ink-soft">
                 Conducted by <span className="font-semibold text-ink">{exam.conductingBody}</span>
@@ -156,11 +170,12 @@ export function ExamCard({
               </span>
             ) : (
               <span className="min-w-0 flex-1 text-ink-soft">
-                <strong className="font-semibold text-ink">No {short} community yet.</strong> <span>Be the first to start one.</span>
+                <strong className="font-semibold text-ink">{short} Community</strong>
+                <span className="ml-2">Ask, share and celebrate with other aspirants.</span>
               </span>
             )}
             <span className="inline-flex shrink-0 items-center gap-1 font-bold text-brand">
-              {community ? "Join" : "Start"}
+              Join
               <ArrowRight className="h-4 w-4 transition group-hover/comm:translate-x-0.5" aria-hidden="true" />
             </span>
           </Link>

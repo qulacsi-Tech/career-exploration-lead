@@ -80,12 +80,15 @@ export function CommunityFeed({
   viewer,
   initial,
   loginHref,
+  layout = "page",
 }: {
   communityId: string;
   examName: string;
   viewer: CommunityViewer;
   initial: CommunityPostsPage;
   loginHref: string;
+  /** "tab": inside the exam page's tab column, which already has the exam's own sidebar, so one column here. */
+  layout?: "page" | "tab";
 }) {
   const router = useRouter();
   const [posts, setPosts] = useState<CommunityPost[]>(initial.items);
@@ -137,7 +140,7 @@ export function CommunityFeed({
     );
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+    <div className={layout === "tab" ? "grid grid-cols-1 gap-6" : "grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_260px]"}>
       <div className="min-w-0 space-y-4">
         {notice && (
           <p role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
@@ -248,7 +251,7 @@ export function CommunityFeed({
         )}
       </div>
 
-      <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+      <aside className={layout === "tab" ? "grid gap-4 sm:grid-cols-2" : "space-y-4 lg:sticky lg:top-24 lg:self-start"}>
         {member && canAct && (
           <div className="rounded-2xl border border-line bg-surface p-4 text-sm">
             <p className="font-semibold text-ink">You are a member</p>

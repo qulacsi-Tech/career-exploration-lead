@@ -85,6 +85,24 @@ export function ExamCardTab({ exam, streams }: { exam: Exam; streams: string[] }
           <input type="hidden" name="statusLabel" value={status} />
           <p className="mt-1 text-xs text-ink-faint">The coloured badge beside the name: green for Live, amber for Upcoming, grey for Expired.</p>
         </div>
+        <div>
+          <label htmlFor="exam-priority" className="block text-xs font-semibold text-ink">Listing priority</label>
+          <input
+            id="exam-priority"
+            name="listingPriority"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={999}
+            step={1}
+            defaultValue={exam.listingPriority ?? ""}
+            placeholder="No priority"
+            className={field}
+          />
+          <p className="mt-1 text-xs text-ink-faint">
+            Its place on the Exams page: 1 is first. Exams with a number come before the rest, lowest first. Leave blank for the usual order: soonest exam date first, closed ones last.
+          </p>
+        </div>
       </div>
     </div>
   );

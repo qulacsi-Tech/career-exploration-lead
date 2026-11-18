@@ -134,7 +134,7 @@ class CollegeCreateBody(BaseModel):
     rankingRank: Optional[int] = Field(default=None, ge=1)
     established: Optional[int] = None
     image: Optional[str] = Field(default=None, max_length=200)
-    # Sent again when the editor has seen the duplicate warning and wants the college added anyway.
+    # No longer used: a same-name college in the same city is refused outright. Accepted so older screens still send.
     confirmDuplicate: bool = False
     model_config = ConfigDict(populate_by_name=True)
 
@@ -183,27 +183,17 @@ class CollegeCreateBody(BaseModel):
 @router.post("/colleges", response_model=SuccessResponse[MessageResponse], status_code=201)
 async def admin_create_college(body: CollegeCreateBody, _admin: AdminPayload, db: DbSession):
     """Create a college. The slug must be new: an existing one is a 409, never an overwrite."""
-    from sqlalchemy import func, select
+    from sqlalchemy import select
     from models.college import College
 
     existing = (await db.execute(select(College.id).where(College.slug == body.slug))).scalar_one_or_none()
     if existing is not None:
         raise ConflictError("COLLEGE_SLUG_TAKEN", f"A college with slug '{body.slug}' already exists.")
 
-    # The same name in the same city is probably the same college. Say so once; the editor can go ahead.
-    if not body.confirmDuplicate:
-        twin = (
-            await db.execute(
-                select(College.slug).where(
-                    func.lower(College.name) == body.name.lower(), func.lower(College.city) == body.city.lower()
-                )
-            )
-        ).scalar_one_or_none()
-        if twin is not None:
-            raise ConflictError(
-                "COLLEGE_DUPLICATE",
-                f"Possible duplicate: '{body.name}' in {body.city} already exists ({twin}). Add it anyway?",
-            )
+    # The same name in the same city is the same college: refused, not just warned about.
+    from core.duplicates import ensure_unique_college
+
+    await ensure_unique_college(db, body.name, body.city)
 
     college = College(
         id=uuid.uuid4(),
@@ -274,6 +264,18 @@ async def admin_update_college(
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))
+
+    if body.name is not None or body.city is not None:
+        from sqlalchemy import select as sql_select
+        from core.duplicates import ensure_unique_college, same
+
+        saved = (await db.execute(sql_select(College.id, College.name, College.city).where(College.slug == slug))).first()
+        if saved is None:
+            raise NotFoundError("College")
+        name = body.name if body.name is not None else saved.name
+        city = body.city if body.city is not None else saved.city
+        if (same(name), same(city)) != (same(saved.name), same(saved.city)):
+            await ensure_unique_college(db, name, city, exclude=saved.id)
 
     stmt = sql_update(College).where(College.slug == slug).values(**values)
     await db.execute(stmt)
@@ -421,6 +423,8 @@ class ExamUpdateBody(BaseModel):
     collegePriority: Optional[dict[str, int]] = None
     image: Optional[str] = Field(default=None, max_length=200)
     statusLabel: Optional[str] = Field(default=None, max_length=40)
+    # Place on the exams listing: 1 is first. None or 0: no priority (the usual order).
+    listingPriority: Optional[int] = Field(default=None, ge=0, le=999)
     seo: Optional[dict[str, str]] = None
     isArchived: Optional[bool] = None
     model_config = ConfigDict(populate_by_name=True)
@@ -469,6 +473,8 @@ class ExamCreateBody(BaseModel):
     collegePriority: Optional[dict[str, int]] = None
     image: Optional[str] = Field(default=None, max_length=200)
     statusLabel: Optional[str] = Field(default=None, max_length=40)
+    # Place on the exams listing: 1 is first. None or 0: no priority (the usual order).
+    listingPriority: Optional[int] = Field(default=None, ge=0, le=999)
     seo: Optional[dict[str, str]] = None
     model_config = ConfigDict(populate_by_name=True)
 
@@ -495,6 +501,37 @@ async def admin_list_exams(_admin: AdminPayload, db: DbSession):
     return ListResponse[ExamSchema](data=exams, meta=Meta(total=len(exams), page=1, limit=len(exams) or 1, pages=1))
 
 
+class ExamPrioritiesBody(BaseModel):
+    # Exam slug -> its place on the exams listing (1 is first). None takes the priority off.
+    priorities: dict[str, Optional[int]] = Field(max_length=500)
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("priorities")
+    @classmethod
+    def _places(cls, value: dict[str, Optional[int]]) -> dict[str, Optional[int]]:
+        for slug, place in value.items():
+            if place is not None and not 1 <= place <= 999:
+                raise ValueError(f"{slug}: a priority is a whole number from 1 to 999.")
+        return value
+
+
+@router.put("/exam-priorities", response_model=SuccessResponse[MessageResponse])
+async def admin_set_exam_priorities(body: ExamPrioritiesBody, _admin: AdminPayload, db: DbSession):
+    """Sets the exams' places on the listing in one go, from the Exams page's priority dialog. Exams not named keep theirs."""
+    from sqlalchemy import select, update as sql_update
+    from models.exam import Exam
+
+    known = set((await db.execute(select(Exam.slug).where(Exam.slug.in_(list(body.priorities))))).scalars().all())
+    missing = [s for s in body.priorities if s not in known]
+    if missing:
+        raise ValidationError(f"Unknown exam '{missing[0]}'. Reload the page and try again.")
+    for slug, place in body.priorities.items():
+        await db.execute(sql_update(Exam).where(Exam.slug == slug).values(listing_priority=place))
+    await db.commit()
+    count = sum(1 for p in body.priorities.values() if p)
+    return SuccessResponse[MessageResponse](data=MessageResponse(message=f"Saved. {count} {'exam has' if count == 1 else 'exams have'} a priority."))
+
+
 @router.post("/exams", response_model=SuccessResponse[MessageResponse], status_code=201)
 async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSession):
     """Create an exam. The slug must be new: an existing one is a 409, never an overwrite."""
@@ -504,6 +541,9 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
     existing = (await db.execute(select(Exam.id).where(Exam.slug == body.slug))).scalar_one_or_none()
     if existing is not None:
         raise ConflictError("EXAM_SLUG_TAKEN", f"An exam with slug '{body.slug}' already exists.")
+    from core.duplicates import ensure_unique_exam
+
+    await ensure_unique_exam(db, body.name)
 
     db.add(Exam(
         id=uuid.uuid4(),
@@ -531,7 +571,14 @@ async def admin_create_exam(body: ExamCreateBody, _admin: AdminPayload, db: DbSe
         image=body.image or "",
         status_label=(body.statusLabel or "").strip(),
         seo=body.seo or {},
+        listing_priority=body.listingPriority or None,
     ))
+    # Every exam has a community, made with it; students join it from the exam's Community tab.
+    from routers.community import ensure_community
+
+    await db.flush()
+    exam = (await db.execute(select(Exam).where(Exam.slug == body.slug))).scalar_one()
+    await ensure_community(db, exam)
     await db.commit()
     return SuccessResponse[MessageResponse](data=MessageResponse(message=f"Exam '{body.slug}' created."))
 
@@ -567,6 +614,18 @@ async def admin_update_exam(slug: str, body: ExamUpdateBody, _admin: AdminPayloa
     if body.statusLabel is not None:         values["status_label"] = body.statusLabel.strip()
     if body.seo is not None:                 values["seo"] = body.seo
     if body.isArchived is not None:          values["archived"] = body.isArchived
+    # 0 clears it: the exam goes back to the usual order.
+    if body.listingPriority is not None:     values["listing_priority"] = body.listingPriority or None
+
+    if body.name is not None:
+        from sqlalchemy import select as sql_select
+        from core.duplicates import ensure_unique_exam, same
+
+        saved_name = (await db.execute(sql_select(Exam.id, Exam.name).where(Exam.slug == slug))).first()
+        if saved_name is None:
+            raise NotFoundError("Exam")
+        if same(body.name) != same(saved_name.name):
+            await ensure_unique_exam(db, body.name, exclude=saved_name.id)
 
     if body.registrationCloses is not None or body.examDate is not None:
         # One date may be sent without the other: check it against the one already saved.
@@ -639,6 +698,9 @@ async def admin_create_article(body: ArticleCreateBody, _admin: AdminPayload, db
 
     if (await db.execute(sql_select(Article.id).where(Article.slug == body.slug))).scalar_one_or_none() is not None:
         raise ConflictError("ARTICLE_SLUG_TAKEN", f"An article with slug '{body.slug}' already exists.")
+    from core.duplicates import ensure_unique_article
+
+    await ensure_unique_article(db, body.title)
     try:
         published = dt.fromisoformat(body.publishedAt)
     except ValueError:
@@ -688,6 +750,16 @@ async def admin_update_article(slug: str, body: ArticleUpdateBody, _admin: Admin
 
     if not values:
         return SuccessResponse[MessageResponse](data=MessageResponse(message="Nothing to update."))
+
+    if body.title is not None:
+        from sqlalchemy import select as sql_select
+        from core.duplicates import ensure_unique_article, same
+
+        saved = (await db.execute(sql_select(Article.id, Article.title).where(Article.slug == slug))).first()
+        if saved is None:
+            raise NotFoundError("Article")
+        if same(body.title) != same(saved.title):
+            await ensure_unique_article(db, body.title, exclude=saved.id)
 
     stmt = sql_update(Article).where(Article.slug == slug).values(**values)
     result = await db.execute(stmt)

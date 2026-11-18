@@ -16,6 +16,7 @@ import {
 } from "@/components/admin/admin-fields";
 import { FormDateField } from "@/components/admin/date-field";
 import { ExamContentTab, ExamPracticeTab } from "@/components/admin/exam-extra-tabs";
+import { ExamPriorityButton } from "@/components/admin/exam-priority-modal";
 import { ExamCardTab, ExamCollegePriorityTab, ExamEligibilityTab, ExamPageTextTab } from "@/components/admin/exam-page-tabs";
 
 const squash = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
@@ -64,6 +65,7 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
       description="Entrance tests, their windows and patterns. Dates drive the exam alerts on the public site."
       addLabel="Add exam"
       addDescription="Basic details now; pattern and syllabus on the record afterwards."
+      headerActions={<ExamPriorityButton exams={exams} />}
       rows={exams}
       onSave={(exam, data) => saveExam(exam.slug, data)}
       onAdd={(data) => createExam(undefined, data)}
@@ -97,6 +99,12 @@ export function ExamsAdmin({ exams }: { exams: Exam[] }) {
           ),
         },
         { key: "mode", label: "Mode", render: (exam) => exam.mode ?? "—" },
+        {
+          key: "priority",
+          label: "Priority",
+          // Its place on the public Exams page, set with Listing priority above. Blank: the usual order.
+          render: (exam) => (exam.listingPriority ? <span className="tabular-nums font-semibold text-ink">{exam.listingPriority}</span> : <span className="text-ink-faint">—</span>),
+        },
         {
           key: "registration",
           label: "Registration closes",
