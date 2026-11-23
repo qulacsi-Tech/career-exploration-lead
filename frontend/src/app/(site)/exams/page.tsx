@@ -167,16 +167,14 @@ export default async function ExamsIndexPage({
         ]}
       />
 
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-            {stream ? `${stream} Entrance Exams` : "Entrance Exams"}
-          </h1>
-          <p className="mt-1 text-sm italic text-brand-ink/80">Every date, deadline and mock test in one place. No more tab-hopping.</p>
-        </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+      {/* The title, the search and the alerts. The numbers and status counts are in the Deadlines & alerts panel. */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-3">
+        <h1 className="whitespace-nowrap font-display text-2xl font-extrabold tracking-tight text-ink">
+          {stream ? `${stream} Entrance Exams` : "Entrance Exams"}
+        </h1>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
           {/* A plain GET form: the search joins the other filters in the address. */}
-          <form action="/exams" method="get" role="search" className="relative min-w-0 flex-1 sm:w-80 sm:flex-none">
+          <form action="/exams" method="get" role="search" className="relative min-w-0 basis-full sm:w-72 sm:flex-none sm:basis-auto">
             {Object.entries(params).map(([k, v]) => {
               const val = Array.isArray(v) ? v[0] : v;
               return k !== "q" && val ? <input key={k} type="hidden" name={k} value={val} /> : null;
@@ -187,40 +185,105 @@ export default async function ExamsIndexPage({
               name="q"
               defaultValue={q ?? ""}
               maxLength={100}
-              placeholder="Search exams: CAT, NEET, IIM…"
+              placeholder="Search exams…"
               aria-label="Search exams"
-              className="w-full rounded-full border border-line bg-surface py-2.5 pl-10 pr-4 text-sm text-ink shadow-sm placeholder:text-ink-faint focus:border-brand focus:outline-none"
+              className="w-full rounded-full border border-line bg-surface py-2 pl-10 pr-4 text-sm text-ink shadow-sm placeholder:text-ink-faint focus:border-brand focus:outline-none"
             />
           </form>
+          <ExamInfoPanel count={deadlines.filter((e) => (daysUntil(e.registrationCloses, now) ?? 99) <= 30).length}>
+            {/* At a glance: the numbers and the status counts, first thing in the panel. */}
+            <section aria-label="Exams at a glance" className="rounded-2xl border border-line bg-surface p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-faint">At a glance</p>
+              <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { icon: ClipboardList, label: exams.length !== all.length ? `of ${all.length} exams` : "Exams", value: exams.length },
+                  { icon: Flame, label: "Closing soon", value: closingSoon, hot: closingSoon > 0, title: "Registration closes in the next 30 days" },
+                  { icon: CalendarClock, label: "Mock tests", value: tests.length },
+                  { icon: Users, label: "Practising", value: studentsPractised, title: "Students who have sat a mock test" },
+                ].map(({ icon: Icon, label, value, hot, title }) => (
+                  <div key={label} title={title} className={`flex flex-col items-center rounded-xl px-2 py-2.5 text-center ${hot ? "bg-red-50" : "bg-bg-alt"}`}>
+                    <Icon className={`h-4 w-4 ${hot ? "text-red-600" : "text-brand"}`} aria-hidden="true" />
+                    <dd className={`mt-1 font-display text-xl font-extrabold leading-none ${hot ? "text-red-600" : "text-ink"}`}>{compactCount(value)}</dd>
+                    <dt className="mt-1 whitespace-nowrap text-[11px] font-semibold leading-tight text-ink-soft">{label}</dt>
+                  </div>
+                ))}
+              </dl>
+              {statusCounts.length > 0 && (
+                <ul className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line-soft pt-3 text-sm text-ink-soft">
+                  {statusCounts.map(([name, n]) => (
+                  <li key={name}>
+                    <Link
+                      href={`/exams?status=${encodeURIComponent(name)}`}
+                      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 transition hover:bg-brand-soft hover:text-brand-ink"
+                    >
+                      <span aria-hidden="true" className={`h-2 w-2 rounded-full ${DOT[examBadgeTone(name)]}`} />
+                      {name} <span className="font-display font-extrabold text-ink">{n}</span>
+                    </Link>
+                  </li>
+                ))}
+                </ul>
+              )}
+            </section>
+
+            {deadlines.length > 0 && (
+              <div className="rounded-2xl bg-brand-soft p-5">
+                <p className="text-xs font-semibold text-brand">Closing soon</p>
+                <p className="mt-1 font-display text-lg font-semibold text-brand-ink">Upcoming Deadlines</p>
+                <ul className="mt-4 space-y-2.5 text-sm text-brand-ink/80">
+                  {deadlines.map((e) => {
+                    const d = daysUntil(e.registrationCloses, now) ?? 0;
+                    return (
+                      <li key={e.slug} className="flex items-center justify-between gap-3">
+                        <Link href={`/exams/${examKey(e)}`} className="min-w-0 truncate font-medium text-brand-ink hover:text-brand" title={e.name}>
+                          {examShortName(e)}
+                        </Link>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${d <= 7 ? "bg-red-600 text-white" : "bg-white text-brand"}`} title={e.registrationCloses}>
+                          {d === 0 ? "Today" : `${d}d left`}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            <div className="rounded-2xl bg-brand-soft p-5">
+              <p className="font-display text-lg font-semibold text-brand-ink">Browse by stream</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {streamCounts.map((s) => (
+                  <Link
+                    key={s.name}
+                    href={`/exams?stream=${encodeURIComponent(s.name)}`}
+                    className="rounded-lg bg-white/70 px-3 py-1.5 text-xs font-medium text-brand-ink transition hover:bg-white hover:shadow-sm"
+                  >
+                    {s.name}
+                    <span className="ml-1 text-brand">({s.count})</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-brand-soft p-5">
+              <p className="font-display text-lg font-semibold text-brand-ink">Never miss a date</p>
+              <p className="mt-2 text-sm text-brand-ink/80">
+                Get registration and result alerts for the exams you are targeting.
+              </p>
+              <ActionButton kind="callback"
+                className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
+              >
+                Get Exam Alerts
+              </ActionButton>
+            </div>
+          </ExamInfoPanel>
           <ActionButton kind="callback"
-            className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
+            className="shrink-0 whitespace-nowrap rounded-full bg-brand px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md"
           >
             Get Exam Alerts
           </ActionButton>
         </div>
       </div>
 
-      {/* The numbers worth a glance, big. */}
-      <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { icon: ClipboardList, label: exams.length !== all.length ? `of ${all.length} exams shown` : "Exams to explore", value: exams.length },
-          { icon: Flame, label: "Closing in 30 days", value: closingSoon, hot: closingSoon > 0 },
-          { icon: CalendarClock, label: "Mock tests ready", value: tests.length },
-          { icon: Users, label: "Students practising", value: studentsPractised },
-        ].map(({ icon: Icon, label, value, hot }) => (
-          <div key={label} className="group flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-sm">
-            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${hot ? "bg-red-50 text-red-600" : "bg-brand-soft text-brand"}`}>
-              <Icon className="h-5 w-5 transition group-hover:scale-110" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <dd className="bg-gradient-to-b from-brand to-brand-ink bg-clip-text font-display text-3xl font-extrabold leading-none text-transparent">{compactCount(value)}</dd>
-              <dt className="mt-1 truncate text-xs font-semibold text-ink-soft">{label}</dt>
-            </div>
-          </div>
-        ))}
-      </dl>
-
-      <div className="mt-6 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-4 flex flex-col gap-3 border-b border-line pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 pr-2 text-sm font-medium text-ink">
             <SlidersHorizontal className="h-4 w-4 text-brand" />
@@ -259,72 +322,6 @@ export default async function ExamsIndexPage({
               Clear all
             </Link>
           )}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-ink-soft">
-          {statusCounts.map(([name, n]) => (
-            <li key={name}>
-              <Link
-                href={`/exams?status=${encodeURIComponent(name)}`}
-                className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 transition hover:bg-brand-soft hover:text-brand-ink"
-              >
-                <span aria-hidden="true" className={`h-2 w-2 rounded-full ${DOT[examBadgeTone(name)]}`} />
-                {name} <span className="font-display font-extrabold text-ink">{n}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <ExamInfoPanel count={deadlines.filter((e) => (daysUntil(e.registrationCloses, now) ?? 99) <= 30).length}>
-          {deadlines.length > 0 && (
-            <div className="rounded-2xl bg-brand-soft p-5">
-              <p className="text-xs font-semibold text-brand">Closing soon</p>
-              <p className="mt-1 font-display text-lg font-semibold text-brand-ink">Upcoming Deadlines</p>
-              <ul className="mt-4 space-y-2.5 text-sm text-brand-ink/80">
-                {deadlines.map((e) => {
-                  const d = daysUntil(e.registrationCloses, now) ?? 0;
-                  return (
-                    <li key={e.slug} className="flex items-center justify-between gap-3">
-                      <Link href={`/exams/${examKey(e)}`} className="min-w-0 truncate font-medium text-brand-ink hover:text-brand" title={e.name}>
-                        {examShortName(e)}
-                      </Link>
-                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${d <= 7 ? "bg-red-600 text-white" : "bg-white text-brand"}`} title={e.registrationCloses}>
-                        {d === 0 ? "Today" : `${d}d left`}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-
-          <div className="rounded-2xl bg-brand-soft p-5">
-            <p className="font-display text-lg font-semibold text-brand-ink">Browse by stream</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {streamCounts.map((s) => (
-                <Link
-                  key={s.name}
-                  href={`/exams?stream=${encodeURIComponent(s.name)}`}
-                  className="rounded-lg bg-white/70 px-3 py-1.5 text-xs font-medium text-brand-ink transition hover:bg-white hover:shadow-sm"
-                >
-                  {s.name}
-                  <span className="ml-1 text-brand">({s.count})</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-brand-soft p-5">
-            <p className="font-display text-lg font-semibold text-brand-ink">Never miss a date</p>
-            <p className="mt-2 text-sm text-brand-ink/80">
-              Get registration and result alerts for the exams you are targeting.
-            </p>
-            <ActionButton kind="callback"
-              className="mt-4 block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-dark"
-            >
-              Get Exam Alerts
-            </ActionButton>
-          </div>
-        </ExamInfoPanel>
         </div>
       </div>
 
