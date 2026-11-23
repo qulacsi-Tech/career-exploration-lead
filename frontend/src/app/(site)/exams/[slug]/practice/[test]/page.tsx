@@ -11,8 +11,12 @@ import { markingSummary, questionCount } from "@/lib/practice-data";
 import { resolveInstructions, withMarking } from "@/lib/practice-instructions";
 
 export async function generateStaticParams() {
-  const tests = await getPracticeTests();
-  return tests.map((test) => ({ slug: test.examSlug, test: test.slug }));
+  try {
+    const tests = await getPracticeTests();
+    return tests.map((test) => ({ slug: test.examSlug, test: test.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({

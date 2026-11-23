@@ -91,12 +91,16 @@ import { findByKey, resolveByKey } from "@/lib/entity-resolve";
 
 export async function generateStaticParams() {
   /* Every college x every tab: the rail is fixed, so every tab is a page. */
-  const slugs = await getCollegeSlugs();
-  return slugs.flatMap((slug) =>
-    collegeSections
-      .filter((section) => section.slug !== "")
-      .map((section) => ({ slug, section: section.slug })),
-  );
+  try {
+    const slugs = await getCollegeSlugs();
+    return slugs.flatMap((slug) =>
+      collegeSections
+        .filter((section) => section.slug !== "")
+        .map((section) => ({ slug, section: section.slug })),
+    );
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({

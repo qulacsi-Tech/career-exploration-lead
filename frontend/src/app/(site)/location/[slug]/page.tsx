@@ -12,8 +12,12 @@ import { getLocationOrSample } from "@/lib/sample-locations";
 import { getCollegesInLocation, streamsIn } from "@/lib/location-colleges";
 
 export async function generateStaticParams() {
-  const locs = await getLocations();
-  return locs.map((loc) => ({ slug: loc.slug }));
+  try {
+    const locs = await getLocations();
+    return locs.map((loc) => ({ slug: loc.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({

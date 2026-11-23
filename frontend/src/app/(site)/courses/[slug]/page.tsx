@@ -9,8 +9,12 @@ import { ActionButton } from "@/components/college/college-actions";
 import { examKey } from "@/lib/entity-url";
 
 export async function generateStaticParams() {
-  const slugs = await getCourseSlugs();
-  return slugs.map((slug) => ({ slug }));
+  try {
+    const slugs = await getCourseSlugs();
+    return slugs.map((slug) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 /** The course, or null for an unknown slug. Any other failure still throws. */
