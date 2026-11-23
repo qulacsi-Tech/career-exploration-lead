@@ -32,7 +32,7 @@ export function ExamInfoPanel({ count, children }: { /** Shown on the button: ho
         aria-haspopup="dialog"
         aria-expanded={open}
         title="Deadlines and alerts"
-        className="group relative inline-flex items-center gap-2 rounded-full border border-brand/40 bg-brand-soft px-4 py-2 text-sm font-bold text-brand-ink transition hover:-translate-y-0.5 hover:border-brand hover:shadow-sm"
+        className="group relative inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-brand/40 bg-brand-soft px-4 py-2 text-sm font-bold text-brand-ink transition hover:-translate-y-0.5 hover:border-brand hover:shadow-sm"
       >
         <BellRing className={`h-4 w-4 text-brand ${count > 0 ? "origin-top animate-[wiggle_1.2s_ease-in-out_infinite] group-hover:animate-none" : ""}`} aria-hidden="true" />
         Deadlines &amp; alerts
@@ -49,7 +49,7 @@ export function ExamInfoPanel({ count, children }: { /** Shown on the button: ho
           role="dialog"
           aria-modal="true"
           aria-label="Deadlines and alerts"
-          className={`absolute inset-y-0 right-0 flex w-full max-w-sm flex-col bg-bg shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}
+          className={`absolute inset-y-0 right-0 flex w-full max-w-sm flex-col sm:max-w-xl bg-bg shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}
         >
           <div className="flex items-center justify-between border-b border-line px-5 py-4">
             <p className="flex items-center gap-2 font-display text-lg font-bold text-ink">
