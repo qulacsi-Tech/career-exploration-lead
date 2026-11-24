@@ -1,0 +1,39 @@
+# The public front door for BOTH environments: one Caddy on ports 80 and 443 that gets and renews
+# the HTTPS certificates and sends each domain to the right environment (see caddy/Caddyfile).
+# It lives in its own project so that deploying dev never touches it. Deployed with prod.
+#
+# Needed in deploy/.env of the prod checkout:
+#   DOMAIN        topcollegepath.com
+#   ACME_EMAIL    address Let's Encrypt can reach
+#   DEV_DOMAIN    optional, defaults to dev.<DOMAIN>
+
+name: career-edge
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      DEV_DOMAIN: ${DEV_DOMAIN:-dev.${DOMAIN}}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    # The folder is mounted, not the file: git replaces a file on checkout, and a single-file mount
+    # would keep showing the old one. With the folder, "caddy reload" picks up the new Caddyfile.
+    volumes:
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge:
+    external: true
+    name: career-edge

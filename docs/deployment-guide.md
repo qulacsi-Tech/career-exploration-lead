@@ -1,5 +1,7 @@
 # Deployment guide: AWS EC2 (Ubuntu) with career.qualcsi.com
 
+> **Superseded for day-to-day deployment.** Servers are now deployed by the CI/CD pipeline, with a `dev` site and a production site on one server. See [cicd-and-environments.md](cicd-and-environments.md). The compose file in this guide was renamed `docker-compose.app.yml`, Caddy moved to `docker-compose.edge.yml`, and the auto-deploy timer was removed. This guide remains useful as background on the manual steps.
+
 This deploys the whole platform on one EC2 server:
 
 - **Frontend** (Next.js) at `https://career.qualcsi.com`, the public site and admin panel

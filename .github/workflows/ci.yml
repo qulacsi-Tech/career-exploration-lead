@@ -1,20 +1,58 @@
-name: CI
+name: CI/CD
 
-# Runs on every push to main and on pull requests. Deployment is separate:
-# the EC2 server pulls main itself (deploy/auto-deploy.sh) and the frontend
-# deploys through Vercel. This workflow is the safety check before either.
+# Two environments, one server (docs/cicd-and-environments.md):
+#   push to dev  ->  checks  ->  deploy to https://dev.topcollegepath.com
+#   push to main ->  checks  ->  deploy to https://topcollegepath.com
+# main only ever receives a merged pull request from dev. Pull requests run the checks but never
+# deploy. The deploy job runs only when every check has passed.
 
 on:
   push:
-    branches: [main]
+    branches: [dev, main]
   pull_request:
-    branches: [main]
+    branches: [dev, main]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  release-path:
+    name: Only dev may be merged into main
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the source branch
+        run: |
+          if [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "::error::Pull requests into main must come from the dev branch (this one is from '${{ github.head_ref }}'). Merge your branch into dev first."
+            exit 1
+          fi
+
+  deploy-files:
+    name: Deploy files (scripts, compose, Caddy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell scripts parse
+        run: for f in deploy/*.sh; do bash -n "$f" && echo "ok $f"; done
+
+      - name: Compose files are valid
+        run: |
+          cp deploy/backend.env.example deploy/backend.env
+          export POSTGRES_PASSWORD=ci DOMAIN=example.com ACME_EMAIL=ci@example.com APP_ENV=dev
+          docker compose -p ci -f deploy/docker-compose.app.yml --env-file /dev/null config -q
+          APP_ENV=prod docker compose -p ci -f deploy/docker-compose.app.yml --env-file /dev/null config -q
+          docker compose -p ci -f deploy/docker-compose.edge.yml --env-file /dev/null config -q
+
+      - name: Caddyfile is valid
+        run: |
+          docker run --rm -e DOMAIN=example.com -e DEV_DOMAIN=dev.example.com -e ACME_EMAIL=ci@example.com \
+            -v "$PWD/deploy/caddy:/etc/caddy:ro" caddy:2-alpine \
+            caddy validate --config /etc/caddy/Caddyfile
+
+
   backend:
     name: Backend (migrate, seed, boot)
     runs-on: ubuntu-latest
@@ -106,3 +144,55 @@ jobs:
 
       - name: Typecheck
         run: npx tsc --noEmit
+
+  deploy:
+    name: Deploy to ${{ github.ref_name == 'main' && 'production' || 'dev' }}
+    # Only for a push to dev or main, and only when every check above has passed.
+    needs: [backend, frontend, deploy-files]
+    if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Deploys of one branch queue up in order instead of cancelling each other halfway.
+    concurrency:
+      group: deploy-${{ github.ref_name }}
+      cancel-in-progress: false
+    # GitHub "Environments": the production one can require a reviewer's approval (Settings > Environments).
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+      url: ${{ github.ref_name == 'main' && 'https://topcollegepath.com' || 'https://dev.topcollegepath.com' }}
+    env:
+      TARGET_ENV: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+      SITE: ${{ github.ref_name == 'main' && 'https://topcollegepath.com' || 'https://dev.topcollegepath.com' }}
+    steps:
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_HOST_KEY" ] || { echo "::error::Add the DEPLOY_SSH_KEY and DEPLOY_HOST_KEY secrets (docs/cicd-and-environments.md, step 6)"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+
+      - name: Deploy ${{ github.sha }} to ${{ env.TARGET_ENV }}
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'root' }}
+        # The key on the server may only run ci-entry.sh, which accepts exactly this command.
+        run: |
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+              -o ServerAliveInterval=30 -o ServerAliveCountMax=40 \
+              "$DEPLOY_USER@$DEPLOY_HOST" "deploy $TARGET_ENV $GITHUB_SHA"
+
+      - name: Smoke test the live site
+        run: |
+          for i in $(seq 1 24); do
+            if curl -fsS -m 10 "$SITE/api/ping" && curl -fsS -m 20 -o /dev/null "$SITE/"; then
+              echo "$SITE is answering"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::$SITE did not answer after the deploy"
+          exit 1

@@ -1,0 +1,58 @@
+# Public entry point for both environments. Caddy obtains and renews the TLS certificates itself.
+# Only ports 80 and 443 are published; the app containers are reachable only on the internal
+# Docker network "career-edge". Each environment registers itself there as <env>-backend and
+# <env>-frontend (docker-compose.app.yml).
+{
+	email {$ACME_EMAIL}
+}
+
+(common) {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+# Production: topcollegepath.com  (branch main)
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
+
+{$DOMAIN} {
+	import common
+
+	# The API lives under /api (v1 routes, /api/ping, /api/docs).
+	handle /api/* {
+		reverse_proxy prod-backend:8000
+	}
+
+	# Everything else is the website and the admin panel.
+	handle {
+		reverse_proxy prod-frontend:3000
+	}
+}
+
+# Development: dev.topcollegepath.com  (branch dev)
+{$DEV_DOMAIN} {
+	import common
+
+	# A test site: keep it out of search results.
+	header X-Robots-Tag "noindex, nofollow"
+
+	handle /api/* {
+		reverse_proxy dev-backend:8000
+	}
+
+	handle {
+		reverse_proxy dev-frontend:3000
+	}
+}

@@ -1,4 +1,4 @@
-# Deployed automatically: pushes to main reach the server via deploy/auto-deploy.sh.
+# Deployed by CI/CD: a push to dev goes to dev.topcollegepath.com, a push to main to topcollegepath.com (docs/cicd-and-environments.md).
 import asyncio
 import logging
 from contextlib import asynccontextmanager

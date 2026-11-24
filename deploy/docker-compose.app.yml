@@ -1,0 +1,101 @@
+# One environment of the app: database, API and website. The same file runs both:
+#
+#   prod  (branch main)  https://topcollegepath.com      project "career-platform"
+#   dev   (branch dev)   https://dev.topcollegepath.com  project "career-dev"
+#
+# deploy.sh passes the project name, so each environment gets its own database and uploads
+# volumes. Caddy (docker-compose.edge.yml) is the only thing that faces the internet; it reaches
+# each environment through the shared "career-edge" network by the aliases "prod-backend",
+# "dev-frontend" and so on. Nothing here publishes a port.
+#
+# Needed in deploy/.env of the environment's checkout:
+#   APP_ENV  prod | dev          (set by deploy.sh)
+#   DOMAIN   the public host     (topcollegepath.com  or  dev.topcollegepath.com)
+#   POSTGRES_PASSWORD, GOOGLE_CLIENT_ID (optional)
+# Needed in deploy/backend.env: see backend.env.example.
+# Pipeline and first-time setup: docs/cicd-and-environments.md
+
+name: ${COMPOSE_PROJECT_NAME:-career-platform}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: leadgendb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No "ports:" here. The database is never reachable from outside the host.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d leadgendb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    env_file:
+      - ./backend.env
+    depends_on:
+      db:
+        condition: service_healthy
+    # BACKEND_WORKERS defaults to 2. The dev environment can set 1 in .env to save memory.
+    command:
+      - uvicorn
+      - main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "${BACKEND_WORKERS:-2}"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "*"
+    # Admin-uploaded images. A named volume survives rebuilds.
+    volumes:
+      - uploads:/app/uploads
+    expose:
+      - "8000"
+    networks:
+      default:
+      edge:
+        aliases:
+          - ${APP_ENV:?APP_ENV is set by deploy.sh}-backend
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        # Public address the browser will call, baked in at build time.
+        NEXT_PUBLIC_API_URL: https://${DOMAIN:?set DOMAIN in .env}/api/v1
+        NEXT_PUBLIC_SITE_URL: https://${DOMAIN}
+        # Sign in with Google. Empty hides the button. The same ID goes in backend.env as GOOGLE_CLIENT_ID.
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # While building, pages are prerendered from the public API. Map the domain to this host so
+      # the build reaches Caddy here, not the internet. Needs Docker 20.10+.
+      extra_hosts:
+        - "${DOMAIN}:host-gateway"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "3000"
+    networks:
+      default:
+      edge:
+        aliases:
+          - ${APP_ENV}-frontend
+
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  edge:
+    external: true
+    name: career-edge
